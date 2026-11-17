@@ -79,7 +79,7 @@
     "tsc": "tsc && tsc -p tests/tsconfig.contract.json",
     "watch": "tsc -w",
     "prepare": "husky && npm run build",
-    "prepack": "pnpm run build",
+    "prepack": "npm run build",
     "release": "release-it",
     "test:browser": "vitest --config=vitest.browser.config.ts",
     "test:webgl": "vitest run --config=vitest.webgl.config.ts"
