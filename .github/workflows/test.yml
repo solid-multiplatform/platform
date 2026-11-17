@@ -14,12 +14,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm test
-      - run: pnpm lint
       - run: node --test tests/native/*.test.mjs
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:webgl
       - working-directory: examples/roku
         run: pnpm install --frozen-lockfile && pnpm build
+      - run: pnpm lint
   tvos:
     runs-on: macos-15
     timeout-minutes: 45

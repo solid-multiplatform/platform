@@ -24,3 +24,5 @@ examples/**/hooks/
 examples/**/.ns*
 examples/**/dist-roku/
 *.tsbuildinfo
+
+examples/**/.artifacts/

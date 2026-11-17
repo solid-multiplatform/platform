@@ -34,7 +34,6 @@
     "node": ">=24.0.0"
   },
   "license": "MIT",
-  "prettier": "@roku-sdk/dev-tools/linter-config/.prettierrc.json",
   "packageManager": "pnpm@10.33.4",
   "private": true
 }

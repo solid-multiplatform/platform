@@ -23,7 +23,7 @@ corepack pnpm exec playwright install chromium
 corepack pnpm test:webgl
 ```
 
-The framework has a peer dependency on `@solid-multiplatform/renderer`. For development the lockfile installs a verified renderer tarball from `vendor/`. A fresh clone builds independently. To update that input, run `npm ci && npm pack` in the renderer checkout, replace the development tarball and refresh the framework and example lockfiles. Each device project has its own install. Build the framework first, then run `corepack pnpm install --frozen-lockfile` and `corepack pnpm build` in the example directory. Android needs JDK 21 and the Android SDK. tvOS needs Xcode and the tvOS platform.
+The framework has a peer dependency on `@solid-multiplatform/renderer`. For development the lockfile installs a verified renderer tarball from `vendor/`. A fresh clone builds independently. To update that input, run `npm ci && npm pack` in the renderer checkout, replace the development tarball and refresh the framework and example lockfiles. Each device project has its own install. Build the framework first, then run `corepack pnpm install --frozen-lockfile` and `corepack pnpm build` in the example directory. Android needs JDK 21 and the Android SDK. tvOS needs Xcode and the tvOS platform. On Linux, Android developers who need the original EGL multisampling fix can run `bash scripts/build-canvas-native.sh` inside the Android fixture before building. It uses the pinned Canvas source, Cargo lockfile and NDK 28.2.13676358. Install the Rust targets for the selected ABIs first.
 
 ## Application and host boundaries
 
