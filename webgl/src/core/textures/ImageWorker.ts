@@ -26,7 +26,7 @@ type Settle = [(value: DecodedImage) => void, (reason: Error) => void];
 export function decodeImageBlob(
   create: (...args: unknown[]) => Promise<ImageBitmap>,
   createThis: unknown,
-  blob: Blob,
+  blob: Blob | HTMLCanvasElement,
   premultiplyAlpha: boolean | null,
   sx: number | null,
   sy: number | null,
@@ -35,11 +35,13 @@ export function decodeImageBlob(
   supportsOptions: boolean,
   supportsFull: boolean,
   premultiplyHonored: boolean | null,
+  timeoutMs?: number,
 ): Promise<DecodedImage> {
   var withAlphaChannel =
     premultiplyAlpha !== undefined && premultiplyAlpha !== null
       ? premultiplyAlpha
-      : blob.type.indexOf('image/png') !== -1;
+      : typeof (blob as Blob).type === 'string' &&
+        (blob as Blob).type.indexOf('image/png') !== -1;
   var useGlPremultiply =
     withAlphaChannel === true && premultiplyHonored === false;
   var options = {
@@ -50,27 +52,62 @@ export function decodeImageBlob(
     colorSpaceConversion: 'none',
     imageOrientation: 'none',
   };
-  var pending: Promise<ImageBitmap>;
-  if (supportsFull === true && sw !== null && sh !== null) {
-    pending = create.call(
-      createThis,
-      blob,
-      sx === null ? 0 : sx,
-      sy === null ? 0 : sy,
-      sw,
-      sh,
-      options,
+  return new Promise<DecodedImage>(function (resolve, reject) {
+    var finished = false;
+    // The serialized worker needs a self-contained decode deadline.
+    var timer = setTimeout(
+      function () {
+        finished = true;
+        var error = new Error('Image bitmap decoding timed out');
+        error.name = 'ImageBitmapTimeoutError';
+        reject(error);
+      },
+      timeoutMs === undefined ? 2000 : timeoutMs,
     );
-  } else if (supportsOptions === false && supportsFull === false) {
-    // Chrome 50 to 52: no options. The browser default premultiplies, so
-    // WebGL must not premultiply again, except where the default returns
-    // straight alpha (premultiplyHonored false).
-    pending = create.call(createThis, blob);
-  } else {
-    pending = create.call(createThis, blob, options);
-  }
-  return pending.then(function (data) {
-    return { data: data, premultiplyAlpha: useGlPremultiply };
+    var pending: Promise<ImageBitmap>;
+    try {
+      if (supportsFull === true && sw !== null && sh !== null) {
+        pending = create.call(
+          createThis,
+          blob,
+          sx === null ? 0 : sx,
+          sy === null ? 0 : sy,
+          sw,
+          sh,
+          options,
+        );
+      } else if (supportsOptions === false && supportsFull === false) {
+        // Chrome 50 to 52: no options. The browser default premultiplies, so
+        // WebGL must not premultiply again, except where the default returns
+        // straight alpha (premultiplyHonored false).
+        pending = create.call(createThis, blob);
+      } else {
+        pending = create.call(createThis, blob, options);
+      }
+    } catch (error) {
+      clearTimeout(timer);
+      reject(error);
+      return;
+    }
+    pending.then(
+      function (data) {
+        if (finished === true) {
+          try {
+            if (typeof data.close === 'function') data.close();
+          } catch (_error) {}
+          return;
+        }
+        finished = true;
+        clearTimeout(timer);
+        resolve({ data: data, premultiplyAlpha: useGlPremultiply });
+      },
+      function (error) {
+        if (finished === true) return;
+        finished = true;
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
   });
 }
 
@@ -147,7 +184,11 @@ function createImageWorker(decode: typeof decodeImageBlob): void {
             scope.postMessage({ id: id, data: result }, [result.data]);
           },
           function (error: Error) {
-            scope.postMessage({ id: id, error: error.message });
+            scope.postMessage({
+              id: id,
+              error: error.message,
+              errorName: error.name,
+            });
           },
         );
       };
@@ -280,7 +321,10 @@ export class ImageWorkerManager {
     this.pending.delete(id);
     const error = message.error as string | undefined;
     if (error !== undefined) {
-      settle[1](new Error(error));
+      const failure = new Error(error);
+      if (typeof message.errorName === 'string')
+        failure.name = message.errorName;
+      settle[1](failure);
     } else {
       settle[0](message.data as DecodedImage);
     }
@@ -315,7 +359,7 @@ export class ImageWorkerManager {
   /** Fail every request in flight with `message`. */
   private rejectAll(message: string): void {
     const pending = this.pending;
-    pending.forEach((settle) => {
+    pending.forEach(settle => {
       settle[1](new Error(message));
     });
     pending.clear();

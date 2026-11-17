@@ -2821,6 +2821,7 @@ export class CoreNode extends EventEmitter {
           return controller.start();
         }
       }
+      existing?.controller.stop();
     } else {
       animations = this._animations = {};
     }

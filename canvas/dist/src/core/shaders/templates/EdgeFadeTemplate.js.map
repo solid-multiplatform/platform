@@ -1,1 +1,0 @@
-{"version":3,"file":"EdgeFadeTemplate.js","sourceRoot":"","sources":["../../../../../src/core/shaders/templates/EdgeFadeTemplate.ts"],"names":[],"mappings":"AAiCA,MAAM,CAAC,MAAM,gBAAgB,GAAkC;IAC7D,KAAK,EAAE;QACL,IAAI,EAAE,CAAC;QACP,GAAG,EAAE,CAAC;QACN,KAAK,EAAE,CAAC;QACR,MAAM,EAAE,CAAC;KACV;CACF,CAAC"}

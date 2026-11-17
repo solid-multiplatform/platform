@@ -1,5 +1,6 @@
 import { isBase64Image } from '../../common/utils.js';
 import { REQUEST_TIMEOUT, type Platform } from '../../platform/Platform.js';
+import { decodeImageBlob } from './ImageWorker.js';
 import type { LoadedImage, SourceContext } from './sources.js';
 
 /** A URL ending in .svg, with or without a query string (1.10). */
@@ -109,22 +110,18 @@ export function loadSvg(
 ): Promise<LoadedImage> {
   const platform = ctx.platform;
   const img = platform.createImage();
-  // A data URI loads locally: only a URL is cross-origin, and only a URL
-  // can stall.
+  // Only remote URLs need cross-origin image requests.
   const remote = isBase64Image(url) === false;
   if (remote === true) {
     img.crossOrigin = 'anonymous';
   }
   return new Promise<void>((resolve, reject) => {
-    const timeout =
-      remote === true
-        ? failAfterTimeout(
-            platform,
-            img,
-            reject,
-            `SVG loading timed out: ${url}`,
-          )
-        : null;
+    const timeout = failAfterTimeout(
+      platform,
+      img,
+      reject,
+      `SVG loading timed out: ${url}`,
+    );
     img.onload = () => {
       settled(timeout);
       resolve();
@@ -157,7 +154,21 @@ export function loadSvg(
     if (ctx.support === null) {
       return imageData();
     }
-    return platform.createImageBitmap(canvas).then((bitmap): LoadedImage => {
+    return decodeImageBlob(
+      platform.createImageBitmap as (
+        ...args: unknown[]
+      ) => Promise<ImageBitmap>,
+      platform,
+      canvas,
+      false,
+      null,
+      null,
+      null,
+      null,
+      false,
+      false,
+      null,
+    ).then(({ data: bitmap }): LoadedImage => {
       freeCanvas(canvas);
       return { data: bitmap, w, h, premultiply: false };
     }, imageData);

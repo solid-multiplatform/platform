@@ -1,0 +1,11 @@
+# Source records
+
+| Backend | Source | Verified npm integrity or Git revision |
+| --- | --- | --- |
+| WebGL | [@solidtv/renderer 2.0.10](https://registry.npmjs.org/@solidtv/renderer/-/renderer-2.0.10.tgz) | `sha512-p1/VsEJ75+UkGNn239+AX0F+T+DRn97T2PP9WClhm/HyNCb1GaNV+rnHrbQg0cEyAf36eR96qLnYjCpCALbapA==` |
+| Canvas | [@solidtv/renderer 1.10.2](https://registry.npmjs.org/@solidtv/renderer/-/renderer-1.10.2.tgz) | `sha512-F8FVEszPkeSLn1ndtHodOzVFQl54HhSyBzWj6OEsHm0N+wWMh/tO8/hRU2Zj8VtvZj4VPmfSqYWQijAkk854lQ==` |
+| SceneGraph | [tv-web Roku](https://github.com/viptv-org/tv-web/tree/9924e7ce6961f78b193f3e5d62a31831ae6bff8b/roku) | `9924e7ce6961f78b193f3e5d62a31831ae6bff8b` |
+
+Tags `upstream-2.0.10` and `upstream-1.10.2` preserve the respective published package directories, including their prebuilt distributions. The active tree builds the JavaScript and declarations from TypeScript. Each backend retains its source license and notices. The original packages identify upstream Git revisions 9c916ad and de2828c.
+
+The image decoder, Canvas text replacement, animation retirement and immediate pixel upload changes come from the [two renderer patches](https://github.com/viptv-org/tv-web/tree/9924e7ce6961f78b193f3e5d62a31831ae6bff8b/patches). The four patched v2 source files matched 2.0.7 before applying the changes. The pure Canvas source matches the supplied patched-source SHA-256 manifest for the three affected files. The original patches remain available under that repository’s terms. The Roku subtree includes its MIT license. SceneGraph now takes an explicit root and optional host callbacks, and subscribes to font changes until disposal.

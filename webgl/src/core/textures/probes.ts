@@ -1,4 +1,30 @@
 import type { Platform } from '../../platform/Platform.js';
+import { decodeImageBlob } from './ImageWorker.js';
+
+const PROBE_TIMEOUT = 2000;
+
+function probeBitmap(
+  platform: Platform,
+  blob: Blob,
+  options = false,
+  full = false,
+  premultiply = false,
+): Promise<ImageBitmap> {
+  return decodeImageBlob(
+    platform.createImageBitmap as (...args: unknown[]) => Promise<ImageBitmap>,
+    platform,
+    blob,
+    premultiply,
+    full ? 0 : null,
+    full ? 0 : null,
+    full ? 1 : null,
+    full ? 1 : null,
+    options,
+    full,
+    null,
+    PROBE_TIMEOUT,
+  ).then(decoded => decoded.data);
+}
 
 // Ported from 1.10 (main:src/core/lib/validateImageBitmap.ts). The
 // premultiply probe drives a throwaway WebGL context of its own, not the
@@ -68,29 +94,23 @@ export function validateCreateImageBitmap(
   let basic: Promise<ImageBitmap>;
   try {
     blob = new Blob([pngBinaryData], { type: 'image/png' });
-    basic = platform.createImageBitmap(blob);
+    basic = probeBitmap(platform, blob);
   } catch (e) {
     return Promise.reject(e);
   }
   return basic
-    .then((bitmap) => {
+    .then(bitmap => {
       bitmap.close?.();
       support.basic = true;
       // Test createImageBitmap with options support
-      return decodes(() =>
-        platform.createImageBitmap(blob, { premultiplyAlpha: 'none' }),
-      );
+      return decodes(() => probeBitmap(platform, blob, true));
     })
-    .then((options) => {
+    .then(options => {
       support.options = options;
       // Test createImageBitmap with full options support
-      return decodes(() =>
-        platform.createImageBitmap(blob, 0, 0, 1, 1, {
-          premultiplyAlpha: 'none',
-        }),
-      );
+      return decodes(() => probeBitmap(platform, blob, false, true));
     })
-    .then((full) => {
+    .then(full => {
       support.full = full;
       // premultiplyHonored is resolved separately by the caller (it may be a
       // forced override or an explicit opt-in to the probe), so it is left as
@@ -112,7 +132,7 @@ function decodes(decode: () => Promise<ImageBitmap>): Promise<boolean> {
     return Promise.resolve(false);
   }
   return pending
-    .then((bitmap) => {
+    .then(bitmap => {
       bitmap.close?.();
       return true;
     })
@@ -165,16 +185,12 @@ export function detectPremultiplyAlphaHonored(
   let decoded: Promise<ImageBitmap>;
   try {
     const blob = new Blob([STRAIGHT_ALPHA_TEST_PNG], { type: 'image/png' });
-    decoded = platform.createImageBitmap(blob, {
-      premultiplyAlpha: 'premultiply',
-      colorSpaceConversion: 'none',
-      imageOrientation: 'none',
-    });
+    decoded = probeBitmap(platform, blob, true, false, true);
   } catch (e) {
     return Promise.resolve(null);
   }
   return decoded.then(
-    (bitmap) => readBack(platform, bitmap),
+    bitmap => readBack(platform, bitmap),
     () => null,
   );
 }

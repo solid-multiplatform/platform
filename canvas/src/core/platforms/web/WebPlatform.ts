@@ -5,7 +5,7 @@ import type { Stage } from '../../Stage.js';
  * make fontface add not show errors
  */
 interface FontFaceSetWithAdd extends FontFaceSet {
-  add(font: FontFace): void;
+  add(font: FontFace): this;
 }
 
 export class WebPlatform extends Platform {

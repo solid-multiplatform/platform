@@ -129,9 +129,14 @@ function loadUrl(
         props.sh ?? null,
       )
       .then(toLoaded, (error: unknown) => {
-        // The worker crashed with this request in flight: load it on the
-        // main thread rather than fail it. A request the worker answered
-        // with an error still fails, and so does one its destroy ended.
+        // A decode timeout uses the image element; a crash uses the main
+        // thread. Other worker errors and destruction still fail the load.
+        if (
+          error instanceof Error &&
+          error.name === 'ImageBitmapTimeoutError'
+        ) {
+          return loadElement(ctx.platform, url, premultiply);
+        }
         if (worker.crashed === true) {
           return fetchAndDecode(ctx, url, props, premultiply);
         }
@@ -152,7 +157,7 @@ function fetchAndDecode(
   props: ImageTextureProps,
   premultiply: boolean,
 ): Promise<LoadedImage> {
-  return (ctx.platform.fetch(url, 'blob') as Promise<Blob>).then((b) =>
+  return (ctx.platform.fetch(url, 'blob') as Promise<Blob>).then(b =>
     decodeBlob(ctx, b, props, premultiply),
   );
 }
@@ -180,7 +185,7 @@ function decodeBlob(
     support.options,
     support.full,
     support.premultiplyHonored,
-  ).then(toLoaded);
+  ).then(toLoaded, () => loadElement(platform, blob, premultiply));
 }
 
 /**
@@ -189,7 +194,7 @@ function decodeBlob(
  * (UNPACK_PREMULTIPLY_ALPHA_WEBGL) unless the texture's premultiplyAlpha
  * is false, and with that off texImage2D decodes the image again. No crop
  * on this path (1.10). An `<img>` has no timeout of its own: one still
- * loading a URL after REQUEST_TIMEOUT fails and is stopped
+ * loading after REQUEST_TIMEOUT fails and is stopped
  * (failAfterTimeout), rather than hold its loader slot for good.
  */
 function loadElement(
@@ -198,23 +203,19 @@ function loadElement(
   premultiply: boolean,
 ): Promise<LoadedImage> {
   const img = platform.createImage();
-  // A data URI or a Blob loads locally: only a URL is cross-origin, and
-  // only a URL can stall.
+  // Only remote URLs need cross-origin image requests.
   const remote = typeof src === 'string' && isBase64Image(src) === false;
   if (remote === true) {
     img.crossOrigin = 'anonymous';
   }
   const name = typeof src === 'string' ? src : 'a Blob';
   const loading = new Promise<void>((resolve, reject) => {
-    const timeout =
-      remote === true
-        ? failAfterTimeout(
-            platform,
-            img,
-            reject,
-            `Image loading timed out for ${name}`,
-          )
-        : null;
+    const timeout = failAfterTimeout(
+      platform,
+      img,
+      reject,
+      `Image loading timed out for ${name}`,
+    );
     img.onload = () => {
       settled(timeout);
       resolve();

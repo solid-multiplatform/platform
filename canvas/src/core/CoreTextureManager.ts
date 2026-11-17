@@ -611,7 +611,8 @@ export class CoreTextureManager extends EventEmitter {
     // them behind an async capability probe only delays the first frame. The
     // default texture, which backs every plain-colour node, is one of them.
     const isImage = texture.type === TextureType.image;
-    if (isImage === true && this.initialized === false) {
+    const localPixels = isImage && typeof ImageData !== 'undefined' && (texture as ImageTexture).props.src instanceof ImageData;
+    if (isImage === true && !localPixels && this.initialized === false) {
       this.uploadTextureQueue.add(texture);
       return;
     }
@@ -626,12 +627,20 @@ export class CoreTextureManager extends EventEmitter {
     // hits in bursts.
     this.pendingLoads++;
     try {
+      // Focus colors need decoded Canvas pixels before this frame is painted.
+      if (localPixels && this.renderer.mode === 'canvas' && (texture as ImageTexture).props.type !== 'compressed') {
+        const image = texture as ImageTexture;
+        texture.textureData = { data: image.props.src as ImageData,
+          premultiplyAlpha: image.props.premultiplyAlpha ?? true };
+        this.uploadTexture(texture);
+        return;
+      }
       // Bound concurrent main-thread fetch+decode. Only image textures have a
       // fetch+decode to bound: colour and noise textures generate their bytes
       // synchronously, so gating them would only park them behind image
       // decodes. `decodeGate` is null when image workers handle decoding
       // off-thread.
-      const gate = isImage === true ? this.decodeGate : null;
+      const gate = isImage === true && !localPixels ? this.decodeGate : null;
       if (gate !== null) {
         await gate.acquire();
       }
@@ -659,7 +668,7 @@ export class CoreTextureManager extends EventEmitter {
       }
 
       // Handle non-image textures: upload immediately
-      if (isImage === false) {
+      if (isImage === false || (localPixels && this.renderer.mode === 'canvas')) {
         // `uploadTexture` records failure on the texture's state rather than
         // throwing, so there is nothing to catch here.
         this.uploadTexture(texture);

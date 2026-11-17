@@ -21,7 +21,7 @@ import type {
 } from '../common/CommonTypes.js';
 import type { RectWithValid } from './lib/utils.js';
 import type { CoreRenderer } from './renderers/CoreRenderer.js';
-import type { TextureLoadedEventHandler } from './textures/Texture.js';
+import type { Texture, TextureLoadedEventHandler } from './textures/Texture.js';
 import { Matrix3d } from './lib/Matrix3d.js';
 export interface CoreTextNodeProps extends CoreNodeProps, TrProps {
   /**
@@ -42,6 +42,7 @@ export class CoreTextNode extends CoreNode implements CoreTextNodeProps {
   private textRenderer: TextRenderer;
   private fontHandler: FontHandler;
 
+  private pendingCanvas: { texture: Texture; loaded: () => void; failed: () => void } | undefined;
   private _layoutGenerated = false;
   private _waitingForFont = false;
   private _containType: TextConstraint = TextConstraint.none;
@@ -257,10 +258,9 @@ export class CoreTextNode extends CoreNode implements CoreTextNodeProps {
    * Handle the result of text rendering for both Canvas and SDF renderers
    */
   private handleRenderResult(result: TextRenderInfo): void {
+    this.cancelPendingCanvas();
     // Host paths on top
     const textRendererType = this._type;
-    let width = result.width;
-    let height = result.height;
 
     // Handle Canvas renderer (uses ImageData)
     if (textRendererType === 'canvas') {
@@ -271,10 +271,32 @@ export class CoreTextNode extends CoreNode implements CoreTextNodeProps {
         this.texture = null;
         this.setRenderable(false);
       } else {
-        this.texture = this.stage.txManager.createTexture('ImageTexture', {
+        const texture = this.stage.txManager.createTexture('ImageTexture', {
           premultiplyAlpha: true,
           src: result.imageData as ImageData,
         });
+        if (this.textureLoaded && this.texture !== null && texture.state !== 'loaded') {
+          const pending = {
+            texture,
+            loaded: () => {
+              if (this.destroyed || this.pendingCanvas !== pending) return;
+              this.pendingCanvas = undefined;
+              texture.off('loaded', pending.loaded);
+              texture.off('failed', pending.failed);
+              this.texture = texture;
+              this.finishTextRender(result);
+              texture.setRenderableOwner('text-pending-' + this._id, false);
+              this.stage.requestRender();
+            },
+            failed: () => { this.cancelPendingCanvas(); },
+          };
+          this.pendingCanvas = pending;
+          texture.on('loaded', pending.loaded);
+          texture.on('failed', pending.failed);
+          texture.setRenderableOwner('text-pending-' + this._id, true);
+          return;
+        }
+        this.texture = texture;
         // It isn't renderable until the texture is loaded we have to set it to false here to avoid it
         // being detected as a renderable default color node in the next frame
         // it will be corrected once the texture is loaded
@@ -288,16 +310,22 @@ export class CoreTextNode extends CoreNode implements CoreTextNodeProps {
       }
     }
 
+    this.finishTextRender(result);
+  }
+
+  private cancelPendingCanvas(): void {
+    const pending = this.pendingCanvas;
+    if (!pending) return;
+    this.pendingCanvas = undefined;
+    pending.texture.off('loaded', pending.loaded);
+    pending.texture.off('failed', pending.failed);
+    pending.texture.setRenderableOwner('text-pending-' + this._id, false);
+  }
+
+  private finishTextRender(result: TextRenderInfo): void {
     this._cachedLayout = result.layout || null;
-    // Text dimensions may have changed: recalculate transforms, bounds and
-    // shader uniforms.
-    this.applySize(width, height);
-
-    // Handle SDF renderer (uses layout caching)
-    if (textRendererType === 'sdf') {
-      this.setRenderable(true);
-    }
-
+    this.applySize(result.width, result.height);
+    if (this._type === 'sdf') this.setRenderable(true);
     this._renderInfo = result;
     this.emitTextLoadedEvent();
   }
@@ -364,6 +392,7 @@ export class CoreTextNode extends CoreNode implements CoreTextNodeProps {
   }
 
   override destroy(isChild: boolean = false): void {
+    this.cancelPendingCanvas();
     if (this._waitingForFont === true && this.fontHandler) {
       this.fontHandler.stopWaitingForFont(this.textProps.fontFamily, this);
     }

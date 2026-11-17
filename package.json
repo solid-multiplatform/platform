@@ -1,0 +1,64 @@
+{
+  "name": "@solid-multiplatform/renderer",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "WebGL, Canvas 2D and Roku SceneGraph backends",
+  "repository": "github:solid-multiplatform/renderer",
+  "license": "SEE LICENSE IN LICENSE",
+  "files": [
+    "dist",
+    "webgl/src",
+    "webgl/exports",
+    "canvas/src",
+    "canvas/exports",
+    "canvas/index.ts",
+    "roku",
+    "contracts.ts",
+    "PROVENANCE.md",
+    "NOTICE",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepack": "npm run build",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "exports": {
+    ".": "./dist/webgl/exports/index.js",
+    "./contracts": {
+      "types": "./dist/contracts.d.ts"
+    },
+    "./webgl": "./dist/webgl/exports/index.js",
+    "./canvas": "./dist/canvas/index.js",
+    "./canvas/shaders": "./dist/canvas/exports/canvas-shaders.js",
+    "./roku": "./dist/roku/index.js",
+    "./utils": "./dist/webgl/exports/utils.js",
+    "./shaders": "./dist/webgl/exports/shaders.js",
+    "./webgl/shaders": "./dist/webgl/exports/webgl-shaders.js",
+    "./inspector": "./dist/webgl/exports/inspector.js",
+    "./platform": "./dist/webgl/exports/platform.js"
+  },
+  "peerDependencies": {
+    "@roku-sdk/interfaces": "2.19.0",
+    "@roku-sdk/solid": "2.19.0",
+    "@roku-sdk/rsg-ts": "2.19.0"
+  },
+  "peerDependenciesMeta": {
+    "@roku-sdk/interfaces": {
+      "optional": true
+    },
+    "@roku-sdk/solid": {
+      "optional": true
+    },
+    "@roku-sdk/rsg-ts": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "@roku-sdk/interfaces": "2.19.0",
+    "@roku-sdk/solid": "2.19.0",
+    "@roku-sdk/rsg-ts": "2.19.0"
+  }
+}
