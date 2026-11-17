@@ -5,7 +5,7 @@ import type { JSX } from 'solid-js';
  * mounts `App` once per page load, waits for `ready`, then calls `step` for
  * `warmup` operations and then for `measured` operations, timing each one.
  *
- * Scenarios must be arm-agnostic: they use only the public `@solidtv/solid`
+ * Scenarios must be arm-agnostic: they use only the public `@solid-multiplatform/platform`
  * API that solid 1.6.4 (arm A) and the working tree (arm C) share, never the
  * renderer directly.
  */

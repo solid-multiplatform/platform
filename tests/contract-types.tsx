@@ -10,18 +10,18 @@ import type {
   KeyMap,
   NodeStyles,
   TextStyles,
-} from '@solidtv/solid';
-import { useFocusManager } from '@solidtv/solid/primitives';
-import type { KeyMap as PrimitivesKeyMap } from '@solidtv/solid/primitives';
+} from '@solid-multiplatform/platform';
+import { useFocusManager } from '@solid-multiplatform/platform/primitives';
+import type { KeyMap as PrimitivesKeyMap } from '@solid-multiplatform/platform/primitives';
 
-// --- Types: augmentable with `declare module "@solidtv/solid"` -------------
+// --- Types: augmentable with `declare module "@solid-multiplatform/platform"` -------------
 //
 // Each augmentation adds a member with a precise type, then uses it both ways:
 // a valid use, and an invalid one under @ts-expect-error. The index
 // signatures on ElementNode, NodeProps and KeyMap would accept the valid use
 // even without the augmentation; the invalid one only fails if it merged.
 
-declare module '@solidtv/solid' {
+declare module '@solid-multiplatform/platform' {
   // demo app LeftNavWrapper.tsx, announcer.ts
   interface ElementNode {
     contractItem?: { href: string };
@@ -132,9 +132,9 @@ export function keyMapAugmentation() {
 // Every type-only export of each entry point today. Importing a name that is
 // gone is a type error. (Runtime names are pinned in publicApi.test.ts.)
 
-// @solidtv/solid: Solid's own types (82). Six of them, the Shader*Props
+// @solid-multiplatform/platform: Solid's own types (82). Six of them, the Shader*Props
 // names and WebGlShader, are re-exported by src/core/shaders.ts as aliases
-// of @solidtv/renderer types (the renderer does not export these names, so
+// of @solid-multiplatform/renderer types (the renderer does not export these names, so
 // they are not in the next list).
 export type {
   AddColorString,
@@ -219,11 +219,11 @@ export type {
   TextStyles,
   Vec4,
   WebGlShader,
-} from '@solidtv/solid';
+} from '@solid-multiplatform/platform';
 
-// @solidtv/solid: the renderer's names, via `export type * from
-// '@solidtv/renderer'` in src/core/index.ts: 103 on the installed
-// @solidtv/renderer 2.0 (AnimationSettings, FontLoadOptions, IEventEmitter,
+// @solid-multiplatform/platform: the renderer's names, via `export type * from
+// '@solid-multiplatform/renderer'` in src/core/index.ts: 103 on the installed
+// @solid-multiplatform/renderer 2.0 (AnimationSettings, FontLoadOptions, IEventEmitter,
 // TextNode and TextProps are Solid's own). Some are values in the renderer
 // but type-only here. A renderer-side rename or removal is a break inherited
 // from the renderer.
@@ -331,9 +331,9 @@ export type {
   isTextureError,
   normalizeBoundsMargin,
   prefetchFont,
-} from '@solidtv/solid';
+} from '@solid-multiplatform/platform';
 
-// @solidtv/solid/primitives (28).
+// @solid-multiplatform/platform/primitives (28).
 export type {
   AnyFunction,
   ColumnProps,
@@ -363,14 +363,14 @@ export type {
   UseHoldProps,
   VirtualGridProps,
   VirtualProps,
-} from '@solidtv/solid/primitives';
+} from '@solid-multiplatform/platform/primitives';
 
-// @solidtv/solid/primitives/router (3).
+// @solid-multiplatform/platform/primitives/router (3).
 export type {
   Branch,
   HashRouterProps,
   KeepAliveElement,
-} from '@solidtv/solid/primitives/router';
+} from '@solid-multiplatform/platform/primitives/router';
 
-// @solidtv/solid/devtools (1).
-export type { HexColorTransformOptions } from '@solidtv/solid/devtools';
+// @solid-multiplatform/platform/devtools (1).
+export type { HexColorTransformOptions } from '@solid-multiplatform/platform/devtools';

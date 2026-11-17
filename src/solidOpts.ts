@@ -6,7 +6,7 @@ import {
   log,
   type ElementText,
   enqueueDelete,
-} from './core/index.js';
+} from './core/portable.js';
 import type { SolidNode, SolidRendererOptions } from './types.js';
 
 export default {

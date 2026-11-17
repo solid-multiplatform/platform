@@ -1,10 +1,11 @@
 {
-  "name": "@solidtv/solid",
-  "version": "1.7.1",
-  "description": "SolidTV",
+  "name": "@solid-multiplatform/platform",
+  "version": "0.1.0",
+  "description": "Portable Solid primitives and device hosts",
   "type": "module",
   "exports": {
     ".": {
+      "roku": "./dist/src/portable.js",
       "@solidtv/source": "./src/index.ts",
       "import": {
         "types": "./dist/src/index.d.ts",
@@ -50,7 +51,18 @@
     "./jsx-runtime": {
       "@solidtv/source": "./jsx-runtime.d.ts",
       "default": "./dist/jsx-runtime.d.ts"
-    }
+    },
+    "./package.json": "./package.json",
+    "./roku": "./hosts/roku/main.ts",
+    "./roku/preset": "./hosts/roku/preset.mjs",
+    "./roku/storage": "./hosts/roku/device-storage.ts",
+    "./roku/tasks": "./hosts/roku/worker-task.ts",
+    "./apple-tv": "./hosts/apple-tv/index.mjs",
+    "./android-tv": "./hosts/android-tv/index.mjs",
+    "./nativescript": "./dist/src/hosts/nativescript/index.js",
+    "./nativescript/webpack": "./hosts/nativescript/webpack.cjs",
+    "./browser-tv": "./dist/src/hosts/browser-tv.js",
+    "./browser-tv/canvas": "./dist/src/hosts/canvas.js"
   },
   "sideEffects": false,
   "scripts": {
@@ -104,7 +116,9 @@
     "typescript": "^7.0.2",
     "vite": "^8.0.13",
     "vite-plugin-solid": "^2.11.12",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.6",
+    "@solid-multiplatform/renderer": "file:vendor/solid-multiplatform-renderer-0.1.0.tgz",
+    "solid-js": "1.9.17"
   },
   "lint-staged": {
     "*.ts": [
@@ -115,14 +129,11 @@
   },
   "peerDependencies": {
     "@solidjs/router": "^0.16.1",
-    "@solidtv/renderer": "^2.0.7",
+    "@solid-multiplatform/renderer": "^0.1.0",
     "solid-js": "*"
   },
   "peerDependenciesMeta": {},
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/solid-tv/solid.git"
-  },
+  "repository": "github:solid-multiplatform/platform",
   "files": [
     "dist",
     "src",
@@ -130,10 +141,20 @@
     "LICENSE",
     "NOTICE",
     "README.md",
-    "docs/AI_CODING_GUIDELINES.md"
+    "docs/AI_CODING_GUIDELINES.md",
+    "hosts",
+    "PROVENANCE.md"
   ],
   "packageManager": "pnpm@10.33.4",
   "publishConfig": {
     "access": "public"
+  },
+  "imports": {
+    "#default-backend": {
+      "roku": "./dist/src/hosts/native-backend.js",
+      "types": "./src/hosts/web-backend.ts",
+      "@solidtv/source": "./src/hosts/web-backend.ts",
+      "default": "./dist/src/hosts/web-backend.js"
+    }
   }
 }

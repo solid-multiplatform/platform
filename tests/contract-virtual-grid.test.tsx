@@ -13,12 +13,12 @@
 // (contract-row-column.test.tsx).
 import * as v from 'vitest';
 import * as s from 'solid-js';
-import * as lng from '@solidtv/solid';
+import * as lng from '@solid-multiplatform/platform';
 import {
   VirtualGrid,
   useFocusManager,
   type KeyEventTarget,
-} from '@solidtv/solid/primitives';
+} from '@solid-multiplatform/platform/primitives';
 import { renderer } from './setup.js';
 
 // Real KeyboardEvents on the target the focus manager listens to. A private

@@ -1,13 +1,18 @@
-import * as lng from '@solidtv/renderer';
-import { prefetchFont } from '@solidtv/renderer';
+import type * as lng from '@solid-multiplatform/renderer';
+import {
+  createDefaultRenderer,
+  prefetchFont,
+  browserHost,
+} from '#default-backend';
+import type { HostRenderer } from '@solid-multiplatform/renderer/contracts';
 import { Config, DOM_RENDERING } from './config.js';
-import { DOMRendererMain, loadFontToDom } from './dom-renderer/domRenderer.js';
+import type { DOMRendererMain } from './dom-renderer/domRenderer.js';
 import { DomRendererMainSettings } from './dom-renderer/domRendererTypes.js';
 import { FontLoadOptions } from './intrinsicTypes.js';
 
 export type SdfFontType = 'ssdf' | 'msdf';
 // Global renderer instance: can be either the Lightning or DOM implementation
-export let renderer: lng.RendererMain | DOMRendererMain;
+export let renderer: lng.RendererMain | DOMRendererMain | HostRenderer;
 
 export const getRenderer = () => renderer;
 
@@ -20,17 +25,23 @@ export const getRenderer = () => renderer;
  */
 export type RendererFactory = (
   settings: lng.RendererMainSettings | DomRendererMainSettings,
-  rootId: string | HTMLElement,
-) => lng.RendererMain;
+  rootId: string | object,
+) => HostRenderer;
 
 let rendererFactory: RendererFactory | undefined;
+type HostFontLoader = (fonts: FontLoadOptions[]) => Promise<void>;
+let hostFontLoader: HostFontLoader | undefined;
 
 /**
  * Install (or clear, with \`undefined\`) the renderer factory used by
  * \`createRenderer()\`. Call before the app creates its renderer.
  */
-export function setRendererFactory(factory: RendererFactory | undefined): void {
+export function setRendererFactory(
+  factory: RendererFactory | undefined,
+  loadHostFonts?: HostFontLoader,
+): void {
   rendererFactory = factory;
+  hostFontLoader = loadHostFonts;
 }
 
 /** The installed renderer factory, or undefined for the bundled one. */
@@ -38,7 +49,7 @@ export function getRendererFactory(): RendererFactory | undefined {
   return rendererFactory;
 }
 
-// @solidtv/renderer 2.0 has one engine (WebGL) and one text engine (SDF), so
+// @solid-multiplatform/renderer 2.0 has one engine (WebGL) and one text engine (SDF), so
 // these settings are gone; apps written for 1.x still pass them.
 const REMOVED_SETTINGS = ['renderEngine', 'fontEngines'];
 
@@ -67,7 +78,7 @@ function withoutRemovedSettings<T extends object>(options: T): T {
       warnOnce(
         '[solid] Config.rendererOptions.' +
           name +
-          ' was removed in @solidtv/renderer 2.0 and is ignored',
+          ' was removed in @solid-multiplatform/renderer 2.0 and is ignored',
       );
     }
   }
@@ -96,7 +107,7 @@ function aliasShManager(rendererMain: lng.RendererMain) {
     configurable: true,
     get() {
       warnOnce(
-        '[solid] renderer.stage.shManager was removed in @solidtv/renderer 2.0: use renderer.registerShaderType',
+        '[solid] renderer.stage.shManager was removed in @solid-multiplatform/renderer 2.0: use renderer.registerShaderType',
       );
       return rendererMain;
     },
@@ -105,23 +116,25 @@ function aliasShManager(rendererMain: lng.RendererMain) {
 
 export function startLightningRenderer(
   options: lng.RendererMainSettings | DomRendererMainSettings,
-  rootId: string | HTMLElement = 'app',
+  rootId: string | object = 'app',
 ) {
   // Inlined (not isDomRendererActive()) so bundlers can fold DOM_RENDERING to
   // false and drop the DOMRendererMain branch + import in WebGL builds.
   const enableDomRenderer = DOM_RENDERING && Config.domRendererEnabled;
   const settings = withoutRemovedSettings(options);
 
-  if (enableDomRenderer) {
+  if (browserHost && enableDomRenderer && rendererFactory === undefined) {
+    if (typeof rootId !== 'string' && !(rootId instanceof HTMLElement))
+      throw new TypeError('DOM renderer requires an element');
     // Its stage has its own (inert) shManager.
-    renderer = new DOMRendererMain(settings, rootId);
+    renderer = new browserHost.DOMRendererMain(settings, rootId);
   } else if (rendererFactory !== undefined) {
     // A host backend (native platform, headless harness). It owns its own
     // frame/idle signalling and exposes the renderer contract the framework
     // reads; the bundled WebGL renderer is not constructed at all.
     renderer = rendererFactory(settings, rootId);
   } else {
-    const rendererMain = new lng.RendererMain(
+    const rendererMain = createDefaultRenderer(
       settings as lng.RendererMainSettings,
       rootId,
     );
@@ -151,6 +164,7 @@ const pendingFontLoads: PendingFontLoad[] = [];
  * Hand fonts to the stage. Requires a renderer.
  */
 function attachFonts(fonts: FontLoadOptions[]) {
+  if (hostFontLoader) return hostFontLoader(fonts);
   // Inlined so the loadFontToDom branch + import tree-shake in WebGL builds.
   const enableDomRenderer = DOM_RENDERING && Config.domRendererEnabled;
   return Promise.all(
@@ -165,7 +179,7 @@ function attachFonts(fonts: FontLoadOptions[]) {
       }
       // DOM — Web
       if ('fontUrl' in font && enableDomRenderer) {
-        loadFontToDom(font);
+        browserHost?.loadFontToDom(font);
       }
     }),
   );
@@ -212,14 +226,15 @@ export async function loadFonts(fonts: FontLoadOptions[]) {
     // there is nothing to wait for, so finish it here.
     if (enableDomRenderer) {
       if ('fontUrl' in font) {
-        loadFontToDom(font);
+        browserHost?.loadFontToDom(font);
       }
       continue;
     }
 
     // Starts the download now; the stage-dependent half is owed until
     // `createRenderer()` runs and `flushPendingFonts()` attaches it.
-    prefetchFont(font as lng.FontPrefetchOptions);
+    if (rendererFactory === undefined)
+      prefetchFont(font as lng.FontPrefetchOptions);
     deferred.push(font);
   }
 

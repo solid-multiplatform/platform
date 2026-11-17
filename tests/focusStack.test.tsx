@@ -1,7 +1,7 @@
 import * as v from 'vitest';
-import * as lng from '@solidtv/solid';
+import * as lng from '@solid-multiplatform/platform';
 import { createSignal, Show } from 'solid-js';
-import { FocusStackProvider, useFocusStack } from '@solidtv/solid/primitives';
+import { FocusStackProvider, useFocusStack } from '@solid-multiplatform/platform/primitives';
 import { renderer } from './setup.js';
 
 const wait = (ms = 10) => new Promise((r) => setTimeout(r, ms));

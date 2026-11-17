@@ -1,4 +1,4 @@
-import { rootNode, type ElementNode, insert } from '@solidtv/solid';
+import { rootNode, type ElementNode, insert } from '@solid-multiplatform/platform';
 import {
   createEffect,
   createMemo,

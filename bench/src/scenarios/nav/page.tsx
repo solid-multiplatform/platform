@@ -10,8 +10,8 @@
 // the first 10 of a Row are in bounds. Most of a page is therefore out of
 // bounds, as most of a route's tree is (a swap lays out 63 of its 287 texts),
 // and text under an out-of-bounds parent is where renderers differ.
-import type { ElementNode, NodeStyles, TextStyles } from '@solidtv/solid';
-import { Column, Row } from '@solidtv/solid/primitives';
+import type { ElementNode, NodeStyles, TextStyles } from '@solid-multiplatform/platform';
+import { Column, Row } from '@solid-multiplatform/platform/primitives';
 import { createSignal, For, onCleanup, Show } from 'solid-js';
 import { posterStyle, posterTitle } from './poster.js';
 import { focusPath, posterImages, theme, type NavScenario } from './shared.js';

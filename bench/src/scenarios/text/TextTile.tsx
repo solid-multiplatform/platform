@@ -1,4 +1,4 @@
-import type { NodeStyles, TextStyles } from '@solidtv/solid';
+import type { NodeStyles, TextStyles } from '@solid-multiplatform/platform';
 import type { TileText } from './data.js';
 
 export const TILE_WIDTH = 200;

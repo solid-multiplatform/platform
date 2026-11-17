@@ -1,0 +1,5 @@
+{
+  "extends": "@roku-sdk/rsg-ts/tsconfig.json",
+  "compilerOptions": { "rootDir": "src" },
+  "include": ["src"]
+}

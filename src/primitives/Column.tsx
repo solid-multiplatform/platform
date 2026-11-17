@@ -1,5 +1,5 @@
 import { type Component } from 'solid-js';
-import { ElementNode, combineStyles, type NodeStyles } from '@solidtv/solid';
+import { ElementNode, combineStyles, type NodeStyles } from '@solid-multiplatform/platform';
 import {
   navigableForwardFocus,
   handleNavigation,

@@ -1,5 +1,5 @@
 // Real-renderer tests: Vitest browser mode in headless Chromium, drawing
-// through @solidtv/renderer (WebGL, SDF text), not the DOM renderer.
+// through @solid-multiplatform/renderer (WebGL, SDF text), not the DOM renderer.
 //
 //   pnpm test:webgl   (vitest run --config=vitest.webgl.config.ts)
 //
@@ -24,7 +24,7 @@ export default defineConfig({
     solid({
       hot: false,
       solid: {
-        moduleName: '@solidtv/solid',
+        moduleName: '@solid-multiplatform/platform',
         generate: 'universal',
         builtIns: [],
       },
@@ -50,6 +50,16 @@ export default defineConfig({
     },
   },
   resolve: {
+    alias: {
+      '@roku-sdk/solid': new URL(
+        './tests/webgl/scenegraph-sdk/nodes.ts',
+        import.meta.url,
+      ).pathname,
+      '@roku-sdk/rsg-ts/runtime': new URL(
+        './tests/webgl/scenegraph-sdk/runtime.ts',
+        import.meta.url,
+      ).pathname,
+    },
     conditions: ['@solidtv/source', 'browser', 'development'],
     dedupe: ['solid-js', 'solid-js/universal', 'solid-js/store'],
   },

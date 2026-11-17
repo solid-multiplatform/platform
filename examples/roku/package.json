@@ -1,0 +1,40 @@
+{
+  "name": "solid-multiplatform-roku-fixture",
+  "version": "1.0.0",
+  "description": "Standalone SceneGraph host smoke build",
+  "type": "module",
+  "scripts": {
+    "build": "rk build --local --release --no-source-map --out-dir dist-roku && python3 package-zip.py"
+  },
+  "dependencies": {
+    "@roku-sdk/components": "2.19.0",
+    "@roku-sdk/interfaces": "2.19.0",
+    "@roku-sdk/rsg-ts": "2.19.0",
+    "@roku-sdk/solid": "2.19.0",
+    "@roku-sdk/testing-library": "2.19.0",
+    "@roku-sdk/tooling": "2.19.0",
+    "solid-js": "1.9.17",
+    "@solidjs/router": "0.16.1",
+    "@solid-primitives/list": "0.1.2",
+    "@solid-primitives/scheduled": "1.5.2",
+    "@solid-multiplatform/platform": "file:../..",
+    "@solid-multiplatform/renderer": "file:../../vendor/solid-multiplatform-renderer-0.1.0.tgz"
+  },
+  "devDependencies": {
+    "@roku-sdk/dev-tools": "2.19.0",
+    "typescript": "^5.9.3",
+    "@babel/core": "7.28.4",
+    "@babel/preset-typescript": "7.27.1",
+    "babel-preset-solid": "1.9.10",
+    "@babel/plugin-transform-classes": "7.28.4",
+    "@babel/plugin-transform-class-properties": "7.27.1"
+  },
+  "engines": {
+    "npm": ">=8.5.0",
+    "node": ">=24.0.0"
+  },
+  "license": "MIT",
+  "prettier": "@roku-sdk/dev-tools/linter-config/.prettierrc.json",
+  "packageManager": "pnpm@10.33.4",
+  "private": true
+}

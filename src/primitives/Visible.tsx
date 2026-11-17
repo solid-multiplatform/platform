@@ -8,7 +8,7 @@ import {
   onCleanup,
   createRoot,
 } from 'solid-js';
-import { ElementNode } from '@solidtv/solid';
+import { ElementNode } from '@solid-multiplatform/platform';
 
 export function Visible<T>(props: {
   when: T | undefined | null | false;

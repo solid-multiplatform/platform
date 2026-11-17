@@ -1,5 +1,5 @@
 import * as v from 'vitest';
-import * as lng from '@solidtv/solid';
+import * as lng from '@solid-multiplatform/platform';
 
 // @solidjs/router is aliased to tests/stubs/solidjs-router.ts, whose <Route>
 // hands its props straight back — which is all this test needs.

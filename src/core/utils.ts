@@ -1,4 +1,4 @@
-import { type INode } from '@solidtv/renderer';
+import { type INode } from '@solid-multiplatform/renderer';
 import { Config, isDev } from './config.js';
 import type { Styles, ElementText } from './intrinsicTypes.js';
 import { ElementNode } from './elementNode.js';

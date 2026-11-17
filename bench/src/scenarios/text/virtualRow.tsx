@@ -1,6 +1,6 @@
 // Scenario: a VirtualRow of text tiles where presses move the window,
 // so new text comes in on every press.
-import { VirtualRow } from '@solidtv/solid/primitives';
+import { VirtualRow } from '@solid-multiplatform/platform/primitives';
 import type { Scenario } from '../../scenario.js';
 import { tileText } from './data.js';
 import { TextTile } from './TextTile.js';

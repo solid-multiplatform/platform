@@ -1,4 +1,4 @@
-import * as lng from '@solidtv/solid';
+import * as lng from '@solid-multiplatform/platform';
 import * as v from 'vitest';
 
 lng.Config.domRendererEnabled = true;

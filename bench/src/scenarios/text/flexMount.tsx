@@ -1,6 +1,6 @@
 // Scenario: a Row of 20 flex tiles, each a flex column with a title and
 // a subtitle, at mount.
-import { Row } from '@solidtv/solid/primitives';
+import { Row } from '@solid-multiplatform/platform/primitives';
 import { createSignal, For, Show } from 'solid-js';
 import type { Scenario } from '../../scenario.js';
 import { tileText, type TileText } from './data.js';

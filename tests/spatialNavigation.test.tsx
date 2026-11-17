@@ -1,10 +1,10 @@
 import * as v from 'vitest';
-import * as lng from '@solidtv/solid';
+import * as lng from '@solid-multiplatform/platform';
 import {
   useFocusManager,
   spatialForwardFocus,
   spatialHandleNavigation,
-} from '@solidtv/solid/primitives';
+} from '@solid-multiplatform/platform/primitives';
 import { renderer, waitForUpdate } from './setup.js';
 
 const key = (k: string) =>

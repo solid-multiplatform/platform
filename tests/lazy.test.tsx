@@ -1,5 +1,5 @@
 import * as v from 'vitest';
-import * as lng from '@solidtv/solid';
+import * as lng from '@solid-multiplatform/platform';
 import { LazyColumn } from '../src/primitives/Lazy.jsx';
 import { renderer } from './setup.js';
 

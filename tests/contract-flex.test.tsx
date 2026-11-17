@@ -19,7 +19,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import * as s from 'solid-js';
-import * as lng from '@solidtv/solid';
+import * as lng from '@solid-multiplatform/platform';
 import { ElementNode } from '../src/core/elementNode.ts';
 import { TextNode } from '../src/core/nodeTypes.ts';
 import flexOld from '../src/core/flex.ts';

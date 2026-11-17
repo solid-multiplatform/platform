@@ -1,5 +1,5 @@
 import * as s from 'solid-js';
-import * as lng from '@solidtv/solid';
+import * as lng from '@solid-multiplatform/platform';
 
 function Preserve(props: lng.NodeProps): s.JSX.Element {
   const view = (<view {...props} />) as unknown as lng.ElementNode;

@@ -1,7 +1,7 @@
 // Benchmark entry: ?scenario=<id> mounts one scenario. The runner drives it
 // through window.__bench (bench/run.mjs, bench/harness/probe.mjs).
-import { Config, createRenderer, loadFonts } from '@solidtv/solid';
-import { useFocusManager } from '@solidtv/solid/primitives';
+import { Config, createRenderer, loadFonts } from '@solid-multiplatform/platform';
+import { useFocusManager } from '@solid-multiplatform/platform/primitives';
 import { registerShaders, rendererOptions } from 'bench-arm-init';
 import { scenarios } from './scenarios/index.js';
 

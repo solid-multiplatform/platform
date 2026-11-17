@@ -1,35 +1,36 @@
-name: Build and Test
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
+name: Foundation
+on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
-  build-test:
+  framework:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm test
+      - run: node --test tests/native/*.test.mjs
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:webgl
+      - working-directory: examples/roku
+        run: pnpm install --frozen-lockfile && pnpm build
+  tvos:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - working-directory: examples/apple-tv
         run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm build
-
-      - name: Test
-        run: pnpm test
-
-      - name: Lint
-        # Will run the step even if build step failed, to give feedback
-        if: success() || failure()
-        run: pnpm lint
+      - run: xcodebuild -downloadPlatform tvOS
+      - working-directory: examples/apple-tv
+        run: pnpm exec ns build tvos --emulator --env.production --no-hmr

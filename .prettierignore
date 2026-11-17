@@ -9,3 +9,7 @@ releases
 bench/.arms
 bench/dist
 bench/public
+
+examples/**/platforms
+examples/**/dist-roku
+examples/**/hooks

@@ -1,6 +1,9 @@
 // Renderer 1.x bootstrap (both arms): the engines are passed in, and shader
 // types register on the stage's shader manager, as solid-demo-app does on 1.9.
-import { SdfTextRenderer, WebGlCoreRenderer } from '@solidtv/renderer/webgl';
+import {
+  SdfTextRenderer,
+  WebGlCoreRenderer,
+} from '@solid-multiplatform/renderer/webgl';
 import {
   HolePunch,
   LinearGradient,
@@ -9,7 +12,7 @@ import {
   RoundedWithBorder,
   RoundedWithBorderAndShadow,
   RoundedWithShadow,
-} from '@solidtv/renderer/webgl/shaders';
+} from '@solid-multiplatform/renderer/webgl/shaders';
 
 export const rendererMajor = 1;
 

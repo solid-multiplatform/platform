@@ -1,6 +1,6 @@
 // Scenario: a VirtualRow and a VirtualGrid, where presses move the window.
-import type { ElementNode, NodeStyles } from '@solidtv/solid';
-import { VirtualGrid, VirtualRow } from '@solidtv/solid/primitives';
+import type { ElementNode, NodeStyles } from '@solid-multiplatform/platform';
+import { VirtualGrid, VirtualRow } from '@solid-multiplatform/platform/primitives';
 import {
   backAndForth,
   focusPath,

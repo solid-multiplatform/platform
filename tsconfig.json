@@ -28,7 +28,7 @@
 
     // jsx
     "jsx": "preserve",
-    "jsxImportSource": "@solidtv/solid",
+    "jsxImportSource": "@solid-multiplatform/platform",
     "types": ["solid-js", "vite/client"],
     "customConditions": ["@solidtv/source"]
   },

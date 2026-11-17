@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 
-// Phase 2 stream M, decision 5.6: @solidtv/renderer 2.0 removed
+// Phase 2 stream M, decision 5.6: @solid-multiplatform/renderer 2.0 removed
 // `Config.rendererOptions.renderEngine` and `.fontEngines` (WebGL and SDF text
 // are the only engines) and `renderer.stage.shManager` (the stage is the
 // renderer: `registerShaderType` is on it). Solid absorbs the three: the
@@ -17,7 +17,7 @@ const h = vi.hoisted(() => ({
   instances: [] as unknown[],
 }));
 
-vi.mock('@solidtv/renderer', () => {
+vi.mock('@solid-multiplatform/renderer', () => {
   class RendererMain {
     root = {};
     registered: [string, unknown][] = [];
@@ -25,7 +25,7 @@ vi.mock('@solidtv/renderer', () => {
       h.constructed.push(settings);
       h.instances.push(this);
     }
-    // @solidtv/renderer 2.0: the stage is the renderer.
+    // @solid-multiplatform/renderer 2.0: the stage is the renderer.
     get stage() {
       return this;
     }
@@ -38,11 +38,11 @@ vi.mock('@solidtv/renderer', () => {
 });
 
 const RENDER_ENGINE_WARNING =
-  '[solid] Config.rendererOptions.renderEngine was removed in @solidtv/renderer 2.0 and is ignored';
+  '[solid] Config.rendererOptions.renderEngine was removed in @solid-multiplatform/renderer 2.0 and is ignored';
 const FONT_ENGINES_WARNING =
-  '[solid] Config.rendererOptions.fontEngines was removed in @solidtv/renderer 2.0 and is ignored';
+  '[solid] Config.rendererOptions.fontEngines was removed in @solid-multiplatform/renderer 2.0 and is ignored';
 const SH_MANAGER_WARNING =
-  '[solid] renderer.stage.shManager was removed in @solidtv/renderer 2.0: use renderer.registerShaderType';
+  '[solid] renderer.stage.shManager was removed in @solid-multiplatform/renderer 2.0: use renderer.registerShaderType';
 
 // The warn-once state is module state: each case imports a fresh module.
 async function freshInit() {

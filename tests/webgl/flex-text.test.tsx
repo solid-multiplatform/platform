@@ -2,7 +2,7 @@
  * Flex layout with text children on the real renderer.
  *
  * Runs in Vitest browser mode (headless Chromium through Playwright, WebGL
- * on SwiftShader) against @solidtv/renderer with SDF text, not the DOM
+ * on SwiftShader) against @solid-multiplatform/renderer with SDF text, not the DOM
  * renderer: SDF measurement differs from the DOM's, and text sizes arrive
  * through the renderer's `loaded` event, so these numbers only hold here.
  *
@@ -32,7 +32,7 @@
  */
 import * as v from 'vitest';
 import * as s from 'solid-js';
-import { loadFonts, type ElementNode } from '@solidtv/solid';
+import { loadFonts, type ElementNode } from '@solid-multiplatform/platform';
 import { frameCount, latoFont, render, settle } from './setup.js';
 
 /** x, y, width and height, as the app reads them from the ElementNode. */

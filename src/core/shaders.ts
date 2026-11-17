@@ -1,5 +1,5 @@
-import * as lngr from '@solidtv/renderer';
-import * as lngr_shaders from '@solidtv/renderer/webgl/shaders';
+import * as lngr from '@solid-multiplatform/renderer';
+import * as lngr_shaders from '@solid-multiplatform/renderer/webgl/shaders';
 
 import type {
   HolePunchProps as ShaderHolePunchProps,
@@ -7,8 +7,8 @@ import type {
   RadialGradientProps as ShaderRadialGradientProps,
   RoundedProps as ShaderRoundedProps,
   ShadowProps as ShaderShadowProps,
-} from '@solidtv/renderer';
-import { type WebGlShaderType as WebGlShader } from '@solidtv/renderer';
+} from '@solid-multiplatform/renderer';
+import { type WebGlShaderType as WebGlShader } from '@solid-multiplatform/renderer';
 export {
   ShaderHolePunchProps,
   ShaderLinearGradientProps,

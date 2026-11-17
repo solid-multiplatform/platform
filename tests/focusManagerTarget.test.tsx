@@ -3,7 +3,7 @@ import {
   useFocusManager,
   type KeyEventLike,
   type KeyEventTarget,
-} from '@solidtv/solid/primitives';
+} from '@solid-multiplatform/platform/primitives';
 import { renderer, waitForUpdate } from './setup.js';
 
 type Listener = (event: KeyEventLike) => void;

@@ -1,4 +1,4 @@
-import { type NodeProps, RendererMain } from '@solidtv/solid';
+import { type NodeProps, RendererMain } from '@solid-multiplatform/platform';
 import { createSignal } from 'solid-js';
 
 const fpsStyle = {

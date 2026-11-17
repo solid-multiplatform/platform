@@ -1,4 +1,4 @@
-import { ElementNode, NodeProps } from '@solidtv/solid';
+import { ElementNode, NodeProps } from '@solid-multiplatform/platform';
 import { Show } from 'solid-js';
 
 interface Props {

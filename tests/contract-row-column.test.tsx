@@ -8,13 +8,13 @@
 // odd the test says so in a comment. Animations are off so x/y are final.
 import * as v from 'vitest';
 import * as s from 'solid-js';
-import * as lng from '@solidtv/solid';
+import * as lng from '@solid-multiplatform/platform';
 import {
   Row,
   Column,
   useFocusManager,
   type KeyEventTarget,
-} from '@solidtv/solid/primitives';
+} from '@solid-multiplatform/platform/primitives';
 import { renderer } from './setup.js';
 
 // The focus manager listens for `keydown` on the target given to

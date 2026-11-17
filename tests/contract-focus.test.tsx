@@ -10,8 +10,8 @@ import {
   type ElementNode,
   activeElement as coreActiveElement,
   setActiveElement,
-} from '@solidtv/solid';
-import { activeElement, focusPath, Row } from '@solidtv/solid/primitives';
+} from '@solid-multiplatform/platform';
+import { activeElement, focusPath, Row } from '@solid-multiplatform/platform/primitives';
 import { flush, mount, recorder } from './contract-focus-helpers.js';
 import { renderer } from './setup.js';
 
@@ -339,7 +339,7 @@ v.describe('contract: activeElement', () => {
   );
 
   v.it(
-    '@solidtv/solid and @solidtv/solid/primitives export the same accessor',
+    '@solid-multiplatform/platform and @solid-multiplatform/platform/primitives export the same accessor',
     () => {
       v.expect(coreActiveElement).toBe(activeElement);
     },

@@ -1,4 +1,4 @@
-import { isInteger, type Styles } from './core/index.js';
+import { isInteger, type Styles } from './core/portable.js';
 import { Accessor, createMemo } from 'solid-js';
 
 const WEBGL_CONTEXT_IDS = [

@@ -10,21 +10,21 @@ import { createRequire } from 'node:module';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as main from '@solidtv/solid';
-import * as primitives from '@solidtv/solid/primitives';
+import * as main from '@solid-multiplatform/platform';
+import * as primitives from '@solid-multiplatform/platform/primitives';
 // vitest aliases @solidjs/router to tests/stubs/solidjs-router.ts. That does
 // not change this entry's export list: it re-exports nothing from the router
 // (checked against TypeScript's export list, which resolves the real package).
-import * as router from '@solidtv/solid/primitives/router';
-import * as devtools from '@solidtv/solid/devtools';
-import jsxLocator from '@solidtv/solid/devtools/jsx-locator';
-import * as shaders from '@solidtv/solid/shaders';
-import * as focusManager from '@solidtv/solid/focusManager';
+import * as router from '@solid-multiplatform/platform/primitives/router';
+import * as devtools from '@solid-multiplatform/platform/devtools';
+import jsxLocator from '@solid-multiplatform/platform/devtools/jsx-locator';
+import * as shaders from '@solid-multiplatform/platform/shaders';
+import * as focusManager from '@solid-multiplatform/platform/focusManager';
 
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solidtv/solid (src/index.ts): 99 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 99 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -129,7 +129,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   });
 
   v.test(
-    '@solidtv/solid/primitives (src/primitives/index.ts): 64 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 64 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
@@ -201,7 +201,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   );
 
   v.test(
-    '@solidtv/solid/primitives/router (src/primitives/routerIndex.ts): 16 names',
+    '@solid-multiplatform/platform/primitives/router (src/primitives/routerIndex.ts): 16 names',
     () => {
       v.expect(names(router)).toEqual([
         'HashRouter',
@@ -224,38 +224,44 @@ v.describe('Exports: runtime export names of every entry point', () => {
     },
   );
 
-  v.test('@solidtv/solid/devtools (src/devtools/index.ts): 2 names', () => {
-    v.expect(names(devtools)).toEqual([
-      'elementInterface',
-      'hexColorTransform',
-    ]);
-  });
+  v.test(
+    '@solid-multiplatform/platform/devtools (src/devtools/index.ts): 2 names',
+    () => {
+      v.expect(names(devtools)).toEqual([
+        'elementInterface',
+        'hexColorTransform',
+      ]);
+    },
+  );
 
   // B21: ./shaders and ./focusManager are entry points of their own.
-  v.test('@solidtv/solid/shaders (src/core/shaders.ts): 17 names', () => {
-    v.expect(names(shaders)).toEqual([
-      'defaultShaderHolePunch',
-      'defaultShaderLinearGradient',
-      'defaultShaderRadialGradient',
-      'defaultShaderRounded',
-      'defaultShaderRoundedWithBorder',
-      'defaultShaderRoundedWithBorderAndShadow',
-      'defaultShaderRoundedWithShadow',
-      'defaultShaderShadow',
-      'registerDefaultShaderHolePunch',
-      'registerDefaultShaderLinearGradient',
-      'registerDefaultShaderRadialGradient',
-      'registerDefaultShaderRounded',
-      'registerDefaultShaderRoundedWithBorder',
-      'registerDefaultShaderRoundedWithBorderAndShadow',
-      'registerDefaultShaderRoundedWithShadow',
-      'registerDefaultShaderShadow',
-      'registerDefaultShaders',
-    ]);
-  });
+  v.test(
+    '@solid-multiplatform/platform/shaders (src/core/shaders.ts): 17 names',
+    () => {
+      v.expect(names(shaders)).toEqual([
+        'defaultShaderHolePunch',
+        'defaultShaderLinearGradient',
+        'defaultShaderRadialGradient',
+        'defaultShaderRounded',
+        'defaultShaderRoundedWithBorder',
+        'defaultShaderRoundedWithBorderAndShadow',
+        'defaultShaderRoundedWithShadow',
+        'defaultShaderShadow',
+        'registerDefaultShaderHolePunch',
+        'registerDefaultShaderLinearGradient',
+        'registerDefaultShaderRadialGradient',
+        'registerDefaultShaderRounded',
+        'registerDefaultShaderRoundedWithBorder',
+        'registerDefaultShaderRoundedWithBorderAndShadow',
+        'registerDefaultShaderRoundedWithShadow',
+        'registerDefaultShaderShadow',
+        'registerDefaultShaders',
+      ]);
+    },
+  );
 
   v.test(
-    '@solidtv/solid/focusManager (src/core/focusManager.ts): 8 names',
+    '@solid-multiplatform/platform/focusManager (src/core/focusManager.ts): 8 names',
     () => {
       v.expect(names(focusManager)).toEqual([
         'focusPath',
@@ -271,7 +277,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   );
 
   v.test(
-    '@solidtv/solid/devtools/jsx-locator is a Babel plugin (default export)',
+    '@solid-multiplatform/platform/devtools/jsx-locator is a Babel plugin (default export)',
     () => {
       v.expect(typeof jsxLocator).toBe('function');
       const plugin = jsxLocator({ types: {} });
@@ -283,7 +289,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
 
 // vite-plugin-solid runs with these options in the demo app (vite.config.js),
 // and the compiled JSX imports the universal-renderer helpers from
-// @solidtv/solid. Compile a component that uses every JSX form apps use and
+// @solid-multiplatform/platform. Compile a component that uses every JSX form apps use and
 // read back what the compiler imports.
 const COMPILER_HELPERS = [
   'createComponent',
@@ -300,7 +306,7 @@ const COMPILER_HELPERS = [
 ];
 
 const COMPONENT = `
-import { Show } from '@solidtv/solid';
+import { Show } from '@solid-multiplatform/platform';
 const Tile = (props) => <view>{props.children}</view>;
 export const App = (props) => {
   let ref;
@@ -338,7 +344,11 @@ function compile(): string {
     presets: [
       [
         fromVitePluginSolid.resolve('babel-preset-solid'),
-        { moduleName: '@solidtv/solid', generate: 'universal', builtIns: [] },
+        {
+          moduleName: '@solid-multiplatform/platform',
+          generate: 'universal',
+          builtIns: [],
+        },
       ],
     ],
   })!.code;
@@ -348,11 +358,11 @@ v.describe('Compiler contract: vite-plugin-solid universal output', () => {
   const code = compile();
 
   v.test(
-    'the compiler imports exactly the universal-renderer helpers from @solidtv/solid',
+    'the compiler imports exactly the universal-renderer helpers from @solid-multiplatform/platform',
     () => {
       const imported = [
         ...code.matchAll(
-          /import \{ (\w+) as _\$\w+ \} from "@solidtv\/solid";/g,
+          /import \{ (\w+) as _\$\w+ \} from "@solid-multiplatform\/platform";/g,
         ),
       ].map((m) => m[1]);
       v.expect(imported.sort()).toEqual(COMPILER_HELPERS);
@@ -395,6 +405,17 @@ v.describe('package.json exports', () => {
       './shaders',
       './focusManager',
       './jsx-runtime',
+      './package.json',
+      './roku',
+      './roku/preset',
+      './roku/storage',
+      './roku/tasks',
+      './apple-tv',
+      './android-tv',
+      './nativescript',
+      './nativescript/webpack',
+      './browser-tv',
+      './browser-tv/canvas',
     ]);
   });
 
@@ -427,7 +448,7 @@ v.describe('package.json exports', () => {
   });
 
   // B21: the demo app imports `KeyMap, KeyHoldMap` from
-  // "@solidtv/solid/focusManager" (src/pages/App.tsx:5), which was not in
+  // "@solid-multiplatform/platform/focusManager" (src/pages/App.tsx:5), which was not in
   // `exports`.
   v.test('./focusManager is exported', () => {
     v.expect(pkg.exports['./focusManager']).toBeDefined();

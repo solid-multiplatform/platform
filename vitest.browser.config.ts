@@ -11,7 +11,7 @@ export default defineConfig(() => ({
     solid({
       hot: false,
       solid: {
-        moduleName: '@solidtv/solid',
+        moduleName: '@solid-multiplatform/platform',
         generate: 'universal',
         builtIns: [],
       },

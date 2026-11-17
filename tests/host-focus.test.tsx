@@ -1,5 +1,5 @@
 import * as v from 'vitest';
-import { activeElement, ElementNode } from '@solidtv/solid';
+import { activeElement, ElementNode } from '@solid-multiplatform/platform';
 import { setActiveElementCore } from '../src/core/focusManager.js';
 import { mount } from './contract-focus-helpers.js';
 

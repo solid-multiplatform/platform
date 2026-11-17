@@ -3,9 +3,9 @@ import {
   insertNode,
   type NodeProps,
   type NodeStyles,
-} from '@solidtv/solid';
+} from '@solid-multiplatform/platform';
 import { getOwner, runWithOwner, type Accessor } from 'solid-js';
-import { chainFunctions } from '@solidtv/solid/primitives';
+import { chainFunctions } from '@solid-multiplatform/platform/primitives';
 
 export const BorderBoxStyle: NodeStyles = {
   alpha: 0.01,

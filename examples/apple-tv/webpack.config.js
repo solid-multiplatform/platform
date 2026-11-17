@@ -1,0 +1,17 @@
+const path = require('node:path');
+const webpack = require('@nativescript/webpack');
+const {
+  chainSolidTV,
+} = require('@solid-multiplatform/platform/nativescript/webpack');
+
+module.exports = (env) => {
+  webpack.init(env);
+  webpack.chainWebpack((config) => {
+    chainSolidTV(config);
+    const modules = path.resolve(__dirname, 'node_modules');
+    config.resolve.modules.prepend(modules);
+    config.resolve.alias.set('@nativescript/canvas-gamepad', false);
+    config.plugins.delete('ForkTsCheckerWebpackPlugin');
+  });
+  return webpack.resolveConfig();
+};

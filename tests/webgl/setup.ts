@@ -1,9 +1,13 @@
 /// <reference types="vite/client" />
 // Shared setup for the real-renderer tests (vitest.webgl.config.ts): one
-// @solidtv/renderer instance (WebGL, SDF text) per test file, with the Lato
+// @solid-multiplatform/renderer instance (WebGL, SDF text) per test file, with the Lato
 // MSDF font loaded before anything renders.
-import { RendererMain } from '@solidtv/renderer';
-import { Config, createRenderer, loadFonts } from '@solidtv/solid';
+import { RendererMain } from '@solid-multiplatform/renderer';
+import {
+  Config,
+  createRenderer,
+  loadFonts,
+} from '@solid-multiplatform/platform';
 import latoData from './fonts/Lato-Regular.msdf.json?url';
 import latoAtlas from './fonts/Lato-Regular.msdf.png?url';
 
@@ -38,7 +42,9 @@ const created = createRenderer(Config.rendererOptions, root);
 
 // The point of these tests: the WebGL renderer, not the DOM one.
 if (!(created.renderer instanceof RendererMain)) {
-  throw new Error('tests/webgl must run on @solidtv/renderer, not the DOM');
+  throw new Error(
+    'tests/webgl must run on @solid-multiplatform/renderer, not the DOM',
+  );
 }
 
 export const render = created.render;

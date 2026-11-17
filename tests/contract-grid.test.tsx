@@ -6,13 +6,13 @@
 // element, callback arguments and final x/y. Animations are off so y is final.
 import * as v from 'vitest';
 import * as s from 'solid-js';
-import * as lng from '@solidtv/solid';
+import * as lng from '@solid-multiplatform/platform';
 import {
   Grid,
   useFocusManager,
   type GridItemProps,
   type KeyEventTarget,
-} from '@solidtv/solid/primitives';
+} from '@solid-multiplatform/platform/primitives';
 import { renderer } from './setup.js';
 
 // Real KeyboardEvents on the target the focus manager listens to. A private

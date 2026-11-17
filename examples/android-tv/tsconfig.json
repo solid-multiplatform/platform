@@ -1,0 +1,1 @@
+{"compilerOptions":{"target":"es2021","module":"esnext","moduleResolution":"bundler","jsx":"preserve","jsxImportSource":"@solid-multiplatform/platform","skipLibCheck":true},"include":["app","../shared"]}

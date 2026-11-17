@@ -1,5 +1,5 @@
 import * as v from 'vitest';
-import { ElementNode, TextNode } from '@solidtv/solid';
+import { ElementNode, TextNode } from '@solid-multiplatform/platform';
 import { renderer } from './setup.js';
 
 v.test(

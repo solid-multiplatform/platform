@@ -18,7 +18,7 @@
  * - `clearFocusStack()`: Empties the focus stack.
  */
 import * as s from 'solid-js';
-import { type ElementNode } from '@solidtv/solid';
+import { type ElementNode } from '@solid-multiplatform/platform';
 
 interface FocusStackContextType {
   storeFocus: (element: ElementNode, prevElement?: ElementNode) => void;

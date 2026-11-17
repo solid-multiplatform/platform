@@ -12,8 +12,8 @@ import {
   type ElementNode,
   type NodeStyles,
   type TextStyles,
-} from '@solidtv/solid';
-import { Column, Row } from '@solidtv/solid/primitives';
+} from '@solid-multiplatform/platform';
+import { Column, Row } from '@solid-multiplatform/platform/primitives';
 import { For } from 'solid-js';
 import {
   focusPath,

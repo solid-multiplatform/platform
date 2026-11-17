@@ -44,8 +44,8 @@ import type {
   ShadowProps,
   ITextNodeProps,
   INodeProps,
-} from '@solidtv/renderer';
-import { assertTruthy } from '@solidtv/renderer/utils';
+} from '@solid-multiplatform/renderer';
+import { assertTruthy } from '@solid-multiplatform/renderer/utils';
 import { NodeType, TextNode } from './nodeTypes.js';
 import {
   ForwardFocusHandler,
@@ -1875,7 +1875,7 @@ export class ElementNode {
 
       node.lng = renderer.createNode(
         props as Partial<INodeProps> & Partial<IRendererNodeProps>,
-      );
+      ) as INode | IRendererNode;
 
       if (node._hasRenderedChildren) {
         node._hasRenderedChildren = false;

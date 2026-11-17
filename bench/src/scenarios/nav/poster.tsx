@@ -1,8 +1,8 @@
 // Scenario: node creation for a Poster tile: an image, text, `$focus`
 // and a border. Modelled on solid-demo-app's PosterTitle (image + title with
 // forwardStates) with styles.Thumbnail's border and focus.
-import type { ElementNode, NodeStyles, TextStyles } from '@solidtv/solid';
-import { Row } from '@solidtv/solid/primitives';
+import type { ElementNode, NodeStyles, TextStyles } from '@solid-multiplatform/platform';
+import { Row } from '@solid-multiplatform/platform/primitives';
 import { createSignal, For } from 'solid-js';
 import {
   placeholderColor,

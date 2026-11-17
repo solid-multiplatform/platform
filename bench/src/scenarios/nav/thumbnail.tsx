@@ -1,7 +1,7 @@
 // Scenario: a `$focus` with `scale`, a `border` object, `borderRadius`
 // and a scale transition, modelled on solid-demo-app's styles.Thumbnail.
-import type { ElementNode } from '@solidtv/solid';
-import { Row } from '@solidtv/solid/primitives';
+import type { ElementNode } from '@solid-multiplatform/platform';
+import { Row } from '@solid-multiplatform/platform/primitives';
 import { For } from 'solid-js';
 import {
   backAndForth,

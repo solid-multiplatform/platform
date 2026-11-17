@@ -1,4 +1,4 @@
-import * as lngr from '@solidtv/renderer';
+import * as lngr from '@solid-multiplatform/renderer';
 import { ElementNode, type RendererNode } from './elementNode.js';
 import type { TextNode } from './nodeTypes.js';
 import { NodeStates } from './states.js';

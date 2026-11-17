@@ -7,13 +7,13 @@
 // own KeyTarget, and only the focus manager mounted with it hears its events.
 import * as v from 'vitest';
 import type { JSX } from 'solid-js';
-import type { ElementNode } from '@solidtv/solid';
+import type { ElementNode } from '@solid-multiplatform/platform';
 import {
   useFocusManager,
   type KeyEventLike,
   type KeyEventTarget,
   type KeyMap,
-} from '@solidtv/solid/primitives';
+} from '@solid-multiplatform/platform/primitives';
 import { renderer } from './setup.js';
 
 type KeyEventType = 'keydown' | 'keyup';

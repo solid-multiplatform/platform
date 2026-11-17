@@ -1,5 +1,5 @@
-import * as lng from '@solidtv/renderer';
-import { EventEmitter } from '@solidtv/renderer/utils';
+import * as lng from '@solid-multiplatform/renderer';
+import { EventEmitter } from '@solid-multiplatform/renderer/utils';
 import {
   ShaderBorderPrefixedProps,
   ShaderHolePunchProps,

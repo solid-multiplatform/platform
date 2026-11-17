@@ -1,0 +1,5 @@
+<network-security-config>
+  <base-config cleartextTrafficPermitted="false" />
+  <!-- This sideload demo can reach its credential proxy through an explicit ADB reverse. -->
+  <domain-config cleartextTrafficPermitted="true"><domain includeSubdomains="false">127.0.0.1</domain></domain-config>
+</network-security-config>

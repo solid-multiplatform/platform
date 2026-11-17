@@ -1,4 +1,4 @@
-import type { RendererMainSettings } from '@solidtv/renderer';
+import type { RendererMainSettings } from '@solid-multiplatform/renderer';
 import type {
   TextProps,
   AnimationSettings,

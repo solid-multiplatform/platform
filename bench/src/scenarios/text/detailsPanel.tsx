@@ -1,8 +1,8 @@
 // Scenario: a details panel whose title, description and metadata text
 // change on every key press, laid out with flex, as on a hero or details
 // screen (modelled on solid-demo-app's ContentBlock and Entity page).
-import type { NodeStyles, TextStyles } from '@solidtv/solid';
-import { Row } from '@solidtv/solid/primitives';
+import type { NodeStyles, TextStyles } from '@solid-multiplatform/platform';
+import { Row } from '@solid-multiplatform/platform/primitives';
 import { createSignal, For } from 'solid-js';
 import type { Scenario } from '../../scenario.js';
 import { DETAILS } from './data.js';

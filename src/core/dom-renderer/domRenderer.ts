@@ -4,9 +4,9 @@ Experimental DOM renderer
 
 */
 
-import * as lng from '@solidtv/renderer';
+import * as lng from '@solid-multiplatform/renderer';
 
-import { EventEmitter } from '@solidtv/renderer/utils';
+import { EventEmitter } from '@solid-multiplatform/renderer/utils';
 import { Config } from '../config.js';
 import { FontLoadOptions } from '../intrinsicTypes.js';
 import type {

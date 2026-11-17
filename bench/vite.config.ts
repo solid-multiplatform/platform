@@ -10,8 +10,8 @@
 // sample or an allocation can be charged to its owner by script URL
 // (bench/harness/analyze.mjs):
 //   assets/reactivity.js  solid-js
-//   assets/framework.js   the arm's @solidtv/solid source and its @solid-primitives
-//   assets/renderer.js    the arm's @solidtv/renderer dist
+//   assets/framework.js   the arm's @solid-multiplatform/platform source and its @solid-primitives
+//   assets/renderer.js    the arm's @solid-multiplatform/renderer dist
 //   assets/user.js        the entry: bench/src (main, arm bootstrap, scenarios)
 // BENCH_CHUNKS=0 builds a single chunk instead (into dist/<arm>-nochunks), to
 // check that the split does not move the timings.
@@ -47,7 +47,7 @@ const { rendererMajor } = ARMS[arm];
 const armInit = resolve(here, `src/arm-v${rendererMajor}.ts`);
 if (!existsSync(armInit)) {
   throw new Error(
-    `arm ${arm}: no bench bootstrap for @solidtv/renderer ${rendererMajor}.x (${armInit})`,
+    `arm ${arm}: no bench bootstrap for @solid-multiplatform/renderer ${rendererMajor}.x (${armInit})`,
   );
 }
 // The arms' real paths: the bundler's module ids are real paths, and
@@ -67,14 +67,14 @@ const outName =
 const solidSrc = join(solid, 'src') + sep;
 const rendererRoot = renderer + sep;
 
-/** `@solidtv/renderer` and each of its subpath exports, from the arm's package.json. */
+/** `@solid-multiplatform/renderer` and each of its subpath exports, from the arm's package.json. */
 function rendererAliases(): Alias[] {
   const pkg = JSON.parse(readFileSync(join(renderer, 'package.json'), 'utf8'));
   const aliases: Alias[] = [];
   for (const [subpath, target] of Object.entries(
     pkg.exports as Record<string, string>,
   )) {
-    const name = '@solidtv/renderer' + subpath.slice(1);
+    const name = '@solid-multiplatform/renderer' + subpath.slice(1);
     aliases.push({
       find: new RegExp(`^${escape(name)}$`),
       replacement: join(renderer, target),
@@ -84,10 +84,13 @@ function rendererAliases(): Alias[] {
 }
 
 const solidAliases: Alias[] = [
-  ['@solidtv/solid/primitives/router', 'src/primitives/routerIndex.ts'],
-  ['@solidtv/solid/primitives', 'src/primitives/index.ts'],
-  ['@solidtv/solid/devtools', 'src/devtools/index.ts'],
-  ['@solidtv/solid', 'src/index.ts'],
+  [
+    '@solid-multiplatform/platform/primitives/router',
+    'src/primitives/routerIndex.ts',
+  ],
+  ['@solid-multiplatform/platform/primitives', 'src/primitives/index.ts'],
+  ['@solid-multiplatform/platform/devtools', 'src/devtools/index.ts'],
+  ['@solid-multiplatform/platform', 'src/index.ts'],
 ].map(([find, target]) => ({
   find: new RegExp(`^${escape(find)}$`),
   replacement: join(solid, target),
@@ -171,7 +174,7 @@ export default defineConfig({
     solidPlugin({
       hot: false,
       solid: {
-        moduleName: '@solidtv/solid',
+        moduleName: '@solid-multiplatform/platform',
         generate: 'universal',
         builtIns: [],
       },

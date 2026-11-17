@@ -4,7 +4,7 @@ import {
   activeElement,
   type ElementNode,
   type NodeStyles,
-} from '@solidtv/solid';
+} from '@solid-multiplatform/platform';
 import type { Scenario } from '../../scenario.js';
 
 /**

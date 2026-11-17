@@ -10,7 +10,7 @@ export default defineConfig(() => ({
     solidPlugin({
       hot: false,
       solid: {
-        moduleName: '@solidtv/solid',
+        moduleName: '@solid-multiplatform/platform',
         generate: 'universal',
         builtIns: [],
       },
@@ -22,6 +22,8 @@ export default defineConfig(() => ({
     exclude: [
       ...configDefaults.exclude,
       'tests/webgl/**',
+      'tests/native/**',
+      'examples/**',
       'bench/**',
       // .claude/** holds nested git worktrees with their own copies of tests.
       '.claude/**',

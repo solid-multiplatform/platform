@@ -1,5 +1,5 @@
 // Utilities extracted from domRenderer.ts for clarity
-import * as lng from '@solidtv/renderer';
+import * as lng from '@solid-multiplatform/renderer';
 import { Config } from '../config.js';
 import { DOMNode } from './domRenderer.js';
 import { isFunction } from '../utils.js';

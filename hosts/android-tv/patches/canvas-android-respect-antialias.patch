@@ -1,0 +1,148 @@
+diff --git a/crates/canvas-core/src/gpu/gl/android.rs b/crates/canvas-core/src/gpu/gl/android.rs
+index a398d5e..66eb801 100644
+--- a/crates/canvas-core/src/gpu/gl/android.rs
++++ b/crates/canvas-core/src/gpu/gl/android.rs
+@@ -355,8 +355,9 @@ impl GLContext {
+                     .find_configs(cfg)
+                     .map(|c| {
+                         c.reduce(|accum, cconfig| {
+-                            if is_2d {
+-                                let transparency_check =
++                            // EGL may return MSAA configs even with antialias disabled.
++                            if is_2d || !multi_sample {
++                                let transparency_check = is_2d &&
+                                     cconfig.supports_transparency().unwrap_or(false)
+                                         & !accum.supports_transparency().unwrap_or(false);
+                                 return if transparency_check
+@@ -389,8 +390,8 @@ impl GLContext {
+                         .find_configs(cfg)
+                         .map(|c| {
+                             c.reduce(|accum, cconfig| {
+-                                if is_2d {
+-                                    let transparency_check =
++                                if is_2d || !multi_sample {
++                                    let transparency_check = is_2d &&
+                                         cconfig.supports_transparency().unwrap_or(false)
+                                             & !accum.supports_transparency().unwrap_or(false);
+                                     return if transparency_check
+@@ -420,8 +421,8 @@ impl GLContext {
+                         .find_configs(cfg)
+                         .map(|c| {
+                             c.reduce(|accum, cconfig| {
+-                                if is_2d {
+-                                    let transparency_check =
++                                if is_2d || !multi_sample {
++                                    let transparency_check = is_2d &&
+                                         cconfig.supports_transparency().unwrap_or(false)
+                                             & !accum.supports_transparency().unwrap_or(false);
+                                     return if transparency_check
+@@ -532,8 +533,8 @@ impl GLContext {
+                     .find_configs(cfg)
+                     .map(|c| {
+                         c.reduce(|accum, cconfig| {
+-                            if is_2d {
+-                                let transparency_check =
++                            if is_2d || !multi_sample {
++                                let transparency_check = is_2d &&
+                                     cconfig.supports_transparency().unwrap_or(false)
+                                         & !accum.supports_transparency().unwrap_or(false);
+                                 return if transparency_check
+@@ -566,8 +567,8 @@ impl GLContext {
+                         .find_configs(cfg)
+                         .map(|c| {
+                             c.reduce(|accum, cconfig| {
+-                                if is_2d {
+-                                    let transparency_check =
++                                if is_2d || !multi_sample {
++                                    let transparency_check = is_2d &&
+                                         cconfig.supports_transparency().unwrap_or(false)
+                                             & !accum.supports_transparency().unwrap_or(false);
+                                     return if transparency_check
+@@ -597,8 +598,8 @@ impl GLContext {
+                         .find_configs(cfg)
+                         .map(|c| {
+                             c.reduce(|accum, cconfig| {
+-                                if is_2d {
+-                                    let transparency_check =
++                                if is_2d || !multi_sample {
++                                    let transparency_check = is_2d &&
+                                         cconfig.supports_transparency().unwrap_or(false)
+                                             & !accum.supports_transparency().unwrap_or(false);
+                                     return if transparency_check
+@@ -720,8 +721,8 @@ impl GLContext {
+                             .find_configs(cfg)
+                             .map(|c| {
+                                 c.reduce(|accum, cconfig| {
+-                                    if is_2d {
+-                                        let transparency_check =
++                                    if is_2d || !multi_sample {
++                                        let transparency_check = is_2d &&
+                                             cconfig.supports_transparency().unwrap_or(false)
+                                                 & !accum.supports_transparency().unwrap_or(false);
+                                         return if transparency_check
+@@ -755,8 +756,8 @@ impl GLContext {
+                                 .find_configs(cfg)
+                                 .map(|c| {
+                                     c.reduce(|accum, cconfig| {
+-                                        if is_2d {
+-                                            let transparency_check = cconfig
++                                        if is_2d || !multi_sample {
++                                            let transparency_check = is_2d && cconfig
+                                                 .supports_transparency()
+                                                 .unwrap_or(false)
+                                                 & !accum.supports_transparency().unwrap_or(false);
+@@ -787,8 +788,8 @@ impl GLContext {
+                                 .find_configs(cfg)
+                                 .map(|c| {
+                                     c.reduce(|accum, cconfig| {
+-                                        if is_2d {
+-                                            let transparency_check = cconfig
++                                        if is_2d || !multi_sample {
++                                            let transparency_check = is_2d && cconfig
+                                                 .supports_transparency()
+                                                 .unwrap_or(false)
+                                                 & !accum.supports_transparency().unwrap_or(false);
+@@ -891,8 +892,8 @@ impl GLContext {
+                     .find_configs(cfg)
+                     .map(|c| {
+                         c.reduce(|accum, cconfig| {
+-                            if is_2d {
+-                                let transparency_check =
++                            if is_2d || !multi_sample {
++                                let transparency_check = is_2d &&
+                                     cconfig.supports_transparency().unwrap_or(false)
+                                         & !accum.supports_transparency().unwrap_or(false);
+                                 return if transparency_check
+@@ -973,8 +974,8 @@ impl GLContext {
+                     .find_configs(cfg)
+                     .map(|c| {
+                         c.reduce(|accum, cconfig| {
+-                            if is_2d {
+-                                let transparency_check =
++                            if is_2d || !multi_sample {
++                                let transparency_check = is_2d &&
+                                     cconfig.supports_transparency().unwrap_or(false)
+                                         & !accum.supports_transparency().unwrap_or(false);
+                                 return if transparency_check
+@@ -1007,8 +1008,8 @@ impl GLContext {
+                         .find_configs(cfg)
+                         .map(|c| {
+                             c.reduce(|accum, cconfig| {
+-                                if is_2d {
+-                                    let transparency_check =
++                                if is_2d || !multi_sample {
++                                    let transparency_check = is_2d &&
+                                         cconfig.supports_transparency().unwrap_or(false)
+                                             & !accum.supports_transparency().unwrap_or(false);
+                                     return if transparency_check
+@@ -1048,8 +1049,8 @@ impl GLContext {
+                         .find_configs(cfg)
+                         .map(|c| {
+                             c.reduce(|accum, cconfig| {
+-                                if is_2d {
+-                                    let transparency_check =
++                                if is_2d || !multi_sample {
++                                    let transparency_check = is_2d &&
+                                         cconfig.supports_transparency().unwrap_or(false)
+                                             & !accum.supports_transparency().unwrap_or(false);
+                                     return if transparency_check

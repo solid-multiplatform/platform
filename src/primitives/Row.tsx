@@ -3,7 +3,7 @@ import {
   combineStyles,
   type NodeStyles,
   type ElementNode,
-} from '@solidtv/solid';
+} from '@solid-multiplatform/platform';
 import { chainFunctions } from './utils/chainFunctions.js';
 import {
   handleNavigation,

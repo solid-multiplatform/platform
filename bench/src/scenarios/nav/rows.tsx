@@ -1,7 +1,7 @@
 // Scenario: a Column of 10 Rows x 20 tiles, with right/left and
 // down/up presses, and `scroll` auto and always.
-import type { ElementNode } from '@solidtv/solid';
-import { Column, Row } from '@solidtv/solid/primitives';
+import type { ElementNode } from '@solid-multiplatform/platform';
+import { Column, Row } from '@solid-multiplatform/platform/primitives';
 import { For } from 'solid-js';
 import {
   backAndForth,

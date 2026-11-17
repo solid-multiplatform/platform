@@ -14,7 +14,7 @@ import {
   registerDefaultShaders,
   type ElementNode,
   type NodeStyles,
-} from '@solidtv/solid';
+} from '@solid-multiplatform/platform';
 import { render, renderer, settle } from './setup.js';
 
 const RED = 0xff0000ff;

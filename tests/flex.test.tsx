@@ -1,6 +1,6 @@
 import * as v from 'vitest'
 import * as s from 'solid-js'
-import * as lng from '@solidtv/solid'
+import * as lng from '@solid-multiplatform/platform'
 
 import {renderer, waitForUpdate} from './setup.js'
 

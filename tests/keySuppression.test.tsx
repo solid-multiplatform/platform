@@ -4,8 +4,8 @@ import {
   suppressKeyUntilRelease,
   releaseKeySuppression,
   useHold,
-} from '@solidtv/solid/primitives';
-import { Config } from '@solidtv/solid';
+} from '@solid-multiplatform/platform/primitives';
+import { Config } from '@solid-multiplatform/platform';
 import { renderer, waitForUpdate } from './setup.js';
 
 const keydown = (repeat = false) =>

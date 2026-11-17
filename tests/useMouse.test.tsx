@@ -1,5 +1,5 @@
 import * as v from 'vitest';
-import * as lng from '@solidtv/solid';
+import * as lng from '@solid-multiplatform/platform';
 import { useMouse } from '../src/primitives/useMouse.js';
 import { useFocusManager } from '../src/core/focusManager.js';
 import { renderer } from './setup.js';

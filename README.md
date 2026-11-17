@@ -1,81 +1,36 @@
-<p>
-  <img src="https://assets.solidjs.com/banner?project=Library&type=@solidtv/solid" alt="SolidTV" />
-</p>
+# Solid Multiplatform
 
-# SolidTV
+Build one Solid JSX scene and let a host supply drawing, input and device lifecycle. This repository owns the universal JSX binding, layout, focus, UI primitives and device startup. The [renderer repository](https://github.com/solid-multiplatform/renderer) owns WebGL, Canvas 2D and Roku SceneGraph.
 
-SolidTV is a UI framework for building high-performance TV applications. It allows you to declaratively construct UI nodes with reactive primitives, providing incredible performance on even the most constrained hardware.
+| Target                                           | Host           | Graphics and verification                                                                                                                                                        |
+| ------------------------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Browser TVs, including Tizen, LG webOS and Vizio | `/browser-tv`  | v2 WebGL, or opt into v1 Canvas 2D with `useCanvas()` from `/browser-tv/canvas`. Chromium tests exercise both. Vendor device qualification is pending.                           |
+| Roku OS 16+                                      | `/roku/preset` | Native SceneGraph 2.0. The standalone [Roku example](examples/roku) builds a developer ZIP and checks its dependency graph.                                                      |
+| Android TV                                       | `/android-tv`  | NativeScript V8 and native WebGL. The [Android example](examples/android-tv) builds a debug APK.                                                                                 |
+| Apple TV                                         | `/apple-tv`    | NativeScript tvOS and native WebGL. The [Apple TV example](examples/apple-tv) targets the simulator in macOS CI. Its pinned Canvas SVG dependency has a tvOS compatibility shim. |
+| Desktop and standalone iOS                       | Future host    | Reuse the platform JSX runtime and implement the native surface, input, and lifecycle bindings. Engine choice belongs to that host.                                              |
 
-**Coming from `@lightningtv/solid`?** The project moved here and is now `@solidtv/solid`. See the [migration guide](https://solid-tv.github.io/solid/#/migrate).
+## Build and consume
 
-**[Commercial support available](https://solidtv.dev/#services)** from the creator of SolidTV: support plans, performance audits, migrations and Apple TV ports.
-
-## Used by companies worldwide
-
-<div style="display: flex; align-items: center; gap: 20px;">
-  <img src="docs/companylogos/Angel.png" alt="Angel Studios" width="200" /> &nbsp; <img src="docs/companylogos/bell-fibe-tv.png" alt="Bell Fibe TV" width="80" /> &nbsp; <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/companylogos/watch-brasil.png" />
-    <img src="docs/companylogos/watch-brasil-dark.png" alt="Watch Brasil" width="120" />
-  </picture> &nbsp; <a href="https://www.cheknews.ca">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="docs/companylogos/chek-news.png" />
-      <img src="docs/companylogos/chek-news-dark.png" alt="CHEK News" height="46" />
-    </picture>
-  </a>
-</div>
-
-## Need Support?
-
-[SolidTV Docs](https://solid-tv.github.io/solid/)
-
-Join the [SolidTV Discord](https://discord.com/invite/solidjs) - #SolidTV channel and message chiefcll
-
-[Commercial support](https://solidtv.dev/#services) - support plans with priority answers and bug fixes, performance audits for any web-based TV app, migrations to SolidTV, Apple TV ports and team training
-
-## Documentation
-
-[SolidTV Docs](https://solid-tv.github.io/solid/)
-
-[AI Coding Guidelines](docs/AI_CODING_GUIDELINES.md)
-
-## Demo App
-
-[SolidTV TMDB Demo App](https://github.com/solid-tv/solid-demo-app)
-
-Tested and working on Chrome < 38 and could go earlier
-
-## Playground
-
-[playground.solidjs.com](https://playground.solidjs.com/anonymous/b36869ea-e7df-4f7a-af34-67222bc04271)
-
-## Quick Start
-
-Clone starter template:
+Use Node 24 and the pinned pnpm version through Corepack.
 
 ```sh
-> npx degit solid-tv/solid-starter-template my-app
-> cd my-app
-> npm i # or yarn or pnpm
-> npm start # or yarn or pnpm
+corepack pnpm install --frozen-lockfile
+corepack pnpm build
+corepack pnpm test
+node --test tests/native/*.test.mjs
+corepack pnpm exec playwright install chromium
+corepack pnpm test:webgl
 ```
 
-## Video Quick (actually it's long) Start
+The framework has a peer dependency on `@solid-multiplatform/renderer`. For development the lockfile installs a verified renderer tarball from `vendor/`. A fresh clone builds independently. To update that input, run `npm ci && npm pack` in the renderer checkout, replace the development tarball and refresh the framework and example lockfiles. Each device project has its own install. Build the framework first, then run `corepack pnpm install --frozen-lockfile` and `corepack pnpm build` in the example directory. Android needs JDK 21 and the Android SDK. tvOS needs Xcode and the tvOS platform.
 
-[![Watch the video](https://img.youtube.com/vi/9UU7Ntf7Tww/0.jpg)](https://www.youtube.com/watch?v=9UU7Ntf7Tww)
+## Application and host boundaries
 
-Read the article:
-https://medium.com/@chiefcll/lightning-3-the-basics-of-solidjs-e6e21d73205e
+Compile app JSX in Solid universal mode with `moduleName: '@solid-multiplatform/platform'`. Import layout and navigation primitives from `@solid-multiplatform/platform/primitives`. The [shared fixture](examples/shared/app.tsx) uses the same component, focus, reactive text, reorder and disposal logic across targets.
 
-### Hello World
+A host binds its native root or graphics surface and input before mounting the app. Apple TV and Android TV accept a loader returning a module with `mount()`. The host binds pause and resume to device lifecycle. Roku's preset takes a shared entry, app title, optional assets directory and manifest fields. Keep shared JSX under the entry's directory. The preset resolves one Solid runtime for both the Roku SDK and app and supplies the native components, font assets and SDK JSX transforms.
 
-```jsx
-import { render } from '@solidtv/solid';
+For a new device with native WebGL, adapt the renderer platform's surface creation, asset loading, present and clock methods. Register the surface before importing the app, then bind native input and lifecycle. For a different graphics model, add a backend in the renderer repository and install it with `setRendererFactory` before `createRenderer`. The factory receives the settings and root and returns a structural `HostRenderer`. The default web path remains available to existing applications. Run the shared fixture against the backend and add a device package smoke build.
 
-render(() => <text>Hello World</text>);
-```
-
-For a more detailed Hello World guide check out the [Hello World](HelloWorld.md) guide.
-
-## Migrating from @lightningtv/solid
-
-This project used to live at https://github.com/lightning-tv/solid and was published as `@lightningtv/solid`. To move an existing app to `@solidtv/solid`, follow the [migration guide](https://solid-tv.github.io/solid/#/migrate).
+The existing Roku video code is preserved under [references/roku-video](references/roku-video). It illustrates native playback and caption needs for a future extension. [Source records](PROVENANCE.md)

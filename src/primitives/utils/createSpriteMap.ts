@@ -14,7 +14,7 @@ export function createSpriteMap(
 ): Record<string, InstanceType<TextureMap['SubTexture']>> {
   const spriteMapTexture = renderer.createTexture('ImageTexture', {
     src,
-  });
+  }) as InstanceType<TextureMap['ImageTexture']>;
 
   return subTextures.reduce<
     Record<string, InstanceType<TextureMap['SubTexture']>>
@@ -26,7 +26,7 @@ export function createSpriteMap(
       y,
       w: width,
       h: height,
-    });
+    }) as InstanceType<TextureMap['SubTexture']>;
     return acc;
   }, {});
 }

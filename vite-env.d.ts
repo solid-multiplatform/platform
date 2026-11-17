@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 declare global {
-  /** Whether the DOM renderer should be used instead of `@solidtv/renderer` */
+  /** Whether the DOM renderer should be used instead of `@solid-multiplatform/renderer` */
   var SOLIDTV_DOM_RENDERING: boolean | undefined;
   /** Whether element shaders should be disabled */
   var SOLIDTV_DISABLE_SHADERS: boolean | undefined;

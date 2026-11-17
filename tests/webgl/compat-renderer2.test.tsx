@@ -1,6 +1,6 @@
 /**
  * Decision 5.6 on the real renderer: 1.x apps register shader types through
- * `renderer.stage.shManager.registerShaderType`, which @solidtv/renderer 2.0
+ * `renderer.stage.shManager.registerShaderType`, which @solid-multiplatform/renderer 2.0
  * removed (the stage is the renderer). Solid keeps it working, with one
  * warning. The option half (renderEngine, fontEngines) and the DOM renderer
  * are in tests/compat-renderer2.test.ts.
@@ -8,7 +8,7 @@
  *   pnpm test:webgl
  */
 import * as v from 'vitest';
-import { Rounded } from '@solidtv/renderer/shaders';
+import { Rounded } from '@solid-multiplatform/renderer/shaders';
 import { renderer } from './setup.js';
 
 type Stage = {
@@ -38,7 +38,7 @@ v.test(
       .map((args) => String(args[0]))
       .filter((message) => message.indexOf('[solid]') === 0);
     v.expect(solid).toEqual([
-      '[solid] renderer.stage.shManager was removed in @solidtv/renderer 2.0: use renderer.registerShaderType',
+      '[solid] renderer.stage.shManager was removed in @solid-multiplatform/renderer 2.0: use renderer.registerShaderType',
     ]);
     warn.mockRestore();
   },

@@ -9,7 +9,7 @@
 // worker, so every test disposes its render and restores Config and spies.
 import * as v from 'vitest';
 import * as s from 'solid-js';
-import * as lng from '@solidtv/solid';
+import * as lng from '@solid-multiplatform/platform';
 import { renderer } from './setup.js';
 
 const RED = 0xff0000ff;

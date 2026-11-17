@@ -11,7 +11,7 @@ import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 const prefetchFont = vi.fn();
 const loadFont = vi.fn(() => Promise.resolve());
 
-vi.mock('@solidtv/renderer', () => {
+vi.mock('@solid-multiplatform/renderer', () => {
   class RendererMain {
     root = {};
     stage = {

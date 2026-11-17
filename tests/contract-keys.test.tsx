@@ -5,14 +5,14 @@
 // arguments and return values, never underscore fields.
 import * as v from 'vitest';
 import { createRoot } from 'solid-js';
-import { Config, type ElementNode } from '@solidtv/solid';
+import { Config, type ElementNode } from '@solid-multiplatform/platform';
 import {
   useFocusManager,
   useHold,
   type KeyEventLike,
   type KeyEventTarget,
   type KeyMap,
-} from '@solidtv/solid/primitives';
+} from '@solid-multiplatform/platform/primitives';
 import {
   KeyTarget,
   flush,

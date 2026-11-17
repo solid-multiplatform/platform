@@ -1,4 +1,4 @@
-import { Row } from '@solidtv/solid/primitives';
+import { Row } from '@solid-multiplatform/platform/primitives';
 import { For } from 'solid-js';
 import type { Scenario } from '../scenario.js';
 

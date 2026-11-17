@@ -6,7 +6,7 @@ import {
   startLightningRenderer,
   type RendererMainSettings,
   DomRendererMainSettings,
-} from './core/index.js';
+} from './core/portable.js';
 import nodeOpts from './solidOpts.js';
 import {
   splitProps,
@@ -32,12 +32,12 @@ const render = function (code: () => JSXElement) {
 
 export function createRenderer(
   rendererOptions?: RendererMainSettings | DomRendererMainSettings,
-  node?: HTMLElement | string,
+  node?: object | string,
 ) {
   const options = rendererOptions || Config.rendererOptions;
 
   renderer = startLightningRenderer(options!, node || 'app');
-  rootNode.lng = renderer.root!;
+  rootNode.lng = renderer.root as typeof rootNode.lng;
   rootNode.rendered = true;
   renderer.on('idle', () => {
     tasksEnabled = true;

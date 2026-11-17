@@ -3,7 +3,7 @@
 // after render. The DOM renderer's shader is `{ shaderType, props }`, with the
 // registered name as `shaderType`.
 import * as v from 'vitest';
-import * as lng from '@solidtv/solid';
+import * as lng from '@solid-multiplatform/platform';
 import { renderer } from './setup.js';
 
 const RED = 0xff0000ff;
