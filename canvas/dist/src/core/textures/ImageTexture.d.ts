@@ -1,0 +1,145 @@
+import type { CoreTextureManager } from '../CoreTextureManager.js';
+import { Texture, TextureType, type TextureData } from './Texture.js';
+/**
+ * Properties of the {@link ImageTexture}
+ */
+export interface ImageTextureProps {
+    /**
+     * Source URL or ImageData for the image to be used as a texture.
+     *
+     * @remarks
+     * The ImageData type is currently only supported internally. End users should
+     * only set this property to a URL string.
+     *
+     * @default ''
+     */
+    src?: string | Blob | ImageData | (() => ImageData | null);
+    /**
+     * Whether to premultiply the alpha channel into the color channels of the
+     * image.
+     *
+     * @remarks
+     * Generally this should be set to `true` (the default). However, if the
+     * texture's associated Shader expects straight (non-premultiplied) colors,
+     * this should be set to `false`.
+     *
+     * @default true
+     */
+    premultiplyAlpha?: boolean | null;
+    /**
+     * Cache key for this texture.
+     *
+     * @remarks
+     * A texture is only shared through the texture manager's cache when it has a
+     * string identity. A `src` that is already a string supplies one on its own;
+     * a `Blob`, `ImageData` or `ImageData` factory does not, so those are created
+     * fresh, and uploaded to the GPU again, on every call unless a `key` is
+     * provided here.
+     *
+     * Being uncached also keeps the texture out of the memory manager's cache
+     * sweep, so a stream of unique non-string sources relies on the eager reclaim
+     * in `CoreNode.unloadTexture` rather than on cache reuse. Give a stable key to
+     * any non-string source that can recur (`thumb:asset-1:42`), and no key at all
+     * to one that genuinely cannot.
+     *
+     * `key` takes precedence over `src` when both would produce a key.
+     */
+    key?: string | null;
+    /**
+     * Width of the image to be used as a texture. If not provided, the image's
+     * natural width will be used.
+     */
+    w?: number | null;
+    /**
+     * Height of the image to be used as a texture. If not provided, the image's
+     * natural height will be used.
+     */
+    h?: number | null;
+    /**
+     * Type, indicate an image type for overriding type detection
+     *
+     * @default null
+     */
+    type?: 'regular' | 'compressed' | 'svg' | null;
+    /**
+     * The width of the rectangle from which the ImageBitmap will be extracted. This value
+     * can be negative. Only works when createImageBitmap is supported on the browser.
+     *
+     * @default null
+     */
+    sw?: number | null;
+    /**
+     * The height of the rectangle from which the ImageBitmap will be extracted. This value
+     * can be negative. Only works when createImageBitmap is supported on the browser.
+     *
+     * @default null
+     */
+    sh?: number | null;
+    /**
+     * The y coordinate of the reference point of the rectangle from which the ImageBitmap
+     * will be extracted. Only used when `sw` and `sh` are provided. And only works when
+     * createImageBitmap is available.
+     *
+     * @default null
+     */
+    sx?: number | null;
+    /**
+     * The x coordinate of the reference point of the rectangle from which the
+     * ImageBitmap will be extracted. Only used when source `sw` width and `sh` height
+     * are provided. Only works when createImageBitmap is supported on the browser.
+     *
+     * @default null
+     */
+    sy?: number | null;
+    /**
+     * Maximum number of times to retry loading the image if it fails.
+     *
+     * @default 5
+     */
+    maxRetryCount?: number;
+}
+/**
+ * Texture consisting of an image loaded from a URL
+ *
+ * @remarks
+ * The ImageTexture's {@link ImageTextureProps.src} prop defines the image URL
+ * to be downloaded.
+ *
+ * By default, the texture's alpha values will be premultiplied into its color
+ * values which is generally the desired setting before they are sent to the
+ * texture's associated {@link Shader}. However, in special cases you may want
+ * the Shader to receive straight (non-premultiplied) values. In that case you
+ * can disable the default behavior by setting the
+ * {@link ImageTextureProps.premultiplyAlpha} prop to `false`.
+ */
+export declare class ImageTexture extends Texture {
+    private platform;
+    props: Required<ImageTextureProps>;
+    type: TextureType;
+    constructor(txManager: CoreTextureManager, props: Required<ImageTextureProps>);
+    loadImageFallback(src: string | Blob, hasAlpha: boolean): Promise<{
+        data: HTMLImageElement | null;
+        premultiplyAlpha: boolean;
+    }>;
+    createImageBitmap(blob: Blob, premultiplyAlpha: boolean | null, sx: number | null, sy: number | null, sw: number | null, sh: number | null): Promise<{
+        data: ImageBitmap | HTMLImageElement;
+        premultiplyAlpha: boolean;
+    }>;
+    loadImage(src: string): Promise<TextureData>;
+    getTextureSource(): Promise<TextureData>;
+    determineImageTypeAndLoadImage(): Promise<TextureData> | {
+        data: null;
+        premultiplyAlpha?: undefined;
+    } | {
+        data: ImageData | null;
+        premultiplyAlpha: boolean | null;
+    };
+    /**
+     * Generates a cache key for the ImageTexture based on the provided props.
+     * @param props - The props used to generate the cache key.
+     * @returns The cache key as a string, or `false` if the key cannot be generated.
+     */
+    static makeCacheKey(props: ImageTextureProps): string | false;
+    static resolveDefaults(props: ImageTextureProps): Required<ImageTextureProps>;
+    static z$__type__Props: ImageTextureProps;
+}

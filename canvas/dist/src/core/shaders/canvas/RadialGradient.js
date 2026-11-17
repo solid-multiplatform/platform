@@ -1,0 +1,56 @@
+import { RadialGradientTemplate, } from '../templates/RadialGradientTemplate.js';
+export const RadialGradient = {
+    props: RadialGradientTemplate.props,
+    update(node) {
+        let scaleX = 1;
+        let scaleY = 1;
+        const props = this.props;
+        const pWidth = props.w;
+        const pHeight = props.h;
+        if (pWidth > pHeight) {
+            scaleX = pWidth / pHeight;
+        }
+        else if (pHeight > pWidth) {
+            scaleY = pHeight / pWidth;
+        }
+        this.computed = {
+            pivotX: props.pivot[0] * node.w,
+            pivotY: props.pivot[1] * node.h,
+            scaleX,
+            scaleY,
+            size: Math.min(pWidth, pHeight),
+            colors: props.colors.map((value) => this.toColorString(value)),
+        };
+    },
+    render(ctx, node, renderContext) {
+        renderContext();
+        const { scaleX, scaleY, pivotX, pivotY, colors, size } = this
+            .computed;
+        const { tx, ty } = node.globalTransform;
+        const { w, h } = node.props;
+        let x = tx + pivotX;
+        let y = ty + pivotY;
+        const stops = this.props.stops;
+        if (scaleX === scaleY) {
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, size);
+            for (let i = 0; i < colors.length; i++) {
+                gradient.addColorStop(stops[i], colors[i]);
+            }
+            ctx.fillStyle = gradient;
+            ctx.fillRect(tx, ty, w, h);
+            return;
+        }
+        ctx.save();
+        ctx.scale(scaleX, scaleY);
+        x = x / scaleX;
+        y = y / scaleY;
+        const gradient = ctx.createRadialGradient(x, y, 0, x, y, size);
+        for (let i = 0; i < colors.length; i++) {
+            gradient.addColorStop(stops[i], colors[i]);
+        }
+        ctx.fillStyle = gradient;
+        ctx.fillRect(tx / scaleX, ty / scaleY, w / scaleX, h / scaleY);
+        ctx.restore();
+    },
+};
+//# sourceMappingURL=RadialGradient.js.map

@@ -1,0 +1,24 @@
+import type { FontMetrics, MeasureTextFn, NormalizedFontMetrics, TextBaselineMode, TextLayoutStruct, TextLineStruct, WrappedLinesStruct } from './TextRenderer.js';
+export declare const defaultFontMetrics: FontMetrics;
+export declare const normalizeFontMetrics: (metrics: FontMetrics, fontSize: number) => NormalizedFontMetrics;
+/**
+ * Sets the engine-wide baseline anchor. Called by `Stage` during construction;
+ * not intended to be called from user code (changing this mid-session would
+ * silently reflow every cached text layout).
+ */
+export declare const setBaselineMode: (mode: TextBaselineMode) => void;
+export declare const mapTextLayout: (measureText: MeasureTextFn, metrics: NormalizedFontMetrics, text: string, textAlign: string, fontFamily: string, lineHeight: number, overflowSuffix: string, wordBreak: string, letterSpacing: number, maxLines: number, maxWidth: number, maxHeight: number) => TextLayoutStruct;
+export declare const measureLines: (measureText: MeasureTextFn, lines: string[], fontFamily: string, letterSpacing: number, maxLines: number) => WrappedLinesStruct;
+export declare const wrapText: (measureText: MeasureTextFn, text: string, fontFamily: string, maxWidth: number, letterSpacing: number, overflowSuffix: string, wordBreak: string, maxLines: number) => WrappedLinesStruct;
+export declare const wrapLine: (measureText: MeasureTextFn, line: string, fontFamily: string, maxWidth: number, letterSpacing: number, spaceWidth: number, overflowSuffix: string, overflowWidth: number, wordBreak: string, remainingLines: number) => WrappedLinesStruct;
+/**
+ * Overflow wordBreak strategy, if a word partially fits add it to the line, start new line if necessary or add overflowSuffix.
+ *
+ * @remarks This strategy is similar to 'normal' in html/CSS. However
+ */
+export declare const overflow: (measureText: MeasureTextFn, word: string, wordWidth: number, fontFamily: string, letterSpacing: number, wrappedLines: TextLineStruct[], currentLine: string, currentLineWidth: number, remainingLines: number, remainingWord: string, maxWidth: number, space: string, spaceWidth: number, overflowSuffix: string, overflowWidth: number) => [string, number, string];
+export declare const breakWord: (measureText: MeasureTextFn, word: string, wordWidth: number, fontFamily: string, letterSpacing: number, wrappedLines: TextLineStruct[], currentLine: string, currentLineWidth: number, remainingLines: number, remainingWord: string, maxWidth: number, space: string, spaceWidth: number, overflowSuffix: string, overflowWidth: number) => [string, number, string];
+export declare const breakAll: (measureText: MeasureTextFn, word: string, wordWidth: number, fontFamily: string, letterSpacing: number, wrappedLines: TextLineStruct[], currentLine: string, currentLineWidth: number, remainingLines: number, remainingWord: string, maxWidth: number, space: string, spaceWidth: number, overflowSuffix: string, overflowWidth: number) => [string, number, string];
+export declare const truncateLineEnd: (measureText: MeasureTextFn, fontFamily: string, letterSpacing: number, currentLine: string, currentLineWidth: number, remainingWord: string, maxWidth: number, overflowSuffix: string, overflowWidth: number) => [string, number, string];
+export declare const truncateWord: (measureText: MeasureTextFn, word: string, wordWidth: number, maxWidth: number, fontFamily: string, letterSpacing: number, overflowSuffix: string, overflowWidth: number) => [string, string, number];
+export declare const splitWord: (measureText: MeasureTextFn, word: string, wordWidth: number, maxWidth: number, fontFamily: string, letterSpacing: number) => [string, string, number];

@@ -1,0 +1,172 @@
+export function createWebGLContext(canvas, forceWebGL2 = false, contextSpy = null, powerPreference = 'default') {
+    const config = {
+        alpha: true,
+        antialias: false,
+        depth: false,
+        stencil: false,
+        desynchronized: false,
+        // Disabled because it prevents Visual Regression Tests from working
+        // failIfMajorPerformanceCaveat: true,
+        powerPreference,
+        premultipliedAlpha: true,
+        preserveDrawingBuffer: false,
+    };
+    const gl = 
+    // TODO: Remove this assertion once this issue is fixed in TypeScript
+    // https://github.com/microsoft/TypeScript/issues/53614
+    (canvas.getContext(forceWebGL2 ? 'webgl2' : 'webgl', config) ||
+        canvas.getContext('experimental-webgl', config));
+    if (!gl) {
+        throw new Error('Unable to create WebGL context');
+    }
+    if (contextSpy) {
+        // Proxy the GL context — and any extension object it hands out — so every
+        // call is counted. The renderer routes WebGL1 Vertex Array Object calls
+        // through the OES_vertex_array_object extension object; without wrapping
+        // that object its methods (bindVertexArrayOES / createVertexArrayOES /
+        // deleteVertexArrayOES) would bypass the spy entirely. On WebGL2 the same
+        // calls live on the context itself and are already captured.
+        const handler = {
+            get(target, prop) {
+                const value = target[prop];
+                if (typeof value !== 'function') {
+                    return value;
+                }
+                contextSpy.increment(String(prop));
+                const fn = value;
+                if (prop === 'getExtension') {
+                    return (...args) => {
+                        const ext = fn.apply(target, args);
+                        if (ext !== null && typeof ext === 'object') {
+                            return new Proxy(ext, handler);
+                        }
+                        return ext;
+                    };
+                }
+                return fn.bind(target);
+            },
+        };
+        return new Proxy(gl, handler);
+    }
+    return gl;
+}
+export const isProductionEnvironment = typeof __DEV__ !== 'undefined' ? !__DEV__ : true;
+export const RENDER_TEXT_BATCHING = typeof __renderTextBatching__ !== 'undefined' ? __renderTextBatching__ : true;
+export const ENABLE_COMPRESSED_TEXTURES = typeof __enableCompressedTextures__ !== 'undefined'
+    ? __enableCompressedTextures__
+    : false;
+export const ENABLE_INSPECTOR = typeof __enableInspector__ !== 'undefined'
+    ? __enableInspector__
+    : !isProductionEnvironment;
+export const EMIT_BOUNDS_EVENTS = typeof __emitBoundsEvents__ !== 'undefined' ? __emitBoundsEvents__ : false;
+/**
+ * Asserts a condition is truthy, otherwise throws an error
+ *
+ * @remarks
+ * Useful at the top of functions to ensure certain conditions, arguments and
+ * properties are set/met before continuing. When using this function,
+ * TypeScript will narrow away falsy types from the condition.
+ *
+ * @param condition
+ * @param message
+ * @returns
+ */
+export function assertTruthy(condition, message) {
+    if (isProductionEnvironment === true)
+        return;
+    if (!condition) {
+        throw new Error(message || 'Assertion failed');
+    }
+}
+/**
+ * Merges two colors based on a given progress value.
+ *
+ * This function takes two colors (c1 and c2) represented as 32-bit integers
+ * in RGBA format and blends them based on the provided progress value (p).
+ * The result is a new color that is a weighted combination of the input colors,
+ * where the weight is determined by the progress value.
+ *
+ * @param {number} c1 - The first color in RGBA format (32-bit integer).
+ * @param {number} c2 - The second color in RGBA format (32-bit integer).
+ * @param {number} p - The progress value between 0 and 1.
+ * @returns {number} The merged color as a 32-bit integer in RGBA format.
+ */
+export function mergeColorProgress(rgba1, rgba2, p) {
+    const r1 = Math.trunc(rgba1 >>> 24);
+    const g1 = Math.trunc((rgba1 >>> 16) & 0xff);
+    const b1 = Math.trunc((rgba1 >>> 8) & 0xff);
+    const a1 = Math.trunc(rgba1 & 0xff);
+    const r2 = Math.trunc(rgba2 >>> 24);
+    const g2 = Math.trunc((rgba2 >>> 16) & 0xff);
+    const b2 = Math.trunc((rgba2 >>> 8) & 0xff);
+    const a2 = Math.trunc(rgba2 & 0xff);
+    const r = Math.round(r2 * p + r1 * (1 - p));
+    const g = Math.round(g2 * p + g1 * (1 - p));
+    const b = Math.round(b2 * p + b1 * (1 - p));
+    const a = Math.round(a2 * p + a1 * (1 - p));
+    return ((r << 24) | (g << 16) | (b << 8) | a) >>> 0;
+}
+/**
+ * Given an RGBA encoded number, returns back the RGBA number with it's alpha
+ * component multiplied by the passed `alpha` parameter.
+ *
+ * @internalRemarks
+ * This method does NOT premultiply the alpha into the color channels. If that
+ * is required (for internal use only) use {@link premultiplyColorABGR}
+ * instead.
+ *
+ * @param rgba RGBA encoded number
+ * @param alpha Normalized alpha value (Range: 0.0 - 1.0)
+ * @returns
+ */
+export function mergeColorAlpha(rgba, alpha) {
+    const r = rgba >>> 24;
+    const g = (rgba >>> 16) & 0xff;
+    const b = (rgba >>> 8) & 0xff;
+    const a = Math.trunc((rgba & 0xff) * alpha);
+    return ((r << 24) | (g << 16) | (b << 8) | a) >>> 0;
+}
+let premultiplyRGB = true;
+/**
+ * RGB components should not be premultiplied when using Canvas renderer
+ * @param mode  Renderer mode
+ */
+export function setPremultiplyMode(mode) {
+    premultiplyRGB = mode === 'webgl';
+}
+/**
+ * Given an RGBA encoded color, returns it as ABGR (for shader attributes) with
+ * its alpha multiplied by `alpha`. For the WebGL renderer the color channels
+ * are premultiplied by the final alpha (see {@link setPremultiplyMode}).
+ *
+ * @internal
+ * @param rgba RGBA encoded color
+ * @param alpha Normalized alpha (0.0 – 1.0)
+ * @returns ABGR encoded premultiplied color
+ */
+export function premultiplyColorABGR(rgba, alpha) {
+    const a = ((rgba & 0xff) / 255) * alpha;
+    const m = premultiplyRGB ? a : 1;
+    return (((((a * 255) | 0) << 24) |
+        (((((rgba >>> 8) & 0xff) * m) | 0) << 16) |
+        (((((rgba >>> 16) & 0xff) * m) | 0) << 8) |
+        (((rgba >>> 24) * m) | 0)) >>>
+        0);
+}
+/**
+ * Converts degrees to radians
+ *
+ * @param degrees
+ * @returns
+ */
+export function deg2Rad(degrees) {
+    return (degrees * Math.PI) / 180;
+}
+/**
+ * Returns a new unique ID
+ */
+let nextId = 1;
+export function getNewId() {
+    return nextId++;
+}
+//# sourceMappingURL=utils.js.map

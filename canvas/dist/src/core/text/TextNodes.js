@@ -1,0 +1,400 @@
+import { same } from '../nodes/NodeStore.js';
+import { DIRTY_LAYOUT, DIRTY_LOCAL, DIRTY_RENDERABLE, ST_RTL, ST_TEXT_BOX, ST_TEXT_READY, } from '../nodes/NodeFlags.js';
+import { LayoutCache, effectiveAlign, layoutText, } from './TextLayout.js';
+import { F_H, F_STRIDE, F_W, I_DIRTY, I_STATE, I_STRIDE, } from '../nodes/NodeLayout.js';
+/**
+ * The node side of text (spec 10): the scene pass's `layoutText`, the
+ * wait lists of the nodes whose font is not there yet, the forceLoad
+ * nodes laid out before the walk, and the layout cache. A text node lays
+ * out from its font's description, before the walk composes it, takes the
+ * layout's size in that visit (NodeStore.applySizeInVisit) and hears
+ * `loaded` between walks (RendererCore.update), and is ready to draw once
+ * its font's atlas is uploaded. `measure` lays it out earlier, outside the
+ * walk, and the visit then reuses that layout.
+ */
+export class TextNodes {
+    constructor(nodes, fonts, loadedEvents, events, cacheSize, baselineMode, idleLayouts) {
+        /** Node ids waiting on each font name, made on demand (a node created before loadFont waits too). */
+        this.waiting = new Map();
+        /** Text nodes with forceLoad set. */
+        this.forced = [];
+        this.nodes = nodes;
+        this.fonts = fonts;
+        this.loadedEvents = loadedEvents;
+        this.events = events;
+        this.cache = new LayoutCache(cacheSize);
+        this.baselineMode = baselineMode;
+        this.idleLayouts = idleLayouts;
+        fonts.onChange = (font) => this.fontChanged(font);
+    }
+    /**
+     * PassHooks.layoutText: DIRTY_LAYOUT on a visited text node, before the
+     * visit composes it (or a forceLoad one, before the walk). Without its
+     * font's description it waits, drawing nothing; with it, it lays out
+     * when a prop the layout reads changed (from the cache when another node
+     * laid the same text out the same way), takes the size and queues
+     * `loaded`, places its block, and is ready to draw when the atlas is up
+     * (else it waits for that). Returns the dirty bits the size and the
+     * block raised (DIRTY_LOCAL | DIRTY_SHADER, DIRTY_LOCAL), which the visit
+     * takes: the node is drawn in this walk with the transform they give.
+     * Never -1: the wait lists raise DIRTY_LAYOUT again when the font
+     * changes, so nothing is left pending.
+     */
+    layoutText(id) {
+        const s = this.nodes;
+        const t = s.texts[id];
+        const name = t.fontFamily;
+        if (t.waiting !== null && t.waiting !== name) {
+            this.unpark(id, t);
+        }
+        const font = this.fonts.get(name);
+        if (font === undefined || font.font === null) {
+            t.layout = null;
+            t.font = null;
+            s.u32[id * I_STRIDE + I_STATE] =
+                s.u32[id * I_STRIDE + I_STATE] & ~ST_TEXT_READY;
+            this.park(id, t, name);
+            return 0;
+        }
+        // The resolved direction (ST_RTL, the visit's) swaps left and right
+        // alignment: a change makes the layout stale, so the DIRTY_LAYOUT the
+        // visit raised with it re-lays the text out now.
+        const rtl = (s.u32[id * I_STRIDE + I_STATE] & ST_RTL) !== 0;
+        if (rtl !== t.rtl) {
+            t.rtl = rtl;
+            t.stale = true;
+        }
+        let raised = 0;
+        let layout = t.layout;
+        if (t.stale === true || layout === null || t.font !== font) {
+            layout = this.lay(id, t, font, font.font);
+            raised = s.applySizeInVisit(id, layout.width, layout.height);
+        }
+        raised |= this.place(id, t, layout);
+        const state = s.u32[id * I_STRIDE + I_STATE];
+        if (font.ready === false) {
+            s.u32[id * I_STRIDE + I_STATE] = state & ~ST_TEXT_READY;
+            this.park(id, t, name);
+            return raised;
+        }
+        s.u32[id * I_STRIDE + I_STATE] =
+            layout.glyphCount > 0 ? state | ST_TEXT_READY : state & ~ST_TEXT_READY;
+        return raised;
+    }
+    /**
+     * TextNode.measure: lay text node `id` out now, outside the walk, when a
+     * layout is due (a prop the layout reads changed, or its font), for a
+     * framework that sizes its layout by the text before the frame. The size
+     * goes through applySize (DIRTY_LOCAL | DIRTY_SHADER, composed by the
+     * next walk) and DIRTY_LAYOUT stays raised: the visit finds the layout
+     * current, so it only places the block and derives readiness. `loaded`
+     * is queued as the visit queues it. Returns false, changing nothing,
+     * while the font's description is missing (the walk lays the node out
+     * once it arrives); true otherwise.
+     */
+    measure(id) {
+        const s = this.nodes;
+        const t = s.texts[id];
+        const font = this.fonts.get(t.fontFamily);
+        if (font === undefined || font.font === null) {
+            return false;
+        }
+        if (t.stale === false && t.layout !== null && t.font === font) {
+            return true;
+        }
+        const layout = this.lay(id, t, font, font.font);
+        s.applySize(id, layout.width, layout.height);
+        s.markDirty(id, DIRTY_LAYOUT);
+        return true;
+    }
+    /**
+     * Lay `t` out in `font` (from the cache when another node laid the same
+     * text out the same way), make it the node's layout, and queue `loaded`
+     * for a listener. The caller applies the size.
+     */
+    lay(id, t, font, sdf) {
+        t.stale = false;
+        t.font = font;
+        const layout = this.cached(font, sdf, t);
+        t.layout = layout;
+        const node = this.nodes.handles[id];
+        if (node.hasListener('loaded') === true) {
+            this.loadedEvents.queue(node, 'loaded', {
+                type: 'text',
+                dimensions: { w: layout.width, h: layout.height },
+            });
+        }
+        return layout;
+    }
+    /**
+     * RendererCore.measureText: lay `t` out ahead of any node, into the
+     * cache a text node with the same text props lays out from (its visit
+     * then looks the layout up instead of laying out in its frame). No node,
+     * no event, no frame. Returns the layout, or null while the font's
+     * description is missing.
+     */
+    measureAhead(t) {
+        const font = this.fonts.get(t.fontFamily);
+        if (font === undefined || font.font === null) {
+            return null;
+        }
+        return this.cached(font, font.font, t);
+    }
+    /**
+     * Idle maintenance: lay out, into the cache, up to `idleLayouts` text
+     * nodes a layout is due for that no walk has visited (beyond the bounds
+     * margin, under a hidden parent), from their text props as they are now,
+     * as measureAhead does: the visit that brings one in looks its layout up
+     * (taking the size, telling `loaded` and placing it as ever) instead of
+     * laying it out in its frame. The nodes are not touched: no size, no
+     * event, no frame. A layout the cache has already is not made again nor
+     * counted. Returns how many were made.
+     */
+    layoutAhead() {
+        const budget = this.idleLayouts;
+        if (budget <= 0) {
+            return 0;
+        }
+        const s = this.nodes;
+        const u32 = s.u32;
+        const texts = s.texts;
+        const cache = this.cache;
+        let made = 0;
+        for (let id = 0; id < texts.length && made < budget; id++) {
+            const t = texts[id];
+            if (t === null || (u32[id * I_STRIDE + I_DIRTY] & DIRTY_LAYOUT) === 0) {
+                continue;
+            }
+            const font = this.fonts.get(t.fontFamily);
+            if (font === undefined || font.font === null) {
+                continue;
+            }
+            if (t.stale === false && t.layout !== null && t.font === font) {
+                continue;
+            }
+            if (cache.get(font.id, t) !== undefined) {
+                continue;
+            }
+            cache.set(font.id, t, layoutText(t, font.font, this.baselineMode));
+            made++;
+        }
+        return made;
+    }
+    /**
+     * The layout of `t` in `font` from the cache, else laid out and cached.
+     * By the record, not a name: a font loaded again under its name (a
+     * failed load, retried) may lay text out differently.
+     */
+    cached(font, sdf, t) {
+        const cache = this.cache;
+        let layout = cache.get(font.id, t);
+        if (layout === undefined) {
+            layout = layoutText(t, sdf, this.baselineMode);
+            cache.set(font.id, t, layout);
+        }
+        return layout;
+    }
+    /**
+     * Before every walk: lay out the forceLoad nodes a layout is due for,
+     * which the walk may not visit (a parent out of bounds or hidden), as
+     * 1.10 laid them out whatever their parent's visibility. What the layout
+     * raised is marked for their next visit, which composes them and derives
+     * their renderability.
+     */
+    drainForced() {
+        const s = this.nodes;
+        const forced = this.forced;
+        for (let i = 0; i < forced.length; i++) {
+            const id = forced[i];
+            const d = s.u32[id * I_STRIDE + I_DIRTY];
+            if ((d & DIRTY_LAYOUT) === 0) {
+                continue;
+            }
+            s.u32[id * I_STRIDE + I_DIRTY] = (d & ~DIRTY_LAYOUT) | DIRTY_RENDERABLE;
+            const raised = this.layoutText(id);
+            if (raised !== 0) {
+                s.markDirty(id, raised);
+            }
+        }
+    }
+    /** forceLoad set or cleared on text node `id` (the setter). */
+    force(id, on) {
+        const t = this.nodes.texts[id];
+        if (t.forced === on) {
+            return;
+        }
+        t.forced = on;
+        const forced = this.forced;
+        if (on === true) {
+            forced.push(id);
+            return;
+        }
+        const i = forced.indexOf(id);
+        forced[i] = forced[forced.length - 1];
+        forced.pop();
+    }
+    /** RendererCore.releaseNode: a destroyed text node leaves its lists. */
+    release(id) {
+        const t = this.nodes.texts[id];
+        if (t === null) {
+            return;
+        }
+        if (t.waiting !== null) {
+            this.unpark(id, t);
+        }
+        if (t.forced === true) {
+            this.force(id, false);
+        }
+    }
+    /** Idle maintenance: the layout cache back to its size. */
+    trim() {
+        this.cache.trim();
+    }
+    /**
+     * The box the block is placed by (1.10 CoreTextNode.updateLocalTransform):
+     * with `contain` on an axis and a max size there, mount and pivot use the
+     * max size and the block aligns inside it by `textAlign`; a height above
+     * the text's (`maxHeight`) places it by `verticalAlign`; `offsetY` moves
+     * it down. Returns DIRTY_LOCAL when that changed (NaN equal to NaN, so a
+     * NaN size settles), else 0.
+     */
+    place(id, t, layout) {
+        const s = this.nodes;
+        const w = s.f64[id * F_STRIDE + F_W];
+        const h = s.f64[id * F_STRIDE + F_H];
+        const contain = t.contain;
+        const maxWidth = t.maxWidth;
+        const maxHeight = t.maxHeight;
+        const inWidth = (contain === 'width' || contain === 'both') && maxWidth > 0;
+        const inHeight = (contain === 'height' || contain === 'both') && maxHeight > 0;
+        const boxW = inWidth === true ? maxWidth : w;
+        const boxH = inHeight === true ? maxHeight : h;
+        let x = 0;
+        if (inWidth === true) {
+            const align = effectiveAlign(t.textAlign, t.rtl);
+            if (align === 'right') {
+                x = maxWidth - w;
+            }
+            else if (align === 'center') {
+                x = (maxWidth - w) * 0.5;
+            }
+        }
+        let y = 0;
+        const slack = (maxHeight > 0 ? maxHeight : h) - layout.height;
+        if (slack > 0) {
+            if (t.verticalAlign === 'bottom') {
+                y = slack;
+            }
+            else if (t.verticalAlign === 'middle') {
+                y = slack * 0.5;
+            }
+        }
+        y += t.offsetY;
+        const boxed = same(boxW, w) === false ||
+            same(boxH, h) === false ||
+            same(x, 0) === false ||
+            same(y, 0) === false;
+        const state = s.u32[id * I_STRIDE + I_STATE];
+        if (boxed === ((state & ST_TEXT_BOX) !== 0) &&
+            (boxed === false ||
+                (same(t.boxW, boxW) === true &&
+                    same(t.boxH, boxH) === true &&
+                    same(t.boxX, x) === true &&
+                    same(t.boxY, y) === true))) {
+            return 0;
+        }
+        t.boxW = boxW;
+        t.boxH = boxH;
+        t.boxX = x;
+        t.boxY = y;
+        s.u32[id * I_STRIDE + I_STATE] =
+            boxed === true ? state | ST_TEXT_BOX : state & ~ST_TEXT_BOX;
+        return DIRTY_LOCAL;
+    }
+    park(id, t, name) {
+        if (t.waiting === name) {
+            return;
+        }
+        let list = this.waiting.get(name);
+        if (list === undefined) {
+            list = [];
+            this.waiting.set(name, list);
+        }
+        list.push(id);
+        t.waiting = name;
+    }
+    unpark(id, t) {
+        const name = t.waiting;
+        t.waiting = null;
+        const list = this.waiting.get(name);
+        if (list === undefined) {
+            return;
+        }
+        const i = list.indexOf(id);
+        if (i !== -1) {
+            list[i] = list[list.length - 1];
+            list.pop();
+        }
+        if (list.length === 0) {
+            this.waiting.delete(name);
+        }
+    }
+    /**
+     * A font's description arrived: the nodes waiting on any of its names
+     * lay out, and stay listed (`park` keeps them) until its atlas is up,
+     * when they lay out again and leave the list. So a failure of the atlas
+     * reaches every one of them, a node no walk visited since (out of bounds,
+     * hidden) included. Its load failed for good: they hear `failed` and keep
+     * waiting, for a later load of the name (1.10 kept them parked).
+     */
+    fontChanged(font) {
+        const s = this.nodes;
+        const error = font.error;
+        const ready = font.ready;
+        const names = font.names;
+        for (let i = 0; i < names.length; i++) {
+            const name = names[i];
+            const list = this.waiting.get(name);
+            if (list === undefined) {
+                continue;
+            }
+            if (error !== null) {
+                this.tellFailed(list, error, names);
+                continue;
+            }
+            if (ready === true) {
+                this.waiting.delete(name);
+            }
+            for (let j = 0; j < list.length; j++) {
+                const id = list[j];
+                if (ready === true) {
+                    s.texts[id].waiting = null;
+                }
+                s.markDirty(id, DIRTY_LAYOUT);
+            }
+        }
+    }
+    /**
+     * `failed` for the waiting nodes listening to it, each of which asks for
+     * a frame (markDirty with no bits, as setZIndex asks for one), whose
+     * flush delivers it: the failure can arrive inside a flush (the atlas's
+     * own `failed`), where an event queued waits for the next flush and
+     * schedules none. A node whose family is none of the font's `names` is
+     * skipped: it switched font since it was listed, and no walk visited it
+     * to take it off the list.
+     */
+    tellFailed(list, error, names) {
+        const s = this.nodes;
+        for (let i = 0; i < list.length; i++) {
+            const id = list[i];
+            const node = s.handles[id];
+            if (node.hasListener('failed') === false ||
+                names.indexOf(s.texts[id].fontFamily) === -1) {
+                continue;
+            }
+            this.events.queue(node, 'failed', { type: 'text', error });
+            s.markDirty(id, 0);
+        }
+    }
+}
+//# sourceMappingURL=TextNodes.js.map
