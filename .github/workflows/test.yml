@@ -14,6 +14,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm test
+      - run: pnpm lint
       - run: node --test tests/native/*.test.mjs
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:webgl
@@ -22,6 +23,8 @@ jobs:
   tvos:
     runs-on: macos-15
     timeout-minutes: 45
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,6 +34,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - working-directory: examples/apple-tv
         run: pnpm install --frozen-lockfile
-      - run: xcodebuild -downloadPlatform tvOS
+      - run: xcrun --sdk appletvsimulator --show-sdk-version
       - working-directory: examples/apple-tv
         run: pnpm exec ns build tvos --emulator --env.production --no-hmr
