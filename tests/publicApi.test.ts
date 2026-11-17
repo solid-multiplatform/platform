@@ -417,6 +417,7 @@ v.describe('package.json exports', () => {
       './browser-tv',
       './browser-tv/canvas',
       './ios',
+      './plugins',
     ]);
   });
 

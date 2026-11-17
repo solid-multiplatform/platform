@@ -31,7 +31,7 @@ export default defineAnchorNode(
       };
       void loadBundledFonts(root);
       const app = await import('solid-app-entry');
-      if (active) disposeApp = app.mount();
+      if (active) disposeApp = app.mount({ target: 'roku', root });
     });
     onCleanup(() => {
       active = false;

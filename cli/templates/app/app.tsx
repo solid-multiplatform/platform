@@ -46,6 +46,38 @@ export function mount(plugins: Plugins, fontRoot?: string) {
         if (active) setMessage(String(error));
       }
     };
+    if (fontRoot) {
+      const click = (event: MouseEvent) => {
+        const target = event.target as HTMLCanvasElement | null;
+        const bounds = target?.getBoundingClientRect?.();
+        const x = bounds?.width
+          ? ((event.clientX - bounds.left) *
+              (Config.rendererOptions?.appWidth ?? 1920)) /
+            bounds.width
+          : event.clientX;
+        const y = bounds?.height
+          ? ((event.clientY - bounds.top) *
+              (Config.rendererOptions?.appHeight ?? 1080)) /
+            bounds.height
+          : event.clientY;
+        const index = rows.findIndex((row) => {
+          const left = row.lng.absX ?? 0;
+          const top = row.lng.absY ?? 0;
+          return (
+            x >= left &&
+            x <= left + row.width &&
+            y >= top &&
+            y <= top + row.height
+          );
+        });
+        if (index >= 0) {
+          rows[index]!.setFocus();
+          void run(Object.keys(plugins)[index]!);
+        }
+      };
+      window.addEventListener('click', click);
+      onCleanup(() => window.removeEventListener('click', click));
+    }
     return (
       <view ref={view}>
         <text x={48} y={48}>
@@ -60,7 +92,7 @@ export function mount(plugins: Plugins, fontRoot?: string) {
               x={48}
               y={120 + index() * 56}
               autofocus={index() === 0}
-              focus={{ color: 0x4fb3ffff }}
+              $focus={{ color: 0x4fb3ffff }}
               onDown={() => {
                 rows[(index() + 1) % rows.length]?.setFocus();
                 return true;
@@ -72,9 +104,6 @@ export function mount(plugins: Plugins, fontRoot?: string) {
               onEnter={() => {
                 void run(name);
                 return true;
-              }}
-              onClick={() => {
-                void run(name);
               }}
             >
               {name}

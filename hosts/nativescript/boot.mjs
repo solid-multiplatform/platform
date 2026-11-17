@@ -8,7 +8,7 @@ import {
   KeyBridge,
 } from '@solid-multiplatform/platform/nativescript';
 
-export function runNativeApp(loadApp, bindDevice) {
+export function runNativeApp(target, loadApp, bindDevice) {
   installShims();
   Application.run({
     create() {
@@ -23,7 +23,7 @@ export function runNativeApp(loadApp, bindDevice) {
         const platform = await import('@solid-multiplatform/platform');
         platform.Config.preventDefaultOnHandledKeys = true;
         const bridge = new KeyBridge({ target: document });
-        const unbind = bindDevice(canvas, bridge);
+        const unbind = bindDevice(canvas, bridge, platform);
         const lifecycle = bindLifecycle(
           () => platform.renderer,
           bridge,
@@ -40,7 +40,7 @@ export function runNativeApp(loadApp, bindDevice) {
         };
         Application.on('exit', cleanup);
         try {
-          const app = await loadApp();
+          const app = await loadApp({ target, root, canvas });
           if (active) dispose = app.mount();
         } catch (error) {
           cleanup();

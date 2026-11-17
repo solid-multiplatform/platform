@@ -7,8 +7,10 @@ case "$target" in
   apple-tv) runtime=tvOS; device='Apple TV' ;;
   *) exit 2 ;;
 esac
-root=$(pwd)
-scratch=$(mktemp -d)
+phase="${2:-all}"
+if [[ "$phase" == all ]]; then scratch=$(mktemp -d)
+else scratch="${RUNNER_TEMP:?}/solid-swift-$target"; mkdir -p "$scratch"; fi
+if [[ "$phase" != launch ]]; then
 node cli/main.mjs init "$scratch/swift-probe" --targets "$target"
 cd "$scratch/swift-probe"
 corepack pnpm install
@@ -24,6 +26,9 @@ export function mount(plugins) {
 }
 APP
 corepack pnpm build "$target"
+if [[ "$phase" == build ]]; then exit; fi
+fi
+cd "$scratch/swift-probe"
 app=$(find "targets/$target/platforms" -path '*/Debug-*simulator/*.app' -type d | head -1)
 test -d "$app"
 bundle=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$app/Info.plist")

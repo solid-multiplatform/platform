@@ -68,6 +68,24 @@ export function freshDirectory(dest, populate) {
   }
 }
 export function command(bin, args, cwd) {
+  // npm and Corepack ship .cmd wrappers on Windows. Invoke their JavaScript
+  // entry points directly so project paths never need shell quoting.
+  if (process.platform === 'win32' && ['npm', 'corepack'].includes(bin)) {
+    const subpath =
+      bin === 'npm'
+        ? 'node_modules/npm/bin/npm-cli.js'
+        : 'node_modules/corepack/dist/corepack.js';
+    const executable = [
+      path.dirname(process.execPath),
+      ...(process.env.PATH ?? '').split(path.delimiter),
+    ]
+      .map((dir) => path.join(dir, subpath))
+      .find((file) => existsSync(file));
+    if (!executable)
+      throw new Error('Cannot find the installed ' + bin + ' CLI.');
+    args = [executable, ...args];
+    bin = process.execPath;
+  }
   const p = spawnSync(bin, args, { cwd, stdio: 'inherit', shell: false });
   if (p.error) throw p.error;
   if (p.status !== 0)

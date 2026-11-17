@@ -63,7 +63,8 @@
     "./nativescript/webpack": "./hosts/nativescript/webpack.cjs",
     "./browser-tv": "./dist/src/hosts/browser-tv.js",
     "./browser-tv/canvas": "./dist/src/hosts/canvas.js",
-    "./ios": "./hosts/ios/index.mjs"
+    "./ios": "./hosts/ios/index.mjs",
+    "./plugins": "./dist/src/hosts/plugins.js"
   },
   "sideEffects": false,
   "scripts": {

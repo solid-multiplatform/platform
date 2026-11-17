@@ -99,7 +99,7 @@ export default rokuConfig({ title: ${JSON.stringify(json(path.join(root, 'solid-
         : 'runAppleTV';
   write(
     path.join(dest, 'app/app.ts'),
-    `import { ${fn} } from '@solid-multiplatform/platform/${target}';\n${fn}(() => import('../work/main'));\n`,
+    `import { ${fn} } from '@solid-multiplatform/platform/${target}';\n${fn}(async host => { const app = await import('../work/main'); return { mount: () => app.mount(host) }; });\n`,
   );
 }
 
@@ -136,10 +136,25 @@ export function init(destination, selected) {
       packageManager: meta.packageManager,
       scripts: {
         platform: 'solid-platform',
+        check: 'tsc -p tsconfig.json',
         build: 'solid-platform build',
         dev: 'solid-platform dev',
       },
       dependencies: deps('vendor/'),
+      devDependencies: { typescript: '7.0.2' },
+    });
+    writeJson(path.join(root, 'tsconfig.json'), {
+      compilerOptions: {
+        target: 'ES2022',
+        module: 'ESNext',
+        moduleResolution: 'bundler',
+        jsx: 'preserve',
+        jsxImportSource: '@solid-multiplatform/platform',
+        strict: true,
+        skipLibCheck: true,
+        noEmit: true,
+      },
+      include: ['src/**/*.ts', 'src/**/*.tsx'],
     });
     writeJson(path.join(root, 'solid-platform.json'), {
       name,
@@ -155,7 +170,7 @@ export function init(destination, selected) {
     );
     write(
       path.join(root, '.gitignore'),
-      'node_modules/\ntargets/*/work/\ntargets/*/platforms/\ntargets/*/hooks/\ntargets/*/dist/\ntargets/*/dist-roku/\ntargets/web/public/fonts/\n',
+      'node_modules/\ntargets/*/work/\ntargets/*/.solid-build.lock/\ntargets/*/platforms/\ntargets/*/hooks/\ntargets/*/dist/\ntargets/*/dist-roku/\ntargets/web/public/fonts/\n',
     );
     write(
       path.join(root, 'README.md'),

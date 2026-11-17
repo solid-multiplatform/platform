@@ -47,7 +47,7 @@ function buildDesktop(root, work, plugins, launch) {
     );
   write(
     path.join(work, 'main.mjs'),
-    "import { plugins } from './plugins.mjs';\nimport { main } from './desktop.mjs';\nawait main(plugins);\n",
+    "import { plugins } from './plugins.mjs';\nimport { main } from './desktop.mjs';\nimport { attachPlugins } from '@solid-multiplatform/platform/plugins';\nconst detach = attachPlugins(plugins, {target:'desktop'});\ntry { await main(plugins); } finally { detach(); }\n",
   );
   if (launch) command(process.execPath, ['main.mjs'], work);
 }
@@ -82,7 +82,7 @@ function roku(work, plugins, dir) {
   const source = path.join(work, 'bsc');
   for (const { name } of plugins) {
     const from = path.join(work, 'plugins', name, 'components');
-    if (existsSync(from)) copy(from, path.join(source, 'components'));
+    if (existsSync(from)) copy(from, path.join(source, 'components', name));
   }
   // Compile all plugins together so duplicate component names fail in one build.
   writeJson(path.join(work, 'bsconfig.json'), {
@@ -101,10 +101,7 @@ function roku(work, plugins, dir) {
   );
 }
 
-export function build(root, target, dev = false) {
-  const config = project(root);
-  if (!config.targets.includes(target))
-    throw new Error('Choose a configured target: ' + config.targets.join(', '));
+function buildTarget(root, target, dev) {
   if (dev && !['web', 'desktop'].includes(target))
     throw new Error(
       'Use build for native packages, then launch them with the device SDK.',
@@ -154,8 +151,17 @@ export function build(root, target, dev = false) {
         : "'file:///app/fonts'";
   write(
     path.join(work, 'main.ts'),
-    `import { mount as start } from './src/app';\nimport { plugins } from './plugins.mjs';\nexport function mount() { return start(plugins, ${fonts}); }\n` +
-      (target === 'web' ? 'mount();\n' : ''),
+    `import { mount as start } from './src/app';
+import { attachPlugins } from '@solid-multiplatform/platform/plugins';
+import { plugins } from './plugins.mjs';
+export function mount(host = { target: '${target}' }) {
+  const detach = attachPlugins(plugins, host);
+  try {
+    const dispose = start(plugins, ${fonts});
+    return () => { try { dispose?.(); } finally { detach(); } };
+  } catch (error) { detach(); throw error; }
+}
+` + (target === 'web' ? 'mount();\n' : ''),
   );
   if (target !== 'roku')
     copy(
@@ -207,4 +213,24 @@ export function build(root, target, dev = false) {
       dir,
     );
   else command('corepack', ['pnpm', dev ? 'dev' : 'build'], dir);
+}
+
+export function build(root, target, dev = false) {
+  if (!project(root).targets.includes(target))
+    throw new Error('Unknown target: ' + target);
+  const lock = path.join(root, 'targets', target, '.solid-build.lock');
+  try {
+    mkdirSync(lock);
+  } catch (error) {
+    if (error.code !== 'EEXIST') throw error;
+    throw new Error(
+      'Build already active. If the previous process was interrupted, remove ' +
+        lock,
+    );
+  }
+  try {
+    buildTarget(root, target, dev);
+  } finally {
+    rmSync(lock, { recursive: true, force: true });
+  }
 }

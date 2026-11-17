@@ -4,5 +4,5 @@
     <field id="request" type="assocarray"/>
     <field id="response" type="assocarray"/>
   </interface>
-  <script type="text/brightscript" uri="pkg:/components/__CLASS__Task.bs"/>
+  <script type="text/brightscript" uri="pkg:/components/__PLUGIN__/__CLASS__Task.bs"/>
 </component>

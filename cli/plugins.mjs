@@ -20,7 +20,10 @@ function androidPlugin(dir, name, mode) {
     PACKAGE: pkg,
     LIB: lib,
     PLUGIN: name,
-    JNI: pkg.replaceAll('_', '_1').replaceAll('.', '_'),
+    SYMBOL:
+      'Java_' +
+      pkg.replaceAll('_', '_1').replaceAll('.', '_') +
+      '_Commands_run',
   };
   let gradle = `apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
@@ -28,6 +31,11 @@ android {
     namespace '${pkg}'
     compileSdk 36
     defaultConfig { minSdk 23 }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
 }
 `;
   let manifest =

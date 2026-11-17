@@ -1,1 +1,1 @@
-export function runIOS(loadApp: () => Promise<{ mount(): () => void }>): void;
+export function runIOS(loadApp: (host: { target: 'ios'; root: object; canvas: object }) => Promise<{ mount(): () => void }>): void;

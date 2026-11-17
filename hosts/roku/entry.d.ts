@@ -1,3 +1,3 @@
 declare module 'solid-app-entry' {
-  export function mount(): () => void;
+  export function mount(host: { target: 'roku'; root: object }): () => void;
 }
