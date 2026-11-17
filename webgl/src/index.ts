@@ -1,0 +1,93 @@
+export * from './common/types.js';
+export { EventEmitter } from './common/EventEmitter.js';
+export type { IEventEmitter } from './common/IEventEmitter.js';
+export type { TimingFunction } from './common/easing.js';
+export {
+  TextureError,
+  TextureErrorCode,
+  isTextureError,
+} from './core/textures/TextureError.js';
+export {
+  Texture,
+  ImageTexture,
+  SubTexture,
+  ColorTexture,
+  NoiseTexture,
+  TextureType,
+  type TextureState,
+  type TextureMap,
+  type ImageTextureProps,
+  type SubTextureProps,
+  type ColorTextureProps,
+  type NoiseTextureProps,
+} from './core/textures/Texture.js';
+export { RendererCore, type CoreSettings } from './core/RendererCore.js';
+export {
+  Node,
+  type INodeProps,
+  type ClippingValue,
+  type ImageType,
+  type RectWithValid,
+} from './core/nodes/Node.js';
+export {
+  TextNode,
+  type ITextNodeProps,
+  type TextProps,
+  type TextAlign,
+  type TextVerticalAlign,
+  type TextContain,
+  type TextWordBreak,
+  type TextFontStyle,
+} from './core/nodes/TextNode.js';
+export type { AnimateProps } from './core/animation/Animation.js';
+// Shaders: the contract of a shader type and the built-in types' props. The
+// built-in types themselves are in `./shaders`, so that an app that draws
+// none ships none.
+export type {
+  ShaderType,
+  WebGlShaderType,
+  AdvancedProp,
+  ShaderClock,
+  ShaderContext,
+  ShaderSource,
+  UniformWriter,
+  UpdateNode,
+} from './core/shaders/ShaderType.js';
+export type { ShaderNode } from './core/shaders/ShaderNode.js';
+export type {
+  RoundedProps,
+  BorderProps,
+  ShadowProps,
+  RoundedWithBorderProps,
+  RoundedWithShadowProps,
+  RoundedWithBorderAndShadowProps,
+  LinearGradientProps,
+  RadialGradientProps,
+  HolePunchProps,
+  EdgeFadeProps,
+  RadialProgressProps,
+  BlurProps,
+  DashedBorderProps,
+} from './core/shaders/builtin/index.js';
+export type { PassHooks, Viewport } from './core/scene/ScenePass.js';
+// Font prefetching: stage-free, so an app starts its font downloads before
+// it constructs the renderer (1.10).
+export {
+  prefetchFont,
+  clearFontPrefetch,
+  type FontPrefetchOptions,
+} from './core/text/FontPrefetch.js';
+export { Renderer, Renderer as RendererMain } from './Renderer.js';
+export type {
+  RendererSettings,
+  RendererSettings as RendererMainSettings,
+  RendererRuntimeSettings,
+  TextureMemorySettings,
+  TextBaselineMode,
+} from './settings.js';
+export type { Node as INode } from './core/nodes/Node.js';
+export type { TextNode as ITextNode } from './core/nodes/TextNode.js';
+export type { Platform, PlatformConstructor } from './platform/Platform.js';
+// The inspector's type (1.10 exported it here too); the class is in
+// `./inspector`, so that an app without it ships none of it.
+export type { Inspector, InspectorOptions } from './inspector/Inspector.js';
