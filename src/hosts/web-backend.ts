@@ -1,8 +1,4 @@
-import {
-  DOMRendererMain,
-  loadFontToDom,
-} from '../core/dom-renderer/domRenderer.js';
-export const browserHost = { DOMRendererMain, loadFontToDom };
+export * as browserHost from '../core/dom-renderer/domRenderer.js';
 import {
   RendererMain,
   type RendererMainSettings,
