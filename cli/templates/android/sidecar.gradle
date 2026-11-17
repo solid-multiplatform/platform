@@ -1,0 +1,21 @@
+android.ndkVersion = '28.2.13676358'
+def previewSource = file('native/preview.c')
+def previewOutput = layout.buildDirectory.dir('generated/solid-preview/jniLibs')
+android.sourceSets.main.jniLibs.srcDir(previewOutput)
+def toolchains = new File(android.ndkDirectory, 'toolchains/llvm/prebuilt')
+def hostTools = toolchains.listFiles()?.find { new File(it, 'bin/clang').isFile() || new File(it, 'bin/clang.exe').isFile() }
+if (hostTools == null) throw new GradleException("Install Android NDK ${android.ndkVersion} to compile the preview executable")
+def clang = new File(hostTools, System.getProperty('os.name').startsWith('Windows') ? 'bin/clang.exe' : 'bin/clang')
+
+['armeabi-v7a':'armv7a-linux-androideabi', 'arm64-v8a':'aarch64-linux-android', 'x86_64':'x86_64-linux-android'].each { abi, triple ->
+    def binary = previewOutput.get().file("${abi}/lib__LIB__.so").asFile
+    def compile = tasks.register("compileSolidPreview_${abi.replace('-', '_')}", Exec) {
+        inputs.file(previewSource)
+        inputs.property('toolchain', android.ndkVersion)
+        outputs.file(binary)
+        doFirst { binary.parentFile.mkdirs() }
+        commandLine clang, "--target=${triple}23", '-std=c11', '-O2', '-fPIE', '-pie',
+            '-Wl,-z,max-page-size=16384', '-o', binary, previewSource
+    }
+    tasks.named('preBuild').configure { dependsOn(compile) }
+}

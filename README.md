@@ -8,7 +8,33 @@ Build one Solid JSX scene and let a host supply drawing, input and device lifecy
 | Roku OS 16+                                      | `/roku/preset` | Native SceneGraph 2.0. The standalone [Roku example](examples/roku) builds a developer ZIP and checks its dependency graph.                                                      |
 | Android TV                                       | `/android-tv`  | NativeScript V8 and native WebGL. The [Android example](examples/android-tv) builds a debug APK.                                                                                 |
 | Apple TV                                         | `/apple-tv`    | NativeScript tvOS and native WebGL. The [Apple TV example](examples/apple-tv) targets the simulator in macOS CI. Its pinned Canvas SVG dependency has a tvOS compatibility shim. |
-| Desktop and standalone iOS                       | Future host    | Reuse the platform JSX runtime and implement the native surface, input, and lifecycle bindings. Engine choice belongs to that host.                                              |
+| iOS                                              | `/ios`         | NativeScript canvas host with app-owned Swift commands.                                                                                                                          |
+| Desktop GUI                                      | Future host    | Reuse the platform JSX runtime and implement the native surface, input, and lifecycle bindings. Engine choice belongs to that host.                                              |
+
+## Start an app or plugin
+
+After the framework install below, use the built-in CLI to scaffold an independent project. It vendors the two current package archives so the new app can be checked out and built before the first npm release.
+
+```sh
+node cli/main.mjs init ../living-room --targets web,roku,android-tv,apple-tv,ios,desktop
+cd ../living-room
+corepack pnpm install
+corepack pnpm platform plugin new preview --android-kind sidecar
+corepack pnpm build web
+corepack pnpm dev desktop
+```
+
+Each plugin lives in `plugins/<name>`. The starter's shared UI receives the selected target's named command modules. Extend the typed `Plugin` contract in `src/app.tsx` as the app's commands evolve. Use `--targets` on `plugin new` for plugins that exist only on some devices. The CLI reads the manifests when building and registers the matching implementation. Edit the plugin sources and rebuild. Generated files in `targets/<target>/work` are disposable.
+
+| Target              | Generated plugin                                                                                                                                                                                                                                                                 |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web and browser TVs | A JavaScript module consumed by the Vite app.                                                                                                                                                                                                                                    |
+| Roku                | A SceneGraph Task, BrighterScript source compiled with `bsc`, and a typed request/response binding.                                                                                                                                                                              |
+| Android TV          | An app-local Gradle library with Kotlin commands. Choose `--android-kind kotlin`, `sidecar`, `service`, or `jni`. The sidecar returns offscreen pixels from an NDK executable. The service demonstrates a user-started, bounded foreground job. JNI calls an NDK shared library. |
+| iOS and Apple TV    | One Swift `NSObject` subclass shared by the two Apple bindings. Its `@objc` method is called through NativeScript.                                                                                                                                                               |
+| Desktop             | A Node command host runs an app-bundled executable built from C. `dev desktop` runs each selected plugin. A desktop GUI renderer is a separate integration.                                                                                                                      |
+
+The Apple pattern follows the native command method in [Tauri's Swift template](https://github.com/tauri-apps/tauri/blob/22185acc06ca5d11b29276afa6a162fb1dee1475/crates/tauri-cli/templates/plugin/ios-spm/Sources/ExamplePlugin.swift) and uses [NativeScript's Swift metadata bridge](https://docs.nativescript.org/guide/native-code/ios). The [Android fixture](examples/android-tv/README.md) shows where Kotlin, executable code, and future native surface integrations fit. Service templates use Android's short-service lifecycle. Longer-running work needs a service type appropriate to the app's workload.
 
 ## Build and consume
 

@@ -20,7 +20,11 @@ jobs:
       - working-directory: examples/roku
         run: pnpm install --frozen-lockfile && pnpm build
       - run: pnpm lint
-  tvos:
+  apple:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [ios, apple-tv]
     runs-on: macos-15
     timeout-minutes: 45
     env:
@@ -32,8 +36,4 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
-      - working-directory: examples/apple-tv
-        run: pnpm install --frozen-lockfile
-      - run: xcrun --sdk appletvsimulator --show-sdk-version
-      - working-directory: examples/apple-tv
-        run: pnpm exec ns build tvos --emulator --env.production --no-hmr
+      - run: bash tests/cli/apple-smoke.sh ${{ matrix.target }}

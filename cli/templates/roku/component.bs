@@ -1,0 +1,7 @@
+sub init()
+    m.top.functionName = "execute"
+end sub
+
+sub execute()
+    m.top.response = { ok: true, result: "__PLUGIN__ Roku" }
+end sub

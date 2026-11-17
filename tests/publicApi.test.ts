@@ -416,6 +416,7 @@ v.describe('package.json exports', () => {
       './nativescript/webpack',
       './browser-tv',
       './browser-tv/canvas',
+      './ios',
     ]);
   });
 

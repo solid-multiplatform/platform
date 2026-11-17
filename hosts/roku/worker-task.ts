@@ -65,6 +65,15 @@ export function postRokuTask<T = any>(
   request: WorkerRequest,
   options: RokuTaskOptions = {},
 ): RokuTaskHandle<T> {
+  return postComponentTask<T>('WorkerTask', request, options);
+}
+
+/** Send an app-owned request to a SceneGraph Task with request/response fields. */
+export function postComponentTask<T>(
+  component: string,
+  request: { op: string; [key: string]: unknown },
+  options: RokuTaskOptions = {},
+): RokuTaskHandle<T> {
   const parent = options.parent || hostRoot || null;
   let settled = false;
   let task: any = null;
@@ -112,7 +121,7 @@ export function postRokuTask<T = any>(
   }
 
   try {
-    task = createElement('WorkerTask');
+    task = createElement(component);
     const completeResponse = () => {
       if (!responseReceived || (natural && !terminalAfterRun)) return;
       const response = pendingResponse;

@@ -62,7 +62,8 @@
     "./nativescript": "./dist/src/hosts/nativescript/index.js",
     "./nativescript/webpack": "./hosts/nativescript/webpack.cjs",
     "./browser-tv": "./dist/src/hosts/browser-tv.js",
-    "./browser-tv/canvas": "./dist/src/hosts/canvas.js"
+    "./browser-tv/canvas": "./dist/src/hosts/canvas.js",
+    "./ios": "./hosts/ios/index.mjs"
   },
   "sideEffects": false,
   "scripts": {
@@ -143,7 +144,21 @@
     "README.md",
     "docs/AI_CODING_GUIDELINES.md",
     "hosts",
-    "PROVENANCE.md"
+    "PROVENANCE.md",
+    "cli",
+    "vendor/*.tgz",
+    "tests/webgl/fonts",
+    "examples/*/package.json",
+    "examples/*/pnpm-workspace.yaml",
+    "examples/*/tsconfig.json",
+    "examples/*/nativescript.config.ts",
+    "examples/*/webpack.config.js",
+    "examples/roku/src",
+    "examples/roku/package-zip.py",
+    "examples/apple-tv/svg-compat",
+    "examples/android-tv/native",
+    "examples/android-tv/App_Resources",
+    "examples/apple-tv/App_Resources"
   ],
   "packageManager": "pnpm@10.33.4",
   "publishConfig": {
@@ -156,5 +171,8 @@
       "@solidtv/source": "./src/hosts/web-backend.ts",
       "default": "./dist/src/hosts/web-backend.js"
     }
+  },
+  "bin": {
+    "solid-platform": "./cli/main.mjs"
   }
 }
