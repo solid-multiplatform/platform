@@ -5,6 +5,7 @@ import { createElement, insertNode } from '@roku-sdk/solid';
 import type { SceneNode } from '@solid-multiplatform/renderer/contracts';
 import { sceneConformance } from '@solid-multiplatform/renderer/conformance';
 import { SceneGraphRenderer } from '@solid-multiplatform/renderer/roku';
+import { rokuHost } from '@solid-multiplatform/platform/roku';
 
 // Every timer the backend arms while the suite runs, for the idle case.
 let scheduled = 0;
@@ -46,8 +47,8 @@ async function run(root: object): Promise<void> {
   console.log(`CONFORMANCE DONE passed=${passed} failed=${failed}`);
 }
 
-/** The Roku host calls this with its root group once the scene exists. */
-export function mount(host: { root: object }): () => void {
-  void run(host.root);
+// The suite drives the backend itself, on the host's surface.
+rokuHost().launch((context) => {
+  void run(context.surface);
   return () => {};
-}
+});

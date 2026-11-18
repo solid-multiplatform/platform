@@ -207,6 +207,7 @@ ${browserTVs.includes(target) ? "import { bindBrowserTV, bindTVViewport } from '
 ${browser ? "import { installServices } from '@solid-multiplatform/platform/services'; import { webAppServices, webServices } from '@solid-multiplatform/platform/services/web';" : ''}
 ${legacy ? "import {useCanvas} from '@solid-multiplatform/platform/browser-tv/canvas'; useCanvas();" : ''}
 ${rokuFont ? "import { loadFonts } from '@solid-multiplatform/platform'; import lato from '../fonts/Lato-Regular.ttf';" : ''}
+${target === 'roku' ? "import { setRendererFactory } from '@solid-multiplatform/platform'; import { rokuHost } from '@solid-multiplatform/platform/roku';" : ''}
 import { mount as start } from './src/app';
 import { attachPlugins } from '@solid-multiplatform/platform/plugins';
 import { plugins } from './plugins.mjs';
@@ -222,7 +223,17 @@ export function mount(host = { target: '${target}' }) {
     return () => { try { dispose?.(); } finally { detach(); removeServices(); ${target === 'web' ? 'stopPointer(); input.dispose(); host.semantics.dispose();stopViewport();' : browserTVs.includes(target) ? 'tv.dispose();display.dispose();' : ''} } };
   } catch (error) { detach(); removeServices(); ${target === 'web' ? 'stopPointer(); input.dispose(); host.semantics.dispose();stopViewport();' : browserTVs.includes(target) ? 'tv.dispose();display.dispose();' : ''} throw error; }
 }
-` + (browser ? 'mount();\n' + (target === 'web' ? "if (import.meta.env.PROD && 'serviceWorker' in navigator) void registerServiceWorker({ url: './sw.js' });\n" : '') : ''),
+` +
+      (browser
+        ? 'mount();\n' +
+          (target === 'web'
+            ? "if (import.meta.env.PROD && 'serviceWorker' in navigator) void registerServiceWorker({ url: './sw.js' });\n"
+            : '')
+        : target === 'roku'
+          ? // The Roku host starts the app when its scene exists; the app's
+            // own mount() builds the renderer the host supplies.
+            `rokuHost({ namespace: ${JSON.stringify(project(root).name)} }).launch((context) => { setRendererFactory((settings) => context.createRenderer(settings), context.loadFonts); return mount({ target: 'roku', ...context }); });\n`
+          : ''),
   );
   if (target !== 'roku')
     copy(
