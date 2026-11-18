@@ -1,7 +1,7 @@
 import * as v from 'vitest';
 import { createSignal } from 'solid-js';
 import * as lng from '@solid-multiplatform/platform';
-import { Modal } from '@solid-multiplatform/platform/primitives';
+import { Modal, Toast } from '@solid-multiplatform/platform/primitives';
 import { useFocusManager } from '@solid-multiplatform/platform/focusManager';
 import { renderer, waitForUpdate } from './setup.js';
 
@@ -48,6 +48,29 @@ v.describe('Modal', () => {
     await waitForUpdate();
     await flush();
     v.expect(lng.activeElement()).toBe(trigger);
+    dispose();
+  });
+});
+
+v.describe('Toast', () => {
+  v.it('runs onDismiss after its duration', async () => {
+    const [open, setOpen] = createSignal(true);
+    let dismissed = 0;
+    const dispose = renderer.render(() => (
+      <Toast
+        visible={open}
+        message="Saved"
+        duration={20}
+        onDismiss={() => {
+          dismissed++;
+          setOpen(false);
+        }}
+      />
+    ));
+    v.expect(open()).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    v.expect(dismissed).toBe(1);
+    v.expect(open()).toBe(false);
     dispose();
   });
 });

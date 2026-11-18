@@ -121,9 +121,9 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 | Route guards/auth gating         | React Navigation guards                       | M      | No API                                                                                              | 2     |
 | State restoration                | React Navigation state persistence            | M      | No API                                                                                              | 2     |
 | Modal/dialog                     | RN Modal, Flutter showDialog                  | P      | `Modal` primitive: portal, barrier, Back/Escape, safe area, focus restore; focus trap still to wire | 2     |
-| Bottom sheet                     | Flutter showModalBottomSheet                  | M      | None                                                                                                | 2     |
+| Bottom sheet                     | Flutter showModalBottomSheet                  | S      | `Sheet` built on `Modal` (barrier, safe area, keyboard avoidance, focus restore)                    | —     |
 | Popover/menu/context menu        | Radix, Flutter MenuAnchor                     | M      | None                                                                                                | 2     |
-| Toast/snackbar                   | RN ToastAndroid, Flutter SnackBar             | M      | None                                                                                                | 2     |
+| Toast/snackbar                   | RN ToastAndroid, Flutter SnackBar             | S      | `Toast` with duration, action and safe-area/keyboard anchoring                                      | —     |
 | Tooltip                          | Flutter Tooltip                               | M      | None                                                                                                | 2     |
 | Alert/confirm                    | RN Alert, native dialogs                      | M      | None                                                                                                | 2     |
 | Back/escape/barrier dismiss      | RN onRequestClose, Flutter barrierDismissible | M      | None                                                                                                | 2     |
@@ -322,7 +322,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 12. Implementation phases
 
-Progress: Phase 0 is implemented (theme tokens, colour scheme, capability registry, extended inset contract). Phase 1 is implemented for `useKeyboard`, `KeyboardAvoidingView`, `SafeArea`, `revealAboveKeyboard`, `keyboardAwareBounds`, `createForm` validation/touched/errors/submitting, and the keyboard-aware mobile template. Remaining: a rendered FormField component and automatic wiring of native editors. Desktop scene pointer hover/press/click is implemented (`useMouse` plus SDL pointer/mouse forwarding); drag and cursor styles remain in Phase 3. Phase 2 has started with `Modal` (portal, barrier, Back/Escape, safe area, focus restore); sheet/popover/toast and the focus trap remain.
+Progress: Phase 0 is implemented (theme tokens, colour scheme, capability registry, extended inset contract). Phase 1 is implemented for `useKeyboard`, `KeyboardAvoidingView`, `SafeArea`, `revealAboveKeyboard`, `keyboardAwareBounds`, `createForm` validation/touched/errors/submitting, and the keyboard-aware mobile template. Remaining: a rendered FormField component and automatic wiring of native editors. Desktop scene pointer hover/press/click is implemented (`useMouse` plus SDL pointer/mouse forwarding); drag and cursor styles remain in Phase 3. Phase 2 has `Modal` (portal, barrier, Back/Escape, safe area, focus restore), `Sheet` and `Toast`; popover/menu/tooltip/alert and the full focus trap remain.
 
 ### Phase 0 — Contracts and theme foundation
 
