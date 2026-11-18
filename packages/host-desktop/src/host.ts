@@ -29,6 +29,7 @@ import type { FieldStyle } from './field.jsx';
 import { KeySource, keyboardEvent } from './keys.js';
 import { DesktopPlatform, windowMetrics } from './platform.js';
 import { feedPointers } from './pointer.js';
+import { desktopSemantics, type SemanticsSink } from './semantics.js';
 import { primaryModifier } from './services/device.js';
 import { desktopServices } from './services/manifest.js';
 
@@ -85,12 +86,22 @@ function applyWindowSize(): void {
 }
 
 /**
+ * What the desktop host hands an app: the platform's context, and the sink
+ * for the scene's semantics where the runtime can tell assistive technology
+ * (absent otherwise). The platform's own `HostContext` is to carry
+ * `semantics` itself; until it does, this type adds it.
+ */
+export type DesktopHostContext = HostContext<DesktopSurface> & {
+  semantics?: SemanticsSink;
+};
+
+/**
  * Runs `run` in the window and returns what ends it: the app's disposer,
  * then the host's own. Closing the window calls it and ends the process.
  */
 export function launchDesktop(
   options: DesktopHostOptions,
-  run: (context: HostContext<DesktopSurface>) => Disposer,
+  run: (context: DesktopHostContext) => Disposer,
 ): Disposer {
   // Before anything reads the window: a run without one stops here.
   const metrics = windowMetrics();
@@ -113,6 +124,8 @@ export function launchDesktop(
   const pointer = createInputScope();
   const stopPointers = feedPointers(pointer);
   const editors = desktopEditors(pointer, primaryModifier(), options.field);
+  // Nothing native starts for it until the app registers a node.
+  const semantics = desktopSemantics();
 
   let stopped = false;
   let stopApp: Disposer | undefined;
@@ -141,6 +154,7 @@ export function launchDesktop(
   ];
   const release = (): void => {
     for (const stopListening of stops) stopListening();
+    semantics?.dispose();
     editors.dispose();
     stopPointers();
     pointer.dispose();
@@ -165,6 +179,7 @@ export function launchDesktop(
       keys: keys as unknown as KeyEventTarget,
       pointer,
       text: editors,
+      ...(semantics === undefined ? {} : { semantics }),
       createRenderer: (settings) =>
         // The second argument names a page element on the web; the adapter
         // draws in the window whatever it is.

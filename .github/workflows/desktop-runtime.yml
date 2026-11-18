@@ -41,7 +41,8 @@ jobs:
           sudo apt-get update
           # A compiler and build tools; what SDL's X11, Wayland and D-Bus
           # support is built against; a virtual display, Mesa's software GL
-          # and xdotool for the tests.
+          # and xdotool for the tests; a session bus and the accessibility
+          # bus with its registry for the accessibility test.
           sudo apt-get install -y --no-install-recommends \
             build-essential cmake ninja-build pkg-config python3 \
             libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev \
@@ -49,7 +50,8 @@ jobs:
             libwayland-dev wayland-protocols libdecor-0-dev \
             libegl1-mesa-dev libgles2-mesa-dev libgl1-mesa-dev libdrm-dev libgbm-dev \
             libdbus-1-dev libibus-1.0-dev libudev-dev \
-            xvfb xauth xdotool openssl libgl1-mesa-dri libegl1 libgles2
+            xvfb xauth xdotool openssl libgl1-mesa-dri libegl1 libgles2 \
+            dbus at-spi2-core
 
       # The Hermes and SDL builds are saved as soon as they are made, not at
       # the end of the job: a later step that fails must not cost the next
@@ -125,15 +127,49 @@ jobs:
           export HERMES_SRC="$GITHUB_WORKSPACE/hermes" HERMES_BUILD="$GITHUB_WORKSPACE/hermes-build"
           cargo build --release --locked
           ls -l target/release/solid-desktop
+          ./target/release/solid-desktop --diagnostics
+          # The runtime's unit tests, with the dependencies just built.
+          cargo test --release --locked
 
       - run: pnpm install --frozen-lockfile
       # The scene test compares the runtime's frame with Chromium's.
       - working-directory: packages/platform
         run: pnpm exec playwright install --with-deps chromium
       - name: Test
+        env:
+          # Here the accessibility test must run, not skip.
+          SOLID_DESKTOP_REQUIRE_A11Y: 1
         run: bash packages/host-desktop/tests/run.sh
+
+      # The runtime that ships: SDL compiled in, so an app needs none
+      # installed. Packaged, moved and run like the one above, without the
+      # SDL built for it on the library path.
+      - name: Build the runtime with SDL linked in
+        working-directory: packages/host-desktop/native
+        run: |
+          set -euo pipefail
+          export HERMES_SRC="$GITHUB_WORKSPACE/hermes" HERMES_BUILD="$GITHUB_WORKSPACE/hermes-build"
+          cargo build --release --locked --features static-sdl --target-dir target/static
+          ls -l target/static/release/solid-desktop
+          env -u LD_LIBRARY_PATH ./target/static/release/solid-desktop --diagnostics
+          if env -u LD_LIBRARY_PATH ldd target/static/release/solid-desktop | grep -i sdl; then
+            echo "SDL is still a shared library of this build" >&2
+            exit 1
+          fi
+      - name: Test a package of it
+        run: |
+          set -euo pipefail
+          mkdir -p packages/host-desktop/prebuilt/linux-x64
+          cp packages/host-desktop/native/target/static/release/solid-desktop packages/host-desktop/prebuilt/linux-x64/
+          env -u LD_LIBRARY_PATH \
+            SOLID_DESKTOP_RUNTIME="$PWD/packages/host-desktop/prebuilt/linux-x64/solid-desktop" \
+            SDL_VIDEODRIVER=x11 LIBGL_ALWAYS_SOFTWARE=1 \
+            xvfb-run -a -s "-screen 0 1280x720x24" node packages/host-desktop/tests/package/run.mjs
+      # Put at packages/host-desktop/prebuilt/linux-x64/solid-desktop and
+      # made executable again (an artifact does not keep that), this is the
+      # prebuilt runtime that cli/runtime.mjs finds.
       - uses: actions/upload-artifact@v4
         with:
           name: solid-desktop-linux-x64
-          path: packages/host-desktop/native/target/release/solid-desktop
+          path: packages/host-desktop/prebuilt/linux-x64/solid-desktop
           if-no-files-found: error

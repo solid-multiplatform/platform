@@ -15,9 +15,15 @@ export {
   desktopControls,
   desktopHost,
   launchDesktop,
+  type DesktopHostContext,
   type DesktopHostOptions,
   type DesktopSurface,
 } from './host.js';
+export {
+  desktopSemantics,
+  type SemanticsHandle,
+  type SemanticsSink,
+} from './semantics.js';
 export { DesktopPlatform } from './platform.js';
 export type { FieldStyle } from './field.jsx';
 export type { DesktopEditor, DesktopEditorHost } from './editor.js';

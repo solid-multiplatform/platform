@@ -21,6 +21,11 @@ panic = "abort"
 strip = true
 
 [features]
+# Accessibility is on unless asked otherwise (--no-default-features): an app
+# nobody with a screen reader can use is not finished, and it costs nothing
+# at run time until an app describes its scene. It costs 2.6 MB of the
+# executable, most of it the D-Bus client.
+default = ["accessibility"]
 # SDL compiled from source into the executable, for packaged apps: nothing of
 # SDL has to be installed where the app runs. Off by default because it adds
 # a CMake build of SDL to every build of the runtime.
@@ -39,8 +44,22 @@ static-sdl = [
     "sdl3-sys/no-sdl-tray",
 ]
 
+# The scene's semantics for screen readers and other assistive technology
+# (AT-SPI over D-Bus, through AccessKit). Linux only so far.
+accessibility = ["dep:accesskit", "dep:accesskit_unix", "dep:blocking"]
+
 [dependencies]
 sdl3-sys = "0.7.3"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+accesskit = { version = "0.25", optional = true }
+accesskit_unix = { version = "0.24", optional = true }
+# Not used here: this pins the thread pool the D-Bus client takes its helper
+# threads from. In 1.7.0 an idle thread of that pool never ends and wakes
+# twice a second for as long as the process lives; in 1.6.2 it ends after
+# half a second without work. tests/a11y/run.mjs fails when a thread keeps
+# waking, so it says when this pin can go.
+blocking = { version = "=1.6.2", optional = true }
 # Decoders only, all in Rust: no encoders, no C libraries.
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
 # Where one user-perceived character ends and the next begins, for the caret

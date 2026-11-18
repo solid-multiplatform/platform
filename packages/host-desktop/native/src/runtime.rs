@@ -312,6 +312,8 @@ pub unsafe fn run(env: napi_env) -> i32 {
         // Everything the system has for this turn, then one call into
         // JavaScript with all of it.
         while pending {
+            #[cfg(all(feature = "accessibility", target_os = "linux"))]
+            crate::a11y::observe(&event);
             input::collect(&event);
             pending = SDL_PollEvent(&mut event);
         }

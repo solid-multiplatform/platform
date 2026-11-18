@@ -29,4 +29,5 @@ virtual() {
 virtual node "$here/scene/run.mjs"
 virtual node "$here/host/run.mjs"
 virtual node "$here/package/run.mjs"
+virtual node "$here/a11y/run.mjs"
 echo "desktop host tests passed"

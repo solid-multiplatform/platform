@@ -200,6 +200,36 @@ interface SolidNative {
     ): number;
     abort(id: number): void;
   };
+  /**
+   * The scene's semantics for assistive technology (native/src/a11y.rs);
+   * absent without a window and in a runtime built without it.
+   */
+  readonly a11y?: {
+    /** Absent strings are `null`, absent numbers `NaN`; `parent` 0 is the window. */
+    set(
+      id: number,
+      parent: number,
+      role: string,
+      label: string,
+      description: string | null,
+      value: string | null,
+      x: number,
+      y: number,
+      width: number,
+      height: number,
+      flags: number,
+      level: number,
+      min: number,
+      max: number,
+      now: number,
+    ): void;
+    remove(id: number): void;
+    /** Ends a batch; `focus` 0 is the window itself. */
+    commit(focus: number, scale: number): void;
+    listen(callback: (action: 'focus' | 'click', id: number) => void): void;
+    /** Whether assistive technology has asked for the tree. */
+    active(): boolean;
+  };
   /** Made-up input, when SOLID_DESKTOP_TEST is set: see native/src/testing.rs. */
   readonly test?: {
     key(

@@ -4,6 +4,8 @@
 //! surface for the scene. JavaScript reaches the host through Node-API, so
 //! the same interface serves native plugins.
 
+#[cfg(all(feature = "accessibility", target_os = "linux"))]
+mod a11y;
 mod console;
 mod dialog;
 mod files;
@@ -53,6 +55,8 @@ unsafe fn diagnostics() -> ! {
         .map(|name| CStr::from_ptr(name).to_string_lossy().into_owned())
         .collect();
     println!("video-drivers {}", drivers.join(" "));
+    let accessibility = cfg!(all(feature = "accessibility", target_os = "linux"));
+    println!("accessibility {}", if accessibility { "at-spi" } else { "none" });
     exit(0);
 }
 
@@ -212,6 +216,8 @@ fn main() {
             window::install(env, host, window);
             input::install(env, host);
             dialog::install(env, host);
+            #[cfg(all(feature = "accessibility", target_os = "linux"))]
+            a11y::install(env, host, window);
             if std::env::var_os("SOLID_DESKTOP_TEST").is_some() {
                 testing::install(env, host);
             }
