@@ -147,7 +147,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   });
 
   v.test(
-    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 66 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 67 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
@@ -165,6 +165,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'LazyRow',
         'Marquee',
         'MarqueeText',
+        'Modal',
         'Portal',
         'Row',
         'SafeArea',
