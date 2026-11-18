@@ -15,7 +15,7 @@ export function buildDesktopUI(root, dir, work, launch) {
     dir,
   );
   copy(path.join(root, 'assets/fonts'), path.join(work, 'fonts'));
-  for (const file of ['window.mjs', 'run.mjs'])
+  for (const file of ['window.mjs', 'graphics.mjs', 'run.mjs'])
     copy(path.join(framework, 'hosts/desktop', file), path.join(work, file));
   write(
     path.join(work, 'scene.ts'),

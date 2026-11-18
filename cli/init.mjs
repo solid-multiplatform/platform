@@ -204,7 +204,7 @@ export function init(destination, selected) {
       if (target === 'desktop') {
         write(
           path.join(dest, 'pnpm-workspace.yaml'),
-          "packages:\n  - '.'\nonlyBuiltDependencies:\n  - esbuild\n  - koffi\n  - sharp\n  - webgl-raub\n  - deps-opengl-raub\n  - segfault-raub\n",
+          "packages:\n  - '.'\nonlyBuiltDependencies:\n  - esbuild\n  - koffi\n  - sharp\n",
         );
         writeJson(path.join(dest, 'package.json'), {
           name: 'desktop-host',
@@ -212,7 +212,6 @@ export function init(destination, selected) {
           solidDesktopWindow: true,
           dependencies: {
             ...dependencies,
-            'webgl-raub': '5.3.0',
             koffi: '3.3.8',
             sharp: '0.35.5',
           },
@@ -223,14 +222,7 @@ export function init(destination, selected) {
             '@babel/preset-typescript': '7.29.7',
           },
           pnpm: {
-            onlyBuiltDependencies: [
-              'esbuild',
-              'koffi',
-              'sharp',
-              'webgl-raub',
-              'deps-opengl-raub',
-              'segfault-raub',
-            ],
+            onlyBuiltDependencies: ['esbuild', 'koffi', 'sharp'],
           },
           private: true,
           type: 'module',

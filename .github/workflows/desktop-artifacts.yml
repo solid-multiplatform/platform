@@ -9,7 +9,7 @@ jobs:
       matrix:
         os: [windows-2022, macos-15]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 25
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
@@ -37,10 +37,33 @@ jobs:
             curl -fsSL "$base/SDL3-3.4.20.dmg" -o sdl.dmg
             echo '36b7e4cefcf7d55d227b3df5e686f8f33ab34193173a976445d1b57c80009e44  sdl.dmg' | shasum -a 256 -c -
             hdiutil attach -nobrowse -mountpoint "$RUNNER_TEMP/sdl-runtime" sdl.dmg
-            sdl=$(find "$RUNNER_TEMP/sdl-runtime" -type f -name SDL3 | head -1)
+            sdl=$(find "$RUNNER_TEMP/sdl-runtime" -path '*/macos-*/SDL3.framework/*' -type f -name SDL3 | head -1)
             test -n "$sdl"
             echo "SOLID_SDL3_LIBRARY=$sdl" >> "$GITHUB_ENV"
           fi
+      - if: runner.os == 'Windows'
+        uses: actions/checkout@v4
+        with:
+          repository: microsoft/vcpkg
+          ref: de36db04550a8625e3154b1a758c60035901f244
+          path: tools/vcpkg
+      - if: runner.os == 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: tools/vcpkg/installed
+          key: solid-angle-x64-de36db04550a
+      - name: Build ANGLE for Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $root = Resolve-Path tools/vcpkg
+          if (!(Test-Path "$root/installed/x64-windows/bin/libEGL.dll")) {
+            & "$root/bootstrap-vcpkg.bat" -disableMetrics
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+            & "$root/vcpkg.exe" install angle:x64-windows --classic "--vcpkg-root=$root" --clean-after-build
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
+          "SOLID_ANGLE_DIR=$root/installed/x64-windows/bin" | Out-File -FilePath $env:GITHUB_ENV -Append
       - name: Build generated desktop distribution
         run: |
           node cli/main.mjs init gallery-app --targets desktop

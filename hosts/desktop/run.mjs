@@ -1,7 +1,8 @@
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { readFile } from 'node:fs/promises';
-import gl from 'webgl-raub';
+import { createGraphics } from './graphics.mjs';
+import { channel } from 'node:diagnostics_channel';
 import sharp from 'sharp';
 import { openWindow } from './window.mjs';
 
@@ -19,50 +20,14 @@ globalThis.location = pathToFileURL(path.join(work, 'index.html'));
 globalThis.self = globalThis;
 const surface = new EventTarget();
 surface.style = {};
+const gl = createGraphics(windowHost, surface);
 surface.getContext = () => gl;
 surface.getBoundingClientRect = () => ({
   left: 0,
   top: 0,
   ...windowHost.geometry(),
 });
-gl.canvas = surface;
-gl.init();
-if (windowHost.core) {
-  const source = gl.shaderSource.bind(gl);
-  gl.shaderSource = (shader, code) => {
-    const fragment =
-      gl.getShaderParameter(shader, gl.SHADER_TYPE) === gl.FRAGMENT_SHADER;
-    const translated = code
-      .replace(/precision\s+(?:lowp|mediump|highp)\s+\w+\s*;/g, '')
-      .replace(/\battribute\b/g, 'in')
-      .replace(/\bvarying\b/g, fragment ? 'in' : 'out')
-      .replace(/\btexture2D\b/g, 'texture')
-      .replace(/\bgl_FragColor\b/g, 'fragmentColor');
-    source(
-      shader,
-      '#version 150\n' +
-        (fragment ? 'out vec4 fragmentColor;\n' : '') +
-        translated,
-    );
-  };
-}
-const texture = gl.texImage2D.bind(gl);
-gl.texImage2D = (...args) => {
-  const data = args[5];
-  if (args.length === 6 && data?.data)
-    return texture(
-      args[0],
-      args[1],
-      args[2],
-      data.width,
-      data.height,
-      0,
-      args[3],
-      args[4],
-      data.data,
-    );
-  return texture(...args);
-};
+channel('solid.desktop.context').publish(gl);
 async function load(url) {
   const resolved = new URL(url, globalThis.location);
   if (resolved.protocol === 'file:') return readFile(fileURLToPath(resolved));
@@ -82,7 +47,13 @@ async function decode(blob, sx, sy, sw, sh, opts) {
       for (let c = 0; c < 3; c++) data[i + c] = Math.round(data[i + c] * a);
     }
   }
-  return { data, width: info.width, height: info.height, close() {} };
+  return {
+    data,
+    width: info.width,
+    height: info.height,
+    premultiplied: options?.premultiplyAlpha === 'premultiply',
+    close() {},
+  };
 }
 let boot,
   dispose,

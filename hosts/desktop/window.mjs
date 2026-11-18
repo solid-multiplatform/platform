@@ -1,5 +1,13 @@
 // SDL 3.2 event layouts. Decode only the public fixed-width fields we consume.
 import koffi from 'koffi';
+import path from 'node:path';
+if (process.platform === 'win32' && process.env.SOLID_ANGLE_DIR) {
+  const bin = process.env.SOLID_ANGLE_DIR;
+  process.env.PATH = bin + path.delimiter + process.env.PATH;
+  process.env.SDL_OPENGL_ES_DRIVER = '1';
+  process.env.SDL_EGL_LIBRARY = path.join(bin, 'libEGL.dll');
+  process.env.SDL_OPENGL_LIBRARY = path.join(bin, 'libGLESv2.dll');
+}
 const library =
   process.env.SOLID_SDL3_LIBRARY ??
   { win32: 'SDL3.dll', darwin: 'libSDL3.dylib' }[process.platform] ??
@@ -16,6 +24,7 @@ const swap = fn('bool SDL_GL_SwapWindow(void *)'),
   vsync = fn('bool SDL_GL_SetSwapInterval(int)');
 const poll = fn('bool SDL_PollEvent(void *)'),
   error = fn('const char *SDL_GetError()');
+const proc = fn('void *SDL_GL_GetProcAddress(const char *)');
 const properties = fn('uint32_t SDL_GetWindowProperties(void *)');
 const number = fn(
   'int64_t SDL_GetNumberProperty(uint32_t,const char *,int64_t)',
@@ -72,6 +81,7 @@ export function openWindow(title) {
   return {
     handle,
     core,
+    proc,
     nativeVideoId() {
       const id = properties(handle);
       if (process.platform === 'win32') {

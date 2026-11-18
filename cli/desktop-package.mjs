@@ -1,6 +1,7 @@
 import path from 'node:path';
 import {
   chmodSync,
+  readdirSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -71,10 +72,27 @@ export function packageDesktop(root) {
       path.join(stage, 'licenses/SDL-LICENSE.txt'),
     );
     rmSync(path.join(stage, 'vendor'), { recursive: true, force: true });
+    if (process.platform === 'win32' && process.env.SOLID_ANGLE_DIR) {
+      const source = process.env.SOLID_ANGLE_DIR;
+      for (const file of readdirSync(source).filter((n) =>
+        n.toLowerCase().endsWith('.dll'),
+      ))
+        copy(path.join(source, file), path.join(stage, 'lib/angle', file));
+      for (const dep of ['libEGL.dll', 'libGLESv2.dll'])
+        if (!existsSync(path.join(stage, 'lib/angle', dep)))
+          throw new Error('Incomplete ANGLE distribution: ' + dep);
+      const share = path.resolve(source, '../share');
+      for (const dep of readdirSync(share))
+        if (existsSync(path.join(share, dep, 'copyright')))
+          copy(
+            path.join(share, dep, 'copyright'),
+            path.join(stage, 'licenses/angle', dep + '.txt'),
+          );
+    }
     if (process.platform === 'win32')
       write(
         path.join(stage, 'launch.cmd'),
-        `@echo off\r\nset "SOLID_SDL3_LIBRARY=%~dp0lib\\${lib}"\r\n"%~dp0bin\\node.exe" "%~dp0targets\\desktop\\work\\run.mjs"\r\n`,
+        `@echo off\r\nif exist "%~dp0lib\\angle\\libEGL.dll" set "SOLID_ANGLE_DIR=%~dp0lib\\angle"\r\nset "SOLID_SDL3_LIBRARY=%~dp0lib\\${lib}"\r\n"%~dp0bin\\node.exe" "%~dp0targets\\desktop\\work\\run.mjs"\r\n`,
       );
     else {
       write(
