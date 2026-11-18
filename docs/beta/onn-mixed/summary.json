@@ -10,8 +10,17 @@
     "seconds": 600.017,
     "displayPeriodNs": 16666666,
     "cycles": 10,
-    "windowFrames": 16335,
-    "windowLateOrDropped": 167,
+    "frameAccountingVersion": 2,
+    "layerReconciliation": {
+      "matchedAppLayerRows": 16335,
+      "flaggedAppLayerRows": 167,
+      "nonBufferTransactions": 114,
+      "otherLayerBuffers": 0,
+      "associatedDisplayFrames": 16221,
+      "displayFramesWithFlaggedAppLayers": 53
+    },
+    "windowFrames": 16221,
+    "windowLateOrDropped": 53,
     "windowFramesWithoutDisplayMatch": 0,
     "windowFramesByPhase": {
       "gallery": {
@@ -19,16 +28,16 @@
         "lateOrDropped": 2
       },
       "modal": {
-        "frames": 120,
-        "lateOrDropped": 91
+        "frames": 60,
+        "lateOrDropped": 31
       },
       "player": {
         "frames": 10,
         "lateOrDropped": 0
       },
       "resuming": {
-        "frames": 74,
-        "lateOrDropped": 74
+        "frames": 20,
+        "lateOrDropped": 20
       }
     },
     "galleryIntervals25To100ms": 2757,
@@ -47,8 +56,17 @@
     "seconds": 600.035,
     "displayPeriodNs": 16666666,
     "cycles": 10,
-    "windowFrames": 15695,
-    "windowLateOrDropped": 162,
+    "frameAccountingVersion": 2,
+    "layerReconciliation": {
+      "matchedAppLayerRows": 15695,
+      "flaggedAppLayerRows": 162,
+      "nonBufferTransactions": 112,
+      "otherLayerBuffers": 0,
+      "associatedDisplayFrames": 15583,
+      "displayFramesWithFlaggedAppLayers": 50
+    },
+    "windowFrames": 15583,
+    "windowLateOrDropped": 50,
     "windowFramesWithoutDisplayMatch": 0,
     "windowFramesByPhase": {
       "gallery": {
@@ -56,16 +74,16 @@
         "lateOrDropped": 1
       },
       "modal": {
-        "frames": 133,
-        "lateOrDropped": 91
+        "frames": 73,
+        "lateOrDropped": 31
       },
       "player": {
         "frames": 10,
         "lateOrDropped": 0
       },
       "resuming": {
-        "frames": 72,
-        "lateOrDropped": 70
+        "frames": 20,
+        "lateOrDropped": 18
       }
     },
     "galleryIntervals25To100ms": 3397,
@@ -88,8 +106,17 @@
     "seconds": 600.151,
     "displayPeriodNs": 16666666,
     "cycles": 10,
-    "windowFrames": 15596,
-    "windowLateOrDropped": 166,
+    "frameAccountingVersion": 2,
+    "layerReconciliation": {
+      "matchedAppLayerRows": 15596,
+      "flaggedAppLayerRows": 166,
+      "nonBufferTransactions": 110,
+      "otherLayerBuffers": 0,
+      "associatedDisplayFrames": 15486,
+      "displayFramesWithFlaggedAppLayers": 56
+    },
+    "windowFrames": 15486,
+    "windowLateOrDropped": 56,
     "windowFramesWithoutDisplayMatch": 0,
     "windowFramesByPhase": {
       "gallery": {
@@ -97,16 +124,16 @@
         "lateOrDropped": 1
       },
       "modal": {
-        "frames": 174,
-        "lateOrDropped": 96
+        "frames": 114,
+        "lateOrDropped": 36
       },
       "player": {
         "frames": 10,
         "lateOrDropped": 0
       },
       "resuming": {
-        "frames": 70,
-        "lateOrDropped": 69
+        "frames": 20,
+        "lateOrDropped": 19
       }
     },
     "galleryIntervals25To100ms": 3571,

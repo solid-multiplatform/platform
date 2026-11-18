@@ -7,10 +7,13 @@ import csv
 import gzip
 import hashlib
 import io
+import itertools
 import json
 import pathlib
 import re
 import subprocess
+
+from frame_timeline import as_csv, is_flagged, layer_query, split_layers
 
 
 def analyze(directory, processor):
@@ -63,13 +66,8 @@ def analyze(directory, processor):
     ]
     if sequence != expected * len(run["cycles"]) or not run["cycles"]:
         raise ValueError(f"Missing or unexpected interaction markers: {sequence}")
-    frames = query(f"""SELECT a.ts, a.dur, a.surface_frame_token, a.display_frame_token,
-                            a.present_type, a.jank_type, d.ts + d.dur AS display_present_ns
-                        FROM actual_frame_timeline_slice a
-                        LEFT JOIN actual_frame_timeline_slice d
-                          ON d.display_frame_token=a.display_frame_token AND d.layer_name IS NULL
-                          AND (d.surface_frame_token IS NULL OR d.surface_frame_token=0) AND d.dur>=0
-                        WHERE instr(a.layer_name,'{meta["package"]}/')>0 ORDER BY a.ts""")
+    layers = query(layer_query(meta["package"]))
+    frames, other_layers, reconciliation = split_layers(layers, meta["package"])
     # Assign by app-frame start. Never count an intentional transition or a media frame at
     # its source cadence as a 60 Hz scrolling gap.
     mode = "gallery"
@@ -96,34 +94,27 @@ def analyze(directory, processor):
     per_phase = {}
     gallery_gaps = 0
     missing_display = 0
-    last = {}
-    for row in frames:
+    gallery_presents = collections.defaultdict(set)
+    for row in layers:
         segment = bisect.bisect_right(edges, int(row["ts"]))
-        mode = phases[segment]
+        row["phase"] = phases[segment]
+    for row in frames:
+        mode = row["phase"]
         counts = per_phase.setdefault(mode, collections.Counter())
         counts["frames"] += 1
-        counts["lateOrDropped"] += int(
-            row["present_type"] in ("Late Present", "Dropped Frame")
-            or "Deadline Missed" in row["jank_type"]
-        )
-        row["phase"] = mode
+        counts["lateOrDropped"] += int(is_flagged(row))
         if not row["display_present_ns"].isdigit():
             missing_display += 1
-            continue
-        when = int(row["display_present_ns"])
-        if (
-            mode == "gallery"
-            and segment in last
-            and 25_000_000 <= when - last[segment] < 100_000_000
-        ):
-            gallery_gaps += 1
-        last[segment] = when
+        elif mode == "gallery" and row["present_type"] != "Dropped Frame":
+            segment = bisect.bisect_right(edges, int(row["ts"]))
+            gallery_presents[segment].add(int(row["display_present_ns"]))
+    for presents in gallery_presents.values():
+        times = sorted(presents)
+        gallery_gaps += sum(
+            25_000_000 <= b - a < 100_000_000 for a, b in itertools.pairwise(times)
+        )
     if not frames or not per_phase.get("gallery") or not per_phase.get("player"):
         raise ValueError("Missing gallery or playback window frames")
-    output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=frames[0].keys())
-    writer.writeheader()
-    writer.writerows(frames)
     prefix = "pass-" + str(meta["pass"])
     counts = [c["exit"] for c in run["cycles"]]
     return {
@@ -137,6 +128,8 @@ def analyze(directory, processor):
         "seconds": round(float(span["seconds"]), 3),
         "displayPeriodNs": run.get("displayPeriodNs"),
         "cycles": len(counts),
+        "frameAccountingVersion": 2,
+        "layerReconciliation": reconciliation,
         "windowFrames": len(frames),
         "windowLateOrDropped": sum(x["lateOrDropped"] for x in per_phase.values()),
         "windowFramesWithoutDisplayMatch": missing_display,
@@ -146,7 +139,12 @@ def analyze(directory, processor):
         "videoDropped": sum(x["dropped"] for x in counts),
         "videoSkipped": sum(x["skipped"] for x in counts),
     }, {
-        prefix + "-window.csv.gz": gzip.compress(output.getvalue().encode(), mtime=0),
+        prefix + "-window.csv.gz": gzip.compress(
+            as_csv(frames, frames[0].keys()), mtime=0
+        ),
+        prefix + "-other-layers.csv.gz": gzip.compress(
+            as_csv(other_layers, frames[0].keys()), mtime=0
+        ),
         prefix + "-events.json": (json.dumps(run["events"], indent=2) + "\n").encode(),
     }
 

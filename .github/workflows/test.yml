@@ -20,6 +20,7 @@ jobs:
       - run: pnpm build
       - run: pnpm test
       - run: node --test tests/cli/variants.test.mjs
+      - run: python tests/performance/test_frame_timeline.py
       - working-directory: packages/video
         run: npm ci && npm test
       - run: node --test tests/native/*.test.mjs
