@@ -1,3 +1,8 @@
 export * from './portable.js';
-export * from './dom-renderer/domRenderer.js';
+export {
+  DOMNode,
+  DOMRendererMain,
+  isDomRenderer,
+  loadFontToDom,
+} from '@solid-multiplatform/renderer/dom';
 export * from './shaders.js';

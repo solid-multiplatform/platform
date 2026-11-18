@@ -46,9 +46,20 @@ export interface AnimationConfig extends IAnimationController {
 export class AnimationManager {
   activeAnimations: AnimationConfig[] = [];
 
+  /**
+   * Called when an animation joins the active list. The Stage points it at
+   * its loop wake: the loop runs while an animation is active and sleeps
+   * otherwise, and a started animation writes no prop until it is stepped, so
+   * nothing else would ask for the tick that steps it.
+   */
+  onActive: (() => void) | null = null;
+
   registerAnimation(animation: AnimationConfig) {
     if (!this.activeAnimations.includes(animation)) {
       this.activeAnimations.push(animation);
+      if (this.onActive !== null) {
+        this.onActive();
+      }
     }
   }
 

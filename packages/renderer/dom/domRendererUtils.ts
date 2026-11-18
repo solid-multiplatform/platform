@@ -1,8 +1,10 @@
 // Utilities extracted from domRenderer.ts for clarity
-import * as lng from '@solid-multiplatform/renderer';
-import { Config } from '../config.js';
+import * as lng from '../webgl/exports/index.js';
+import { Config } from './config.js';
 import { DOMNode } from './domRenderer.js';
-import { isFunction } from '../utils.js';
+
+const isFunction = (value: unknown): value is (t: number) => number =>
+  typeof value === 'function';
 
 // #region Color & Gradient Utils
 

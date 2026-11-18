@@ -6,7 +6,7 @@
  * tick. No WebGL, DOM canvas or second UI is involved.
  */
 
-import type { HostRenderer } from '../contracts.js';
+import type { SceneRenderer } from '../contracts.js';
 import type { AnimationSettings } from './animation-types.js';
 import type { CompositorAnimation } from './compositor-animation.js';
 import { subscribeFontChanges } from './fonts.js';
@@ -16,6 +16,7 @@ import { FrameClock } from './frame-clock.js';
 import { Events } from './events.js';
 import { fontMetrics, measureText as measureNativeText } from './fonts.js';
 import { RokuNode, RokuTexture, ShaderHandle } from './node.js';
+import type { RokuNodeProps } from './node.js';
 
 const APP_W = 1920;
 const APP_H = 1080;
@@ -33,7 +34,7 @@ export interface SceneGraphHost {
   createNativeAnimation?(node: RokuNode, key: string, target: number, settings: AnimationSettings): CompositorAnimation | undefined;
 }
 
-export class SceneGraphRenderer extends Events implements HostRenderer<RokuNode> {
+export class SceneGraphRenderer extends Events implements SceneRenderer<RokuNode, RokuNode> {
   settings: any;
   rootId: any;
   root: RokuNode;
@@ -254,22 +255,22 @@ export class SceneGraphRenderer extends Events implements HostRenderer<RokuNode>
 
   // ---- renderer contract ------------------------------------------------
 
-  createNode(props: any = {}) {
+  createNode(props: RokuNodeProps = {}): RokuNode {
     const node = new RokuNode(this, props, undefined, false);
     return node;
   }
 
-  createTextNode(props: any = {}) {
+  createTextNode(props: RokuNodeProps = {}): RokuNode {
     const node = new RokuNode(this, props, undefined, true);
     return node;
   }
 
-  createShader(name: any, props: any = {}) {
+  createShader(name: string | { name?: unknown; shaderType?: unknown }, props: Record<string, any> = {}): ShaderHandle {
     const typeName = typeof name === 'string' ? name : String(name?.name || name?.shaderType || 'shader');
     return new ShaderHandle(typeName, props);
   }
 
-  createTexture(type: any, props: any = {}) {
+  createTexture(type: string, props: Record<string, any> = {}): RokuTexture {
     return new RokuTexture(String(type), props);
   }
 

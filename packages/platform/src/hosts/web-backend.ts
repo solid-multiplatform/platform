@@ -1,4 +1,4 @@
-export * as browserHost from '../core/dom-renderer/domRenderer.js';
+export * as browserHost from '@solid-multiplatform/renderer/dom';
 import {
   RendererMain,
   type RendererMainSettings,

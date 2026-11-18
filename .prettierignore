@@ -9,7 +9,10 @@ releases
 pnpm-lock.yaml
 
 # Imported renderer sources keep their upstream formatting.
-packages/renderer
+packages/renderer/webgl
+packages/renderer/canvas
+packages/renderer/roku
+packages/renderer/tests
 
 packages/platform/vendor
 packages/platform/bench/.arms

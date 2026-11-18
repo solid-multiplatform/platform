@@ -11,10 +11,8 @@ import {
   convertToShader as defaultConvertToShader,
 } from './elementNode.js';
 import { setActiveElement as setActiveElementSignal } from './activeElement.js';
-import {
-  DomRendererMainSettings,
-  IRendererShader,
-} from './dom-renderer/domRendererTypes.js';
+import type { SceneShader } from '@solid-multiplatform/renderer/contracts';
+import type { DomRendererMainSettings } from '@solid-multiplatform/renderer/dom';
 
 /**
   STATIC LIGHTNING CONFIGURATION \
@@ -95,7 +93,7 @@ export interface Config {
    */
   preventDefaultOnHandledKeys: boolean;
   taskDelay?: number;
-  convertToShader: (_node: ElementNode, v: StyleEffects) => IRendererShader;
+  convertToShader: (_node: ElementNode, v: StyleEffects) => SceneShader;
   stateOrder?: DollarString[];
 }
 

@@ -13,7 +13,10 @@
   "ignorePatterns": [
     "**/dist/**",
     "**/node_modules/**",
-    "packages/renderer/**",
+    "packages/renderer/webgl/**",
+    "packages/renderer/canvas/**",
+    "packages/renderer/roku/**",
+    "packages/renderer/tests/**",
     "packages/platform/bench/.arms/**",
     "packages/platform/bench/dist/**",
     "packages/platform/vendor/**",
@@ -82,7 +85,12 @@
   },
   "overrides": [
     {
-      "files": ["packages/platform/src/**/*.{ts,tsx}"],
+      "files": [
+        "packages/platform/src/**/*.{ts,tsx}",
+        "packages/renderer/dom/**/*.ts",
+        "packages/renderer/conformance/**/*.ts",
+        "packages/renderer/contracts.ts"
+      ],
       "rules": {
         "constructor-super": "off",
         "getter-return": "off",

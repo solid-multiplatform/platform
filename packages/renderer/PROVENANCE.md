@@ -1,10 +1,10 @@
 # Source records
 
-| Backend | Source | Verified npm integrity or Git revision |
-| --- | --- | --- |
-| WebGL | [@solidtv/renderer 2.0.10](https://registry.npmjs.org/@solidtv/renderer/-/renderer-2.0.10.tgz) | `sha512-p1/VsEJ75+UkGNn239+AX0F+T+DRn97T2PP9WClhm/HyNCb1GaNV+rnHrbQg0cEyAf36eR96qLnYjCpCALbapA==` |
-| Canvas | [@solidtv/renderer 1.10.2](https://registry.npmjs.org/@solidtv/renderer/-/renderer-1.10.2.tgz) | `sha512-F8FVEszPkeSLn1ndtHodOzVFQl54HhSyBzWj6OEsHm0N+wWMh/tO8/hRU2Zj8VtvZj4VPmfSqYWQijAkk854lQ==` |
-| SceneGraph | [tv-web Roku](https://github.com/viptv-org/tv-web/tree/9924e7ce6961f78b193f3e5d62a31831ae6bff8b/roku) | `9924e7ce6961f78b193f3e5d62a31831ae6bff8b` |
+| Backend    | Source                                                                                                | Verified npm integrity or Git revision                                                            |
+| ---------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| WebGL      | [@solidtv/renderer 2.0.10](https://registry.npmjs.org/@solidtv/renderer/-/renderer-2.0.10.tgz)        | `sha512-p1/VsEJ75+UkGNn239+AX0F+T+DRn97T2PP9WClhm/HyNCb1GaNV+rnHrbQg0cEyAf36eR96qLnYjCpCALbapA==` |
+| Canvas     | [@solidtv/renderer 1.10.2](https://registry.npmjs.org/@solidtv/renderer/-/renderer-1.10.2.tgz)        | `sha512-F8FVEszPkeSLn1ndtHodOzVFQl54HhSyBzWj6OEsHm0N+wWMh/tO8/hRU2Zj8VtvZj4VPmfSqYWQijAkk854lQ==` |
+| SceneGraph | [tv-web Roku](https://github.com/viptv-org/tv-web/tree/9924e7ce6961f78b193f3e5d62a31831ae6bff8b/roku) | `9924e7ce6961f78b193f3e5d62a31831ae6bff8b`                                                        |
 
 Tags `upstream-2.0.10` and `upstream-1.10.2` preserve the respective published package directories, including their prebuilt distributions. The active tree builds the JavaScript and declarations from TypeScript. Each backend retains its source license and notices. The original packages identify upstream Git revisions 9c916ad and de2828c.
 

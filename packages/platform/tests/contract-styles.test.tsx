@@ -1,8 +1,8 @@
 // Contract tests: Styles (`style`, combineStyles, transitions).
 //
 // These pin today's behaviour (1.6.4) through public node props, the public
-// `combineStyles` helper and, for transitions, calls to the public
-// `ElementNode.prototype.animate`. Where today's behaviour is odd it is pinned
+// `combineStyles` helper and, for transitions, calls to
+// the backend node's `animateProp`. Where today's behaviour is odd it is pinned
 // anyway and the comment says so.
 //
 // vitest runs with `isolate: false`: Config is shared across files in a
@@ -494,9 +494,10 @@ v.describe('contract: explicit props override style', () => {
 });
 
 v.describe('contract: transition', () => {
-  let animate: v.MockInstance<lng.ElementNode['animate']>;
+  // What the framework asks the backend node to animate: (prop, value, settings).
+  let animate: v.MockInstance<lng.DOMNode['animateProp']>;
   v.beforeEach(() => {
-    animate = v.vi.spyOn(lng.ElementNode.prototype, 'animate');
+    animate = v.vi.spyOn(lng.DOMNode.prototype, 'animateProp');
   });
 
   v.it(
@@ -531,11 +532,11 @@ v.describe('contract: transition', () => {
       // The write goes through an animation, so it is not there yet.
       v.expect(node.x).toBe(0);
       v.expect(animate).toHaveBeenCalledTimes(2);
-      v.expect(animate.mock.calls[0]![0]).toEqual({ x: 100 });
-      v.expect(animate.mock.calls[1]![0]).toEqual({ alpha: 0.5 });
+      v.expect(animate.mock.calls[0]!.slice(0, 2)).toEqual(['x', 100]);
+      v.expect(animate.mock.calls[1]!.slice(0, 2)).toEqual(['alpha', 0.5]);
       // Settings are the node's animationSettings, which default to
       // Config.animationSettings (passed, or resolved inside animate()).
-      v.expect(animate.mock.calls[0]![1] ?? node.animationSettings).toEqual(
+      v.expect(animate.mock.calls[0]![2]).toEqual(
         lng.Config.animationSettings,
       );
       await settle(() => {
@@ -558,8 +559,8 @@ v.describe('contract: transition', () => {
       v.expect(node.x).toBe(50);
       v.expect(node.y).toBe(0);
       v.expect(animate).toHaveBeenCalledTimes(1);
-      v.expect(animate.mock.calls[0]![0]).toEqual({ y: 80 });
-      v.expect(animate.mock.calls[0]![1] ?? node.animationSettings).toEqual(
+      v.expect(animate.mock.calls[0]!.slice(0, 2)).toEqual(['y', 80]);
+      v.expect(animate.mock.calls[0]![2]).toEqual(
         lng.Config.animationSettings,
       );
       await settle(() => v.expect(node.y).toBe(80));
@@ -578,7 +579,7 @@ v.describe('contract: transition', () => {
       node.x = 100;
       v.expect(node.x).toBe(0);
       v.expect(animate).toHaveBeenCalledTimes(1);
-      v.expect(animate.mock.calls[0]).toEqual([{ x: 100 }, settings]);
+      v.expect(animate.mock.calls[0]).toEqual(['x', 100, settings]);
       await settle(() => v.expect(node.x).toBe(100));
       dispose();
     },
@@ -672,12 +673,12 @@ v.describe('contract: transition', () => {
       ));
       node.states.add('$focus');
       v.expect(node.scale).toBe(1);
-      v.expect(animate.mock.calls[0]).toEqual([{ scale: 1.1 }, settings]);
+      v.expect(animate.mock.calls[0]).toEqual(['scale', 1.1, settings]);
       await settle(() => v.expect(node.scale).toBe(1.1));
 
       node.states.remove('$focus');
       v.expect(node.scale).toBe(1.1);
-      v.expect(animate.mock.calls[1]).toEqual([{ scale: 1 }, settings]);
+      v.expect(animate.mock.calls[1]).toEqual(['scale', 1, settings]);
       await settle(() => v.expect(node.scale).toBe(1));
       dispose();
     },
@@ -699,7 +700,7 @@ v.describe('contract: transition', () => {
       ));
       node.states.add('$focus');
       v.expect(node.scale).toBe(1);
-      v.expect(animate.mock.calls[0]).toEqual([{ scale: 1.2 }, settings]);
+      v.expect(animate.mock.calls[0]).toEqual(['scale', 1.2, settings]);
       v.expect(node.transition).toEqual({ scale: settings });
       await settle(() => v.expect(node.scale).toBe(1.2));
       dispose();
@@ -730,7 +731,7 @@ v.describe('contract: transition', () => {
       node.states.remove('$focus');
       v.expect(node.scale).toBe(1.2);
       v.expect(animate).toHaveBeenCalledTimes(2);
-      v.expect(animate.mock.calls[1]).toEqual([{ scale: 1 }, settings]);
+      v.expect(animate.mock.calls[1]).toEqual(['scale', 1, settings]);
       v.expect(node.transition).toBeUndefined();
       await settle(() => v.expect(node.scale).toBe(1));
       dispose();
@@ -754,7 +755,7 @@ v.describe('contract: transition', () => {
         />
       ));
       node.states.add('$focus');
-      v.expect(animate.mock.calls[0]).toEqual([{ scale: 1.2 }, settings]);
+      v.expect(animate.mock.calls[0]).toEqual(['scale', 1.2, settings]);
       await settle(() => v.expect(node.scale).toBe(1.2));
 
       node.states.remove('$focus');

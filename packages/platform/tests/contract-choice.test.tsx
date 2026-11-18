@@ -48,10 +48,8 @@ v.describe('Checkbox', () => {
       </view>
     ));
     await waitForUpdate();
-    const row = find(
-      renderer.rootNode,
-      (node) => typeof node.onMouseClick === 'function',
-    )!;
+    // By label: the shared root can still hold another file's rows.
+    const row = rowFor(label);
     row.onEnter?.call(row, new KeyboardEvent('keydown'));
     v.expect(changes).toEqual([true]);
     v.expect(checked()).toBe(true);
@@ -62,17 +60,15 @@ v.describe('Checkbox', () => {
   });
 
   v.it('ignores activation when disabled', async () => {
+    const label = `Locked-${Math.random()}`;
     let changes = 0;
     const dispose = renderer.render(() => (
       <view width={400} height={300}>
-        <Checkbox label="Locked" checked disabled onChange={() => changes++} />
+        <Checkbox label={label} checked disabled onChange={() => changes++} />
       </view>
     ));
     await waitForUpdate();
-    const row = find(
-      renderer.rootNode,
-      (node) => typeof node.onMouseClick === 'function',
-    )!;
+    const row = rowFor(label);
     row.onEnter?.call(row, new KeyboardEvent('keydown'));
     v.expect(changes).toBe(0);
     dispose();

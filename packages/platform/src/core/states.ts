@@ -64,7 +64,10 @@ export default class States extends Array<DollarString> {
       this.remove(state);
     } else {
       if (this.has(state)) {
-        this.remove(state);
+        // has() also matches the '$'-prefixed form; remove the one present.
+        this.remove(
+          this.indexOf(state) >= 0 ? state : (('$' + state) as DollarString),
+        );
       } else {
         this.add(state);
       }

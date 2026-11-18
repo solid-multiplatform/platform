@@ -20,7 +20,7 @@ export { WebGlShader };
 
 import { SHADERS_ENABLED, isDomRendererActive } from './config.js';
 import type { CoreShaderManager } from './intrinsicTypes.js';
-import { IRendererShaderManager } from './dom-renderer/domRendererTypes.js';
+import { IRendererShaderManager } from '@solid-multiplatform/renderer/dom';
 
 export type Vec4 = [x: number, y: number, z: number, w: number];
 
@@ -41,6 +41,14 @@ export type ShaderBorderPrefixedProps = {
 export type ShaderShadowPrefixedProps = {
   [P in keyof ShaderShadowProps as `shadow-${P}`]: ShaderShadowProps[P];
 };
+
+/** The flat bag of effect props a node's shader accepts. */
+export type ShaderEffectProps = Partial<ShaderBorderPrefixedProps> &
+  Partial<ShaderShadowPrefixedProps> &
+  Partial<ShaderRoundedProps> &
+  Partial<ShaderHolePunchProps> &
+  Partial<ShaderRadialGradientProps> &
+  Partial<ShaderLinearGradientProps>;
 
 export type ShaderRoundedWithShadowProps = ShaderRoundedProps &
   ShaderShadowPrefixedProps;

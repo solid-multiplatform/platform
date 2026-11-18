@@ -1,3 +1,4 @@
+import { RenderState } from '@solid-multiplatform/renderer/contracts';
 import type {
   ElementNode,
   ElementText,
@@ -31,10 +32,8 @@ export interface ScrollableElement extends ElementNode {
   scrollStopLast?: boolean;
 }
 
-// From the renderer, not exported
-const InViewPort = 8 as const;
 const isNotShown = (node: ElementNode | ElementText): boolean => {
-  return (node.lng.renderState as number) !== InViewPort;
+  return (node.lng.renderState as number) !== RenderState.InViewport;
 };
 /*
   Auto Scrolling starts scrolling right away until the last item is shown. Keeping a full view of the list.

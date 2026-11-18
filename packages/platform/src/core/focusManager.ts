@@ -1,6 +1,5 @@
 import { createSignal, getOwner, onCleanup, runWithOwner } from 'solid-js';
 import { Config, isDev } from './config.js';
-import { IRendererNode } from './dom-renderer/domRendererTypes.js';
 export type * from './focusKeyTypes.js';
 import { ElementNode } from './elementNode.js';
 import type { KeyNameOrKeyCode, KeyMap } from './focusKeyTypes.js';
@@ -202,14 +201,14 @@ export const printFocusHistory = (count: number): void => {
       key: e.mappedKey ?? e.keyPressed ?? '—',
       next: getElementLabel(e.next),
       nextElm: e.next,
-      nextDiv: (e.next.lng as IRendererNode).div,
+      nextDiv: (e.next.lng as { div?: HTMLElement }).div,
     })),
   );
 
   // 2. Expose the most recent element for easy inspection
   const lastEntry = entries[entries.length - 1];
   if (lastEntry) {
-    const lastElm = (lastEntry.next.lng as IRendererNode)?.div;
+    const lastElm = (lastEntry.next.lng as { div?: HTMLElement })?.div;
     if (lastElm) {
       (window as any).$f = lastElm;
     }

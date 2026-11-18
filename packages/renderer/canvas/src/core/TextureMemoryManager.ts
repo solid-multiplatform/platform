@@ -92,8 +92,11 @@ export interface MemoryInfo {
  * The cleanup process will free up non-renderable textures until the
  * memory usage is below a target threshold (`targetThresholdLevel`).
  *
- * The memory manager's clean up process will also be triggered when the
- * scene is idle for a certain amount of time (`cleanupInterval`).
+ * Above the target threshold, the clean up process also runs when the scene
+ * goes idle, no more often than every `cleanupInterval`. The render loop
+ * sleeps while the scene is idle and checks on the ticks that draw nothing
+ * (the one a burst settles on, and any a wake asks for), so an interval that
+ * runs out during the sleep is acted on at the next such tick, not by a timer.
  */
 export class TextureMemoryManager {
   private memUsed = 0;
@@ -156,6 +159,15 @@ export class TextureMemoryManager {
 
     if (this.criticalThreshold > 0 && this.memUsed > this.criticalThreshold) {
       this.criticalCleanupRequested = true;
+    }
+
+    // The loop runs a due cleanup on the ticks that draw nothing. Memory that
+    // grows while it sleeps (a texture uploaded outside a frame, with no node
+    // to draw it) has no such tick coming, so ask for one when it makes a
+    // cleanup due.
+    const stage = this.stage;
+    if (stage.loopAsleep === true && this.checkCleanup() === true) {
+      stage.wakeLoop();
     }
   }
 
