@@ -92,7 +92,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 | Text and labels               | RN Text, Flutter Text                       | S      | Text node, contract tests                                                                    | —     |
 | Buttons                       | RN Button/Pressable                         | S      | TV/web templates, controls                                                                   | —     |
 | Switch/toggle                 | RN Switch, Flutter Switch                   | S      | `Toggle`, native/web controls                                                                | —     |
-| Checkbox and radio            | Material/Flutter                            | M      | No primitive                                                                                 | 9     |
+| Checkbox and radio            | Material/Flutter                            | S      | `Checkbox`, `Radio`, `RadioGroup` with Enter/pointer activation                              | —     |
 | Slider and progress           | RN Slider/Progress                          | S      | `Slider`, `Progress`, native controls                                                        | —     |
 | Single-line text field        | RN TextInput                                | S      | Native/desktop/web editors                                                                   | —     |
 | Multiline text area           | RN multiline                                | P      | Verify native editor supports multiline                                                      | 1     |
@@ -193,21 +193,21 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 8. Media
 
-| Feature                     | Established pattern             | Status | Evidence / gap                                       | Phase |
-| --------------------------- | ------------------------------- | ------ | ---------------------------------------------------- | ----- |
-| Image display and fit       | RN Image resizeMode             | S      | `Image`, gallery fixture                             | —     |
-| Video playback              | Media3/AVPlayer/HTML/Roku Video | S      | optional video module, device gate                   | —     |
-| Audio playback              | Expo Audio                      | P      | Video module handles audio tracks; no audio-only API | 7     |
-| Captions/subtitles          | Media3/AVPlayer/Roku            | S      | native caption verified                              | —     |
-| Audio/text track selection  | Media3                          | S      | video adapters                                       | —     |
-| Playback controls/transport | Media3 custom layout            | S      | video module                                         | —     |
-| Resume/bookmarks            | Roku uses bookmarks             | M      | No shared API                                        | 7     |
-| Fullscreen/PiP              | AVPlayer/Media3/HTML            | M      | No API                                               | 7     |
-| Media session / now playing | Android MediaSession            | M      | No API                                               | 7     |
-| Keep awake during playback  | FLAG_KEEP_SCREEN_ON             | P      | Native video handles it; no app API                  | 7     |
-| Video thumbnails            | Expo VideoThumbnails            | M      | No API                                               | 7     |
-| DRM/capability reporting    | Media3/AVPlayer                 | P      | Capability fields exist; no DRM probe                | 7     |
-| HLS/DASH                    | Media3/hls.js                   | S      | video dependencies                                   | —     |
+| Feature                     | Established pattern             | Status | Evidence / gap                                                            | Phase |
+| --------------------------- | ------------------------------- | ------ | ------------------------------------------------------------------------- | ----- |
+| Image display and fit       | RN Image resizeMode             | S      | `Image`, gallery fixture                                                  | —     |
+| Video playback              | Media3/AVPlayer/HTML/Roku Video | S      | optional video module, device gate                                        | —     |
+| Audio playback              | Expo Audio                      | P      | Video module handles audio tracks; no audio-only API                      | 7     |
+| Captions/subtitles          | Media3/AVPlayer/Roku            | S      | native caption verified                                                   | —     |
+| Audio/text track selection  | Media3                          | S      | video adapters                                                            | —     |
+| Playback controls/transport | Media3 custom layout            | S      | video module                                                              | —     |
+| Resume/bookmarks            | Roku uses bookmarks             | S      | `createBookmarks` persisted positions with start/end thresholds           | —     |
+| Fullscreen/PiP              | AVPlayer/Media3/HTML            | S      | `enterFullscreen`/`exitFullscreen`/`enterPictureInPicture` with host port | —     |
+| Media session / now playing | Android MediaSession            | S      | `configureMediaSession` metadata, state, position and transport handlers  | —     |
+| Keep awake during playback  | FLAG_KEEP_SCREEN_ON             | S      | `keepAwake` API; video hosts keep their platform flags                    | —     |
+| Video thumbnails            | Expo VideoThumbnails            | S      | `captureThumbnail` with a host port and web video/canvas fallback         | —     |
+| DRM/capability reporting    | Media3/AVPlayer                 | P      | Capability fields exist; no DRM probe                                     | 7     |
+| HLS/DASH                    | Media3/hls.js                   | S      | video dependencies                                                        | —     |
 
 ## 9. Accessibility and internationalization
 
@@ -322,7 +322,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 12. Implementation phases
 
-Progress: Phase 0 is implemented (theme tokens, colour scheme, capability registry, extended inset contract). Phase 1 is implemented for `useKeyboard`, `KeyboardAvoidingView`, `SafeArea`, `revealAboveKeyboard`, `keyboardAwareBounds`, `createForm` validation/touched/errors/submitting, and the keyboard-aware mobile template. Remaining: a rendered FormField component and automatic wiring of native editors. Desktop scene pointer hover/press/click is implemented (`useMouse` plus SDL pointer/mouse forwarding), along with `dragToScroll`, `wheelToScroll`, and pointer cursor styles (`cursorStyle`, `useCursor`). Phase 2 now has `Modal` with a real focus trap and restore, `Sheet`, `Toast`, `Popover`, `Menu`, `Tooltip` and `Alert`, plus tab navigation, guards, snapshot/restore and browser history. Remaining in Phase 2: drawer, route transitions, focus/scroll restoration on back, and deep-link router integration. Phase 4 data primitives are in place: `createQuery` (cache/retry/invalidation), `createPersistentStore` and `createOfflineQueue`. Device services now cover clipboard, share, haptics, device/battery info, keep-awake, orientation and external opening, and `bindDeepLinks` connects the links port to navigation. Internationalization covers translations, plurals, RTL, text scaling, high contrast and locale-aware formatting; `auditSemantics` and reading-order helpers cover the accessibility gate. Phase 6 has paged loading, pull-to-refresh state, selection and standard list states; section lists, sticky headers, swipe actions and reordering remain. Phase 2 also has `Drawer`, and crash reporting is wired through `AppErrorBoundary`.
+Progress: Phase 0 is implemented (theme tokens, colour scheme, capability registry, extended inset contract). Phase 1 is implemented for `useKeyboard`, `KeyboardAvoidingView`, `SafeArea`, `revealAboveKeyboard`, `keyboardAwareBounds`, `createForm` validation/touched/errors/submitting, and the keyboard-aware mobile template. Remaining: a rendered FormField component and automatic wiring of native editors. Desktop scene pointer hover/press/click is implemented (`useMouse` plus SDL pointer/mouse forwarding), along with `dragToScroll`, `wheelToScroll`, and pointer cursor styles (`cursorStyle`, `useCursor`). Phase 2 now has `Modal` with a real focus trap and restore, `Sheet`, `Toast`, `Popover`, `Menu`, `Tooltip` and `Alert`, plus tab navigation, guards, snapshot/restore and browser history. Remaining in Phase 2: drawer, route transitions, focus/scroll restoration on back, and deep-link router integration. Phase 4 data primitives are in place: `createQuery` (cache/retry/invalidation), `createPersistentStore` and `createOfflineQueue`. Device services now cover clipboard, share, haptics, device/battery info, keep-awake, orientation and external opening, and `bindDeepLinks` connects the links port to navigation. Internationalization covers translations, plurals, RTL, text scaling, high contrast and locale-aware formatting; `auditSemantics` and reading-order helpers cover the accessibility gate. Phase 6 has paged loading, pull-to-refresh state, selection and standard list states; section lists, sticky headers, swipe actions and reordering remain. Phase 2 also has `Drawer`, and crash reporting is wired through `AppErrorBoundary`. Forms have checkbox/radio controls, and media has persisted resume bookmarks, now-playing metadata/transport handlers, fullscreen/PiP and thumbnails.
 
 ### Phase 0 — Contracts and theme foundation
 

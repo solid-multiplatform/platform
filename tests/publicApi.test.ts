@@ -24,7 +24,7 @@ import * as focusManager from '@solid-multiplatform/platform/focusManager';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 177 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 186 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -54,11 +54,14 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'bindColorScheme',
       'breakpoint',
       'breakpointFor',
+      'captureThumbnail',
       'clamp',
       'clearTasks',
       'combineStyles',
       'combineStylesMemo',
+      'configureMediaSession',
       'convertToShader',
+      'createBookmarks',
       'createComponent',
       'createElement',
       'createForm',
@@ -89,6 +92,9 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'effect',
       'enqueueDelete',
       'ensureTouchTarget',
+      'enterFullscreen',
+      'enterPictureInPicture',
+      'exitFullscreen',
       'flattenStyles',
       'formatDate',
       'formatDisplayName',
@@ -171,12 +177,15 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'setCrashReporter',
       'setCursor',
       'setDevicePorts',
+      'setFullscreenPort',
       'setHighContrast',
+      'setMediaSessionPort',
       'setProp',
       'setQueryData',
       'setRendererFactory',
       'setTasksEnabled',
       'setTextScale',
+      'setThumbnailPort',
       'setupI18n',
       'shaderAccessor',
       'share',
@@ -207,7 +216,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   });
 
   v.test(
-    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 76 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 79 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
@@ -216,6 +225,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'Announcer',
         'AppErrorBoundary',
         'BorderBoxStyle',
+        'Checkbox',
         'Column',
         'Drawer',
         'FPSCounter',
@@ -233,6 +243,8 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'Modal',
         'Popover',
         'Portal',
+        'Radio',
+        'RadioGroup',
         'Row',
         'SafeArea',
         'Sheet',
@@ -552,6 +564,7 @@ v.describe('package.json exports', () => {
       './list',
       './crash',
       './responsive',
+      './media',
     ]);
   });
 

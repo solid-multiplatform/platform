@@ -191,6 +191,13 @@
         "types": "./dist/src/sdk/responsive.d.ts",
         "default": "./dist/src/sdk/responsive.js"
       }
+    },
+    "./media": {
+      "@solidtv/source": "./src/sdk/media.ts",
+      "import": {
+        "types": "./dist/src/sdk/media.d.ts",
+        "default": "./dist/src/sdk/media.js"
+      }
     }
   },
   "sideEffects": false,

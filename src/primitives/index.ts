@@ -46,3 +46,4 @@ export * from './Tooltip.jsx';
 export * from './ListState.jsx';
 export * from './Drawer.jsx';
 export * from './AppErrorBoundary.jsx';
+export * from './Choice.jsx';
