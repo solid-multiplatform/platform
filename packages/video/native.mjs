@@ -53,11 +53,13 @@ export class NativePlayer extends SessionPlayer {
     this.closeDriver();
     const id = this.startSession(request.kind),
       offset = request.timelineOffsetSeconds ?? 0;
+    if (!this.isCurrent(id))
+      throw new PlayerOperationError('invalid-state', 'Playback interrupted');
     this.offset = offset;
     this.request = request;
     let timer;
     try {
-      this.driver = this.create(request, (patch) => {
+      const driver = this.create(request, (patch) => {
         if (!this.isCurrent(id)) return;
         if (patch.time) {
           const t = patch.time;
@@ -80,7 +82,11 @@ export class NativePlayer extends SessionPlayer {
         }
         this.update(id, patch);
       });
-      const driver = this.driver;
+      if (!this.isCurrent(id)) {
+        driver.dispose();
+        throw new PlayerOperationError('invalid-state', 'Playback replaced');
+      }
+      this.driver = driver;
       const interrupted = new Promise((_, reject) => {
         this.interrupt = reject;
       });
@@ -110,6 +116,7 @@ export class NativePlayer extends SessionPlayer {
           await driver.seek(request.startAtSeconds);
         if (!this.isCurrent(id)) return;
         this.update(id, { state: 'ready' });
+        if (!this.isCurrent(id)) return;
         if (!request.paused) await driver.play();
         if (request.paused) {
           await driver.pause();
@@ -132,8 +139,7 @@ export class NativePlayer extends SessionPlayer {
                 'Native engine failed to open the source',
               );
         this.fail(id, failure.toFailure());
-        this.invalidateSession();
-        this.closeDriver();
+        if (this.isCurrent(id)) this.closeDriver();
         throw failure;
       }
       throw error;

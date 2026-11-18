@@ -56,6 +56,7 @@ import sys,zipfile
 with zipfile.ZipFile(sys.argv[1]) as apk:
     names = apk.read('assets/metadata/treeStringsStream.dat')
     assert b'pcheck_kotlin' in names and b'pcheck_jni' in names
+    assert b'AndroidPlayerFactory' in names
     assert 'res/layout/solid_multiplatform_video_player.xml' in apk.namelist()
     for cpu in ('armeabi-v7a','arm64-v8a','x86_64'):
         for lib in ('libsolidcheck_sidecar.so','libsolidcheck_jni.so'):
@@ -82,11 +83,17 @@ id=dev.solidapp.apluginprobe
 adb -s "$serial" install -r "$apk"
 adb -s "$serial" shell am force-stop "$id"
 adb -s "$serial" shell run-as "$id" rm -f files/commands.json
+adb -s "$serial" shell input keyevent KEYCODE_WAKEUP
+adb -s "$serial" shell wm dismiss-keyguard
 adb -s "$serial" shell am start -W -n "$id/com.tns.NativeScriptActivity"
 for attempt in {1..60}; do
-  if adb -s "$serial" shell run-as "$id" cat files/commands.json >"$scratch/results.json" 2>/dev/null; then break; fi
+  if adb -s "$serial" shell run-as "$id" cat files/commands.json >"$scratch/results.json" 2>/dev/null && [[ -s "$scratch/results.json" ]]; then break; fi
   sleep 1
 done
+if [[ ! -s "$scratch/results.json" ]]; then
+  echo 'Timed out waiting for native plugin and media results' >&2
+  exit 1
+fi
 python3 - "$scratch/results.json" <<'PY'
 import sys,json,base64
 with open(sys.argv[1]) as f: results=json.load(f)

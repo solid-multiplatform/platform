@@ -3,12 +3,22 @@ import { createAndroidPlayer } from '@solid-multiplatform/video/android';
 export async function checkAndroidMedia(host) {
   const player = createAndroidPlayer(host.root, { target: host.target });
   try {
-    await player.open({
+    if (!globalThis.dev?.solidmultiplatform?.video?.AndroidPlayerFactory)
+      throw new Error('Android worker metadata missing');
+    const request = {
       url: 'asset:///app/caption.mp4',
-      kind: 'vod',
+      kind: 'vod' as const,
       paused: true,
       adoptEngineDuration: true,
-    });
+    };
+    const abandoned = player.open(request).then(
+      () => 'opened',
+      (e) => e.code,
+    );
+    await player.stop();
+    await player.open(request);
+    if ((await abandoned) !== 'invalid-state')
+      throw new Error('Canceled media session survived');
     const track = player.snapshot.tracks.text.find((item) => item.available);
     if (!track) throw new Error('Caption track missing');
     await player.selectTextTrack(track.id);

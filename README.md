@@ -73,7 +73,7 @@ The CLI recognizes `android`, `android-tv`, `ios`, `apple-tv`, `roku`, `tizen`, 
 
 New desktop projects use SDL3, a native graphics binding and Node. Linux and macOS development use SDL3 from the system or `SOLID_SDL3_LIBRARY`. Windows x64 fetches a checksum-pinned SDL3 and ANGLE runtime. Building the AccessKit bridge requires a C++17 compiler. Packaged desktop downloads include Node, SDL3 and the native dependencies. `dev desktop` opens a window, `build desktop` produces the compiled scene and launcher under `targets/desktop/work`, and `plugins run desktop` runs the headless command fixture. Linux/X11 was exercised with rendered text, window resize and keyboard activation. ANGLE/driver availability and accessibility require separate OS qualification.
 
-The optional video archive is installed with `solid-platform add video /path/to/solid-multiplatform-video-0.2.0-preview.2.tgz`. It preserves the pinned @viptv/video exports. Generated Android projects with the video package link Media3’s HLS and DASH modules alongside ExoPlayer. Import `/native`, `/android`, `/apple`, `/roku` or `/desktop` from the video package for native integration. The base renderer and UI have no media decoder dependency.
+The optional video archive is installed with `solid-platform add video /path/to/solid-multiplatform-video-0.2.0-preview.3.tgz`. It preserves the pinned @viptv/video exports. Generated Android projects with the video package link Media3’s HLS and DASH modules alongside ExoPlayer. Import `/native`, `/android`, `/apple`, `/roku` or `/desktop` from the video package for native integration. The base renderer and UI have no media decoder dependency.
 
 The [native feature guide](hosts/native-features.md) covers forms, autofill, insets, permissions and background jobs. The [qualification matrix](docs/beta/README.md) distinguishes software checks, physical measurements and beta status.
 
@@ -83,4 +83,4 @@ The Android TV default matches its drawing buffer to the device's actual surface
 
 For a dedicated Android TV graphics surface, pass `{ surface: 'surface-view' }` as the second argument to `runAndroidTV` in the app entry. The default TextureView supports compositing with native video and other views. The dedicated canvas uses Android’s media-overlay ordering. Solid graphics draw over ordinary video surfaces, and native window controls can draw over both.
 
-[Download the optional video module and Android view-construction measurements](https://github.com/solid-multiplatform/platform/releases/tag/video-v0.2.0-preview.2).
+[Download the optional video module and Android playback dispatch measurements](https://github.com/solid-multiplatform/platform/releases/tag/video-v0.2.0-preview.3).
