@@ -28,5 +28,5 @@ docs/perf/results/**/*.json
 packages/platform/examples/**/platforms/
 packages/platform/examples/**/hooks/
 packages/platform/examples/**/.ns*
-packages/platform/examples/**/dist-roku/
+packages/platform/examples/**/dist-*/
 packages/platform/examples/**/.artifacts/

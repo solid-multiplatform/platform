@@ -1,87 +1,91 @@
-## Component Lifecycle (onMount, onCleanup)
+# Events
 
-SolidTV offers two primary lifecycle hooks to manage component behavior:
+## Component lifecycle
 
-- **[onMount](https://www.solidjs.com/docs/latest/api#onmount)**: Executes a function when the component is first inserted.
-- **[onCleanup](https://www.solidjs.com/docs/latest/api#oncleanup)**: Executes a function to clean up resources when the component is removed.
+Use Solid's own hooks in components:
 
-For detailed information, refer to the [SolidTV Lifecycle documentation](https://docs.solidjs.com/references/api-reference/lifecycles/onMount).
+- [`onMount`](https://docs.solidjs.com/reference/lifecycle/on-mount) runs once
+  after the component is first inserted.
+- [`onCleanup`](https://docs.solidjs.com/reference/lifecycle/on-cleanup) runs
+  when the component is removed.
 
-## Built-in Events
+## Node events
 
-The SolidTV integration provides built-in events that can be utilized within your components:
+Every `<view>` and `<text>` accepts these callbacks:
 
-```jsx
-  onCreate: (this: ElementNode, target: ElementNode);
-  onDestroy: (this: ElementNode, target: ElementNode) => Promise<any> | void;
-  onLayout: (this: ElementNode, target: ElementNode, child?: ElementNode, dimensions?: Dimensions);
+```ts
+onCreate?: (this: ElementNode, el: ElementNode) => void;
+onRender?: (this: ElementNode, el: ElementNode) => void;
+onRemove?: (this: ElementNode, el: ElementNode) => void;
+onDestroy?: (this: ElementNode, el: ElementNode) => Promise<void> | void;
+onLayout?: (this: ElementNode, target: ElementNode) => void;
 ```
 
-Learn more about using [onDestroy](/flow/ondestroy) and the [layout events](/flow/layout?id=layout-callbacks).
+- `onCreate`: the node was created and rendered.
+- `onRender`: the node was rendered, after creation and when it changes parent.
+- `onRemove`: the node was removed from its parent.
+- `onDestroy`: the node is about to be destroyed. See
+  [Destroy animations](/flow/ondestroy.md).
+- `onLayout`: flex layout ran on this node. See [Layout](/flow/layout.md).
 
-## Renderer Events
+## Backend events
 
-In addition to the lifecycle events from SolidTV, the SolidTV Renderer offers additional custom events for you to tie into using the `onEvent` object. These events provide information about element visibility and state within the renderer.
+The backend node reports loading and visibility. Listen with `onEvent`.
 
-### Example Usage:
-
-```jsx
+```tsx
 <view
+  width={200}
+  height={200}
+  src={props.image}
   onEvent={{
-    loaded: (element, eventInfo) => {
-      console.log('load was called');
+    loaded: (element, payload) => {
+      console.log('loaded', element.id, payload);
     },
-    failed: (element, eventInfo) => {
-      console.log('fail was called');
-    },
-    inViewport: (element, eventInfo) => {
-      console.log('Element entered viewport');
-    },
-    outOfViewport: (element, eventInfo) => {
-      console.log('Element exited viewport');
+    failed: (element, payload) => {
+      console.log('failed', element.id, payload);
     },
   }}
 />
 ```
 
-### Available Renderer Events:
+- `loaded`: the node's texture or text loaded.
+- `failed`: it failed to load.
+- `freed`: its texture was freed.
+- `inViewport`: the node entered the viewport.
+- `outOfViewport`: the node left the viewport.
 
-- **`loaded`**: Fired when the element has successfully loaded.
-- **`failed`**: Fired when the element fails to load.
-- **`freed`**: Fired when the element is freed for memory.
-- **`inViewport`**: Fired when the element enters the viewport (the portion of the screen where content is visible).
-- **`outOfViewport`**: Fired when the element leaves the viewport.
+The WebGL backend only emits the two viewport events in a build with the
+`__emitBoundsEvents__` flag set to `true`. It is `false` by default.
 
-Both viewport events receive a `{ previous, current }` payload of
-`CoreNodeRenderState` values.
+## Focus and key events
 
-> **Renderer 1.8 breaking change:** `inBounds` and `outOfBounds` were removed.
-> They fired on the preload transition, one step earlier than viewport entry.
-> Preloading textures ahead of a node scrolling on screen is now handled by the
-> `boundsMargin` renderer setting, so there is nothing left for an app to do on
-> that transition — move any such listener to `inViewport`.
->
-> Viewport events are gated behind the `__emitBoundsEvents__` build flag, which
-> defaults to `false`. See [SolidTV Renderer](/articles/solidtv_renderer.md) to
-> turn it on.
+See [Focus and keys](/essentials/focus.md).
 
-These additional events provide control over element state and position within the SolidTV Renderer, allowing you to react to changes such as visibility or load state with custom logic.
+## Custom events with `emit`
 
-## Emitting Custom Events with `emit`
+`emit` sends an event up the tree from a node.
 
-In addition to handling events, components can trigger their own custom events using the `emit` method. This method allows components to communicate with their ancestors by dispatching an event up the hierarchy.
+```tsx
+import type { ElementNode } from '@solid-multiplatform/platform';
 
-### Usage Example:
+let tile!: ElementNode;
 
-```jsx
-nodeRef.emit('customEvent', { message: 'Hello, world!' });
-// function triggerCallback(this: MyComponent, nodeRef, payload) {
+function onSelected(source: ElementNode, payload: { id: string }) {
+  console.log(source.id, payload.id);
+  return true;
+}
 
-<MyComponent onCustomEvent={triggerCallback} />;
+<view onSelected={onSelected}>
+  <view ref={tile} id="tile" />
+</view>;
+
+tile.emit('selected', { id: 'movie-1' });
 ```
 
-### How `emit` Works:
+How it works:
 
-1. It starts at the current component and looks for a handler named `onCustomEvent` (where `CustomEvent` is capitalized).
-2. If a handler exists and returns `true`, the event stops propagating.
-3. Otherwise, it continues up the component tree until it reaches the root or finds a handler that returns `true`.
+1. `emit('selected', ...args)` looks for an `onSelected` function, starting on
+   the node itself.
+2. The handler is called with the emitting node first, then your arguments.
+3. If the handler returns `true`, the event stops and `emit` returns `true`.
+4. Otherwise it continues to the parent, up to the root.

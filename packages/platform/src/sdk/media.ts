@@ -257,8 +257,10 @@ export function bindMediaKeys(
   >,
   target: EventTarget | undefined = peekService('keyEvents')?.target(),
 ): () => void {
-  const listener = (event: Event) => {
-    if (!(event instanceof KeyboardEvent)) return;
+  const listener = (input: Event) => {
+    // Native hosts deliver key events that are not browser KeyboardEvents.
+    const event = input as KeyboardEvent;
+    if (typeof event.key !== 'string') return;
     const key = event.key;
     const action =
       key === 'MediaPlayPause' || key === 'PlayPause'

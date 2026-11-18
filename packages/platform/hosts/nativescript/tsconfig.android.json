@@ -1,0 +1,16 @@
+{
+  // Type-checks the Android providers against the NativeScript Android
+  // typings (`pnpm typecheck:native`). They are compiled by the app's
+  // webpack build, not by the package build.
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "composite": false,
+    "incremental": false,
+    "declaration": false,
+    "sourceMap": false,
+    "noEmit": true,
+    "rootDir": "../..",
+    "types": ["solid-js", "vite/client", "@nativescript/types"]
+  },
+  "include": ["providers/android/**/*", "../../vite-env.d.ts"]
+}

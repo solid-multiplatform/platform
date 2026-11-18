@@ -1,77 +1,66 @@
-### Grid Component
+# Grid
 
-The `Grid` component is simplified version of combining Column & Row and doesn't allow scrolling left and right offscreen.
-
----
-
-### Props
-
-| **Prop**            | **Type**                                | **Description**                                                 |
-| ------------------- | --------------------------------------- | --------------------------------------------------------------- |
-| `children`          | `(props: GridItemProps) => JSX.Element` | The render function for each grid item.                         |
-| `itemHeight`        | `number`                                | The height of each grid item. Defaults to `300` if not set.     |
-| `itemWidth`         | `number`                                | The width of each grid item. Defaults to `300` if not set.      |
-| `itemOffset`        | `number` (optional)                     | The gap between grid items. Defaults to `0`.                    |
-| `items`             | `readonly T[]`                          | The array of items to render.                                   |
-| `columns`           | `number` (optional)                     | The number of columns in the grid. Defaults to `4`.             |
-| `looping`           | `boolean` (optional)                    | Enables looping navigation. Defaults to `false`.                |
-| `scroll`            | `"auto" \| "none"`                      | Defines whether the grid should scroll as focused items change. |
-| `onSelectedChanged` | `(index: number, grid, elm) => void`    | Invoked when the focused item index changes.                    |
-
----
-
-### Behavior
-
-1. **Grid Navigation**:
-   - The `Grid` supports navigation via `onUp`, `onDown`, `onLeft`, and `onRight` events.
-   - Navigation is column-aware, ensuring horizontal navigation stays within the same row unless looping is enabled.
-
-2. **Looping**:
-   - When `looping` is enabled, navigation wraps around when reaching the grid boundaries.
-   - For vertical navigation, reaching the last row loops to the first row and vice versa.
-   - For horizontal navigation, reaching the end of a row wraps to the start of the same row.
-
-3. **Focus Handling**:
-   - The `Grid` manages focus internally using a `focusedIndex` signal.
-   - The `onSelectedChanged` callback is invoked when the focused index changes.
-
-4. **Dynamic Layouts**:
-   - The grid's dimensions (item size and offsets) are calculated dynamically using the `itemWidth`, `itemHeight`, and `itemOffset` props.
-   - The number of columns defaults to `4` but can be customized via the `columns` prop.
-
----
-
-### Example Usage
+`Grid` places items in fixed-size cells and moves focus in four directions. It
+renders every item. For long lists use
+[VirtualGrid](/primitives/virtualgrid.md).
 
 ```tsx
-import { Grid } from './Grid';
-import ItemComponent from './ItemComponent';
+import {
+  Grid,
+  type GridItemProps,
+} from '@solid-multiplatform/platform/primitives';
 
-const items = [
-  { id: '1', name: 'Item 1' },
-  { id: '2', name: 'Item 2' },
-  { id: '3', name: 'Item 3' },
-  { id: '4', name: 'Item 4' },
-  { id: '5', name: 'Item 5' },
-];
+const items = ['One', 'Two', 'Three', 'Four', 'Five'];
 
-export const Example = () => {
-  const handleSelectionChanged = (index) => {
-    console.log('Focus changed to', index);
-  };
+const Cell = (props: GridItemProps<string>) => (
+  <view
+    x={props.x}
+    y={props.y}
+    width={props.width}
+    height={props.height}
+    color="#264653ff"
+  >
+    <text>{props.item}</text>
+  </view>
+);
 
-  return (
-    <Grid
-      itemHeight={150}
-      itemWidth={200}
-      itemOffset={10}
-      items={items}
-      columns={3}
-      looping={true}
-      onSelectedChanged={handleSelectionChanged}
-    >
-      {(props) => <ItemComponent {...props} />}
-    </Grid>
-  );
-};
+export const Example = () => (
+  <Grid
+    items={items}
+    columns={3}
+    itemWidth={200}
+    itemHeight={150}
+    itemOffset={10}
+    looping
+    onSelectedChanged={(index) => console.log('selected', index)}
+    autofocus
+  >
+    {Cell}
+  </Grid>
+);
 ```
+
+The grid does not use flex. It passes `x`, `y`, `width` and `height` to each
+item, and the item must apply them.
+
+## Props
+
+`Grid` accepts every `<view>` prop except `children`, plus:
+
+- `items` (`readonly T[]`): the items to render.
+- `children` (`(props: GridItemProps<T>) => JSX.Element`): renders one item.
+- `itemWidth` (`number`, default `300`): cell width.
+- `itemHeight` (`number`, default `300`): cell height.
+- `itemOffset` (`number`, default `0`): gap between cells.
+- `columns` (`number`, default `4`): cells per row.
+- `looping` (`boolean`): navigation wraps at the edges.
+- `scroll` (`'auto' | 'none'`): `none` keeps the grid in place when the focused
+  row changes.
+- `selected` (`number`): index to focus. The grid follows changes to it.
+- `onSelectedChanged` (`(index, grid, elm) => void`): called when the focused
+  index changes.
+
+`GridItemProps<T>` has `item`, `index`, `x`, `y`, `width` and `height`.
+
+A ref has `scrollToIndex(index)`, which focuses the grid and the item at that
+index.

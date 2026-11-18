@@ -1,0 +1,21 @@
+{
+  // Type-checks the CLI modules that start with `// @ts-check` against
+  // types.d.ts and config.d.ts: `npx tsc -p cli/tsconfig.json`.
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    // @types/node is not a direct dependency; pnpm hoists the copy Vite
+    // brings into its store directory.
+    "typeRoots": ["../../../node_modules/.pnpm/node_modules/@types"],
+    "types": ["node"]
+  },
+  "include": ["targets/**/*.mjs", "cli.mjs", "types.d.ts", "config.d.ts"]
+}

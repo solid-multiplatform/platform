@@ -1,76 +1,111 @@
-# Shaders and Effects
+# Effects
 
-The shader prop allows you to specify a custom shader. Most of the common use ones have shortcuts like `borderRadius`, `border`, `linearGradient`. These shortcuts get combined to create one dynamic shader from the Renderer. The order that they are listed in the props / style object affect how it gets created and could change the UI. Typically you want borderRadius to be the last one. If you have a custom shader, you'll need to use the `shader` prop and create the directly. Check out this [example](https://github.com/lightning-js/renderer/blob/main/examples/tests/dynamic-shader.ts) from the renderer for more information.
+Effects are props that become a shader on the backend node: rounded corners,
+borders, shadows and gradients. You set them in JSX or in a style object.
 
-```jsx
-const RoundedRectangle = ['RoundedRectangle', { radius: 6 }];
-function Button(props) {
-  return (
-    <view
-      {...props}
-      forwardStates
-      style={buttonStyles.container}
-      shader={RoundedRectangle}
-    >
-      <view style={buttonStyles.topBar} shader={RoundedRectangle}></view>
-      <text style={buttonStyles.text}>{props.children}</text>
-    </view>
-  );
-}
-```
+Not every backend draws every effect. Check the [feature matrix](/features.md)
+for the target you care about.
 
-## Border and borderRadius
+## Border, radius and shadow
 
-`border` and `borderRadius` are special props which create effects for the DynamicShader found in the SolidTV Renderer. These props can be set on the JSX or style object. The order in which you set the props determine how they are applied in the shader. Meaning you probably want to set borderRadius first. You can also set individual borders via `borderLeft`, `borderRight`, `borderTop`, `borderBottom`. These properties do not support animations.
+`borderRadius`, `border` and `shadow` combine into one shader.
 
-```js
-const style = {
+```tsx
+const card = {
+  width: 400,
+  height: 240,
+  color: 0x253040ff,
   borderRadius: 30,
   border: { width: 10, color: 0x000000ff },
-};
+  shadow: { color: 0x00000080, x: 0, y: 8, blur: 24, spread: 0 },
+} as const;
 
-// or
-
-const style = {
-  borderLeft: { width: 10, color: 0x000000ff },
-  borderRight: { width: 10, color: 0x000000ff },
-};
+<view style={card} />;
 ```
 
-## Linear Gradient & Radial Gradient
+- `borderRadius`: one number, or an array with one radius per corner.
+  `rounded` is an alias.
+- `border`: `{ width, color, gap, align }`. `width` is a number or
+  `[top, right, bottom, left]`. `align` is `'inside'`, `'outside'` or
+  `'center'`.
+- `borderTop`, `borderRight`, `borderBottom`, `borderLeft`: a border on one
+  side, `{ width, color }`.
+- `shadow`: `{ color, x, y, blur, spread }`.
 
-`linearGradient` and `radialGradient` are effects that can be used by setting the effects prop.
+You can pass the same props together through `effects`:
 
-```jsx
-import { deg2Rad } from '@solidtv/solid';
-
+```tsx
 <view
+  width={400}
+  height={240}
+  color={0x253040ff}
   effects={{
-    linearGradient: {
-      angle: deg2Rad(225),
-      width: 300,
-      height: 300,
-      stops: [0.1, 0.5],
-      colors: [0xff0000ff, 0x00000000],
-    },
-  }}
-/>;
-```
-
-```jsx
-<view
-  width={300}
-  height={300}
-  effects={{
-    radialGradient: {
-      pivot: [225],
-      width: 300,
-      height: 300,
-      stops: [0.1, 0.5],
-      colors: [0xff0000ff, 0x00000000],
-    },
+    rounded: 30,
+    border: { w: 4, color: 0xffffffff },
   }}
 />
 ```
 
-You can have as many stops or colors as you like.
+`effects` reads `rounded`, `borderRadius`, `border`, the four side borders and
+`shadow`. It does not read gradients. Set those with their own props. Inside
+`effects` the border thickness is typed as `w`; the standalone `border` prop
+takes `width`.
+
+## Gradients
+
+`linearGradient` and `radialGradient` are props of their own. Each one sets the
+node's shader, so a gradient replaces a border, radius or shadow on the same
+node. Put the gradient on a child if you need both.
+
+```tsx
+import { deg2Rad } from '@solid-multiplatform/platform';
+
+<view
+  width={300}
+  height={300}
+  linearGradient={{
+    angle: deg2Rad(225),
+    stops: [0.1, 0.5],
+    colors: [0xff0000ff, 0x00000000],
+  }}
+/>;
+```
+
+```tsx
+<view
+  width={300}
+  height={300}
+  radialGradient={{
+    pivot: [0.5, 0.5],
+    w: 300,
+    h: 300,
+    stops: [0.1, 0.5],
+    colors: [0xff0000ff, 0x00000000],
+  }}
+/>
+```
+
+Use as many stops and colors as you like.
+
+For a simple two-color fade you do not need a shader. Use the corner and edge
+colors: `colorTop`, `colorBottom`, `colorLeft`, `colorRight`, `colorTl`,
+`colorTr`, `colorBl`, `colorBr`.
+
+## A shader by name
+
+`shader` takes a shader the backend made, or a `[type, props]` pair.
+
+```tsx
+<view width={300} height={100} shader={['rounded', { radius: 6 }]} />
+```
+
+The built-in types are `rounded`, `shadow`, `roundedWithBorder`,
+`roundedWithShadow`, `roundedWithBorderWithShadow`, `holePunch`,
+`linearGradient` and `radialGradient`. Their prop types are exported from
+`@solid-multiplatform/platform/shaders`.
+
+## Turning shaders off
+
+Build with the `SOLIDTV_DISABLE_SHADERS` define set to `true` to drop effect
+handling. `SOLIDTV_DISABLE_SHADERS` is a legacy name and will be renamed
+before 1.0.
