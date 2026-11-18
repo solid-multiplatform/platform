@@ -1,4 +1,6 @@
 import { createSignal, type Accessor } from 'solid-js';
+import { openExternal } from './device.js';
+import { CapabilityError } from './services.js';
 
 /** Parse `1.2.3-beta.1` into comparable numeric parts. */
 export function parseVersion(version: string): number[] {
@@ -95,6 +97,75 @@ export function createUpdateChecker(
     },
     dismiss() {
       if (!update()?.mandatory) setUpdate(null);
+    },
+  };
+}
+
+export interface UpdateDeliveryPort {
+  /** Download the package. Report 0..1 progress when the host can. */
+  download(
+    update: UpdateInfo,
+    onProgress?: (fraction: number) => void,
+  ): Promise<void>;
+  /** Apply the downloaded package. */
+  install(update: UpdateInfo): Promise<void>;
+  /** Restart into the new version. */
+  relaunch?(): Promise<void>;
+}
+
+let deliveryPort: UpdateDeliveryPort | undefined;
+
+export function setUpdateDeliveryPort(
+  next: UpdateDeliveryPort | undefined,
+): void {
+  deliveryPort = next;
+}
+
+export interface UpdateDelivery {
+  applying: Accessor<boolean>;
+  /** Download progress 0..1. */
+  progress: Accessor<number>;
+  /**
+   * Download and install through the host. Without a delivery port, opens
+   * `update.url` (store listing / installer); throws when there is no URL.
+   */
+  apply(update: UpdateInfo): Promise<'installed' | 'opened'>;
+}
+
+/**
+ * OTA delivery for `createUpdateChecker` results. Tauri's updater, Expo
+ * Updates and store installers provide the port; the web fallback opens the
+ * store/installer URL. Signing and package verification stay in the host.
+ */
+export function createUpdateDelivery(
+  port: UpdateDeliveryPort | undefined = deliveryPort,
+): UpdateDelivery {
+  const [applying, setApplying] = createSignal(false);
+  const [progress, setProgress] = createSignal(0);
+  return {
+    applying,
+    progress,
+    async apply(update) {
+      if (!port) {
+        if (!update.url) throw new CapabilityError('updateDelivery');
+        await openExternal(update.url);
+        return 'opened';
+      }
+      setApplying(true);
+      setProgress(0);
+      try {
+        let reported = false;
+        await port.download(update, (fraction) => {
+          reported = true;
+          setProgress(Math.min(1, Math.max(0, fraction)));
+        });
+        if (!reported) setProgress(1);
+        await port.install(update);
+        await port.relaunch?.();
+        return 'installed';
+      } finally {
+        setApplying(false);
+      }
     },
   };
 }

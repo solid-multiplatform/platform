@@ -317,6 +317,41 @@
         "types": "./dist/src/sdk/gestures.d.ts",
         "default": "./dist/src/sdk/gestures.js"
       }
+    },
+    "./contacts": {
+      "@solidtv/source": "./src/sdk/contacts.ts",
+      "import": {
+        "types": "./dist/src/sdk/contacts.d.ts",
+        "default": "./dist/src/sdk/contacts.js"
+      }
+    },
+    "./calendar": {
+      "@solidtv/source": "./src/sdk/calendar.ts",
+      "import": {
+        "types": "./dist/src/sdk/calendar.d.ts",
+        "default": "./dist/src/sdk/calendar.js"
+      }
+    },
+    "./sensors": {
+      "@solidtv/source": "./src/sdk/sensors.ts",
+      "import": {
+        "types": "./dist/src/sdk/sensors.d.ts",
+        "default": "./dist/src/sdk/sensors.js"
+      }
+    },
+    "./maps": {
+      "@solidtv/source": "./src/sdk/maps.ts",
+      "import": {
+        "types": "./dist/src/sdk/maps.d.ts",
+        "default": "./dist/src/sdk/maps.js"
+      }
+    },
+    "./release": {
+      "@solidtv/source": "./src/sdk/release.ts",
+      "import": {
+        "types": "./dist/src/sdk/release.d.ts",
+        "default": "./dist/src/sdk/release.js"
+      }
     }
   },
   "sideEffects": false,

@@ -30,8 +30,8 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 | Error boundaries                            | React error boundaries                             | S      | `AppErrorBoundary` with `ListState` fallback and retry                     | —     |
 | Structured logging and tracing              | Expo/Flutter logging                               | S      | `createLogger` levels, child fields, spans; `configureLogging`             | —     |
 | Crash reporting hook                        | Sentry/Crashlytics integration point               | S      | `setCrashReporter`/`reportCrash`; `AppErrorBoundary` reports render errors | —     |
-| Release signing/notarization hooks          | Tauri/Expo build profiles                          | P      | Manual per platform; documented in workflows                               | 10    |
-| OTA/update channel                          | Tauri updater, Expo Updates                        | P      | `createUpdateChecker`; download/apply is host-owned                        | 5     |
+| Release signing/notarization hooks          | Tauri/Expo build profiles                          | S      | `createReleasePipeline` hooks, skips, error reporting and identity checks  | —     |
+| OTA/update channel                          | Tauri updater, Expo Updates                        | S      | `createUpdateChecker` + `createUpdateDelivery` (download/install/relaunch) | —     |
 
 ## 2. Layout, rendering and visual system
 
@@ -153,43 +153,43 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 7. Device, platform and app services
 
-| Feature                                | Established pattern                         | Status | Evidence / gap                                                         | Phase |
-| -------------------------------------- | ------------------------------------------- | ------ | ---------------------------------------------------------------------- | ----- |
-| Lifecycle (active/background)          | RN AppState, Flutter AppLifecycleState      | S      | `AppServices.lifecycle`, host bindings                                 | —     |
-| Orientation lock                       | Expo ScreenOrientation                      | S      | `lockOrientation` with a host port or Screen Orientation API           | —     |
-| Status/navigation bars                 | Capacitor StatusBar/SystemBars              | S      | `applySystemBarStyle` host port + theme-color fallback                 | —     |
-| Keyboard inset and visibility          | Android IME insets, iOS notifications       | S      | `viewport().keyboardInset`                                             | —     |
-| Safe area and display cutout           | Apple safeAreaInsets, Android displayCutout | S      | `safeArea` per edge                                                    | —     |
-| Dark/light/system theme                | RN useColorScheme                           | S      | `ThemeProvider`, `useTheme`, `useColorScheme`                          | —     |
-| Text scaling / accessibility font size | iOS Dynamic Type, Android sp                | S      | `setTextScale` scales theme typography and `scaled()` tokens           | —     |
-| Reduce motion                          | iOS/Android/Web                             | S      | `reducedMotion` in viewport                                            | —     |
-| Locale and i18n                        | i18next, Flutter intl                       | S      | `setupI18n`/`createI18n` with locale fallback and interpolation        | —     |
-| RTL layout                             | CSS direction, I18nManager                  | S      | `isRTL`, `textDirection`, `dir()` and document `dir`/`lang` sync       | —     |
-| Haptics                                | Expo Haptics, Capacitor Haptics             | S      | `impact`/`vibrate` with host port and Vibration API fallback           | —     |
-| Clipboard                              | Expo/Capacitor                              | S      | `readClipboard`/`writeClipboard` with host port and web fallback       | —     |
-| Share sheet                            | RN Share, Capacitor Share                   | S      | `share` with host port, Web Share and clipboard fallback               | —     |
-| Local notifications                    | Expo/Capacitor LocalNotifications           | S      | `notifications` port + host                                            | —     |
-| Push notifications                     | Expo/Capacitor PushNotifications            | S      | `push` port + web PushManager subscription; native providers app-owned | —     |
-| Permissions                            | Expo/Capacitor Permissions                  | S      | `createPermissions`, host ports                                        | —     |
-| Capability registry                    | Expo modules `isAvailableAsync`             | S      | `src/sdk/capabilities.ts` (`setCapabilities`, `supports`)              | —     |
-| Connectivity state                     | NetInfo, Capacitor Network                  | S      | `connectivity` port                                                    | —     |
-| HTTP client and cancellation           | fetch/axios, Tauri HTTP                     | S      | `network.ts`, host adapters                                            | —     |
-| Preferences/settings                   | AsyncStorage, Capacitor Preferences         | S      | `settings` store                                                       | —     |
-| Secure storage                         | Keychain/Keystore                           | S      | `secureStorage` port + native                                          | —     |
-| File system                            | Expo FileSystem, Capacitor Filesystem       | S      | `FileSystemPort` + `readFileText`/`writeFileText`/`listFiles` etc.     | —     |
-| Background jobs                        | Expo BackgroundTask, WorkManager            | S      | `jobs` port + Web Background Sync; native registries                   | —     |
-| Device info                            | Expo Device                                 | S      | `deviceInfo` with host port and web fallback                           | —     |
-| Battery/power state                    | Expo Battery                                | S      | `batteryState` with host port and Battery Status API                   | —     |
-| Keep awake / screen lock               | Expo KeepAwake                              | S      | `keepAwake` with host port and Screen Wake Lock API                    | —     |
-| Biometrics/local auth                  | Expo LocalAuthentication                    | S      | `authenticate`/`biometricsAvailable` host port                         | —     |
-| Geolocation                            | Expo Location, Capacitor Geolocation        | S      | `getCurrentPosition`/`watchPosition` with host and web fallback        | —     |
-| Camera                                 | Expo Camera/ImagePicker                     | S      | `capturePhoto` host port + getUserMedia/canvas fallback                | —     |
-| Microphone/recording                   | Expo Audio                                  | S      | `openMicrophone`/`stopMicrophone` host port + getUserMedia             | —     |
-| Contacts/calendar                      | Expo Contacts/Calendar                      | M      | Deferred; optional                                                     | —     |
-| Sensors                                | Expo Sensors                                | M      | Deferred; optional                                                     | —     |
-| Maps                                   | Expo Maps                                   | M      | Deferred; optional                                                     | —     |
-| In-app browser / external opener       | Expo WebBrowser, Tauri Opener               | S      | `openExternal` with host port and window.open fallback                 | —     |
-| App/store review                       | Expo StoreReview                            | S      | `requestAppReview` host port                                           | —     |
+| Feature                                | Established pattern                         | Status | Evidence / gap                                                             | Phase |
+| -------------------------------------- | ------------------------------------------- | ------ | -------------------------------------------------------------------------- | ----- |
+| Lifecycle (active/background)          | RN AppState, Flutter AppLifecycleState      | S      | `AppServices.lifecycle`, host bindings                                     | —     |
+| Orientation lock                       | Expo ScreenOrientation                      | S      | `lockOrientation` with a host port or Screen Orientation API               | —     |
+| Status/navigation bars                 | Capacitor StatusBar/SystemBars              | S      | `applySystemBarStyle` host port + theme-color fallback                     | —     |
+| Keyboard inset and visibility          | Android IME insets, iOS notifications       | S      | `viewport().keyboardInset`                                                 | —     |
+| Safe area and display cutout           | Apple safeAreaInsets, Android displayCutout | S      | `safeArea` per edge                                                        | —     |
+| Dark/light/system theme                | RN useColorScheme                           | S      | `ThemeProvider`, `useTheme`, `useColorScheme`                              | —     |
+| Text scaling / accessibility font size | iOS Dynamic Type, Android sp                | S      | `setTextScale` scales theme typography and `scaled()` tokens               | —     |
+| Reduce motion                          | iOS/Android/Web                             | S      | `reducedMotion` in viewport                                                | —     |
+| Locale and i18n                        | i18next, Flutter intl                       | S      | `setupI18n`/`createI18n` with locale fallback and interpolation            | —     |
+| RTL layout                             | CSS direction, I18nManager                  | S      | `isRTL`, `textDirection`, `dir()` and document `dir`/`lang` sync           | —     |
+| Haptics                                | Expo Haptics, Capacitor Haptics             | S      | `impact`/`vibrate` with host port and Vibration API fallback               | —     |
+| Clipboard                              | Expo/Capacitor                              | S      | `readClipboard`/`writeClipboard` with host port and web fallback           | —     |
+| Share sheet                            | RN Share, Capacitor Share                   | S      | `share` with host port, Web Share and clipboard fallback                   | —     |
+| Local notifications                    | Expo/Capacitor LocalNotifications           | S      | `notifications` port + host                                                | —     |
+| Push notifications                     | Expo/Capacitor PushNotifications            | S      | `push` port + web PushManager subscription; native providers app-owned     | —     |
+| Permissions                            | Expo/Capacitor Permissions                  | S      | `createPermissions`, host ports                                            | —     |
+| Capability registry                    | Expo modules `isAvailableAsync`             | S      | `src/sdk/capabilities.ts` (`setCapabilities`, `supports`)                  | —     |
+| Connectivity state                     | NetInfo, Capacitor Network                  | S      | `connectivity` port                                                        | —     |
+| HTTP client and cancellation           | fetch/axios, Tauri HTTP                     | S      | `network.ts`, host adapters                                                | —     |
+| Preferences/settings                   | AsyncStorage, Capacitor Preferences         | S      | `settings` store                                                           | —     |
+| Secure storage                         | Keychain/Keystore                           | S      | `secureStorage` port + native                                              | —     |
+| File system                            | Expo FileSystem, Capacitor Filesystem       | S      | `FileSystemPort` + `readFileText`/`writeFileText`/`listFiles` etc.         | —     |
+| Background jobs                        | Expo BackgroundTask, WorkManager            | S      | `jobs` port + Web Background Sync; native registries                       | —     |
+| Device info                            | Expo Device                                 | S      | `deviceInfo` with host port and web fallback                               | —     |
+| Battery/power state                    | Expo Battery                                | S      | `batteryState` with host port and Battery Status API                       | —     |
+| Keep awake / screen lock               | Expo KeepAwake                              | S      | `keepAwake` with host port and Screen Wake Lock API                        | —     |
+| Biometrics/local auth                  | Expo LocalAuthentication                    | S      | `authenticate`/`biometricsAvailable` host port                             | —     |
+| Geolocation                            | Expo Location, Capacitor Geolocation        | S      | `getCurrentPosition`/`watchPosition` with host and web fallback            | —     |
+| Camera                                 | Expo Camera/ImagePicker                     | S      | `capturePhoto` host port + getUserMedia/canvas fallback                    | —     |
+| Microphone/recording                   | Expo Audio                                  | S      | `openMicrophone`/`stopMicrophone` host port + getUserMedia                 | —     |
+| Contacts/calendar                      | Expo Contacts/Calendar                      | S      | `ContactsPort`/`CalendarPort` + `getContacts`/`pickContact`/events helpers | —     |
+| Sensors                                | Expo Sensors                                | S      | `SensorsPort` + `watchSensor`/`readSensor`; web motion fallback            | —     |
+| Maps                                   | Expo Maps                                   | S      | `MapsPort` + `openMap`/`openDirections`; Google Maps fallback              | —     |
+| In-app browser / external opener       | Expo WebBrowser, Tauri Opener               | S      | `openExternal` with host port and window.open fallback                     | —     |
+| App/store review                       | Expo StoreReview                            | S      | `requestAppReview` host port                                               | —     |
 
 ## 8. Media
 
@@ -322,7 +322,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 12. Implementation phases
 
-Progress: Phases 0–6 and 8 are implemented, including theme/capabilities/insets, keyboard/forms, modal/presentation primitives, tabs/guards/history/restoration, pointer drag/wheel/cursors, data/query/offline persistence, lists and a11y/i18n. Phase 7 media covers playback state/bookmarks, media sessions, fullscreen/PiP, thumbnails, audio and DRM reporting. Phase 5 services cover clipboard/share/haptics, files/pickers, geolocation, biometrics, notifications/jobs ports, keep-awake, orientation, system bars, updates and app review. Remaining work is platform delivery (signing/notarization and OTA installation) and the optional contacts/sensors/maps integrations.
+Progress: Phases 0–6 and 8 are implemented, including theme/capabilities/insets, keyboard/forms, modal/presentation primitives, tabs/guards/history/restoration, pointer drag/wheel/cursors, data/query/offline persistence, lists and a11y/i18n. Phase 7 media covers playback state/bookmarks, media sessions, fullscreen/PiP, thumbnails, audio and DRM reporting. Phase 5 services cover clipboard/share/haptics, files/pickers, geolocation, biometrics, notifications/jobs ports, keep-awake, orientation, system bars, updates and app review. Every core matrix row is now shipped at the framework level. Remaining work is platform/app-owned: signing certificates and store credentials, the native installer for OTA delivery, and native contacts/calendar/sensor/map providers behind the new ports.
 
 ### Phase 0 — Contracts and theme foundation
 

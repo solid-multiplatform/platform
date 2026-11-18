@@ -52,3 +52,8 @@ export * from './sdk/drm.js';
 export * from './sdk/richText.js';
 export * from './sdk/svg.js';
 export * from './sdk/gestures.js';
+export * from './sdk/contacts.js';
+export * from './sdk/calendar.js';
+export * from './sdk/sensors.js';
+export * from './sdk/maps.js';
+export * from './sdk/release.js';
