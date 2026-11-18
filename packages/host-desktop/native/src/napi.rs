@@ -25,6 +25,7 @@ pub const NAPI_UNDEFINED: i32 = 0;
 pub const NAPI_NULL: i32 = 1;
 pub const NAPI_NUMBER: i32 = 3;
 pub const NAPI_STRING: i32 = 4;
+pub const NAPI_FUNCTION: i32 = 7;
 
 /// `napi_typedarray_type`.
 pub const NAPI_UINT8_ARRAY: i32 = 1;
@@ -154,6 +155,12 @@ extern "C" {
         value: napi_value,
     ) -> napi_status;
     pub fn napi_get_property(env: napi_env, object: napi_value, key: napi_value, result: *mut napi_value) -> napi_status;
+    pub fn napi_set_property(env: napi_env, object: napi_value, key: napi_value, value: napi_value) -> napi_status;
+    pub fn napi_create_array(env: napi_env, result: *mut napi_value) -> napi_status;
+    pub fn napi_set_element(env: napi_env, object: napi_value, index: u32, value: napi_value) -> napi_status;
+    pub fn napi_get_element(env: napi_env, object: napi_value, index: u32, result: *mut napi_value) -> napi_status;
+    pub fn napi_get_array_length(env: napi_env, value: napi_value, result: *mut u32) -> napi_status;
+    pub fn napi_is_array(env: napi_env, value: napi_value, result: *mut bool) -> napi_status;
     pub fn napi_define_properties(
         env: napi_env,
         object: napi_value,

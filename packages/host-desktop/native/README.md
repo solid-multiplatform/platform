@@ -2,7 +2,7 @@
 
 One executable for Linux, Windows and macOS: the Hermes JavaScript engine, an SDL3 window and a GL surface for the scene. There is no Node.js and no browser in it.
 
-It runs an app: `solid-desktop app.js` opens a window and draws a Solid scene with the WebGL backend of `@solid-multiplatform/renderer`, unchanged, inside Hermes. Linux is the only system it has been built and tested on, and it does not take input yet.
+It runs an app: `solid-desktop app.js` opens a window and draws a Solid scene with the WebGL backend of `@solid-multiplatform/renderer`, unchanged, inside Hermes. Linux is the only system it has been built and tested on.
 
 ## What it does
 
@@ -10,11 +10,11 @@ It runs an app: `solid-desktop app.js` opens a window and draws a Solid scene wi
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Can a Rust host embed Hermes?  | Yes. Hermes (branch `static_h`) links statically; the only C++ is about 100 lines that create the VM and call two entry points Hermes declares in C++. Everything else goes through Hermes' own Node-API implementation, which is plain C.                                         |
 | Does the renderer run in it?   | Yes, as written. The context is OpenGL ES 3 on every system, so the renderer's WebGL 1 shaders compile without rewriting. The shared fixture (panel, boxes, MSDF text) matches Chromium's WebGL at every probed pixel; text cells differ by at most one level out of 255.          |
-| Size                           | 5.2 MB stripped on Linux x64, with the JavaScript compiler and the PNG, JPEG and WebP decoders. SDL3 is still linked dynamically here.                                                                                                                                             |
+| Size                           | 7.5 MB stripped on Linux x64, with the JavaScript compiler, the PNG, JPEG and WebP decoders and the HTTPS client (rustls, about 1.9 MB of it). SDL3 is still linked dynamically here.                                                                                              |
 | Start-up                       | From bytecode the fixture's first frame is presented 61 ms after `main()` starts, from source 130 ms: compiling 650 KB of JavaScript takes about 70 ms, minified or not. 49 ms of either is the window and a software GL context on the test display; without a window it is 2 ms. |
 | Idle behaviour                 | The loop blocks until the system, a timer or a worker has something for it. Two seconds of the settled fixture: 1 wakeup (the timer that ended the test), 0 frames, 0 presents. See "Idle" below for the one wake SDL itself adds.                                                 |
 | A frame                        | Redrawing the fixture costs 0.07 ms of JavaScript and GL calls. A call through the binding costs about 45 ns.                                                                                                                                                                      |
-| Language level                 | Classes with private fields, promises, async functions and `WeakRef` run as written. `Intl`, `URL`, `TextDecoder` and `fetch` are absent.                                                                                                                                          |
+| Language level                 | Classes with private fields, promises, async functions and `WeakRef` run as written. `Intl` is absent; `URL`, `TextDecoder`, `fetch` and the like are supplied by the host package (`../src/web`).                                                                                 |
 | Is an interpreter fast enough? | On a stand-in for per-frame scene work (transform update and quad batching), Hermes takes 0.26 ms for 2,000 nodes and 1.06 ms for 8,000. V8 with its JIT takes 0.02 and 0.08 ms; V8 without a JIT, which is what iOS and tvOS run, takes 0.41 and 1.63 ms.                         |
 
 The numbers are from `tests/measure.mjs` in the package above, on a virtual display with Mesa's software rasterizer.
@@ -50,13 +50,24 @@ A script that throws while it starts ends the process with status 1. Later error
 
 ## What JavaScript gets
 
-- `setTimeout`, `clearTimeout`, `requestAnimationFrame`, `cancelAnimationFrame`, `performance.now`, `console` (`log`, `info`, `debug`, `warn`, `error`) and `print`.
+- `setTimeout`, `setInterval` and their `clear` functions, `requestAnimationFrame`, `cancelAnimationFrame`, `queueMicrotask`, `performance.now`, `console` (`log`, `info`, `debug`, `warn`, `error`) and `print`. Timers set during a turn of the loop run in a later turn, so a chain of zero-delay timers cannot keep the loop from input and frames.
 - `__solid.gl`: a WebGL-shaped context. What is bound, and what throws by name because it is not, is the table in `src/gl/table.rs`.
+- `__solid.input.listen`: every event of a turn of the loop in one call (keys, text and composition, mouse, touch, pen, wheel, focus, resize and scale, close, theme, locale, drops). The events and the merging of moves are described in `src/input.rs`; the key names and codes in `src/keys.rs`.
+- `__solid.text`: the system's text input and input method (`start`, `stop`, `area`), and where user-perceived characters begin (`graphemes`).
+- `__solid.window`: its size in layout units and pixels with the display's scale, `setSize`, `setTitle`, its state, the system theme, and the screen saver. `__solid.clipboard`: `read` and `write`.
+- `__solid.system`: the machine (`info`, `power`, `locales`) and `openURL`. `__solid.store` and `__solid.fs`: an app's settings file and its own directories, confined (`src/storage.rs`). `__solid.dialog`: the system's file dialogs. `__solid.http`: HTTP(S) requests on worker threads (`src/http.rs`).
 - `__solid.readFile`, `readText` and `decodeImage`: files and images, read and decoded on worker threads.
-- `__solid.window`: its size, `setSize`, and a listener for `resize` and `expose`.
-- `__solid.appDir`, `exit` and `stats` (the loop's counters, for tests).
+- `__solid.appDir`, `exit` and `stats` (the loop's counters, for tests). With `SOLID_DESKTOP_TEST` set, `__solid.test` puts made-up input on SDL's queue (`src/testing.rs`).
 
-`__solid` is the host module's interface, not an app's.
+`__solid` is the host module's interface, not an app's: apps use the platform's APIs, which `../src` implements over it (`desktopHost()`, the services, and the web-standard globals Hermes lacks).
+
+## Input, scale and the screen saver
+
+Input is event-driven: SDL's events are gathered while the loop drains them and reach JavaScript in one call per turn; a turn without events calls nothing. Sizes and pointer positions are in layout units, of which `scale` (the display's scale) make a pixel; the window asks for a high-density drawing buffer.
+
+SDL turns the screen saver off for any program with a window. The runtime sets `SDL_HINT_VIDEO_ALLOW_SCREENSAVER` so that it stays allowed until an app asks otherwise (`keepAwake`).
+
+Gamepads are not delivered. Nothing initialises SDL's joystick subsystem, and `SDL_HINT_AUTO_UPDATE_JOYSTICKS` and `SDL_HINT_AUTO_UPDATE_SENSORS` are set to 0 so that SDL never polls for them from its event wait (with a joystick open it would wake every few milliseconds).
 
 ## Idle
 
@@ -70,8 +81,11 @@ Frames are paced by the buffer swap when it waits for the display, and by the cl
 
 - `src/glue.cpp`: creates the Hermes VM, runs source or bytecode, compiles, drains promise jobs.
 - `src/napi.rs`: the Node-API functions the host uses.
-- `src/runtime.rs`: the event loop, timers, animation frames and the window's events.
-- `src/worker.rs`: the thread pool for work that must not run on the JavaScript thread.
+- `src/runtime.rs`: the event loop, timers and animation frames.
+- `src/input.rs`, `src/keys.rs`, `src/window.rs`: input, key names, the window and clipboard.
+- `src/system.rs`, `src/storage.rs`, `src/dialog.rs`, `src/http.rs`: what the services are made of.
+- `src/testing.rs`: made-up input for tests.
+- `src/worker.rs`: the thread pools for work that must not run on the JavaScript thread (decodes; files; requests). Every thread blocks until it has work.
 - `src/gl/`: the GL context and binding. `table.rs` is the binding as one table, `bind.rs` the macro that generates code from it, `calls.rs` the calls that need more than argument conversion.
 - `src/images.rs`, `src/files.rs`: image decoding and file reading.
 - `src/console.rs`, `src/prelude.js`: output, `console`, and the report of unhandled rejections.
@@ -79,4 +93,4 @@ Frames are paced by the buffer swap when it waits for the display, and by the cl
 
 ## Not done yet
 
-Input events and text input, network `fetch`, the web-standard globals (`URL`, `TextDecoder`), `Intl`, losing and recreating the GL context (`renderer.destroy()` leaves its GL objects until the process exits), high-density displays, accessibility, tray and menus, dialogs, packaging, static SDL3, Windows and macOS builds, and CI prebuilds of Hermes.
+`Intl` (Hermes has no backend for it on Linux at this commit; one over ICU4X is measured but not wired in), gamepads, a connectivity service, secure storage, notifications, tray and menus, accessibility, losing and recreating the GL context (`renderer.destroy()` leaves its GL objects until the process exits), packaging, static SDL3, Windows and macOS builds. HTTPS trusts Mozilla's roots compiled in, not the system's store. Response bodies are buffered whole; there are no streams.

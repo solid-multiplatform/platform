@@ -1,57 +1,37 @@
 // The desktop host: runs a Solid Multiplatform app in the native runtime
 // (packages/host-desktop/native) with the WebGL renderer.
-import { setDefaultPlatform } from '@solid-multiplatform/renderer/platform';
-import { getRenderer } from '@solid-multiplatform/platform';
-import {
-  updateViewport,
-  zeroInsets,
-} from '@solid-multiplatform/platform/viewport';
-import { DesktopPlatform, windowMetrics } from './platform.js';
+//
+//     import { startApp } from '@solid-multiplatform/platform/host';
+//     import { desktopHost } from '@solid-multiplatform/host-desktop';
+//
+//     startApp(desktopHost({ id: 'com.example.app' }), App, { fonts });
+//
+// Importing this module installs the web-standard globals the engine lacks
+// (./standard.ts); it does nothing else until an app starts.
+import './standard.js';
+import { launchDesktop } from './host.js';
 
+export {
+  desktopControls,
+  desktopHost,
+  launchDesktop,
+  type DesktopHostOptions,
+  type DesktopSurface,
+} from './host.js';
 export { DesktopPlatform } from './platform.js';
-
-function applyWindowSize(): void {
-  const { width, height, scale } = windowMetrics();
-  updateViewport({
-    width,
-    height,
-    scale,
-    safeArea: zeroInsets,
-    keyboardInset: 0,
-    reducedMotion: false,
-  });
-}
+export type { FieldStyle } from './field.jsx';
+export type { DesktopEditor, DesktopEditorHost } from './editor.js';
+export type { DesktopDeviceInfo } from './services/device.js';
+export type { DesktopFileSystemPort } from './services/files.js';
 
 /**
- * Start an app: `mount` creates the renderer and renders the scene, as on
- * any target, and may return a function that disposes of it. The renderer
- * it creates draws into the window, at the window's size, and follows the
- * window when it is resized.
+ * Start an app that creates its renderer itself: `mount` renders the scene
+ * and may return a function that disposes of it. The window, input and
+ * services are the host's, as with `startApp(desktopHost())`, which is the
+ * way to start an app; this is for code that predates it.
  *
  * Returns the function that disposes of the app.
  */
 export function startDesktop(mount: () => (() => void) | void): () => void {
-  setDefaultPlatform(DesktopPlatform);
-  // Before the app runs: its layout reads the viewport from its first line.
-  applyWindowSize();
-  // The runtime calls back when the window changes; nothing here runs
-  // otherwise.
-  let disposed = false;
-  __solid.window!.listen((kind) => {
-    if (disposed) return;
-    if (kind === 'resize') {
-      applyWindowSize();
-    } else {
-      // The window system dropped the window's contents: draw them again.
-      const renderer = getRenderer() as
-        | { requestRender?: () => void }
-        | undefined;
-      renderer?.requestRender?.();
-    }
-  });
-  const dispose = mount();
-  return () => {
-    disposed = true;
-    dispose?.();
-  };
+  return launchDesktop({}, () => mount() ?? (() => {}));
 }

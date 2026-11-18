@@ -1,13 +1,17 @@
 //! The event loop: one thread that blocks until an event, a timer, a finished
 //! job or a requested frame gives it something to do. Nothing here polls.
 //!
-//! JavaScript gets `setTimeout`, `clearTimeout`, `requestAnimationFrame`,
-//! `cancelAnimationFrame` and `performance.now`. A frame runs only when
-//! JavaScript asked for one, at most once per display refresh, and the window
-//! is presented only after a turn that drew.
+//! JavaScript gets `setTimeout`, `setInterval` and their `clear` functions,
+//! `requestAnimationFrame`, `cancelAnimationFrame` and `performance.now`. A
+//! frame runs only when JavaScript asked for one, at most once per display
+//! refresh, and the window is presented only after a turn that drew.
+//!
+//! A turn of the loop: wait; drain the system's events and hand them to
+//! JavaScript in one call (`input.rs`); run finished jobs, due timers and a
+//! frame; present.
 
 use crate::napi::*;
-use crate::{gl, worker};
+use crate::{gl, input, window, worker};
 use sdl3_sys::everything::*;
 use std::cell::RefCell;
 use std::ffi::c_void;
@@ -20,6 +24,8 @@ struct Timer {
     id: u32,
     /// Nanoseconds on `now_ns`'s clock.
     due: u64,
+    /// The period of an interval; `None` for a timeout, which fires once.
+    every: Option<u64>,
     callback: napi_ref,
 }
 
@@ -69,8 +75,6 @@ pub struct Loop {
     timers: Vec<Timer>,
     frames: Vec<(u32, napi_ref)>,
     pacing: Pacing,
-    /// `__solid.window.listen`'s callback.
-    window_listener: Option<napi_ref>,
     pub exit: Option<i32>,
     /// Counters the tests read: how often the loop woke and what it did.
     wakeups: u64,
@@ -84,7 +88,6 @@ thread_local! {
         timers: Vec::new(),
         frames: Vec::new(),
         pacing: Pacing { period: 1_000_000_000 / 60, vsync: false, last_start: 0, last_presented: false, short: 0 },
-        window_listener: None,
         exit: None,
         wakeups: 0,
         frames_run: 0,
@@ -93,7 +96,6 @@ thread_local! {
 }
 
 static ENGINE: AtomicPtr<c_void> = AtomicPtr::new(ptr::null_mut());
-static WINDOW: AtomicPtr<SDL_Window> = AtomicPtr::new(ptr::null_mut());
 
 /// Nanoseconds since the runtime started, monotonic.
 pub fn now_ns() -> u64 {
@@ -130,18 +132,44 @@ unsafe fn invoke_once(env: napi_env, reference: napi_ref, argument: Option<f64>)
     napi_close_handle_scope(env, scope);
 }
 
-unsafe extern "C" fn set_timeout(env: napi_env, info: napi_callback_info) -> napi_value {
+unsafe fn add_timer(env: napi_env, info: napi_callback_info, repeats: bool) -> napi_value {
     let [callback, delay] = arguments::<2>(env, info);
-    let delay = number_or(env, delay, 0.0).max(0.0);
+    let mut kind = NAPI_UNDEFINED;
+    napi_typeof(env, callback, &mut kind);
+    if kind != NAPI_FUNCTION {
+        return throw(env, "The timer's callback must be a function");
+    }
+    let delay = (number_or(env, delay, 0.0).max(0.0) * 1_000_000.0) as u64;
+    // An interval of no time would never let the loop wait: a millisecond is
+    // the shortest, which is also the wait's own resolution.
+    let every = repeats.then(|| delay.max(1_000_000));
     let callback = reference(env, callback);
     let id = LOOP.with(|l| {
         let mut l = l.borrow_mut();
         l.next_id += 1;
         let id = l.next_id;
-        l.timers.push(Timer { id, due: now_ns() + (delay * 1_000_000.0) as u64, callback });
+        l.timers.push(Timer { id, due: now_ns() + every.unwrap_or(delay), every, callback });
         id
     });
     number(env, id as f64)
+}
+
+/// Calls an interval's function, which stays referenced unless the call
+/// cleared the interval.
+unsafe fn invoke_interval(env: napi_env, _id: u32, reference: napi_ref) {
+    let mut scope = ptr::null_mut();
+    napi_open_handle_scope(env, &mut scope);
+    // The handle keeps the function alive even if it clears its own interval.
+    invoke(env, dereference(env, reference), &[]);
+    napi_close_handle_scope(env, scope);
+}
+
+unsafe extern "C" fn set_timeout(env: napi_env, info: napi_callback_info) -> napi_value {
+    add_timer(env, info, false)
+}
+
+unsafe extern "C" fn set_interval(env: napi_env, info: napi_callback_info) -> napi_value {
+    add_timer(env, info, true)
 }
 
 unsafe extern "C" fn clear_timeout(env: napi_env, info: napi_callback_info) -> napi_value {
@@ -208,78 +236,15 @@ unsafe extern "C" fn stats(env: napi_env, _info: napi_callback_info) -> napi_val
     object
 }
 
-/// `__solid.window.size()`: `{ width, height, pixelWidth, pixelHeight }`, the
-/// window in layout units and its drawing buffer in pixels.
-unsafe extern "C" fn window_size(env: napi_env, _info: napi_callback_info) -> napi_value {
-    let [width, height, pixel_width, pixel_height] = window_metrics();
-    let mut object = ptr::null_mut();
-    napi_create_object(env, &mut object);
-    napi_set_named_property(env, object, c"width".as_ptr(), number(env, width));
-    napi_set_named_property(env, object, c"height".as_ptr(), number(env, height));
-    napi_set_named_property(env, object, c"pixelWidth".as_ptr(), number(env, pixel_width));
-    napi_set_named_property(env, object, c"pixelHeight".as_ptr(), number(env, pixel_height));
-    object
-}
-
-/// `__solid.window.setSize(width, height)` in layout units. The listener hears
-/// `resize` once the window system has applied it.
-unsafe extern "C" fn window_set_size(env: napi_env, info: napi_callback_info) -> napi_value {
-    let [width, height] = arguments::<2>(env, info);
-    let (width, height) = (number_or(env, width, 0.0), number_or(env, height, 0.0));
-    if !(width >= 1.0 && height >= 1.0) {
-        return throw(env, "window.setSize: width and height must be at least 1");
-    }
-    if !SDL_SetWindowSize(WINDOW.load(Ordering::Relaxed), width as i32, height as i32) {
-        return throw(env, "window.setSize: the window system refused the size");
-    }
-    undefined(env)
-}
-
-/// `__solid.window.listen(callback)`: `callback(kind, width, height,
-/// pixelWidth, pixelHeight)` for `"resize"` (the size changed) and
-/// `"expose"` (the window's contents were lost and must be drawn again).
-unsafe extern "C" fn window_listen(env: napi_env, info: napi_callback_info) -> napi_value {
-    let [callback] = arguments::<1>(env, info);
-    let callback = reference(env, callback);
-    if let Some(previous) = LOOP.with(|l| l.borrow_mut().window_listener.replace(callback)) {
-        napi_delete_reference(env, previous);
-    }
-    undefined(env)
-}
-
-unsafe fn window_metrics() -> [f64; 4] {
-    let window = WINDOW.load(Ordering::Relaxed);
-    let (mut width, mut height, mut pixel_width, mut pixel_height) = (0, 0, 0, 0);
-    SDL_GetWindowSize(window, &mut width, &mut height);
-    SDL_GetWindowSizeInPixels(window, &mut pixel_width, &mut pixel_height);
-    [width as f64, height as f64, pixel_width as f64, pixel_height as f64]
-}
-
-unsafe fn notify_window(env: napi_env, kind: &str) {
-    let Some(listener) = LOOP.with(|l| l.borrow().window_listener) else {
-        return;
-    };
-    let mut scope = ptr::null_mut();
-    napi_open_handle_scope(env, &mut scope);
-    let [width, height, pixel_width, pixel_height] = window_metrics();
-    let args = [
-        string(env, kind),
-        number(env, width),
-        number(env, height),
-        number(env, pixel_width),
-        number(env, pixel_height),
-    ];
-    invoke(env, dereference(env, listener), &args);
-    napi_close_handle_scope(env, scope);
-}
-
 /// Installs the loop's globals and the `__solid` host object, which it
 /// returns. `window` is null for a loop without one.
 pub unsafe fn install(env: napi_env, engine: *mut c_void, global: napi_value, window: *mut SDL_Window) -> napi_value {
     ENGINE.store(engine, Ordering::Relaxed);
-    WINDOW.store(window, Ordering::Relaxed);
     define_function(env, global, c"setTimeout", set_timeout);
     define_function(env, global, c"clearTimeout", clear_timeout);
+    define_function(env, global, c"setInterval", set_interval);
+    // One table of timers: either function clears either kind, as on the web.
+    define_function(env, global, c"clearInterval", clear_timeout);
     define_function(env, global, c"requestAnimationFrame", request_frame);
     define_function(env, global, c"cancelAnimationFrame", cancel_frame);
     let performance = define_object(env, global, c"performance");
@@ -288,10 +253,6 @@ pub unsafe fn install(env: napi_env, engine: *mut c_void, global: napi_value, wi
     define_function(env, host, c"exit", exit);
     define_function(env, host, c"stats", stats);
     if !window.is_null() {
-        let object = define_object(env, host, c"window");
-        define_function(env, object, c"size", window_size);
-        define_function(env, object, c"setSize", window_set_size);
-        define_function(env, object, c"listen", window_listen);
         // Present on the display's refresh: this is what paces drawn frames.
         let mut interval = 0;
         let synced = SDL_GL_SetSwapInterval(1) && SDL_GL_GetSwapInterval(&mut interval) && interval != 0;
@@ -329,7 +290,7 @@ unsafe fn wait(windowed: bool, deadline: Option<u64>, event: &mut SDL_Event) -> 
 /// Runs until JavaScript asks to exit or the window is closed. Returns the
 /// exit code.
 pub unsafe fn run(env: napi_env) -> i32 {
-    let window = WINDOW.load(Ordering::Relaxed);
+    let window = window::handle();
     let mut event: SDL_Event = std::mem::zeroed();
     loop {
         if let Some(code) = LOOP.with(|l| l.borrow().exit) {
@@ -348,24 +309,14 @@ pub unsafe fn run(env: napi_env) -> i32 {
         let mut pending = wait(!window.is_null(), deadline, &mut event);
         LOOP.with(|l| l.borrow_mut().wakeups += 1);
 
-        let (mut resized, mut exposed) = (false, false);
+        // Everything the system has for this turn, then one call into
+        // JavaScript with all of it.
         while pending {
-            let kind = event.r#type;
-            if kind == SDL_EVENT_QUIT.0 as u32 || kind == SDL_EVENT_WINDOW_CLOSE_REQUESTED.0 as u32 {
-                return 0;
-            } else if kind == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED.0 as u32 || kind == SDL_EVENT_WINDOW_RESIZED.0 as u32 {
-                resized = true;
-            } else if kind == SDL_EVENT_WINDOW_EXPOSED.0 as u32 {
-                exposed = true;
-            }
+            input::collect(&event);
             pending = SDL_PollEvent(&mut event);
         }
-        // A drag sends a run of sizes: JavaScript hears the last one.
-        if resized {
-            notify_window(env, "resize");
-        }
-        if exposed {
-            notify_window(env, "expose");
+        if let input::Delivered::CloseUnheard = input::deliver(env) {
+            return 0;
         }
 
         for completion in worker::take_completions() {
@@ -375,22 +326,34 @@ pub unsafe fn run(env: napi_env) -> i32 {
             napi_close_handle_scope(env, scope);
         }
 
-        // Timers that are due, oldest first.
+        // Timers that are due, oldest first. Only the ones that were due as
+        // the turn began: a timer set by one of them, even for no delay,
+        // waits for the next turn, so that a chain of timers cannot keep the
+        // loop from the system's events and from frames.
+        let (now, newest) = (now_ns(), LOOP.with(|l| l.borrow().next_id));
         loop {
-            let now = now_ns();
             let due = LOOP.with(|l| {
                 let mut l = l.borrow_mut();
                 let at = l
                     .timers
                     .iter()
                     .enumerate()
-                    .filter(|(_, t)| t.due <= now)
+                    .filter(|(_, t)| t.due <= now && t.id <= newest)
                     .min_by_key(|(_, t)| (t.due, t.id))
                     .map(|(at, _)| at);
-                at.map(|at| l.timers.swap_remove(at))
+                let timer = &mut l.timers[at?];
+                let fired = (timer.id, timer.callback, timer.every.is_some());
+                match timer.every {
+                    // An interval stays in the table, due a period from now:
+                    // one that fell behind does not fire in a burst.
+                    Some(every) => timer.due = now + every,
+                    None => drop(l.timers.swap_remove(at?)),
+                }
+                Some(fired)
             });
             match due {
-                Some(timer) => invoke_once(env, timer.callback, None),
+                Some((_, callback, false)) => invoke_once(env, callback, None),
+                Some((id, callback, true)) => invoke_interval(env, id, callback),
                 None => break,
             }
         }

@@ -32,6 +32,9 @@ importers:
       '@solid-multiplatform/renderer':
         specifier: workspace:*
         version: link:../renderer
+      solid-js:
+        specifier: 1.9.17
+        version: 1.9.17
     devDependencies:
       '@babel/core':
         specifier: ^7.26.10

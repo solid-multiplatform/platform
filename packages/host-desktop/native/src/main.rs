@@ -5,11 +5,19 @@
 //! the same interface serves native plugins.
 
 mod console;
+mod dialog;
 mod files;
 mod gl;
+mod http;
 mod images;
+mod input;
+mod keys;
 mod napi;
 mod runtime;
+mod storage;
+mod system;
+mod testing;
+mod window;
 mod worker;
 
 use napi::*;
@@ -82,13 +90,24 @@ fn main() {
     unsafe {
         let mut window = ptr::null_mut();
         if !headless {
+            // SDL turns the screen saver off for anything with a window unless
+            // told otherwise; an app that wants the screen kept awake asks
+            // (`window.allowScreenSaver`).
+            SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, c"1".as_ptr());
+            // Nothing here opens a joystick or a sensor, and SDL must never
+            // start polling for them on its own: with these on and such a
+            // device open its event wait wakes every few milliseconds.
+            SDL_SetHint(SDL_HINT_AUTO_UPDATE_JOYSTICKS, c"0".as_ptr());
+            SDL_SetHint(SDL_HINT_AUTO_UPDATE_SENSORS, c"0".as_ptr());
             if !SDL_Init(SDL_INIT_VIDEO) {
                 fail(&format!("SDL could not start a video driver: {}", CStr::from_ptr(SDL_GetError()).to_string_lossy()));
             }
             SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES.0 as i32);
             SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
             SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-            window = SDL_CreateWindow(c"Solid".as_ptr(), 1280, 720, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+            // The drawing buffer has the display's pixels, not one per point.
+            let flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+            window = SDL_CreateWindow(c"Solid".as_ptr(), 1280, 720, flags);
             if window.is_null() {
                 fail(&format!("SDL could not create a window: {}", CStr::from_ptr(SDL_GetError()).to_string_lossy()));
             }
@@ -109,8 +128,17 @@ fn main() {
         console::install(env, engine, global, host);
         files::install(env, host);
         images::install(env, host);
+        system::install(env, host);
+        storage::install(env, host);
+        http::install(env, host);
         if !window.is_null() {
             gl::install(env, host);
+            window::install(env, host, window);
+            input::install(env, host);
+            dialog::install(env, host);
+            if std::env::var_os("SOLID_DESKTOP_TEST").is_some() {
+                testing::install(env, host);
+            }
         }
 
         let mut result = ptr::null_mut();

@@ -92,8 +92,12 @@ async function run(): Promise<void> {
   await rejects('JSON that is not JSON', /JSON/, () =>
     platform.fetch('fixtures/colours.webp.txt', 'json'),
   );
-  await rejects('a network URL', /only local files are implemented/, () =>
-    platform.fetch('https://example.com/a.png', 'blob'),
+  // http(s) URLs are loaded too (tests/host, against a local server); any
+  // other scheme is refused by name.
+  await rejects(
+    'a scheme that is not loaded',
+    /only files and http\(s\) URLs are implemented/,
+    () => platform.fetch('ftp://example.com/a.png', 'blob'),
   );
 
   // Images: colours.png is 4 x 2; its fourth pixel is half-transparent red.

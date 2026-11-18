@@ -24,3 +24,10 @@ strip = true
 sdl3-sys = "0.7.3"
 # Decoders only, all in Rust: no encoders, no C libraries.
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+# Where one user-perceived character ends and the next begins, for the caret
+# of a text field: tables only, no dependencies.
+unicode-segmentation = "1"
+# HTTP(S) on a blocking socket, one thread per request: no async runtime.
+# TLS is rustls with ring and Mozilla's roots, so nothing of the system's is
+# linked; gzip because servers send it. Cookies, JSON, proxies' extras off.
+ureq = { version = "3", default-features = false, features = ["rustls", "gzip"] }
