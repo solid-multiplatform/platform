@@ -12,7 +12,18 @@ export function createAndroidPlayer(root, { target = 'android', bounds } = {}) {
       ).build();
       class Surface extends View {
         createNativeView() {
-          return new androidx.media3.ui.PlayerView(context);
+          const layout = context
+            .getResources()
+            .getIdentifier(
+              'solid_multiplatform_video_player',
+              'layout',
+              context.getPackageName(),
+            );
+          // Hosts which bundle the JS adapter without its Android resources can
+          // still provide Media3 themselves.
+          return layout
+            ? android.view.LayoutInflater.from(context).inflate(layout, null)
+            : new androidx.media3.ui.PlayerView(context);
         }
       }
       const view = new Surface();

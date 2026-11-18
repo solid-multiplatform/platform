@@ -1,7 +1,7 @@
 {
   "name": "@solid-multiplatform/video",
   "type": "module",
-  "version": "0.2.0-preview.1",
+  "version": "0.2.0-preview.2",
   "description": "Optional headless playback integration for Solid Multiplatform",
   "license": "MIT OR Apache-2.0",
   "sideEffects": false,
@@ -57,7 +57,8 @@
     "desktop.mjs",
     "*.d.mts",
     "swift",
-    "PROVENANCE.md"
+    "PROVENANCE.md",
+    "platforms/android"
   ],
   "scripts": {
     "test": "node --test tests/*.test.mjs"
@@ -72,6 +73,13 @@
     },
     "@nativescript/core": {
       "optional": true
+    }
+  },
+  "nativescript": {
+    "platforms": {
+      "android": "9.1.0",
+      "ios": "9.1.0",
+      "tvos": "9.1.0"
     }
   }
 }

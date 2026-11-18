@@ -1,0 +1,4 @@
+// NativeScript's resource-library build resolves the Media3 IDs in our layout.
+dependencies {
+    implementation 'androidx.media3:media3-ui:1.4.0'
+}
