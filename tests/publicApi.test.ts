@@ -24,7 +24,7 @@ import * as focusManager from '@solid-multiplatform/platform/focusManager';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 166 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 169 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -62,10 +62,13 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'createForm',
       'createI18n',
       'createOfflineQueue',
+      'createPagedList',
       'createPersistentStore',
+      'createPullToRefresh',
       'createQuery',
       'createRawShaderAccessor',
       'createRenderer',
+      'createSelection',
       'createTextNode',
       'cursorForElement',
       'darkTheme',
@@ -196,7 +199,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   });
 
   v.test(
-    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 73 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 74 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
@@ -213,6 +216,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'KeyboardAvoidingView',
         'LazyColumn',
         'LazyRow',
+        'ListState',
         'Marquee',
         'MarqueeText',
         'Menu',
@@ -535,6 +539,7 @@ v.describe('package.json exports', () => {
       './device',
       './i18n',
       './a11y',
+      './list',
     ]);
   });
 
