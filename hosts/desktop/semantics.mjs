@@ -1,6 +1,7 @@
 import koffi from 'koffi';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { auditSemantics } from '@solid-multiplatform/platform/a11y';
 
 export function desktopSemantics(window, title) {
   const dir = fileURLToPath(new URL('./accessibility/', import.meta.url));
@@ -71,6 +72,10 @@ export function desktopSemantics(window, title) {
       };
     },
     resize,
+    /** Static accessibility audit over the registered AccessKit nodes. */
+    audit() {
+      return auditSemantics([...nodes.values()], { requireAction: false });
+    },
     active: (v) => active(ctx, v),
     dispatch() {
       const result = [0];

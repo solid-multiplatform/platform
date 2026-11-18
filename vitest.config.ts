@@ -45,6 +45,10 @@ export default defineConfig(() => ({
         './tests/stubs/solidjs-router.ts',
         import.meta.url,
       ).pathname,
+      '@roku-sdk/solid': new URL(
+        './tests/stubs/roku-solid.mjs',
+        import.meta.url,
+      ).pathname,
     },
   },
 }));

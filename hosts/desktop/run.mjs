@@ -246,6 +246,7 @@ try {
       };
     },
   });
+  channel('solid.desktop.host').publish(host);
   boot.resize(windowHost.geometry());
   dispose = boot.start(host);
   let pressed = false;

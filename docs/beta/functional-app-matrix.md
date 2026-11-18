@@ -305,24 +305,24 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 | File dialogs / drag-drop files         | S      | `pickFiles` + `bindFileDrop`                                                           |
 | Window state persistence               | S      | Desktop host saves/restores x/y/size through SDL and `normalizeWindowBounds`           |
 | Single instance / deep links / updater | S      | Single-instance socket, deep links, updater feed/delivery and window state             |
-| Accessibility (AccessKit)              | P      | Bridge exists; audit pending                                                           |
+| Accessibility (AccessKit)              | S      | AccessKit bridge + live `desktop-accessibility-probe` audit                            |
 | Keyboard shortcuts/accelerators        | S      | `createShortcuts`                                                                      |
 
 ### Roku
 
-| Feature                                                        | Status | Gap                                                                     |
-| -------------------------------------------------------------- | ------ | ----------------------------------------------------------------------- |
-| SceneGraph host, focus, remote                                 | S      | —                                                                       |
-| BrighterScript plugin preset                                   | S      | CLI template                                                            |
-| Registry/storage/tasks                                         | S      | `roku/storage`, `roku/tasks`                                            |
-| Video/captions/trick play                                      | P      | Video node integration partial                                          |
-| Deep linking / roInputEvent                                    | S      | `bindDeepLinks` + typed routes                                          |
-| Voice keyboard/PIN                                             | P      | Native text dialog bridge exists                                        |
-| Certification budgets (15s launch, 3s scenes, 250ms keys, 4MB) | S      | `checkRokuCertification` + `solid-platform certify roku <metrics.json>` |
+| Feature                                                        | Status | Gap                                                                                   |
+| -------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------- |
+| SceneGraph host, focus, remote                                 | S      | —                                                                                     |
+| BrighterScript plugin preset                                   | S      | CLI template                                                                          |
+| Registry/storage/tasks                                         | S      | `roku/storage`, `roku/tasks`                                                          |
+| Video/captions/trick play                                      | P      | Roku adapter unit-tested (video, tracks, seek, picture mode); device playback pending |
+| Deep linking / roInputEvent                                    | S      | `bindDeepLinks` + typed routes                                                        |
+| Voice keyboard/PIN                                             | P      | Native text dialog bridge exists                                                      |
+| Certification budgets (15s launch, 3s scenes, 250ms keys, 4MB) | S      | `checkRokuCertification` + `solid-platform certify roku <metrics.json>`               |
 
 ## 12. Implementation phases
 
-Progress: Phases 0–6 and 8 are implemented, including theme/capabilities/insets, keyboard/forms, modal/presentation primitives, tabs/guards/history/restoration, pointer drag/wheel/cursors, data/query/offline persistence, lists and a11y/i18n. Phase 7 media covers playback state/bookmarks, media sessions, fullscreen/PiP, thumbnails, audio and DRM reporting. Phase 5 services cover clipboard/share/haptics, files/pickers, geolocation, biometrics, notifications/jobs ports, keep-awake, orientation, system bars, updates and app review. Every core matrix row is now shipped at the framework level. Platform tables additionally cover Web PWA/offline and downloads, and desktop window-state persistence; native providers for the remaining contacts/calendar/sensor/map ports, signing/store credentials, the native OTA installer, and device-dependent Apple/Roku checks remain host/app-owned. Desktop menus/tray use a GTK/AppIndicator provider, and single-instance/updater delivery are wired in the host. Apple signing/notarization command hooks and Roku certification budget gating are implemented; physical Apple TV/Roku qualification remains device/toolchain-bound.
+Progress: Phases 0–6 and 8 are implemented, including theme/capabilities/insets, keyboard/forms, modal/presentation primitives, tabs/guards/history/restoration, pointer drag/wheel/cursors, data/query/offline persistence, lists and a11y/i18n. Phase 7 media covers playback state/bookmarks, media sessions, fullscreen/PiP, thumbnails, audio and DRM reporting. Phase 5 services cover clipboard/share/haptics, files/pickers, geolocation, biometrics, notifications/jobs ports, keep-awake, orientation, system bars, updates and app review. Every core matrix row is now shipped at the framework level. Platform tables additionally cover Web PWA/offline and downloads, and desktop window-state persistence; native providers for the remaining contacts/calendar/sensor/map ports, signing/store credentials, the native OTA installer, and device-dependent Apple/Roku checks remain host/app-owned. Desktop menus/tray use a GTK/AppIndicator provider, and single-instance/updater delivery are wired in the host. Apple signing/notarization command hooks, Roku certification budget gating, Roku video-adapter tests and the desktop AccessKit audit probe are implemented; physical Apple TV/Roku playback/voice qualification remains device/toolchain-bound.
 
 ### Phase 0 — Contracts and theme foundation
 
