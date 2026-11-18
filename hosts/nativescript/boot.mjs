@@ -8,13 +8,21 @@ import {
   KeyBridge,
 } from '@solid-multiplatform/platform/nativescript';
 
-export function runNativeApp(target, loadApp, bindDevice) {
+export function runNativeApp(
+  target,
+  loadApp,
+  bindDevice,
+  createCanvas = () => new Canvas(),
+) {
   installShims();
   Application.run({
     create() {
       const root = new GridLayout();
+      // iOS screen bounds already include the viewport's UIKit safe insets.
+      // Keep GridLayout from adding the same offset to its native children.
+      if (target === 'ios') root.iosIgnoreSafeArea = true;
       root.backgroundColor = new Color('#000000');
-      const canvas = new Canvas();
+      const canvas = createCanvas();
       canvas.width = '100%';
       canvas.height = '100%';
       canvas.iosOverflowSafeArea = true;
