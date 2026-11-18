@@ -1,5 +1,7 @@
 # 0.2 qualification matrix
 
+The feature backlog for a functional application, with each feature mapped to the established framework or platform pattern it follows, is in [functional-app-matrix.md](./functional-app-matrix.md).
+
 The 0.2 archives are an engineering preview. TV promotion requires three ten-minute physical passes at the predeclared display cadence with zero missed presentation deadlines across input, artwork, animation, modals, playback and return from suspension. Capture startup separately. A missing trace, incomplete scenario set or missed deadline leaves the profile in preview.
 
 | Profile                          | Evidence in this checkout                                                                                                                                                                                                      |

@@ -212,7 +212,8 @@
     "examples/android-tv/native",
     "examples/android-tv/App_Resources",
     "examples/apple-tv/App_Resources",
-    "docs/beta/README.md"
+    "docs/beta/README.md",
+    "docs/beta/functional-app-matrix.md"
   ],
   "packageManager": "pnpm@10.33.4",
   "publishConfig": {
