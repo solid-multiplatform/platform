@@ -254,6 +254,13 @@
         "types": "./dist/src/sdk/env.d.ts",
         "default": "./dist/src/sdk/env.js"
       }
+    },
+    "./transition": {
+      "@solidtv/source": "./src/sdk/transition.ts",
+      "import": {
+        "types": "./dist/src/sdk/transition.d.ts",
+        "default": "./dist/src/sdk/transition.js"
+      }
     }
   },
   "sideEffects": false,

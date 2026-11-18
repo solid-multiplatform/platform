@@ -369,3 +369,44 @@ v.describe('deep links', () => {
     dispose();
   });
 });
+
+v.describe('navigation restoration', () => {
+  v.it('captures before leaving and restores on back', () => {
+    const restored: string[] = [];
+    let count = 0;
+    const navigation = createNavigation({ path: '/' }, undefined, {
+      restoration: {
+        capture: () => `state-${count++}`,
+        restore: (snapshot) => restored.push(String(snapshot)),
+      },
+    });
+    navigation.push({ path: '/a' });
+    navigation.push({ path: '/b' });
+    v.expect(navigation.back()).toBe(true);
+    v.expect(navigation.route().path).toBe('/a');
+    // /a's state was captured when the user left it for /b.
+    v.expect(restored).toEqual(['state-1']);
+    navigation.back();
+    v.expect(navigation.route().path).toBe('/');
+    v.expect(restored).toEqual(['state-1', 'state-0']);
+  });
+
+  v.it('carries restoration snapshots through snapshot/restore', () => {
+    const restored: string[] = [];
+    let count = 0;
+    const navigation = createNavigation({ path: '/' }, undefined, {
+      restoration: {
+        capture: () => count++,
+        restore: (snapshot) => restored.push(String(snapshot)),
+      },
+    });
+    navigation.push({ path: '/a' });
+    navigation.push({ path: '/b' });
+    const snapshot = navigation.snapshot();
+    v.expect(snapshot.restoration).toHaveLength(3);
+    navigation.reset({ path: '/elsewhere' });
+    navigation.restore(snapshot);
+    v.expect(navigation.route().path).toBe('/b');
+    v.expect(restored).toEqual(['2']);
+  });
+});

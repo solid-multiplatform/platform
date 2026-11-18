@@ -24,7 +24,7 @@ import * as focusManager from '@solid-multiplatform/platform/focusManager';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 231 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 232 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -250,6 +250,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'useLogger',
       'useTextScale',
       'useTheme',
+      'useTransition',
       'vibrate',
       'visibleSectionRows',
       'watchPosition',
@@ -618,6 +619,7 @@ v.describe('package.json exports', () => {
       './shortcuts',
       './logging',
       './env',
+      './transition',
     ]);
   });
 

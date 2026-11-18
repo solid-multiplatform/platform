@@ -43,3 +43,4 @@ export * from './sdk/update.js';
 export * from './sdk/shortcuts.js';
 export * from './sdk/logging.js';
 export * from './sdk/env.js';
+export * from './sdk/transition.js';

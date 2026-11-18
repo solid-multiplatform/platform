@@ -14,6 +14,15 @@ export type NavigationMode = 'push' | 'replace' | 'back' | 'tab';
 export interface NavigationSnapshot {
   entries: Route[];
   index: number;
+  /** Per-entry restoration snapshots, when an adapter is configured. */
+  restoration?: unknown[];
+}
+
+export interface NavigationRestoration {
+  /** Capture focus/scroll state for the current screen. */
+  capture(): unknown;
+  /** Apply the state captured for the screen being returned to. */
+  restore(snapshot: unknown): void;
 }
 
 export interface NavigationOptions {
@@ -29,6 +38,11 @@ export interface NavigationOptions {
   ): boolean | void;
   /** Runs before `back()`. Return `false` to keep the current route. */
   beforeBack?(current: Route, next: Route): boolean | void;
+  /**
+   * Capture focus/scroll state before leaving a screen and restore it when
+   * Back returns. This wires `FocusStackProvider`/scroll offsets to history.
+   */
+  restoration?: NavigationRestoration;
 }
 
 export type NavigationListener = (route: Route, mode: NavigationMode) => void;
@@ -63,6 +77,7 @@ export function createNavigation(
   options: NavigationOptions = {},
 ): Navigation {
   const entries: Route[] = [initial];
+  const snapshots: unknown[] = [];
   const [route, setRoute] = createSignal(initial, { equals: false });
   const listeners = new Set<NavigationListener>();
   if (onChange) listeners.add(onChange);
@@ -72,6 +87,9 @@ export function createNavigation(
     const next = entries[index]!;
     setRoute(next);
     for (const listener of listeners) listener(next, mode);
+  };
+  const capture = () => {
+    if (options.restoration) snapshots[index] = options.restoration.capture();
   };
 
   return {
@@ -89,7 +107,9 @@ export function createNavigation(
     push(next) {
       if (options.beforeEach?.(next, entries[index]!, 'push') === false)
         return false;
+      capture();
       entries.splice(index + 1, entries.length, next);
+      snapshots.splice(index + 1, snapshots.length);
       index++;
       publish('push');
       return true;
@@ -97,7 +117,9 @@ export function createNavigation(
     replace(next) {
       if (options.beforeEach?.(next, entries[index]!, 'replace') === false)
         return false;
+      capture();
       entries[index] = next;
+      snapshots[index] = undefined;
       publish('replace');
       return true;
     },
@@ -105,17 +127,27 @@ export function createNavigation(
       if (!index) return false;
       if (options.beforeBack?.(entries[index]!, entries[index - 1]!) === false)
         return false;
+      capture();
       index--;
       publish('back');
+      const restored = snapshots[index];
+      if (restored !== undefined) options.restoration?.restore(restored);
       return true;
     },
     reset(next) {
       entries.splice(0, entries.length, next);
+      snapshots.splice(0, snapshots.length);
       index = 0;
       publish('replace');
     },
     snapshot() {
-      return { entries: entries.map((entry) => ({ ...entry })), index };
+      capture();
+      const result: NavigationSnapshot = {
+        entries: entries.map((entry) => ({ ...entry })),
+        index,
+      };
+      if (options.restoration) result.restoration = snapshots.slice();
+      return result;
     },
     restore(snapshot) {
       if (!snapshot.entries.length) return;
@@ -128,8 +160,11 @@ export function createNavigation(
         entries.length,
         ...snapshot.entries.map((entry) => ({ ...entry })),
       );
+      snapshots.splice(0, snapshots.length, ...(snapshot.restoration ?? []));
       index = at;
       publish('replace');
+      const restored = snapshots[index];
+      if (restored !== undefined) options.restoration?.restore(restored);
     },
   };
 }
