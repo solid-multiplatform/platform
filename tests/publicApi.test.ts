@@ -440,6 +440,7 @@ v.describe('package.json exports', () => {
       './motion',
       './focus',
       './permissions',
+      './semantics',
     ]);
   });
 

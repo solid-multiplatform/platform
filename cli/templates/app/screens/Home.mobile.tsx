@@ -1,33 +1,39 @@
 import { For } from '@solid-multiplatform/platform';
+import {
+  Button,
+  Controls,
+  Label,
+} from '@solid-multiplatform/platform/controls';
+import { nativeControls } from '@solid-multiplatform/platform/controls/native';
 import type { ScreenProps } from '../screen';
 export function Home(p: ScreenProps) {
-  const left = () => 16 + p.viewport().safeArea.left,
-    top = () => 16 + p.viewport().safeArea.top;
-  const w = () =>
-    Math.max(0, p.viewport().width - left() - 16 - p.viewport().safeArea.right);
+  if (!p.host?.root)
+    throw new Error('The mobile screen requires its native host');
+  const surface = nativeControls(p.host.root, p.host.target);
+  const bounds = (offset: number) => ({
+    x: p.viewport().safeArea.left + 16,
+    y: p.viewport().safeArea.top + 16 + offset,
+    width: Math.max(
+      0,
+      p.viewport().width -
+        p.viewport().safeArea.left -
+        p.viewport().safeArea.right -
+        32,
+    ),
+    height: 50,
+  });
   return (
-    <view width={p.viewport().width} height={p.viewport().height}>
-      <text x={left()} y={top()} width={w()} fontSize={24}>
-        {p.message()}
-      </text>
+    <Controls surface={surface}>
+      <Label bounds={bounds(0)} label={p.message()} />
       <For each={p.names}>
         {(name, i) => (
-          <view
-            ref={(v) => p.register(name, v)}
-            x={left()}
-            y={top() + 64 + i() * 58}
-            width={w()}
-            height={50}
-            color={0x243145ff}
-            $focus={{ color: 0x385f92ff }}
-            onEnter={() => p.activate(name)}
-          >
-            <text x={12} y={10} fontSize={21}>
-              {name}
-            </text>
-          </view>
+          <Button
+            bounds={bounds(64 + i() * 58)}
+            label={name}
+            onActivate={() => p.activate(name)}
+          />
         )}
       </For>
-    </view>
+    </Controls>
   );
 }

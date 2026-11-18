@@ -50,7 +50,7 @@ xcrun simctl install "$udid" "$app"
 xcrun simctl launch "$udid" "$bundle"
 container=$(xcrun simctl get_app_container "$udid" "$bundle" data)
 for attempt in {1..90}; do
-  if test -f "$container/Documents/plugin-result.txt"; then
+  if test -s "$container/Documents/plugin-result.txt"; then
     result=$(cat "$container/Documents/plugin-result.txt")
     echo "Swift bridge returned: $result"
     test "$result" = "greeting Swift"

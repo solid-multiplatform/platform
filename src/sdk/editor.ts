@@ -59,6 +59,7 @@ export function browserEditorHost(parent: HTMLElement): EditorHost {
       input.addEventListener('blur', () => options.onBlur?.());
       input.addEventListener('keydown', (e) => {
         const key = e as KeyboardEvent;
+        key.stopPropagation();
         if (
           key.key === 'Enter' &&
           !key.isComposing &&
@@ -69,6 +70,7 @@ export function browserEditorHost(parent: HTMLElement): EditorHost {
           options.onSubmit(input.value);
         }
       });
+      input.addEventListener('keyup', (e) => e.stopPropagation());
       parent.appendChild(input);
       return {
         focus: () => input.focus(),

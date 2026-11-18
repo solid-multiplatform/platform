@@ -1,0 +1,55 @@
+name: Desktop packages
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+      - if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+      - run: pnpm install --frozen-lockfile
+      - name: Install pinned SDL3 runtime
+        run: |
+          set -euo pipefail
+          base=https://github.com/libsdl-org/SDL/releases/download/release-3.4.20
+          mkdir -p "$RUNNER_TEMP/sdl-runtime"
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            curl -fsSL "$base/SDL3-3.4.20-win32-x64.zip" -o sdl.zip
+            echo '368bed8b24e44ad9ea372990814f2343fcfb9e468abb7f8f4a3bc146c7304752  sdl.zip' | sha256sum -c -
+            unzip -q sdl.zip -d "$RUNNER_TEMP/sdl-runtime"
+            sdl=$(find "$RUNNER_TEMP/sdl-runtime" -iname SDL3.dll | head -1)
+            echo "SOLID_SDL3_LIBRARY=$(cygpath -w "$sdl")" >> "$GITHUB_ENV"
+          else
+            curl -fsSL "$base/SDL3-3.4.20.dmg" -o sdl.dmg
+            echo '36b7e4cefcf7d55d227b3df5e686f8f33ab34193173a976445d1b57c80009e44  sdl.dmg' | shasum -a 256 -c -
+            hdiutil attach -nobrowse -mountpoint "$RUNNER_TEMP/sdl-runtime" sdl.dmg
+            sdl=$(find "$RUNNER_TEMP/sdl-runtime" -type f -name SDL3 | head -1)
+            test -n "$sdl"
+            echo "SOLID_SDL3_LIBRARY=$sdl" >> "$GITHUB_ENV"
+          fi
+      - name: Build generated desktop distribution
+        run: |
+          node cli/main.mjs init gallery-app --targets desktop
+          cd gallery-app
+          corepack pnpm install
+          corepack pnpm platform plugin new preview
+          corepack pnpm platform package desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ runner.os }}-${{ runner.arch }}
+          path: gallery-app/targets/desktop/dist/*.tar.gz
+          if-no-files-found: error

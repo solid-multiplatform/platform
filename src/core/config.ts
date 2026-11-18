@@ -1,3 +1,4 @@
+import { wantsReducedMotion } from './motionPreference.js';
 import type { RendererMainSettings } from '@solid-multiplatform/renderer';
 import type {
   TextProps,
@@ -98,13 +99,19 @@ export interface Config {
   stateOrder?: DollarString[];
 }
 
+let applicationAnimations = true;
 export const Config: Config = {
   debug: false,
   domRendererEnabled: false,
   focusDebug: false,
   keyDebug: false,
   focusHistoryDebug: 0,
-  animationsEnabled: true,
+  get animationsEnabled() {
+    return applicationAnimations && !wantsReducedMotion();
+  },
+  set animationsEnabled(enabled: boolean) {
+    applicationAnimations = enabled;
+  },
   animationSettings: {
     duration: 250,
     easing: 'ease-in-out',

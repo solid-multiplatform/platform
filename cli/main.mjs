@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { packageDesktop } from './desktop-package.mjs';
 import { explain, checkTargets } from './variants.mjs';
 import { addVideo } from './add-video.mjs';
 import path from 'node:path';
@@ -10,7 +11,8 @@ import { project, targets } from './files.mjs';
 
 const help = `solid-platform init <directory> [--targets web,tizen,webos,vizio,roku,android-tv,android,apple-tv,ios,desktop]
 solid-platform plugin new <name> [--targets list] [--android-kind kotlin|sidecar|service|jni]
-solid-platform build <target>
+solid-platform build <target> [--legacy]
+solid-platform package desktop
 solid-platform dev <web|desktop>
 solid-platform explain <target> <module>
 solid-platform add video <release.tgz>
@@ -18,7 +20,7 @@ solid-platform plugins run desktop
 solid-platform check [target]
 
 Run plugin, build and dev from the app directory. Init defaults to web.
-New plugins default to the configured app targets. Desktop builds a native command runner.`;
+New plugins default to the configured app targets. Desktop uses a native SDL3 window.`;
 try {
   const { values, positionals: args } = parseArgs({
     allowPositionals: true,
@@ -32,6 +34,7 @@ try {
   const root = process.cwd();
   if (args[0] === 'add' && args[1] === 'video' && args.length === 3)
     addVideo(root, path.resolve(args[2]));
+  else if (args.join(' ') === 'package desktop') packageDesktop(root);
   else if (values.help || !args.length) console.log(help);
   else if (args.join(' ') === 'plugins run desktop')
     build(root, 'desktop', 'plugins');

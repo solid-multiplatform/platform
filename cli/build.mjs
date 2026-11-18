@@ -162,20 +162,20 @@ function buildTarget(root, target, dev, legacy) {
         : "'file:///app/fonts'";
   write(
     path.join(work, 'main.ts'),
-    `${target === 'web' ? "import { bindBrowserViewport } from '@solid-multiplatform/platform/viewport/web'; import {createInputScope,bindPointerEvents} from '@solid-multiplatform/platform/input';" : ''}
+    `${target === 'web' ? "import { browserSemantics } from '@solid-multiplatform/platform/semantics'; import { bindBrowserViewport } from '@solid-multiplatform/platform/viewport/web'; import {createInputScope,bindPointerEvents} from '@solid-multiplatform/platform/input';" : ''}
 ${browserTVs.includes(target) ? "import { bindBrowserTV } from '@solid-multiplatform/platform/browser-tv/input';" : ''}
 ${legacy ? "import {useCanvas} from '@solid-multiplatform/platform/browser-tv/canvas'; useCanvas();" : ''}
 import { mount as start } from './src/app';
 import { attachPlugins } from '@solid-multiplatform/platform/plugins';
 import { plugins } from './plugins.mjs';
 export function mount(host = { target: '${target}' }) {
-  ${target === 'web' ? "const el=document.getElementById('app');const stopViewport=bindBrowserViewport(el); const input=host.input=createInputScope();const stopPointer=bindPointerEvents(el,input,(x,y)=>{const r=el.getBoundingClientRect();return {x:x-r.left,y:y-r.top};});" : ''}
+  ${target === 'web' ? "const el=document.getElementById('app');const stopViewport=bindBrowserViewport(el);host.semantics=browserSemantics(el); const input=host.input=createInputScope();const stopPointer=bindPointerEvents(el,input,(x,y)=>{const r=el.getBoundingClientRect();return {x:x-r.left,y:y-r.top};});" : ''}
   ${browserTVs.includes(target) ? "const tv=bindBrowserTV(host.target,document.getElementById('app'));host.input=tv.input;" : ''}
   const detach = attachPlugins(plugins, host);
   try {
     const dispose = start(plugins, ${fonts}, host.input, host);
-    return () => { try { dispose?.(); } finally { detach(); ${target === 'web' ? 'stopPointer(); input.dispose(); stopViewport();' : browserTVs.includes(target) ? 'tv.dispose();' : ''} } };
-  } catch (error) { detach(); ${target === 'web' ? 'stopPointer(); input.dispose(); stopViewport();' : browserTVs.includes(target) ? 'tv.dispose();' : ''} throw error; }
+    return () => { try { dispose?.(); } finally { detach(); ${target === 'web' ? 'stopPointer(); input.dispose(); host.semantics.dispose();stopViewport();' : browserTVs.includes(target) ? 'tv.dispose();' : ''} } };
+  } catch (error) { detach(); ${target === 'web' ? 'stopPointer(); input.dispose(); host.semantics.dispose();stopViewport();' : browserTVs.includes(target) ? 'tv.dispose();' : ''} throw error; }
 }
 ` + (browser ? 'mount();\n' : ''),
   );

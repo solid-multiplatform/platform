@@ -1,3 +1,4 @@
+import { setMotionPreference } from '../core/motionPreference.js';
 import { createSignal } from 'solid-js';
 import { Config } from '../core/config.js';
 import { getRenderer } from '../core/lightningInit.js';
@@ -45,6 +46,7 @@ export function updateViewport(next: Geometry) {
     )
   )
     return;
+  setMotionPreference(next.reducedMotion);
   const prev = viewport();
   const resized =
     prev.width !== next.width ||

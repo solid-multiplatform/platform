@@ -16,6 +16,7 @@ export function mount(
   plugins: Record<string, Plugin>,
   fontRoot?: string,
   pointer?: import('@solid-multiplatform/platform/input').InputScope,
+  host?: import('./screen').ScreenHost,
 ) {
   const fonts =
     fontRoot &&
@@ -57,6 +58,13 @@ export function mount(
     }
     function register(name: string, node: ElementNode) {
       rows.set(name, node);
+      const semantics = host?.semantics?.register({
+        role: 'button',
+        label: name,
+        focus: () => node.setFocus(),
+        activate: () => activate(name),
+      });
+
       const remove = pointer?.register({
         bounds: () => ({
           x: node.lng.absX ?? 0,
@@ -73,6 +81,7 @@ export function mount(
       });
       onCleanup(() => {
         remove?.();
+        semantics?.dispose();
         if (rows.get(name) === node) rows.delete(name);
       });
     }
@@ -91,6 +100,7 @@ export function mount(
     return (
       <view ref={root} width={viewport().width} height={viewport().height}>
         <Home
+          host={host}
           names={names}
           message={message}
           viewport={viewport}
