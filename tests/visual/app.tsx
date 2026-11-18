@@ -18,17 +18,12 @@ const settings = {
   numImageWorkers: 0,
 };
 if (canvas) useCanvas(settings);
-Config.fontSettings = {
-  fontFamily: canvas ? 'sans-serif' : 'Lato',
-  fontSize: 22,
-};
+else Config.fontSettings = { fontFamily: 'Lato', fontSize: 22 };
 const { renderer, render } = createRenderer(settings as never, 'app');
 const [moved, move] = createSignal(false);
 const [width, setWidth] = createSignal(320);
 async function run() {
-  if (canvas)
-    await renderer.stage.loadFont('canvas', { fontFamily: 'sans-serif' });
-  else
+  if (!canvas)
     await loadFonts([
       {
         type: 'msdf',
@@ -58,13 +53,7 @@ async function run() {
         color={0xf8654dff}
       />
       <view x={200} y={20} width={32} height={32} src={src} />
-      <text
-        x={16}
-        y={94}
-        fontFamily={canvas ? 'sans-serif' : 'Lato'}
-        fontSize={22}
-        color={0xffffffff}
-      >
+      <text x={16} y={94} fontSize={22} color={0xffffffff}>
         {moved() ? 'I' : 'Wide label'}
       </text>
       <For each={moved() ? [2] : [1]}>

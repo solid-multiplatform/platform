@@ -45,7 +45,10 @@ jobs:
           xcrun simctl launch "$udid" "$bundle"
           sleep 5
           xcrun simctl io "$udid" screenshot "$RUNNER_TEMP/delivery/solid-gallery-$target.png"
+      - name: Check visible labels and safe-area placement
+        run: swift tests/cli/apple-gallery-frame.swift "$RUNNER_TEMP/delivery/solid-gallery-${{ matrix.target }}.png" "${{ matrix.target }}"
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: gallery-${{ matrix.target }}
           path: ${{ runner.temp }}/delivery

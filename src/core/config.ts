@@ -100,6 +100,11 @@ export interface Config {
 }
 
 let applicationAnimations = true;
+export const defaultFontSettings: Partial<TextProps> = {
+  fontFamily: 'Ubuntu',
+  fontSize: 100,
+};
+
 export const Config: Config = {
   debug: false,
   domRendererEnabled: false,
@@ -118,10 +123,7 @@ export const Config: Config = {
   },
   convertToShader: defaultConvertToShader,
   setActiveElement: (elm) => setActiveElementSignal(elm),
-  fontSettings: {
-    fontFamily: 'Ubuntu',
-    fontSize: 100,
-  },
+  fontSettings: defaultFontSettings,
   fontWeightAlias: {
     thin: 100,
     light: 300,
