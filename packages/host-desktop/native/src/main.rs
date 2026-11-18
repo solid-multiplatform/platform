@@ -27,8 +27,72 @@ use std::path::Path;
 use std::process::exit;
 use std::ptr;
 
-const USAGE: &str = "usage: solid-desktop [--headless] <script.js | script.hbc>
-       solid-desktop --compile <script.js> <script.hbc>";
+const USAGE: &str = "usage: solid-desktop [--headless] <script.js | script.hbc> [argument...]
+       solid-desktop [--headless] --script <script.js | script.hbc> [argument...]
+       solid-desktop --compile <script.js> <script.hbc>
+       solid-desktop --version | --diagnostics
+
+A packaged app (../resources/app.hbc or app.js beside the executable's
+directory) runs without naming a script; everything after the options is the
+app's arguments.";
+
+/// Whether SDL is part of this executable or a library the system supplies.
+const SDL_LINKAGE: &str = if cfg!(feature = "static-sdl") { "static" } else { "dynamic" };
+
+/// `--diagnostics`: what this executable is made of, one fact per line. The
+/// video drivers are the ones compiled into SDL, not the ones that would
+/// start here: nothing is initialised.
+unsafe fn diagnostics() -> ! {
+    println!("solid-desktop {}", env!("CARGO_PKG_VERSION"));
+    println!("target {}-{}", std::env::consts::OS, std::env::consts::ARCH);
+    let version = SDL_GetVersion();
+    println!("sdl {}.{}.{} {SDL_LINKAGE}", version / 1_000_000, version / 1000 % 1000, version % 1000);
+    let drivers: Vec<String> = (0..SDL_GetNumVideoDrivers())
+        .map(|index| SDL_GetVideoDriver(index))
+        .filter(|name| !name.is_null())
+        .map(|name| CStr::from_ptr(name).to_string_lossy().into_owned())
+        .collect();
+    println!("video-drivers {}", drivers.join(" "));
+    exit(0);
+}
+
+/// The script of a packaged app: `resources/app.hbc`, or `app.js`, beside
+/// the directory this executable is in (`<app>/bin/<name>`). The executable
+/// is found through the system, with links followed, so the app runs from
+/// wherever its directory is put and through a link on the PATH.
+fn packaged_script() -> Option<String> {
+    let executable = std::env::current_exe().ok()?.canonicalize().ok()?;
+    let resources = executable.parent()?.parent()?.join("resources");
+    ["app.hbc", "app.js"]
+        .iter()
+        .map(|name| resources.join(name))
+        .find(|path| path.is_file())
+        .map(|path| path.to_string_lossy().into_owned())
+}
+
+/// What the command line asks for: `(headless, script, the app's arguments)`.
+/// A packaged app's script is its own, so every plain argument is the app's
+/// (a URL it was opened with); otherwise the first one names the script.
+fn command_line(args: Vec<String>) -> (bool, String, Vec<String>) {
+    let (mut headless, mut script, mut rest) = (false, None, Vec::new());
+    let mut args = args.into_iter();
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--headless" => headless = true,
+            "--script" => script = Some(args.next().unwrap_or_else(|| fail(USAGE))),
+            "--" => rest.extend(&mut args),
+            flag if flag.starts_with("--") => fail(USAGE),
+            _ => rest.push(arg),
+        }
+    }
+    let script = script.or_else(packaged_script).unwrap_or_else(|| {
+        if rest.is_empty() {
+            fail(USAGE);
+        }
+        rest.remove(0)
+    });
+    (headless, script, rest)
+}
 
 /// The first bytes of Hermes bytecode (its magic number, little-endian).
 const BYTECODE_MAGIC: [u8; 8] = 0x1F19_03C1_03BC_1FC6u64.to_le_bytes();
@@ -72,16 +136,21 @@ fn main() {
     // The clock starts with the process: `performance.now()` counts from here.
     runtime::now_ns();
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let args: Vec<&str> = args.iter().map(String::as_str).collect();
-    let (headless, script) = match args[..] {
+    match args.iter().map(String::as_str).collect::<Vec<_>>()[..] {
         ["--compile", input, output] => unsafe { compile(input, output) },
-        ["--headless", script] => (true, script),
-        [script] if !script.starts_with("--") => (false, script),
-        _ => fail(USAGE),
-    };
+        ["--version"] => {
+            println!("solid-desktop {}", env!("CARGO_PKG_VERSION"));
+            exit(0);
+        }
+        ["--diagnostics"] => unsafe { diagnostics() },
+        _ => {}
+    }
+    let (headless, script, app_args) = command_line(args);
+    let script = script.as_str();
     let source = read_script(script);
     let name = CString::new(script).unwrap();
-    // Assets are named relative to the script.
+    // Assets are named relative to the script: for a packaged app that is
+    // its resources directory, wherever the app has been put.
     let directory = Path::new(script)
         .canonicalize()
         .ok()
@@ -125,6 +194,13 @@ fn main() {
         }
         let host = runtime::install(env, engine, global, window);
         napi_set_named_property(env, host, c"appDir".as_ptr(), string(env, &directory));
+        // What the app was started with: a URL of its scheme, a file.
+        let mut arguments = ptr::null_mut();
+        napi_create_array(env, &mut arguments);
+        for (index, argument) in app_args.iter().enumerate() {
+            napi_set_element(env, arguments, index as u32, string(env, argument));
+        }
+        napi_set_named_property(env, host, c"args".as_ptr(), arguments);
         console::install(env, engine, global, host);
         files::install(env, host);
         images::install(env, host);

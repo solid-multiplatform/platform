@@ -4,12 +4,12 @@
 //
 // Provided: clipboard, openExternal, deviceInfo, battery, memory, keepAwake,
 // colorScheme, locale, keyEvents, lifecycle, settings, fileSystem,
-// filePicker, download, request.
+// filePicker, download, request, links (the link the app was opened with).
 //
 // Not provided, so `unavailable`: connectivity (the system offers no event
 // for it through SDL, and watching would mean polling), secureStorage,
-// notifications, links, share, haptics, orientation, systemBars, appReview,
-// push, jobs.
+// notifications, share, haptics, orientation, systemBars, appReview, push,
+// jobs.
 //
 // On a browser some of these must be there before the user's gesture; here
 // there is no such rule. They are functions that return the port at once all
@@ -29,6 +29,7 @@ import {
   openExternal,
 } from './device.js';
 import { download, filePicker, fileSystem } from './files.js';
+import { links } from './links.js';
 import { desktopFetch } from './request.js';
 import { settings } from './storage.js';
 
@@ -51,6 +52,7 @@ export function desktopServices(app: DesktopApp): ProviderMap {
     settings: () => settings(app.id),
     fileSystem: () => fileSystem(app.id),
     request: () => ({ fetch: desktopFetch }),
+    links,
     // These need the window.
     ...(__solid.window === undefined
       ? {}

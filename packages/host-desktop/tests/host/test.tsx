@@ -76,6 +76,8 @@ interface Setup {
   saved: string;
   /** How long the idle check watches, in milliseconds. */
   idleMs: number;
+  /** The URL the app is started with, after an argument that is not one. */
+  link: string;
 }
 
 const failures: string[] = [];
@@ -707,10 +709,15 @@ async function services(setup: Setup): Promise<void> {
     'notifications',
     'share',
     'haptics',
-    'links',
   ] as const) {
     equal(`${absent} is unavailable`, serviceAvailable(absent), 'unavailable');
   }
+  // The driver started the app with two arguments; the link is the one
+  // that is a URL.
+  equal('the arguments', [...__solid.args], ['not-a-link', setup.link]);
+  const links = await loadService('links');
+  equal('links: the launch link', links.initial(), setup.link);
+  links.subscribe(() => {})();
   await rejects(
     'an absent service rejects by name',
     /CapabilityError.*connectivity/,

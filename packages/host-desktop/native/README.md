@@ -40,11 +40,35 @@ bash tests/run.sh
 
 ```sh
 solid-desktop app.js              # source, or bytecode: it tells by the file
+solid-desktop --script app.js myapp://open/7   # the same, with the app's arguments
 solid-desktop --headless job.js   # no window, no GL
 solid-desktop --compile app.js app.hbc
+solid-desktop --version
+solid-desktop --diagnostics       # the SDL in it, linked how, with which video drivers
 ```
 
-An app is one script. `../cli/bundle.mjs` makes it from an entry module (Node and esbuild at build time only) and, with `--bytecode`, compiles it with this executable. Assets are files next to the script. `../src` is the module the entry imports: the renderer's platform adapter over what this runtime provides.
+An app is one script. `../cli/bundle.mjs` makes it from an entry module (Node and esbuild at build time only) and, with `--bytecode`, compiles it with this executable. Assets are files next to the script: a relative path an app loads (`fonts/a.png`) is read from the script's directory, wherever that is. `../src` is the module the entry imports: the renderer's platform adapter over what this runtime provides.
+
+What follows the script on the command line is the app's (`__solid.args`); the `links` service gives an app the first of them that is a URL.
+
+## Packaged apps
+
+Without a script named, the runtime runs `../resources/app.hbc` (or `app.js`) beside the directory its own executable is in, found through the system with links followed. That is the layout `../cli/package.mjs` writes (`packageDesktop()` in `../cli/index.mjs`):
+
+```
+<name>/bin/<name>           this executable
+<name>/resources/app.hbc    the app, with its assets beside it
+<name>/<appId>.desktop      the launcher entry (Exec=<name> %U, the URL scheme)
+<name>/<appId>.png          the icon
+<name>/README.txt           how to install it and what it needs
+<name>-<version>-linux-x64.tar.gz
+```
+
+The directory runs from wherever it is put: nothing in it names a path, and the bytecode records the script as `app.js`. No AppImage is made: that needs `appimagetool` or `mksquashfs` and an AppImage runtime, which would have to be downloaded at build time.
+
+`cargo build --release --features static-sdl` compiles SDL from source (the `sdl3-src` crate, with CMake) into the executable, with the X11 and Wayland drivers and without the parts nothing here calls: 10.2 MB stripped instead of 7.5 MB, and nothing of SDL to install where the app runs. SDL then opens the system's libX11, libwayland and libEGL when it starts, as the shared library does. Without the feature a package's `README.txt` lists SDL 3 as a requirement.
+
+`../cli/index.mjs` exports `doctorDesktop`, `buildDesktop`, `runDesktop` and `packageDesktop` for the platform's CLI. They find the runtime through `SOLID_DESKTOP_RUNTIME`, then `../prebuilt/<platform>-<arch>/solid-desktop` (CI's artifact), then a build from source when `HERMES_SRC`, `HERMES_BUILD` and cargo are there; so an app developer with a prebuilt runtime needs no compiler.
 
 A script that throws while it starts ends the process with status 1. Later errors (in a timer, a frame, a callback, or a promise rejection nothing handled) are written to standard error with their stack and the loop goes on.
 

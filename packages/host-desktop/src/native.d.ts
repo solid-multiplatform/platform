@@ -82,6 +82,11 @@ type SolidDone<T> = (error: Error | null, result?: T) => void;
 interface SolidNative {
   /** The directory of the running script: relative asset paths start here. */
   readonly appDir: string;
+  /**
+   * What the app was started with, after the runtime's own options: a URL
+   * of the app's scheme when the system opened it for one.
+   */
+  readonly args: readonly string[];
   /** The window's WebGL-shaped context; absent in a run without a window. */
   readonly gl?: WebGLRenderingContext;
   readonly window?: {

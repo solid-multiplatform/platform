@@ -6,7 +6,8 @@
   "description": "Desktop host: the host definition, services and web-standard globals over the native runtime, and the bundler for it",
   "license": "Apache-2.0",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./cli": "./cli/index.mjs"
   },
   "bin": {
     "solid-desktop-bundle": "./cli/bundle.mjs"

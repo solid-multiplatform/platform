@@ -80,6 +80,9 @@ async function run(): Promise<void> {
       serviceAvailable(name) === 'unavailable',
     );
   }
+  // Started without arguments: the service is there and has no link.
+  check('no arguments', __solid.args.length === 0, __solid.args);
+  check('links', (await loadService('links')).initial() === null);
   check('deviceInfo', (await deviceInfo()).appVersion === '9');
   check('memory', (deviceMemory().deviceMemoryGb ?? 0) > 0);
   const settings = await loadService('settings');

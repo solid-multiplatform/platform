@@ -20,6 +20,25 @@ codegen-units = 1
 panic = "abort"
 strip = true
 
+[features]
+# SDL compiled from source into the executable, for packaged apps: nothing of
+# SDL has to be installed where the app runs. Off by default because it adds
+# a CMake build of SDL to every build of the runtime.
+static-sdl = [
+    "sdl3-sys/build-from-source-static",
+    # The parts of SDL nothing here calls are left out of that build: sound,
+    # its own renderers, cameras, game controllers, sensors, the tray.
+    "sdl3-sys/no-sdl-audio",
+    "sdl3-sys/no-sdl-gpu",
+    "sdl3-sys/no-sdl-render",
+    "sdl3-sys/no-sdl-camera",
+    "sdl3-sys/no-sdl-joystick",
+    "sdl3-sys/no-sdl-haptic",
+    "sdl3-sys/no-sdl-hidapi",
+    "sdl3-sys/no-sdl-sensor",
+    "sdl3-sys/no-sdl-tray",
+]
+
 [dependencies]
 sdl3-sys = "0.7.3"
 # Decoders only, all in Rust: no encoders, no C libraries.

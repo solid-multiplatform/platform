@@ -193,7 +193,14 @@ export async function bundle({
   });
   if (!bytecode) return outfile;
   const compiled = outfile.replace(/\.[cm]?js$/, '') + '.hbc';
-  execFileSync(runtime, ['--compile', outfile, compiled], { stdio: 'inherit' });
+  // From the script's directory, by its file name: the name is recorded in
+  // the bytecode for stack traces, and it must not say where the app was
+  // built.
+  execFileSync(
+    runtime,
+    ['--compile', path.basename(outfile), path.basename(compiled)],
+    { stdio: 'inherit', cwd: path.dirname(outfile) },
+  );
   return compiled;
 }
 

@@ -2,8 +2,8 @@
 # Every automated check of the desktop host, in order: the runtime's own
 # tests, the platform adapter, the web-standard globals, the real scene
 # against Chromium, then an app started through the host (input, text
-# fields, services, requests, idle, closing). Exits non-zero on the first
-# failure.
+# fields, services, requests, idle, closing), then an app packaged, moved
+# and run from its package. Exits non-zero on the first failure.
 #
 #   bash tests/run.sh
 #
@@ -28,4 +28,5 @@ virtual() {
 }
 virtual node "$here/scene/run.mjs"
 virtual node "$here/host/run.mjs"
+virtual node "$here/package/run.mjs"
 echo "desktop host tests passed"

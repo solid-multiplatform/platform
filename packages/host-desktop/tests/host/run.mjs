@@ -43,6 +43,7 @@ const out = keep
   : mkdtempSync(path.join(tmpdir(), 'solid-desktop-host-'));
 const IDLE_MS = 3000;
 const APP = 'solid.test.host';
+const LINK = 'solidtest://open/item?id=7';
 
 const has = (program) =>
   spawnSync('sh', ['-c', `command -v ${program}`]).status === 0;
@@ -242,6 +243,7 @@ writeFileSync(
     outside: path.join(outsideDirectory, 'secret.txt'),
     saved,
     idleMs: IDLE_MS,
+    link: LINK,
   }),
 );
 
@@ -348,7 +350,7 @@ try {
 
   // The app, with input, fields, services and requests.
   let window;
-  const host = await runtime([scripts.host], {
+  const host = await runtime([scripts.host, 'not-a-link', LINK], {
     onLine(line) {
       if (!line.startsWith('STEP ')) return;
       window ??= xdo('search', '--name', '^Solid host test$').split('\n')[0];
