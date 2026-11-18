@@ -31,10 +31,10 @@ importers:
         version: 9.1.3
       '@solid-multiplatform/platform':
         specifier: file:../..
-        version: file:../..(@solid-multiplatform/renderer@file:../../vendor/solid-multiplatform-renderer-0.2.0-preview.2.tgz)(@solidjs/router@0.16.1(solid-js@1.9.17))(solid-js@1.9.17)
+        version: file:../..(@solid-multiplatform/renderer@file:../../../renderer)(@solidjs/router@0.16.1(solid-js@1.9.17))(solid-js@1.9.17)
       '@solid-multiplatform/renderer':
-        specifier: file:../../vendor/solid-multiplatform-renderer-0.2.0-preview.2.tgz
-        version: file:../../vendor/solid-multiplatform-renderer-0.2.0-preview.2.tgz
+        specifier: file:../../../renderer
+        version: file:../../../renderer
       '@solid-primitives/list':
         specifier: 0.1.2
         version: 0.1.2(solid-js@1.9.17)
@@ -421,7 +421,7 @@ packages:
     resolution: {integrity: sha512-IUKi4TptrBYHmnETNJUPI6sA+LhnSt2Msc/Xhrke+XrYY6LMj6drZVMakU3hlFO5PkkaHJwkbQ8F543IFsTfWA==}
 
   '@nativescript/canvas@https://github.com/solid-multiplatform/renderer/releases/download/v0.2.0-preview.1/nativescript-canvas-android-3.0.0-beta.6-solid.2.tgz':
-    resolution: {integrity: sha512-UuNhEfEid0LY7jIFP83wPEJGRtO1lV83+06gCNVd+bbI8XEJNwz2OQehcRTcYh/21/kAuDTLPEWAOLX5BuTKbw==, tarball: https://github.com/solid-multiplatform/renderer/releases/download/v0.2.0-preview.1/nativescript-canvas-android-3.0.0-beta.6-solid.2.tgz}
+    resolution: {tarball: https://github.com/solid-multiplatform/renderer/releases/download/v0.2.0-preview.1/nativescript-canvas-android-3.0.0-beta.6-solid.2.tgz}
     version: 3.0.0-beta.6
 
   '@nativescript/core@9.1.3':
@@ -687,9 +687,8 @@ packages:
       '@nativescript/secure-storage':
         optional: true
 
-  '@solid-multiplatform/renderer@file:../../vendor/solid-multiplatform-renderer-0.2.0-preview.2.tgz':
-    resolution: {integrity: sha512-+IHpP6hisjpHRrUQSF79seMuSab0qTY2Vlzz3JTkUjT2BKDWwJ55dCW5qW6MZBE9YXw/MfBM0U2Fg6vxum7Glg==, tarball: file:../../vendor/solid-multiplatform-renderer-0.2.0-preview.2.tgz}
-    version: 0.2.0-preview.2
+  '@solid-multiplatform/renderer@file:../../../renderer':
+    resolution: {directory: ../../../renderer, type: directory}
     peerDependencies:
       '@roku-sdk/interfaces': 2.19.0
       '@roku-sdk/rsg-ts': 2.19.0
@@ -4024,9 +4023,9 @@ snapshots:
 
   '@sindresorhus/is@4.6.0': {}
 
-  '@solid-multiplatform/platform@file:../..(@solid-multiplatform/renderer@file:../../vendor/solid-multiplatform-renderer-0.2.0-preview.2.tgz)(@solidjs/router@0.16.1(solid-js@1.9.17))(solid-js@1.9.17)':
+  '@solid-multiplatform/platform@file:../..(@solid-multiplatform/renderer@file:../../../renderer)(@solidjs/router@0.16.1(solid-js@1.9.17))(solid-js@1.9.17)':
     dependencies:
-      '@solid-multiplatform/renderer': file:../../vendor/solid-multiplatform-renderer-0.2.0-preview.2.tgz
+      '@solid-multiplatform/renderer': file:../../../renderer
       '@solid-primitives/event-listener': 2.4.6(solid-js@1.9.17)
       '@solid-primitives/list': 0.1.2(solid-js@1.9.17)
       '@solid-primitives/mouse': 2.1.7(solid-js@1.9.17)
@@ -4034,7 +4033,7 @@ snapshots:
       '@solidjs/router': 0.16.1(solid-js@1.9.17)
       solid-js: 1.9.17
 
-  '@solid-multiplatform/renderer@file:../../vendor/solid-multiplatform-renderer-0.2.0-preview.2.tgz': {}
+  '@solid-multiplatform/renderer@file:../../../renderer': {}
 
   '@solid-primitives/event-listener@2.4.6(solid-js@1.9.17)':
     dependencies:

@@ -1,5 +1,5 @@
 import * as v from 'vitest';
-import { createRokuPlayer } from '../packages/video/roku.mjs';
+import { createRokuPlayer } from '../../video/roku.mjs';
 
 const parent = () => ({ children: [] });
 

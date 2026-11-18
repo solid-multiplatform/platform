@@ -29,9 +29,10 @@ jobs:
         with: { node-version: 24 }
       - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
+      - run: pnpm build
       - name: Build the starter UI
         run: |
-          node cli/main.mjs init "$RUNNER_TEMP/solid-gallery" --targets "${{ matrix.target }}"
+          node packages/platform/cli/main.mjs init "$RUNNER_TEMP/solid-gallery" --targets "${{ matrix.target }}"
           cd "$RUNNER_TEMP/solid-gallery"
           corepack pnpm install
           corepack pnpm platform plugin new library
@@ -52,7 +53,7 @@ jobs:
           sleep 5
           xcrun simctl io "$udid" screenshot "$RUNNER_TEMP/delivery/solid-gallery-$target.png"
       - name: Check visible labels and safe-area placement
-        run: swift tests/cli/apple-gallery-frame.swift "$RUNNER_TEMP/delivery/solid-gallery-${{ matrix.target }}.png" "${{ matrix.target }}"
+        run: swift packages/platform/tests/cli/apple-gallery-frame.swift "$RUNNER_TEMP/delivery/solid-gallery-${{ matrix.target }}.png" "${{ matrix.target }}"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

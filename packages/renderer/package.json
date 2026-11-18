@@ -4,7 +4,7 @@
   "type": "module",
   "description": "WebGL, Canvas 2D and Roku SceneGraph backends",
   "repository": "github:solid-multiplatform/renderer",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "Apache-2.0",
   "files": [
     "dist",
     "webgl/src",

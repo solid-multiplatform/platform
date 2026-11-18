@@ -49,8 +49,14 @@ export function prepareArms() {
     rmSync(dir, { recursive: true, force: true });
     mkdirSync(dir, { recursive: true });
   }
-  const archive = execFileSync('git', ['archive', PINS.solidA], {
+  // The pinned baseline predates the monorepo: archive it from the repository
+  // root, since `git archive` in a subdirectory only covers that subdirectory.
+  const top = execFileSync('git', ['rev-parse', '--show-toplevel'], {
     cwd: root,
+    encoding: 'utf8',
+  }).trim();
+  const archive = execFileSync('git', ['archive', PINS.solidA], {
+    cwd: top,
     maxBuffer: 128 * 1024 * 1024,
   });
   execFileSync('tar', ['-x', '-C', ARMS.A.solid], { input: archive });

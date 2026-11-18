@@ -6,13 +6,18 @@ build
 releases
 .tmp
 .env
-bench/.arms
-bench/dist
-bench/public
+pnpm-lock.yaml
 
-examples/**/platforms
-examples/**/dist-roku
-examples/**/hooks
+# Imported renderer sources keep their upstream formatting.
+packages/renderer
+
+packages/platform/vendor
+packages/platform/bench/.arms
+packages/platform/bench/dist
+packages/platform/bench/public
+packages/platform/examples/**/platforms
+packages/platform/examples/**/dist-roku
+packages/platform/examples/**/hooks
 
 packages/video/upstream
 packages/video/core

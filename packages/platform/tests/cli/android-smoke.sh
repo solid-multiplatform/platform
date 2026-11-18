@@ -10,7 +10,7 @@ cd "$scratch/plugin-probe"
 corepack pnpm install
 # Users can add native modules to an application that has already been built.
 corepack pnpm build android-tv
-(cd "$framework/packages/video" && npm pack --silent --ignore-scripts --pack-destination "$scratch")
+(cd "$framework/../video" && npm pack --silent --ignore-scripts --pack-destination "$scratch")
 corepack pnpm platform add video "$scratch"/solid-multiplatform-video-*.tgz
 corepack pnpm install --no-frozen-lockfile
 (cd targets/android-tv && corepack pnpm install --no-frozen-lockfile)

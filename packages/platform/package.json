@@ -1,0 +1,490 @@
+{
+  "name": "@solid-multiplatform/platform",
+  "version": "0.2.0-preview.8",
+  "description": "Portable Solid primitives and device hosts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "canvas": "./dist/src/portable.js",
+      "roku": "./dist/src/portable.js",
+      "@solidtv/source": "./src/index.ts",
+      "import": {
+        "types": "./dist/src/index.d.ts",
+        "default": "./dist/src/index.js"
+      }
+    },
+    "./primitives": {
+      "@solidtv/source": "./src/primitives/index.ts",
+      "import": {
+        "types": "./dist/src/primitives/index.d.ts",
+        "default": "./dist/src/primitives/index.js"
+      }
+    },
+    "./primitives/router": {
+      "@solidtv/source": "./src/primitives/routerIndex.ts",
+      "import": {
+        "types": "./dist/src/primitives/routerIndex.d.ts",
+        "default": "./dist/src/primitives/routerIndex.js"
+      }
+    },
+    "./devtools": {
+      "@solidtv/source": "./src/devtools/index.ts",
+      "import": {
+        "types": "./dist/src/devtools/index.d.ts",
+        "default": "./dist/src/devtools/index.js"
+      }
+    },
+    "./devtools/jsx-locator": "./src/devtools/jsx-locator.js",
+    "./shaders": {
+      "@solidtv/source": "./src/core/shaders.ts",
+      "import": {
+        "types": "./dist/src/core/shaders.d.ts",
+        "default": "./dist/src/core/shaders.js"
+      }
+    },
+    "./focusManager": {
+      "@solidtv/source": "./src/core/focusManager.ts",
+      "import": {
+        "types": "./dist/src/core/focusManager.d.ts",
+        "default": "./dist/src/core/focusManager.js"
+      }
+    },
+    "./jsx-runtime": {
+      "@solidtv/source": "./jsx-runtime.d.ts",
+      "default": "./dist/jsx-runtime.d.ts"
+    },
+    "./package.json": "./package.json",
+    "./roku": "./hosts/roku/main.ts",
+    "./roku/preset": "./hosts/roku/preset.mjs",
+    "./roku/storage": "./hosts/roku/device-storage.ts",
+    "./roku/tasks": "./hosts/roku/worker-task.ts",
+    "./apple-tv": "./hosts/apple-tv/index.mjs",
+    "./android-tv": "./hosts/android-tv/index.mjs",
+    "./nativescript": "./dist/src/hosts/nativescript/index.js",
+    "./nativescript/webpack": "./hosts/nativescript/webpack.cjs",
+    "./browser-tv": "./dist/src/hosts/browser-tv.js",
+    "./browser-tv/canvas": "./dist/src/hosts/canvas.js",
+    "./ios": "./hosts/ios/index.mjs",
+    "./plugins": "./dist/src/hosts/plugins.js",
+    "./cli/variants": "./cli/variants.mjs",
+    "./android": "./hosts/android/index.mjs",
+    "./viewport": "./dist/src/sdk/viewport.js",
+    "./viewport/web": "./dist/src/sdk/browser-viewport.js",
+    "./input": "./dist/src/sdk/input.js",
+    "./editor": "./dist/src/sdk/editor.js",
+    "./editor/native": "./hosts/nativescript/editors.mjs",
+    "./android/system": "./hosts/android/system.mjs",
+    "./services": "./dist/src/sdk/services.js",
+    "./services/web": "./dist/src/sdk/web-services.js",
+    "./services/native": "./hosts/nativescript/services.mjs",
+    "./navigation": "./dist/src/sdk/navigation.js",
+    "./controls": {
+      "@solidtv/source": "./src/sdk/controls.tsx",
+      "import": {
+        "types": "./dist/src/sdk/controls.d.ts",
+        "default": "./dist/src/sdk/controls.jsx"
+      }
+    },
+    "./controls/web": "./dist/src/sdk/web-controls.js",
+    "./controls/native": "./hosts/nativescript/controls.mjs",
+    "./browser-tv/input": "./hosts/web-tv/input.mjs",
+    "./services/mobile-providers": "./hosts/nativescript/providers.mjs",
+    "./services/desktop": "./hosts/desktop/services.mjs",
+    "./services/roku": "./hosts/roku/services.ts",
+    "./motion": "./dist/src/sdk/motion.js",
+    "./focus": "./dist/src/sdk/focus.js",
+    "./permissions": "./dist/src/sdk/permissions.js",
+    "./semantics": "./dist/src/sdk/semantics.js",
+    "./services/native/secure-storage": "./hosts/nativescript/secure-storage.mjs",
+    "./services/native/notifications": "./hosts/nativescript/notifications.mjs",
+    "./permissions/android": "./hosts/android/permissions.mjs",
+    "./editor/roku": "./hosts/roku/editor.ts",
+    "./scroll": "./dist/src/sdk/scroll.js",
+    "./network": "./dist/src/sdk/network.js",
+    "./editor/desktop": {
+      "@solidtv/source": "./src/sdk/desktop-field.tsx",
+      "import": {
+        "types": "./dist/src/sdk/desktop-field.d.ts",
+        "default": "./dist/src/sdk/desktop-field.jsx"
+      }
+    },
+    "./theme": {
+      "@solidtv/source": "./src/sdk/theme.tsx",
+      "import": {
+        "types": "./dist/src/sdk/theme.d.ts",
+        "default": "./dist/src/sdk/theme.jsx"
+      }
+    },
+    "./capabilities": {
+      "@solidtv/source": "./src/sdk/capabilities.ts",
+      "import": {
+        "types": "./dist/src/sdk/capabilities.d.ts",
+        "default": "./dist/src/sdk/capabilities.js"
+      }
+    },
+    "./keyboard": {
+      "@solidtv/source": "./src/sdk/keyboard.ts",
+      "import": {
+        "types": "./dist/src/sdk/keyboard.d.ts",
+        "default": "./dist/src/sdk/keyboard.js"
+      }
+    },
+    "./form": {
+      "@solidtv/source": "./src/sdk/form.ts",
+      "import": {
+        "types": "./dist/src/sdk/form.d.ts",
+        "default": "./dist/src/sdk/form.js"
+      }
+    },
+    "./cursor": {
+      "@solidtv/source": "./src/sdk/cursor.ts",
+      "import": {
+        "types": "./dist/src/sdk/cursor.d.ts",
+        "default": "./dist/src/sdk/cursor.js"
+      }
+    },
+    "./data": {
+      "@solidtv/source": "./src/sdk/data.ts",
+      "import": {
+        "types": "./dist/src/sdk/data.d.ts",
+        "default": "./dist/src/sdk/data.js"
+      }
+    },
+    "./device": {
+      "@solidtv/source": "./src/sdk/device.ts",
+      "import": {
+        "types": "./dist/src/sdk/device.d.ts",
+        "default": "./dist/src/sdk/device.js"
+      }
+    },
+    "./i18n": {
+      "@solidtv/source": "./src/sdk/i18n.ts",
+      "import": {
+        "types": "./dist/src/sdk/i18n.d.ts",
+        "default": "./dist/src/sdk/i18n.js"
+      }
+    },
+    "./a11y": {
+      "@solidtv/source": "./src/sdk/a11y.ts",
+      "import": {
+        "types": "./dist/src/sdk/a11y.d.ts",
+        "default": "./dist/src/sdk/a11y.js"
+      }
+    },
+    "./list": {
+      "@solidtv/source": "./src/sdk/list.ts",
+      "import": {
+        "types": "./dist/src/sdk/list.d.ts",
+        "default": "./dist/src/sdk/list.js"
+      }
+    },
+    "./crash": {
+      "@solidtv/source": "./src/sdk/crash.ts",
+      "import": {
+        "types": "./dist/src/sdk/crash.d.ts",
+        "default": "./dist/src/sdk/crash.js"
+      }
+    },
+    "./responsive": {
+      "@solidtv/source": "./src/sdk/responsive.ts",
+      "import": {
+        "types": "./dist/src/sdk/responsive.d.ts",
+        "default": "./dist/src/sdk/responsive.js"
+      }
+    },
+    "./media": {
+      "@solidtv/source": "./src/sdk/media.ts",
+      "import": {
+        "types": "./dist/src/sdk/media.d.ts",
+        "default": "./dist/src/sdk/media.js"
+      }
+    },
+    "./sections": {
+      "@solidtv/source": "./src/sdk/sections.ts",
+      "import": {
+        "types": "./dist/src/sdk/sections.d.ts",
+        "default": "./dist/src/sdk/sections.js"
+      }
+    },
+    "./geolocation": {
+      "@solidtv/source": "./src/sdk/geolocation.ts",
+      "import": {
+        "types": "./dist/src/sdk/geolocation.d.ts",
+        "default": "./dist/src/sdk/geolocation.js"
+      }
+    },
+    "./biometrics": {
+      "@solidtv/source": "./src/sdk/biometrics.ts",
+      "import": {
+        "types": "./dist/src/sdk/biometrics.d.ts",
+        "default": "./dist/src/sdk/biometrics.js"
+      }
+    },
+    "./files": {
+      "@solidtv/source": "./src/sdk/files.ts",
+      "import": {
+        "types": "./dist/src/sdk/files.d.ts",
+        "default": "./dist/src/sdk/files.js"
+      }
+    },
+    "./update": {
+      "@solidtv/source": "./src/sdk/update.ts",
+      "import": {
+        "types": "./dist/src/sdk/update.d.ts",
+        "default": "./dist/src/sdk/update.js"
+      }
+    },
+    "./shortcuts": {
+      "@solidtv/source": "./src/sdk/shortcuts.ts",
+      "import": {
+        "types": "./dist/src/sdk/shortcuts.d.ts",
+        "default": "./dist/src/sdk/shortcuts.js"
+      }
+    },
+    "./logging": {
+      "@solidtv/source": "./src/sdk/logging.ts",
+      "import": {
+        "types": "./dist/src/sdk/logging.d.ts",
+        "default": "./dist/src/sdk/logging.js"
+      }
+    },
+    "./env": {
+      "@solidtv/source": "./src/sdk/env.ts",
+      "import": {
+        "types": "./dist/src/sdk/env.d.ts",
+        "default": "./dist/src/sdk/env.js"
+      }
+    },
+    "./transition": {
+      "@solidtv/source": "./src/sdk/transition.ts",
+      "import": {
+        "types": "./dist/src/sdk/transition.d.ts",
+        "default": "./dist/src/sdk/transition.js"
+      }
+    },
+    "./capture": {
+      "@solidtv/source": "./src/sdk/capture.ts",
+      "import": {
+        "types": "./dist/src/sdk/capture.d.ts",
+        "default": "./dist/src/sdk/capture.js"
+      }
+    },
+    "./routes": {
+      "@solidtv/source": "./src/sdk/routes.ts",
+      "import": {
+        "types": "./dist/src/sdk/routes.d.ts",
+        "default": "./dist/src/sdk/routes.js"
+      }
+    },
+    "./gamepad": {
+      "@solidtv/source": "./src/sdk/gamepad.ts",
+      "import": {
+        "types": "./dist/src/sdk/gamepad.d.ts",
+        "default": "./dist/src/sdk/gamepad.js"
+      }
+    },
+    "./audio": {
+      "@solidtv/source": "./src/sdk/audio.ts",
+      "import": {
+        "types": "./dist/src/sdk/audio.d.ts",
+        "default": "./dist/src/sdk/audio.js"
+      }
+    },
+    "./drm": {
+      "@solidtv/source": "./src/sdk/drm.ts",
+      "import": {
+        "types": "./dist/src/sdk/drm.d.ts",
+        "default": "./dist/src/sdk/drm.js"
+      }
+    },
+    "./rich-text": {
+      "@solidtv/source": "./src/sdk/richText.ts",
+      "import": {
+        "types": "./dist/src/sdk/richText.d.ts",
+        "default": "./dist/src/sdk/richText.js"
+      }
+    },
+    "./svg": {
+      "@solidtv/source": "./src/sdk/svg.ts",
+      "import": {
+        "types": "./dist/src/sdk/svg.d.ts",
+        "default": "./dist/src/sdk/svg.js"
+      }
+    },
+    "./gestures": {
+      "@solidtv/source": "./src/sdk/gestures.ts",
+      "import": {
+        "types": "./dist/src/sdk/gestures.d.ts",
+        "default": "./dist/src/sdk/gestures.js"
+      }
+    },
+    "./contacts": {
+      "@solidtv/source": "./src/sdk/contacts.ts",
+      "import": {
+        "types": "./dist/src/sdk/contacts.d.ts",
+        "default": "./dist/src/sdk/contacts.js"
+      }
+    },
+    "./calendar": {
+      "@solidtv/source": "./src/sdk/calendar.ts",
+      "import": {
+        "types": "./dist/src/sdk/calendar.d.ts",
+        "default": "./dist/src/sdk/calendar.js"
+      }
+    },
+    "./sensors": {
+      "@solidtv/source": "./src/sdk/sensors.ts",
+      "import": {
+        "types": "./dist/src/sdk/sensors.d.ts",
+        "default": "./dist/src/sdk/sensors.js"
+      }
+    },
+    "./maps": {
+      "@solidtv/source": "./src/sdk/maps.ts",
+      "import": {
+        "types": "./dist/src/sdk/maps.d.ts",
+        "default": "./dist/src/sdk/maps.js"
+      }
+    },
+    "./release": {
+      "@solidtv/source": "./src/sdk/release.ts",
+      "import": {
+        "types": "./dist/src/sdk/release.d.ts",
+        "default": "./dist/src/sdk/release.js"
+      }
+    },
+    "./pwa": {
+      "@solidtv/source": "./src/sdk/pwa.ts",
+      "import": {
+        "types": "./dist/src/sdk/pwa.d.ts",
+        "default": "./dist/src/sdk/pwa.js"
+      }
+    },
+    "./download": {
+      "@solidtv/source": "./src/sdk/download.ts",
+      "import": {
+        "types": "./dist/src/sdk/download.d.ts",
+        "default": "./dist/src/sdk/download.js"
+      }
+    },
+    "./menus": {
+      "@solidtv/source": "./src/sdk/menus.ts",
+      "import": {
+        "types": "./dist/src/sdk/menus.d.ts",
+        "default": "./dist/src/sdk/menus.js"
+      }
+    },
+    "./window-state": {
+      "@solidtv/source": "./src/sdk/window-state.ts",
+      "import": {
+        "types": "./dist/src/sdk/window-state.d.ts",
+        "default": "./dist/src/sdk/window-state.js"
+      }
+    },
+    "./certification": {
+      "@solidtv/source": "./src/sdk/certification.ts",
+      "import": {
+        "types": "./dist/src/sdk/certification.d.ts",
+        "default": "./dist/src/sdk/certification.js"
+      }
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "start": "pnpm run watch",
+    "bench": "node bench/run.mjs",
+    "test": "vitest run",
+    "build": "rm -rf dist && npm run tsc && cp jsx-runtime.d.ts dist/",
+    "tsc": "tsc && tsc -p tests/tsconfig.contract.json",
+    "watch": "tsc -w",
+    "prepack": "npm run build && node cli/renderer-archive.mjs",
+    "test:browser": "vitest --config=vitest.browser.config.ts",
+    "test:webgl": "vitest run --config=vitest.webgl.config.ts"
+  },
+  "keywords": [
+    "lightning",
+    "javascript",
+    "canvas",
+    "web",
+    "tv"
+  ],
+  "author": "Chris Lorenzo",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@solid-primitives/event-listener": "^2.4.5",
+    "@solid-primitives/list": "^0.1.2",
+    "@solid-primitives/mouse": "^2.1.6",
+    "@solid-primitives/scheduled": "^1.5.3"
+  },
+  "devDependencies": {
+    "@lightningtv/vite-hex-transform": "^1.1.0",
+    "@solid-devtools/debugger": "^0.28.1",
+    "@solidjs/testing-library": "^0.8.10",
+    "@vitest/browser-playwright": "^4.1.6",
+    "jsdom": "^26.1.0",
+    "playwright": "1.56.1",
+    "terser": "^5.51.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.0.13",
+    "vite-plugin-solid": "^2.11.12",
+    "vitest": "^4.1.6",
+    "@solid-multiplatform/renderer": "workspace:*",
+    "solid-js": "1.9.17"
+  },
+  "peerDependencies": {
+    "@solidjs/router": "^0.16.1",
+    "@solid-multiplatform/renderer": "0.2.0-preview.2",
+    "solid-js": "*",
+    "@nativescript/secure-storage": "^4.0.2",
+    "@nativescript/local-notifications": "^7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@nativescript/secure-storage": {
+      "optional": true
+    },
+    "@nativescript/local-notifications": {
+      "optional": true
+    }
+  },
+  "repository": "github:solid-multiplatform/platform",
+  "files": [
+    "dist",
+    "src",
+    "jsx-runtime.d.ts",
+    "LICENSE",
+    "NOTICE",
+    "README.md",
+    "hosts",
+    "PROVENANCE.md",
+    "cli",
+    "tests/webgl/fonts",
+    "examples/*/package.json",
+    "examples/*/pnpm-workspace.yaml",
+    "examples/*/tsconfig.json",
+    "examples/*/nativescript.config.ts",
+    "examples/*/webpack.config.js",
+    "examples/roku/src",
+    "examples/roku/package-zip.py",
+    "examples/apple-tv/svg-compat",
+    "examples/android-tv/native",
+    "examples/android-tv/App_Resources",
+    "examples/apple-tv/App_Resources",
+    "vendor/*.tgz"
+  ],
+  "packageManager": "pnpm@10.33.4",
+  "publishConfig": {
+    "access": "public"
+  },
+  "imports": {
+    "#default-backend": {
+      "canvas": "./dist/src/hosts/native-backend.js",
+      "roku": "./dist/src/hosts/native-backend.js",
+      "types": "./src/hosts/web-backend.ts",
+      "@solidtv/source": "./src/hosts/web-backend.ts",
+      "default": "./dist/src/hosts/web-backend.js"
+    }
+  },
+  "bin": {
+    "solid-platform": "./cli/main.mjs"
+  }
+}

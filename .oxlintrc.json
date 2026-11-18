@@ -11,13 +11,15 @@
     "builtin": true
   },
   "ignorePatterns": [
-    "dist/**",
-    "node_modules/**",
-    "bench/.arms/**",
+    "**/dist/**",
+    "**/node_modules/**",
+    "packages/renderer/**",
+    "packages/platform/bench/.arms/**",
+    "packages/platform/bench/dist/**",
+    "packages/platform/vendor/**",
     "packages/video/upstream/**",
     "packages/video/core/**",
-    "packages/video/core.mjs",
-    "bench/dist/**"
+    "packages/video/core.mjs"
   ],
   "rules": {
     "constructor-super": "error",
@@ -80,7 +82,7 @@
   },
   "overrides": [
     {
-      "files": ["src/**/*.{ts,tsx}"],
+      "files": ["packages/platform/src/**/*.{ts,tsx}"],
       "rules": {
         "constructor-super": "off",
         "getter-return": "off",
@@ -149,7 +151,7 @@
       }
     },
     {
-      "files": ["bench/**/*.mjs"],
+      "files": ["packages/platform/bench/**/*.mjs"],
       "env": {
         "browser": true,
         "node": true

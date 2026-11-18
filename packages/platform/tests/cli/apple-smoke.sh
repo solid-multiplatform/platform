@@ -16,7 +16,7 @@ node cli/main.mjs init "$scratch/swift-probe" --targets "$target"
 cd "$scratch/swift-probe"
 corepack pnpm install
 corepack pnpm platform plugin new greeting
-archive=$(cd "$framework/packages/video" && npm pack --silent --pack-destination "$scratch")
+archive=$(cd "$framework/../video" && npm pack --silent --pack-destination "$scratch")
 corepack pnpm platform add video "$scratch/$archive"
 cp "$framework/tests/cli/apple-media-fixture.ts" src/app.tsx
 cp "$framework/tests/cli/media/clip.mp4" "targets/$target/clip.mp4"

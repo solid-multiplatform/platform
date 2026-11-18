@@ -1,4 +1,5 @@
 import { browserTVs } from './variants.mjs';
+import { rendererArchive } from './renderer-archive.mjs';
 import path from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 import {
@@ -129,10 +130,8 @@ export function init(destination, selected) {
     );
   freshDirectory(destination, (root) => {
     const vendor = path.join(root, 'vendor');
-    const renderer = path.basename(
-      meta.devDependencies['@solid-multiplatform/renderer'].slice(5),
-    );
-    copy(path.join(framework, 'vendor', renderer), path.join(vendor, renderer));
+    const { file: rendererFile, name: renderer } = rendererArchive();
+    copy(rendererFile, path.join(vendor, renderer));
     command(
       'npm',
       ['pack', '--ignore-scripts', '--silent', '--pack-destination', vendor],
