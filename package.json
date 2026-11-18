@@ -1,6 +1,6 @@
 {
   "name": "@solid-multiplatform/platform",
-  "version": "0.2.0-preview.5",
+  "version": "0.2.0-preview.6",
   "description": "Portable Solid primitives and device hosts",
   "type": "module",
   "exports": {
@@ -162,7 +162,7 @@
     "vite": "^8.0.13",
     "vite-plugin-solid": "^2.11.12",
     "vitest": "^4.1.6",
-    "@solid-multiplatform/renderer": "file:vendor/solid-multiplatform-renderer-0.2.0-preview.1.tgz",
+    "@solid-multiplatform/renderer": "file:vendor/solid-multiplatform-renderer-0.2.0-preview.2.tgz",
     "solid-js": "1.9.17"
   },
   "lint-staged": {
@@ -174,7 +174,7 @@
   },
   "peerDependencies": {
     "@solidjs/router": "^0.16.1",
-    "@solid-multiplatform/renderer": "0.2.0-preview.1",
+    "@solid-multiplatform/renderer": "0.2.0-preview.2",
     "solid-js": "*",
     "@nativescript/secure-storage": "^4.0.2",
     "@nativescript/local-notifications": "^7.0.0"
@@ -199,7 +199,7 @@
     "hosts",
     "PROVENANCE.md",
     "cli",
-    "vendor/solid-multiplatform-renderer-0.2.0-preview.1.tgz",
+    "vendor/solid-multiplatform-renderer-0.2.0-preview.2.tgz",
     "tests/webgl/fonts",
     "examples/*/package.json",
     "examples/*/pnpm-workspace.yaml",

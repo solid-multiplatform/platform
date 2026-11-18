@@ -98,6 +98,21 @@ try {
             const errors = checks
               .filter(([, x, y, color]) => !near(sample(x, y), color))
               .map(([n, x, y]) => n + ': ' + sample(x, y));
+            let throughPanel = 0,
+              tintedGlyphs = 0;
+            for (let y = 92; y < 133; y++)
+              for (let x = 182; x < 306; x++) {
+                const pixel = sample(x, y);
+                if (!moved && !near(pixel, [40, 57, 74])) throughPanel++;
+                if (moved && Math.max(...pixel) > 175) throughPanel++;
+                if (moved && near(pixel, [147, 156, 164])) tintedGlyphs++;
+              }
+            if (throughPanel)
+              errors.push(
+                'background text over panel: ' + throughPanel + ' pixels',
+              );
+            if (moved && tintedGlyphs < 8)
+              errors.push('background text missing behind translucent panel');
             let glyphs = 0,
               stale = 0;
             for (let y = 88; y < 145; y++)
@@ -122,6 +137,19 @@ try {
         await new Promise((r) => setTimeout(r, 80));
       }
       assert.deepEqual(last, [], backend + ' ' + state);
+    }
+    if (backend === 'webgl') {
+      const disjoint = await page.evaluate(() => window.visual.drawOps());
+      await page.evaluate(() => window.visual.setBarrier(true));
+      await page.waitForFunction((n) => window.visual.drawOps() > n, disjoint, {
+        timeout: 3000,
+      });
+      await page.evaluate(() => window.visual.setBarrier(false));
+      await page.waitForFunction(
+        (n) => window.visual.drawOps() === n,
+        disjoint,
+        { timeout: 3000 },
+      );
     }
     await page.close();
   }

@@ -10,6 +10,17 @@ import scenes from './scenes.json';
 import { File, knownFolders } from '@nativescript/core';
 
 export function mount(_plugins, fontRoot) {
+  return mountGallery(fontRoot);
+}
+
+export function mountGallery(
+  fontRoot,
+  interaction?: {
+    galleryVisible(): boolean;
+    canScroll(): boolean;
+    render(): import('solid-js').JSX.Element;
+  },
+) {
   Config.fontSettings = { fontFamily: 'Lato', fontSize: 30 };
   const ready = loadFonts([
     {
@@ -56,43 +67,51 @@ export function mount(_plugins, fontRoot) {
         alpha={n.opacity}
       />
     );
-  const dispose = render(() => (
-    <view ref={root} width={1920} height={1080}>
-      <For
-        each={scenes[dense()].nodes.filter(
-          (n) =>
-            n.backgroundSlot !== undefined ||
-            n.src?.endsWith('/mask-black.png'),
-        )}
+  const dispose = render(() => {
+    const gallery = (
+      <view
+        ref={root}
+        width={1920}
+        height={1080}
+        alpha={interaction?.galleryVisible() === false ? 0 : 1}
       >
-        {item}
-      </For>
-      <view ref={rail} width={1920} height={scenes[dense()].contentHeight}>
         <For
           each={scenes[dense()].nodes.filter(
-            (n) => n.kind !== 2 && n.kind !== 3,
+            (n) =>
+              n.backgroundSlot !== undefined ||
+              n.src?.endsWith('/mask-black.png'),
+          )}
+        >
+          {item}
+        </For>
+        <view ref={rail} width={1920} height={scenes[dense()].contentHeight}>
+          <For
+            each={scenes[dense()].nodes.filter(
+              (n) => n.kind !== 2 && n.kind !== 3,
+            )}
+          >
+            {item}
+          </For>
+        </view>
+        <view ref={header} width={1920} height={500}>
+          <For each={scenes[dense()].nodes.filter((n) => n.kind === 2)}>
+            {item}
+          </For>
+        </view>
+        <For
+          each={scenes[dense()].nodes.filter(
+            (n) =>
+              n.kind === 3 &&
+              n.backgroundSlot === undefined &&
+              !n.src?.endsWith('/mask-black.png'),
           )}
         >
           {item}
         </For>
       </view>
-      <view ref={header} width={1920} height={500}>
-        <For each={scenes[dense()].nodes.filter((n) => n.kind === 2)}>
-          {item}
-        </For>
-      </view>
-      <For
-        each={scenes[dense()].nodes.filter(
-          (n) =>
-            n.kind === 3 &&
-            n.backgroundSlot === undefined &&
-            !n.src?.endsWith('/mask-black.png'),
-        )}
-      >
-        {item}
-      </For>
-    </view>
-  ));
+    );
+    return interaction ? [gallery, interaction.render()] : gallery;
+  });
   // Advance only on navigation ticks. The renderer interpolates the rail between ticks.
   const documents = knownFolders.documents().path;
   const request = documents + '/gallery-audit';
@@ -107,6 +126,7 @@ export function mount(_plugins, fontRoot) {
     : null;
   let count = 0;
   const timer = setInterval(() => {
+    if (interaction && !interaction.canScroll()) return;
     // In the separate pixel audit, hold the scene still for the external screen capture.
     if (
       audit &&

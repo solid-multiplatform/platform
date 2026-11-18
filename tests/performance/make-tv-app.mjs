@@ -3,11 +3,19 @@ import path from 'node:path';
 import { cpSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { init } from '../../cli/init.mjs';
-const [destination, reference] = process.argv.slice(2);
-if (!destination || !reference)
-  throw new Error('Usage: node make-tv-app.mjs DEST REFERENCE_CHECKOUT');
+import { addVideo } from '../../cli/add-video.mjs';
+const [destination, reference, flag, videoArchive] = process.argv.slice(2);
+if (
+  !destination ||
+  !reference ||
+  (flag && (flag !== '--mixed' || !videoArchive))
+)
+  throw new Error(
+    'Usage: node make-tv-app.mjs DEST REFERENCE_CHECKOUT [--mixed VIDEO_ARCHIVE]',
+  );
 const root = path.resolve(destination);
 init(root, ['android-tv']);
+if (videoArchive) addVideo(root, path.resolve(videoArchive));
 const { default: data } = await import(
   pathToFileURL(path.resolve(reference, 'web/reference-data.mjs'))
 );
@@ -61,5 +69,15 @@ config.plugin('CopyWebpackPlugin').tap(args => { args[0].patterns.push({from:pat
 );
 cpSync(
   new URL('./tv-workload.tsx', import.meta.url),
-  path.join(root, 'src/app.tsx'),
+  path.join(root, videoArchive ? 'src/gallery.tsx' : 'src/app.tsx'),
 );
+if (videoArchive) {
+  cpSync(
+    new URL('./mixed-workload.tsx', import.meta.url),
+    path.join(root, 'src/app.tsx'),
+  );
+  cpSync(
+    new URL('../cli/media/clip.mp4', import.meta.url),
+    path.join(assets, 'clip.mp4'),
+  );
+}
