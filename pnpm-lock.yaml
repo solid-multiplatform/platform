@@ -51,6 +51,9 @@ importers:
       '@lightningtv/vite-hex-transform':
         specifier: ^1.1.0
         version: 1.1.0(@types/node@22.14.1)(lightningcss@1.32.0)(terser@5.51.2)
+      '@nativescript/types':
+        specifier: 9.1.1
+        version: 9.1.1
       '@nativescript/types-ios':
         specifier: 9.1.1
         version: 9.1.1
@@ -658,8 +661,14 @@ packages:
   '@nativescript/shared-notification-delegate@1.0.2':
     resolution: {integrity: sha512-Wh6F1WH9Aj23K+nyolA5MrA6MXku/5rSPt9r20ekbyx2FkRpBr0stjg4uD6KSyUvWY8YT+KQ9WlOUzhq7g7Ycw==}
 
+  '@nativescript/types-android@9.1.1':
+    resolution: {integrity: sha512-PGaTum9tyqyyza3QT21Z7WrRR1+nM7ITsq9EJiaShLArThJI0PD1ZuDO5IoUUvSQ+gTKU2nLiVMnFbU4s3FeeQ==}
+
   '@nativescript/types-ios@9.1.1':
     resolution: {integrity: sha512-V+2FPLyUYe4dhhr7DEdl6Wzmftwz7Ppxak2FZyXAsam6Kw1R+G13NyIsoV3kPV4KbAQhuc05buHZnYRHnBGx/w==}
+
+  '@nativescript/types@9.1.1':
+    resolution: {integrity: sha512-O5QOF6xzobdbNubA7rJkVk6fm6nvXPOHlnBkzKzkbuiiJutphuutlXr2Y+ixEBIvloxd7CK1r6AXPao3zZpRTA==}
 
   '@nothing-but/utils@0.17.0':
     resolution: {integrity: sha512-TuCHcHLOqDL0SnaAxACfuRHBNRgNJcNn9X0GiH5H3YSDBVquCr3qEIG3FOQAuMyZCbu9w8nk2CHhOsn7IvhIwQ==}
@@ -2659,7 +2668,14 @@ snapshots:
 
   '@nativescript/shared-notification-delegate@1.0.2': {}
 
+  '@nativescript/types-android@9.1.1': {}
+
   '@nativescript/types-ios@9.1.1': {}
+
+  '@nativescript/types@9.1.1':
+    dependencies:
+      '@nativescript/types-android': 9.1.1
+      '@nativescript/types-ios': 9.1.1
 
   '@nothing-but/utils@0.17.0': {}
 
