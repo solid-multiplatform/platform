@@ -28,7 +28,8 @@ function scene(t) {
 function written(node) {
   const props = {};
   for (const [name, value] of Object.entries(node.props)) {
-    props[name] = typeof value === 'function' ? '[function]' : value;
+    // An Effect node is written as a reference: compare what it holds.
+    props[name] = typeof value === 'function' ? '[function]' : value?.type === 'effect' ? value.props : value;
   }
   return { type: node.type, props, children: node.children.map(written) };
 }
@@ -56,13 +57,19 @@ test('colorTl/Tr/Bl/Br draw the same corners as the long names', (t) => {
   renderer.flush();
 
   const expected = written(longProps.dom);
-  // The corners reached SceneGraph: a rectangle plus the gradient bands,
-  // running from the top-left colour to the bottom-left one.
-  const bands = expected.children.slice(1);
-  assert.equal(expected.children[0].type, 'rectangle');
-  assert.ok(bands.length >= 2);
-  assert.equal(bands[0].props.color, '0xFF0000FF');
-  assert.equal(bands[bands.length - 1].props.color, '0x0000FFFF');
+  // The corners reached SceneGraph: the top row is the rectangle's gradient,
+  // and the bottom corners are weight images tinted with their colours.
+  const [rect, bottomLeft, bottomRight] = longProps.dom.children;
+  assert.equal(rect.type, 'rectangle');
+  assert.deepEqual(rect.props.effect.props.gradientColors, ['0xFF0000FF', '0x00FF00FF']);
+  assert.deepEqual(
+    [bottomLeft.type, bottomLeft.props.uri, bottomLeft.props.blendColor],
+    ['poster', 'pkg:/assets/smp/weight-bl.png', '0x0000FFFF'],
+  );
+  assert.deepEqual(
+    [bottomRight.type, bottomRight.props.uri, bottomRight.props.blendColor],
+    ['poster', 'pkg:/assets/smp/weight-br.png', '0xFFFF00FF'],
+  );
   assert.deepEqual(written(unset.dom).children, []);
 
   for (const node of [shortProps, shortLive, longLive]) {
@@ -142,7 +149,16 @@ test('mount and pivot set both axes and read the X axis', (t) => {
 test('srcX/srcY/srcWidth/srcHeight crop a sprite sheet as a SubTexture does', (t) => {
   const renderer = scene(t);
   const parent = renderer.root;
-  const sheet = 'pkg:/assets/icons.png'; // 375x100, known to node-textures.ts
+  const sheet = 'pkg:/assets/sheet.png';
+  // SceneGraph reports a bitmap's size once it has loaded; the crop needs it.
+  const load = (node, width = 375, height = 100) => {
+    const poster = node.dom.children[0];
+    poster.props.onBitmapWidth(width);
+    poster.props.onBitmapHeight(height);
+    poster.props.onLoadStatus('ready');
+    renderer.flush();
+    return poster;
+  };
   const rect = renderer.createNode({ w: 50, h: 50, parent, src: sheet, srcX: 50, srcY: 10, srcWidth: 50, srcHeight: 50 });
   const texture = renderer.createTexture('SubTexture', {
     texture: renderer.createTexture('ImageTexture', { src: sheet }),
@@ -150,14 +166,23 @@ test('srcX/srcY/srcWidth/srcHeight crop a sprite sheet as a SubTexture does', (t
   });
   const sub = renderer.createNode({ w: 50, h: 50, parent, texture });
   renderer.flush();
+  // Hidden until its size is known, so the whole sheet never flashes.
+  assert.equal(rect.dom.children[0].props.opacity, 0);
+  const poster = load(rect);
+  load(sub);
   assert.deepEqual(written(rect.dom), written(sub.dom));
-  const poster = rect.dom.children[0];
   assert.equal(poster.type, 'poster');
   assert.deepEqual(
-    [poster.props.width, poster.props.height, poster.props.loadDisplayMode, poster.props.translation],
-    [375, 100, 'noScale', [-50, -10]],
+    [poster.props.width, poster.props.height, poster.props.opacity, poster.props.translation],
+    [375, 100, 1, [-50, -10]],
   );
   assert.deepEqual(rect.dom.props.clippingRect, [0, 0, 50, 50]);
+
+  // A region drawn larger than it is scales the sheet with it.
+  const scaled = renderer.createNode({ w: 100, h: 100, parent, src: sheet, srcX: 50, srcY: 10, srcWidth: 50, srcHeight: 50 });
+  renderer.flush();
+  const big = load(scaled);
+  assert.deepEqual([big.props.width, big.props.height, big.props.translation], [750, 200, [-100, -20]]);
 
   // Written after creation; as on the web a crop needs a width and a height.
   const live = renderer.createNode({ w: 50, h: 50, parent, src: sheet });
@@ -165,13 +190,13 @@ test('srcX/srcY/srcWidth/srcHeight crop a sprite sheet as a SubTexture does', (t
   live.srcX = 100;
   live.srcWidth = 50;
   renderer.flush();
-  const image = live.dom.children[0];
+  const image = load(live);
   assert.deepEqual([image.props.width, image.props.loadDisplayMode], [50, 'scaleToFill']);
   live.srcHeight = 50;
   renderer.flush();
   assert.deepEqual(
-    [image.props.width, image.props.loadDisplayMode, image.props.translation.map((v) => v + 0)],
-    [375, 'noScale', [-100, 0]], // `+ 0`: an unset srcY is written as -0
+    [image.props.width, image.props.height, image.props.translation.map((v) => v + 0)],
+    [375, 100, [-100, 0]], // `+ 0`: an unset srcY is written as -0
   );
   assert.deepEqual(live.dom.props.clippingRect, [0, 0, 50, 50]);
   assert.deepEqual([live.srcX, live.srcY, live.srcWidth, live.srcHeight], [100, undefined, 50, 50]);

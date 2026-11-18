@@ -10,10 +10,13 @@ import type { SceneRenderer } from '../contracts.js';
 import type { AnimationSettings } from './animation-types.js';
 import type { CompositorAnimation } from './compositor-animation.js';
 import { subscribeFontChanges } from './fonts.js';
-import { getAppMemoryMonitor } from '@roku-sdk/rsg-ts/runtime';
+import { getAppMemoryMonitor, getDeviceInfo } from '@roku-sdk/rsg-ts/runtime';
 import { Animator } from './animation.js';
 import { FrameClock } from './frame-clock.js';
 import { Events } from './events.js';
+import { EffectCache } from './effect-cache.js';
+import { effectGaps } from './effects.js';
+import type { EffectTier } from './effects.js';
 import { fontMetrics, measureText as measureNativeText } from './fonts.js';
 import { RokuNode, RokuTexture, ShaderHandle } from './node.js';
 import type { RokuNodeProps } from './node.js';
@@ -24,6 +27,22 @@ const nowMs = () =>
   typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now()
     : Date.now();
+
+/**
+ * Whether this device draws the Effect node: Roku OS 16 or later on the
+ * OpenGL graphics platform, the test Roku's SDK prescribes. Anywhere else
+ * the `effect` field is ignored without an error, so effects are drawn from
+ * generated images instead. An unknown device is treated as one without.
+ */
+export function detectEffectTier(): EffectTier {
+  try {
+    const info = getDeviceInfo();
+    if (info && Number(info.osVersion?.major) >= 16 && info.graphicsPlatform === 'opengl') return 'native';
+  } catch (error) {
+    console.warn('ROKU_DEVICE_INFO unavailable: ' + String((error as any)?.message || error));
+  }
+  return 'assets';
+}
 
 export interface SceneGraphHost {
   debug?: boolean;
@@ -40,6 +59,14 @@ export class SceneGraphRenderer extends Events implements SceneRenderer<RokuNode
   root: RokuNode;
   animator = new Animator();
   stage = this;
+  /**
+   * How effects are drawn, chosen once: `settings.effectTier` when given (a
+   * test forcing the image tier on a device that has Effect), else what the
+   * device reports.
+   */
+  readonly effectTier: EffectTier;
+  /** The Effect nodes, shared between nodes with equal values. */
+  readonly effects = new EffectCache();
 
   private nativeRoot: any;
   private dirty = new Set<RokuNode>();
@@ -77,6 +104,7 @@ export class SceneGraphRenderer extends Events implements SceneRenderer<RokuNode
     this.settings = settings;
     this.rootId = rootId;
     this.nativeRoot = rootId;
+    this.effectTier = settings?.effectTier === 'native' || settings?.effectTier === 'assets' ? settings.effectTier : detectEffectTier();
     this.unsubscribeFonts = subscribeFontChanges(() => this.onFontVersionChanged());
     // The renderer root is the app group. The host already inserted it into the
     // scene (usually inside a Scene with a solid background).
@@ -134,7 +162,7 @@ export class SceneGraphRenderer extends Events implements SceneRenderer<RokuNode
     getAppMemoryMonitor()
       .then((monitor) => { this.memMonitor = monitor; })
       .catch((err) => { console.warn('ROKU_MEMORY_MONITOR unavailable: ' + err); });
-    console.log('ROKU_RENDERER ready ' + APP_W + 'x' + APP_H);
+    console.log('ROKU_RENDERER ready ' + APP_W + 'x' + APP_H + ' effects=' + this.effectTier);
   }
 
   resize(width: number, height: number) {
@@ -265,6 +293,7 @@ export class SceneGraphRenderer extends Events implements SceneRenderer<RokuNode
     return node;
   }
 
+  /** Effect props (radius, border-*, shadow-*, gradient colors) under a kind name; see effects.ts for how each tier draws them. */
   createShader(name: string | { name?: unknown; shaderType?: unknown }, props: Record<string, any> = {}): ShaderHandle {
     const typeName = typeof name === 'string' ? name : String(name?.name || name?.shaderType || 'shader');
     return new ShaderHandle(typeName, props);
@@ -302,6 +331,10 @@ export class SceneGraphRenderer extends Events implements SceneRenderer<RokuNode
       webGlVersion: 0,
       maxTextureSize: 2048,
       shaders: false,
+      /** `native`: the Effect node. `assets`: generated images, square corners. */
+      effects: this.effectTier,
+      /** What was asked for and could not be drawn as asked, so far. */
+      effectGaps: effectGaps(),
     };
   }
 

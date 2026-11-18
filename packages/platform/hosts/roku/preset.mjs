@@ -2,7 +2,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   cpSync,
+  mkdirSync,
   mkdtempSync,
+  readdirSync,
   rmSync,
   readFileSync,
   realpathSync,
@@ -25,6 +27,17 @@ export function rokuConfig({ entry, assets, title, manifestEntries = {} }) {
     rmSync(staticDir, { recursive: true, force: true }),
   );
   cpSync(path.join(host, 'pkg'), staticDir, { recursive: true });
+  // The images the SceneGraph backend draws gradients and shadows with. It
+  // names them pkg:/assets/smp/<file>; they ship in the renderer package.
+  const drawn = path.resolve(
+    path.dirname(app.resolve('@solid-multiplatform/renderer/roku')),
+    '../../roku/assets',
+  );
+  mkdirSync(path.join(staticDir, 'assets/smp'), { recursive: true });
+  for (const name of readdirSync(drawn)) {
+    if (name.endsWith('.png'))
+      cpSync(path.join(drawn, name), path.join(staticDir, 'assets/smp', name));
+  }
   if (assets) cpSync(path.resolve(assets), staticDir, { recursive: true });
   const plugin = {
     name: 'solid-multiplatform',

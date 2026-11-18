@@ -3,7 +3,11 @@
 // A node records the fields written to it in `props`; nothing is drawn.
 let nextRef = 1;
 
+/** How many nodes of each type have been created, for tests that count them. */
+export const created = {};
+
 export function createElement(type) {
+  created[type] = (created[type] || 0) + 1;
   return { type, r: nextRef++, props: {}, children: [], parent: null };
 }
 
@@ -35,6 +39,15 @@ export const tmTransaction = {
 
 export async function getAppMemoryMonitor() {
   return null;
+}
+
+/** What `getDeviceInfo()` reports. A test replaces `device.info` before it makes a renderer. */
+export const device = {
+  info: { osVersion: { major: '16', minor: '0' }, graphicsPlatform: 'opengl' },
+};
+
+export function getDeviceInfo() {
+  return device.info;
 }
 
 export function getFontMeasure() {

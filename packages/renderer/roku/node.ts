@@ -1,10 +1,13 @@
 /**
  * SceneGraph node adapter. One instance per SolidTV renderer node.
  *
- * Each node is a Group. Its own visual (Poster/Rectangle/Label) is the first
- * child of that Group, so app children always paint above it. Transform,
- * opacity, clipping and z-order follow the shared renderer's semantics; text
- * is laid out with native font metrics before it is written to a Label.
+ * Each node is a Group. Its own drawing comes first in that Group, so app
+ * children always paint above it: a shadow image, then the visual
+ * (Poster/Rectangle/Label), then the layers that finish the fill (gradient
+ * ramps, corner weights, border edges). effects.ts decides what those are
+ * for the renderer's tier; this file writes them. Transform, opacity,
+ * clipping and z-order follow the shared renderer's semantics; text is laid
+ * out with native font metrics before it is written to a Label.
  */
 
 import { createElement, insertNode, setProp, tmTransaction } from '@roku-sdk/solid';
@@ -16,9 +19,11 @@ import { Events } from './events.js';
 import { PosterImage } from './poster-image.js';
 import { isColorKey, lerpColor } from './animation-color.js';
 import { finiteNumber as num, sameValue as same } from './node-values.js';
-import { RokuTexture, normalizeUri, sheetSize } from './node-textures.js';
+import { RokuTexture, normalizeUri, unsupportedImage } from './node-textures.js';
 import { ShaderHandle } from './shader-handle.js';
-import { RokuEffect, toRokuColor } from './effects.js';
+import { planDecor, reportGap, toRokuColor } from './effects.js';
+import type { DecorLayer } from './effects.js';
+import type { EffectEntry } from './effect-cache.js';
 import { fontMetrics, getFontVersion, loadFace, measureText, measureWrapText, resolveFontUri, webLineHeight } from './fonts.js';
 import { layoutText, TextAlign, TextContain, TextLayoutResult, VerticalAlign, WordBreak } from './text-layout.js';
 
@@ -44,17 +49,12 @@ function weightOf(family: string, weight: any): { family: string; weight: number
   return { family: fam, weight: typeof w === 'number' ? w : 400 };
 }
 
-/**
- * Exact bilinear corner gradients used by the shared demos. Roku has no
- * arbitrary shader node, so the renderer ships 256x256 RGBA previews for the
- * corner combinations the app actually uses. Unknown combinations fall back
- * to the banded approximation.
- */
-const CORNER_GRADIENT_PNGS: Record<string, string> = {
-  '0x0891B2FF|0x0891B2FF|0x00000000|0xF87171FF': 'pkg:/assets/gradient-corners-0891b2-f87171.png',
-  '0x00000000|0x008000FF|0xFFD700FF|0xFFD700FF': 'pkg:/assets/gradient-corners-008000-ffd700.png',
-  '0x0000FFFF|0xFFFFFFFF|0x0000FFFF|0xFFFFFFFF': 'pkg:/assets/gradient-corners-0000ff-ffffff.png',
-};
+/** A shadow or fill layer: a Poster or Rectangle and the fields written to it. */
+interface LayerNode {
+  node: any;
+  poster: boolean;
+  written: Record<string, any>;
+}
 
 type ColorSource = number | null | undefined;
 type ClipRect = [number, number, number, number];
@@ -165,6 +165,7 @@ export class RokuNode extends Events {
   nativeMotionOwned?: Set<string>;
 
   private _src = '';
+  private _undecodable = false;
   private _texture: RokuTexture | null = null;
   private _sub: number[] | null = null;
   private _subHooked = false;
@@ -178,14 +179,11 @@ export class RokuNode extends Events {
   private _ignoreParentAlpha = false;
   private _fontStyle = 'normal';
   private _shader: ShaderHandle | null = null;
-  private _effect: RokuEffect | null = null;
-  private _bands: { node: any; color: number }[] = [];
-  private _bandKey = '';
-  private _gradientOverlay: any = null;
-  private _gradientOverlayKey = '';
-  private _shadowGroup: any = null;
-  private _shadowPoster: any = null;
-  private _shadowKey = '';
+  /** The Effect nodes the visual and the rounded layers refer to (native tier). */
+  private _effect: EffectEntry | null = null;
+  private _layerEffect: EffectEntry | null = null;
+  private _shadow: LayerNode | null = null;
+  private _layers: LayerNode[] = [];
   private _data: Record<string, unknown> | null = null;
   private _textureOptions: any = { resizeMode: { x: 'fill', y: 'fill' } };
   private _placeholderColor = 0;
@@ -584,35 +582,39 @@ export class RokuNode extends Events {
       this.markVisual();
       return;
     }
-    let source = raw;
-    // SceneGraph Poster has no KTX decoder. The shared texture-compression
-    // demo still needs a loaded texture and its timing; use the fixture poster
-    // family as an explicit PNG stand-in and report the gap.
-    if (/\.ktx(\?|$)/i.test(source)) {
-      const id = Number((source.match(/image-(\d+)/) || [])[1] || 1);
-      // Poster cannot decode KTX; the build-time decoded RGBA previews keep
-      // the texture-compression demo's actual artwork and load timings.
-      source = `pkg:/assets/ktx-png/image-${id}.png`;
-      if (!(globalThis as any).__rokuKtxGap) {
-        (globalThis as any).__rokuKtxGap = true;
-        console.warn('ROKU_TEXTURE_GAP KTX preview uses a build-time decoded PNG');
-      }
-    }
-    const next = normalizeUri(source);
+    const next = normalizeUri(raw);
     if (next === this._src) return;
     this._src = next;
     this.markVisual();
     this._imageLoadedEmitted = false;
     this._imageRequest?.invalidate();
+    this.checkDecodable();
+  }
+  /** The image a Poster can draw: empty for a format SceneGraph cannot decode. */
+  private get imageSrc(): string {
+    return this._undecodable ? '' : this.src;
+  }
+  /** A format a Poster cannot decode fails as a missing file does. Nothing stands in for it. */
+  private checkDecodable() {
+    const src = this.src;
+    this._undecodable = unsupportedImage(src);
+    if (!this._undecodable) return;
+    reportGap('a Poster cannot decode ' + (/\.([a-z0-9]+)(\?|$)/i.exec(src)?.[1] ?? 'this image format').toLowerCase() + ' images');
+    setTimeout(() => {
+      if (this._destroyed || this.src !== src) return;
+      if (this._texture) { this._texture.state = 'failed'; this._texture.emit('failed'); }
+      this.emit('failed', { type: 'image', error: new Error('Unsupported image format: ' + src) });
+    }, 0);
   }
   get texture() { return this._texture; }
   set texture(v: RokuTexture | null) { this.setTexture(v); this.markVisual(); }
   private setTexture(v: RokuTexture | null) {
     this._texture = v || null;
     this.updateCrop();
+    if (!this._src) this.checkDecodable();
   }
   /**
-   * The source rectangle the Poster path crops to (see writeVisual): a
+   * The source rectangle the Poster path crops to (see writePoster): a
    * SubTexture's, else `srcX/srcY/srcWidth/srcHeight` of a node drawn from
    * `src`. As on the web, a crop needs both a width and a height.
    */
@@ -643,10 +645,13 @@ export class RokuNode extends Events {
   set imageType(v: string | null | undefined) { this._imageType = v ?? null; }
   get shader() { return this._shader; }
   set shader(v: ShaderHandle | null) { this.setShader(v); this.markVisual(); }
-  private setShader(v: ShaderHandle | null) {
+  private setShader(v: ShaderHandle | Record<string, unknown> | null) {
+    // With shaders compiled out of the platform (the Roku preset), a node's
+    // first effects arrive as the flat props themselves, not as a shader.
+    if (v && !(v instanceof ShaderHandle)) v = new ShaderHandle('rounded', v);
     if (this._shader === v) return;
     if (this._shader) this._shader.nodes.delete(this);
-    this._shader = v || null;
+    this._shader = (v as ShaderHandle) || null;
     if (this._shader) this._shader.nodes.add(this);
     this.effectDirty();
   }
@@ -656,6 +661,37 @@ export class RokuNode extends Events {
   set textureOptions(v: any) { this._textureOptions = v; this.markVisual(); }
   get placeholderColor(): number { return this._placeholderColor; }
   set placeholderColor(v: number) { this._placeholderColor = v; this.markVisual(); }
+
+  /**
+   * For an animation of shader props: a function that writes the props
+   * blended from their values now (0) to `target` (1). Numbers and number
+   * arrays interpolate, colours by channel; anything else changes at the end.
+   */
+  shaderPropsBlend(target: Record<string, any>): (progress: number) => void {
+    const props = this._shader ? this._shader.props : null;
+    const from: Record<string, any> = {};
+    if (props) {
+      for (const key in target) from[key] = Array.isArray(props[key]) ? props[key].slice() : props[key];
+    }
+    const mix = (key: string, a: any, b: any, t: number): any => {
+      if (t >= 1) return b;
+      if (typeof b === 'number' && typeof a === 'number') return /color|fill/i.test(key) ? lerpColor(a, b, t) : a + (b - a) * t;
+      if (Array.isArray(b) && Array.isArray(a) && a.length === b.length) return b.map((v, i) => mix(key, a[i], v, t));
+      // A width that was never set starts from 0; anything else waits for the end.
+      if (typeof b === 'number' && a === undefined && !/color|fill/i.test(key)) return b * t;
+      return a === undefined ? b : a;
+    };
+    return (progress: number) => {
+      const live = this._shader ? this._shader.props : null;
+      if (!live) return;
+      for (const key in target) {
+        const value = target[key];
+        // The nested style objects ride along; the flat keys carry the values.
+        if (value !== null && typeof value === 'object' && !Array.isArray(value)) continue;
+        live[key] = mix(key, from[key], value, progress);
+      }
+    };
+  }
 
   effectDirty() {
     this._effectDirty = true;
@@ -796,31 +832,27 @@ export class RokuNode extends Events {
   private ensureVisual() {
     if (this._externalVisual) return;
     const emptyColor = ((this._colorTL | this._colorTR | this._colorBL | this._colorBR) & 255) === 0;
-    if (!this._isText && !this.src && !this._shader && (!this._hasColor || emptyColor)) {
+    const src = this.imageSrc;
+    if (!this._isText && !src && !this._shader && (!this._hasColor || emptyColor)) {
       if (this.visual) {
         tmTransaction.removeNode(this.dom, this.visual);
         this.visual = null;
-        this._effect = null;
         this._written = {};
       }
-      this.clearGradientBands();
-      this.clearGradientOverlay();
-      this.clearShadow();
+      this.clearDecor();
       return;
     }
-    const type = this._isText ? 'label' : this.src ? 'poster' : 'rect';
+    const type = this._isText ? 'label' : src ? 'poster' : 'rect';
     if (this.visual && (this.visual as any).__type === type) return;
-    if (this.visual) {
-      tmTransaction.removeNode(this.dom, this.visual);
-      // The Effect node is a child of the visual; it is removed with it.
-      this._effect = null;
-    }
+    if (this.visual) tmTransaction.removeNode(this.dom, this.visual);
     const visual = createElement(type === 'label' ? 'label' : type === 'poster' ? 'poster' : 'rectangle');
     (visual as any).__type = type;
     this.visual = visual;
     this._written = {};
-    if (this._children.length > 0) insertNode(this.dom, visual, this._children[0].dom);
-    else insertNode(this.dom, visual);
+    // Above the shadow, below the layers and the children. Each of the node's
+    // own drawing nodes is inserted once, where it belongs: inserting a node
+    // again to move it does not reorder it on the device.
+    insertNode(this.dom, visual, this._layers.length > 0 ? this._layers[0].node : this.firstChildDom());
     this._visualDirty = true;
     this._effectDirty = true;
   }
@@ -831,9 +863,9 @@ export class RokuNode extends Events {
     this._externalVisual = true;
     this.visual = null;
     if (visual) tmTransaction.removeNode(this.dom, visual);
-    this.clearGradientBands();
-    this.clearGradientOverlay();
-    this.clearShadow();
+    // The Effect goes back to the cache, where another node may change it.
+    if (visual && this._effect) setProp(visual, 'effect', null);
+    this.clearDecor();
     const kind = type === 'rectangle' ? 'rect' : type;
     if (visual && visual.__type === kind) { this._claimedVisual = visual; return visual; }
     this._imageRequest?.invalidate();
@@ -910,7 +942,6 @@ export class RokuNode extends Events {
     // Writing the cumulative alpha here applied ancestor opacity twice.
     if (this.nativeMotionOwned?.has('alpha')) this._writtenGroup.opacity = this._alpha;
     else this.writeGroupIf('opacity', this._alpha);
-    this.updateShadow();
   }
 
   private writeClip() {
@@ -932,439 +963,232 @@ export class RokuNode extends Events {
     ]);
   }
 
-  private writeVisual() {
+  /** Writes the node's own drawing: the visual, its Effect, the shadow and the fill layers. */
+  private writeDecor() {
     if (!this.visual) return;
-    this.updateShadow();
     const type = (this.visual as any).__type;
+    if (type === 'label') {
+      this.writeLabel();
+      if (this._shader) reportGap('a text node cannot take a shader');
+      return;
+    }
     const w = Math.max(0, this.boxW);
     const h = Math.max(0, this.boxH);
-    if (type === 'rect') {
-      this.writeIf('width', w);
-      this.writeIf('height', h);
-      const vertical = this._colorTL !== this._colorBL;
-      const horizontal = this._colorTL !== this._colorTR;
-      const diagonal = vertical && horizontal;
-      // Single-axis and diagonal gradients use a solid start colour under the
-      // alpha-ramp Poster; explicit per-corner colours keep the band path.
-      const cornerUri = this.cornerGradientUri();
-      const base = cornerUri
-        ? '0x00000000'
-        : this._cornerColors
-          ? '0x00000000'
-          : diagonal
-            ? toRokuColor(this._colorTL !== this._colorBR ? this._colorTL : this._colorTR, '0x00000000')
-            : vertical || horizontal
-              ? toRokuColor(this._colorTL, '0x00000000')
-              : toRokuColor(this._color, '0x00000000');
-      this.writeIf('color', base);
-      return;
-    }
-    if (type === 'poster') {
-      if (this._sub) {
-        // Crop a sprite-sheet region. Roku's Poster has no source-rect field:
-        // draw the full sheet unscaled inside the clipped Group and translate
-        // it. The Poster must be exactly the sheet size, otherwise noScale
-        // centres the bitmap and the region is lost.
-        const [sx, sy, sw, sh] = this._sub;
-        const sheet = sheetSize(this.src);
-        if (sheet !== null) {
-          this.writeIf('width', sheet[0]);
-          this.writeIf('height', sheet[1]);
-          this.writeIf('loadDisplayMode', 'noScale');
-          this.writeIf('translation', [-sx, -sy]);
-        } else {
-          this.writeIf('width', w);
-          this.writeIf('height', h);
-          this.writeIf('loadDisplayMode', 'scaleToFill');
-          if (!(globalThis as any).__rokuSubTextureGap) {
-            (globalThis as any).__rokuSubTextureGap = true;
-            console.warn('ROKU_TEXTURE_GAP SubTexture crop needs the sheet dimensions for ' + this.src);
-          }
-        }
-      } else {
+    const flat = this._colorTL === this._colorTR && this._colorTL === this._colorBL && this._colorTL === this._colorBR;
+    if (!this._shader && (flat || type === 'poster') && !this._effect && !this._layerEffect && !this._shadow && this._layers.length === 0) {
+      // One colour and no effects, the common node: nothing to plan.
+      if (type === 'rect') {
         this.writeIf('width', w);
         this.writeIf('height', h);
-        // A crop that was removed leaves its offset on the Poster.
         if (this._written.translation !== undefined) this.writeIf('translation', [0, 0]);
-        const resizeMode = this._textureOptions && this._textureOptions.resizeMode;
-        const contained =
-          this._contain === 'both' ||
-          resizeMode === 'contain' ||
-          (resizeMode && (resizeMode.type === 'contain' ||
-            (resizeMode.x === 'contain' && resizeMode.y === 'contain')));
-        const zoomed =
-          resizeMode && (resizeMode.type === 'cover' || resizeMode.type === 'zoom' ||
-            (resizeMode.x === 'cover' && resizeMode.y === 'cover'));
-        this.writeIf('loadDisplayMode', contained ? 'scaleToFit' : zoomed ? 'scaleToZoom' : 'scaleToFill');
-      }
-      // A poster cannot take a gradient blend. The tint is drawn as black-alpha
-      // bands above the poster (see writeEffect), matching a white→black
-      // multiply for the common hero style.
-      this.writeIf('blendColor', toRokuColor(this._color, '0xFFFFFFFF'));
-      this.writeIf('shaderCompatible', !!this._shader);
-      if (this._placeholder) this.writeIf('loadingBitmapUri', normalizeUri(this._placeholder));
-      if (this._fallback) this.writeIf('failedBitmapUri', normalizeUri(this._fallback));
-      const size = this._sub ? sheetSize(this.src) : null;
-      this.loadImage(this.visual, this.src, size?.[0] ?? w, size?.[1] ?? h);
-      if (this._colorTL !== this._colorTR || this._colorTL !== this._colorBL || this._colorTL !== this._colorBR) {
-        if (!(globalThis as any).__rokuColorGap) {
-          (globalThis as any).__rokuColorGap = true;
-          console.warn('ROKU_COLOR_GAP per-corner colors collapse to the top-left color');
-        }
+        this.writeIf('color', toRokuColor(this._colorTL, '0x00000000'));
+      } else {
+        if (!flat) reportGap('per-corner colours on an image use one colour');
+        this.writePoster(0, 0, w, h, toRokuColor(this._color, '0xFFFFFFFF'));
       }
       return;
     }
-    if (type === 'label' && this._layout) {
-      const parsed = weightOf(this._fontFamily, this._fontWeight);
-      const natural = fontMetrics(parsed.family, parsed.weight, this._fontSize).lineHeight;
-      // CSS line-height can be tighter than the font's natural line box.
-      // Negative spacing is valid and is what keeps 32px body copy at 32px
-      // instead of the font's 34px default.
-      const extra = Math.round(this._layout.lineHeightPx - natural);
-      const lineText = this._layout.lines.map((line) => line.text).join('\n');      if (this._fontFace && this._fontFace.node) this.writeIf('font', this._fontFace.node);
-      // Native glyph advances are not perfectly linear with the 32pt
-      // measurement face. Auto-width labels need a small margin or Roku
-      // ellipsizes the last glyph. Box-constrained text keeps its exact width.
-      const autoWidth = this._maxWidth === 0;
-      const labelW = autoWidth
-        ? Math.ceil(this._layout.labelW * 1.08) + 8
-        : Math.max(1, this._layout.labelW);
-      // The layout's boxY resolves verticalAlign inside the text box. Roku's
-      // Label paints its first line at the top of the line box, so add the CSS
-      // half-leading (extra / 2) to reproduce text centered in lineHeight. This
-      // is what puts Play/Resume, HD/CC and nav labels in the middle of their
-      // fixed-height containers instead of at the top.
-      const labelH = Math.max(1, Math.ceil(this._layout.height) + 8);
-      this.writeIf('width', labelW);
-      this.writeIf('height', labelH);
-      this.writeIf('text', lineText);
-      this.writeIf('wrap', true);
-      this.writeIf('maxLines', this._maxLines > 0 ? this._maxLines : 0);
-      this.writeIf('lineSpacing', extra);
-      this.writeIf('horizAlign', this._textAlign);
-      this.writeIf('vertAlign', 'top');
-      this.writeIf('color', toRokuColor(this._color, '0xFFFFFFFF'));
-      this.writeIf('translation', [0, this._layout.boxY + extra / 2]);
-      if (this._letterSpacing !== 0 && !(globalThis as any).__rokuLetterGap) {
-        (globalThis as any).__rokuLetterGap = true;
-        console.warn('ROKU_TEXT_GAP letterSpacing is measured but not drawn by the native Label');
-      }
-    }
-  }
-
-  // Roku applies an Effect only when the Effect node is a child of the node it
-  // affects. A detached node assigned to `effect` is silently ignored, which
-  // left every colorTop/colorBottom gradient flat.
-  private ensureEffect(): RokuEffect {
-    if (!this._effect) {
-      this._effect = new RokuEffect();
-      if (this.visual) insertNode(this.visual, this._effect.node);
-    }
-    return this._effect;
-  }
-
-  private cornerGradientUri(): string | null {
-    const key = [this._colorTL, this._colorTR, this._colorBL, this._colorBR]
-      .map((value) => toRokuColor(value, '0x00000000'))
-      .join('|');
-    return CORNER_GRADIENT_PNGS[key] || null;
-  }
-
-  /** Draw a pre-rendered exact corner gradient instead of band rectangles. */
-  private updateCornerOverlay(uri: string) {
-    const w = Math.max(1, this.boxW);
-    const h = Math.max(1, this.boxH);
-    const key = `corner:${uri}:${w}x${h}`;
-    if (!this._gradientOverlay) {
-      this._gradientOverlay = createElement('poster');
-      setProp(this._gradientOverlay, 'loadDisplayMode', 'scaleToFill');
-    }
-    if (this._gradientOverlayKey !== key) {
-      this._gradientOverlayKey = key;
-      setProp(this._gradientOverlay, 'uri', uri);
-      setProp(this._gradientOverlay, 'blendColor', '0xFFFFFFFF');
-      setProp(this._gradientOverlay, 'width', Math.ceil(w));
-      setProp(this._gradientOverlay, 'height', Math.ceil(h));
-      setProp(this._gradientOverlay, 'translation', [0, 0]);
-    }
-    this.clearGradientBands();
-    this.reorderGradientOverlay();
-  }
-
-  private clearGradientOverlay() {
-    if (!this._gradientOverlay) return;
-    try { tmTransaction.removeNode(this.dom, this._gradientOverlay); } catch (e) { /* detached */ }
-    this._gradientOverlay = null;
-    this._gradientOverlayKey = '';
-  }
-
-  private reorderGradientOverlay() {
-    if (!this._gradientOverlay) return;
-    const before = this._children.length > 0 ? this._children[0].dom : undefined;
-    insertNode(this.dom, this._gradientOverlay, before);
-  }
-
-  /**
-   * A smooth single-axis gradient: a solid base colour plus a white-to-alpha
-   * ramp Poster tinted with the end colour. One extra node instead of hundreds
-   * of rectangles, and no visible banding.
-   */
-  private updateGradientOverlay(vertical: boolean, horizontal: boolean, tint: boolean) {
-    const w = Math.max(1, this.boxW);
-    const h = Math.max(1, this.boxH);
-    const diagonal = vertical && horizontal;
-    const d1 = diagonal && this._colorTL !== this._colorBR;
-    const uri = diagonal
-      ? (d1 ? 'pkg:/assets/gradient-alpha-d1.png' : 'pkg:/assets/gradient-alpha-d2.png')
-      : (vertical ? 'pkg:/assets/gradient-alpha-v.png' : 'pkg:/assets/gradient-alpha-h.png');
-    const to = diagonal ? (d1 ? this._colorBR : this._colorBL) : (vertical ? this._colorBL : this._colorTR);
-    const key = `${tint ? 't' : 'c'}${uri}:${w}x${h}:${to}`;
-    if (!this._gradientOverlay) {
-      this._gradientOverlay = createElement('poster');
-      setProp(this._gradientOverlay, 'loadDisplayMode', 'scaleToFill');
-    }
-    if (this._gradientOverlayKey !== key) {
-      this._gradientOverlayKey = key;
-      setProp(this._gradientOverlay, 'uri', uri);
-      setProp(this._gradientOverlay, 'blendColor', tint ? '0x000000FF' : toRokuColor(to, '0xFFFFFFFF'));
-      setProp(this._gradientOverlay, 'width', Math.ceil(w));
-      setProp(this._gradientOverlay, 'height', Math.ceil(h));
-      setProp(this._gradientOverlay, 'translation', [0, 0]);
-    }
-    this.clearGradientBands();
-    this.reorderGradientOverlay();
-  }
-
-  private clearGradientBands() {
-    if (!this._bands.length) return;
-    for (const band of this._bands) {
-      try { tmTransaction.removeNode(this.dom, band.node); } catch (e) { /* already detached */ }
-    }
-    this._bands = [];
-    this._bandKey = '';
-  }
-
-  private reorderBands() {
-    if (!this._bands.length) return;
-    const before = this._children.length > 0 ? this._children[0].dom : undefined;
-    for (const band of this._bands) insertNode(this.dom, band.node, before);
-  }
-
-  /**
-   * Roku's Effect gradient is not applied reliably on this firmware, so
-   * colorTop/colorBottom (and left/right) are painted as a stack of thin
-   * rectangles. At 16-32 bands the step is at most one RGB unit on a 1080p
-   * background, and the result is ordinary SceneGraph geometry that also
-   * clips, animates and z-orders with its parent.
-   */
-  private updateGradientBands(vertical: boolean, horizontal: boolean, overlay = false) {
-    const w = Math.max(1, this.boxW);
-    const h = Math.max(1, this.boxH);
-    const key = `${overlay ? 'o' : 'c'}${vertical ? 1 : 0}${horizontal ? 1 : 0}:${w}x${h}:${this._colorTL}:${this._colorBL}:${this._colorTR}:${this._colorBR}`;
-    if (key === this._bandKey) {
-      this.reorderBands();
-      return;
-    }
-    this._bandKey = key;
-    const longest = vertical ? h : w;
-    // Large surfaces (full-screen page backgrounds) need a finer ramp; the
-    // 32-band approximation was visibly striped on the Gradients page.
-    const maxBands = overlay ? 32 : longest >= 700 ? 256 : longest >= 300 ? 96 : 32;
-    const target = overlay ? Math.ceil(longest / 16) : Math.ceil(longest / 8);
-    const count = Math.max(2, Math.min(maxBands, target));
-    while (this._bands.length < count) {
-      const node = createElement('rectangle');
-      this._bands.push({ node, color: -1 });
-    }
-    while (this._bands.length > count) {
-      const band = this._bands.pop()!;
-      try { tmTransaction.removeNode(this.dom, band.node); } catch (e) { /* already detached */ }
-    }
-    const from = this._colorTL;
-    const to = vertical ? this._colorBL : this._colorTR;
-    const luminance = (value: any) => {
-      const n = parseInt(toRokuColor(value, '0xFFFFFFFF').slice(2), 16) >>> 0;
-      return (0.2126 * ((n >>> 24) & 255) + 0.7152 * ((n >>> 16) & 255) + 0.0722 * ((n >>> 8) & 255)) / 255;
-    };
-    const fromAlpha = overlay ? 1 - luminance(from) : 0;
-    const toAlpha = overlay ? 1 - luminance(to) : 0;
-    for (let i = 0; i < count; i++) {
-      const band = this._bands[i];
-      const t = count <= 1 ? 0 : i / (count - 1);
-      const color = overlay
-        ? // Roku colours are 0xRRGGBBAA: black with the alpha in the low byte.
-          ((Math.round((fromAlpha + (toAlpha - fromAlpha) * t) * 255) & 255) >>> 0)
-        : lerpColor(from, to, t);
-      if (band.color !== color) {
-        band.color = color;
-        setProp(band.node, 'color', toRokuColor(color));
-      }
-      if (vertical) {
-        setProp(band.node, 'width', Math.ceil(w));
-        setProp(band.node, 'height', Math.ceil(h / count) + 1);
-        setProp(band.node, 'translation', [0, (h * i) / count]);
-      } else {
-        setProp(band.node, 'width', Math.ceil(w / count) + 1);
-        setProp(band.node, 'height', Math.ceil(h));
-        setProp(band.node, 'translation', [(w * i) / count, 0]);
-      }
-    }
-    this.reorderBands();
-  }
-
-  /**
-   * Roku OS 16's Effect node has no DropShadow fields (all five writes return
-   * FieldNotFound). Paint a pre-blurred rounded-rect shadow Poster behind the
-   * node instead, tinted by the shader's shadow colour and scaled to the box.
-   */
-  private clearShadow() {
-    if (!this._shadowGroup) return;
-    const oldParent = this._shadowGroup.parent;
-    try {
-      if (oldParent && oldParent.dom) tmTransaction.removeNode(oldParent.dom, this._shadowGroup);
-      else if (this._parent) tmTransaction.removeNode(this._parent.dom, this._shadowGroup);
-    } catch (e) { /* already detached */ }
-    this._shadowGroup = null;
-    this._shadowPoster = null;
-    this._shadowKey = '';
-  }
-
-  private updateShadow() {
-    const type = this.visual && (this.visual as any).__type;
-    const shaderName = this._shader && this._shader.name;
-    const props = this._shader && this._shader.props;
-    const shadowStyle = props && props.shadow;
-    const shadowColor = shadowStyle && shadowStyle.color !== undefined
-      ? shadowStyle.color
-      : props && props['shadow-color'];
-    const projection = shadowStyle && shadowStyle.projection !== undefined
-      ? shadowStyle.projection
-      : props && props['shadow-projection'];
-    if (
-      type !== 'rect' ||
-      !shaderName ||
-      !/shadow/i.test(shaderName) ||
-      shadowColor === undefined ||
-      projection === undefined ||
-      !this._parent
-    ) {
-      this.clearShadow();
-      return;
-    }
-    const values = Array.isArray(projection) ? projection : [0, 0, 5, 5];
-    const ox = num(values[0], 0);
-    const oy = num(values[1], 0);
-    const blur = Math.max(0, num(values[2], 5));
-    const focused = blur >= 20;
-    const uri = focused ? 'pkg:/assets/roku-shadow-focus.png' : 'pkg:/assets/roku-shadow-soft.png';
-    const pad = focused ? 40 : 20;
-    const w = Math.max(1, Math.ceil(this.boxW + pad * 2));
-    const h = Math.max(1, Math.ceil(this.boxH + pad * 2));
-    const packed = toRokuColor(shadowColor, '0x000000FF');
-    const alpha = parseInt(packed.slice(-2), 16);
-    const tint = packed.slice(0, -2) + 'FF';
-    const key = `${uri}:${w}x${h}:${ox}:${oy}:${packed}:${this._x}:${this._y}:${this._scaleX}:${this._scaleY}:${this._alpha}:${this.boxW}:${this.boxH}`;
-    if (!this._shadowGroup) {
-      this._shadowGroup = createElement('group');
-      this._shadowPoster = createElement('poster');
-      setProp(this._shadowPoster, 'loadDisplayMode', 'scaleToFill');
-      insertNode(this._shadowGroup, this._shadowPoster);
-    }
-    if (this._shadowKey !== key) {
-      this._shadowKey = key;
-      setProp(this._shadowPoster, 'uri', uri);
-      setProp(this._shadowPoster, 'blendColor', tint);
-      setProp(this._shadowPoster, 'opacity', alpha / 255);
-      setProp(this._shadowPoster, 'width', w);
-      setProp(this._shadowPoster, 'height', h);
-      setProp(this._shadowPoster, 'translation', [-pad + ox, -pad + oy]);
-      let tx = this._x - this._mountX * this.boxW;
-      if (this.rtlResolved) tx = this._parent.boxW - this._x - this.boxW - this._mountX * this.boxW;
-      const ty = this._y - this._mountY * this.boxH;
-      setProp(this._shadowGroup, 'translation', [tx, ty]);
-      setProp(this._shadowGroup, 'scale', [this._scaleX, this._scaleY]);
-      setProp(this._shadowGroup, 'rotation', this._rotation);
-      setProp(this._shadowGroup, 'scaleRotateCenter', [this._pivotX * this.boxW, this._pivotY * this.boxH]);
-      setProp(this._shadowGroup, 'opacity', this._alpha);
-    }
-    // A sibling immediately before the node's group is guaranteed to paint
-    // below it, regardless of the node group's internal child order.
-    const oldParent = this._shadowGroup.parent;
-    if (oldParent && oldParent.dom) {
-      try { tmTransaction.removeNode(oldParent.dom, this._shadowGroup); } catch (e) { /* detached */ }
-    }
-    insertNode(this._parent.dom, this._shadowGroup, this.dom);
-  }
-
-  private writeEffect() {
-    if (!this.visual) return;
-    this.updateShadow();
-    if (this._shader && (this.visual as any).__type !== 'label') {
-      const effect = this.ensureEffect();
-      effect.apply(this._shader.name, this._shader.props, this.boxW, this.boxH);
-      this.writeIf('effect', effect.node);
-    } else if ((this.visual as any).__type === 'label' && this._shader) {
-      if (!(globalThis as any).__rokuTextEffectGap) {
-        (globalThis as any).__rokuTextEffectGap = true;
-        console.warn('ROKU_EFFECT_GAP Label cannot take an Effect; text shader is not drawn');
-      }
-    } else if ((this.visual as any).__type === 'rect') {
-      const vertical = this._colorTL !== this._colorBL;
-      const horizontal = this._colorTL !== this._colorTR;
-      if (vertical || horizontal) {
-        const cornerUri = this.cornerGradientUri();
-        if (cornerUri) {
-          this.updateCornerOverlay(cornerUri);
-        } else if (this._cornerColors) {
-          if (!(globalThis as any).__rokuCornerGap) {
-            (globalThis as any).__rokuCornerGap = true;
-            console.warn('ROKU_COLOR_GAP per-corner colors use a banded approximation');
-          }
-          this.clearGradientOverlay();
-          this.updateGradientBands(vertical, horizontal);
-        } else {
-          this.updateGradientOverlay(vertical, horizontal, false);
-        }
-        if (this._written.effect !== undefined) this.writeIf('effect', null);
-      } else {
-        this.clearGradientBands();
-        this.clearGradientOverlay();
-        if (this._written.effect !== undefined) this.writeIf('effect', null);
-      }
-    } else if ((this.visual as any).__type === 'poster') {
-      const vertical = this._colorTL !== this._colorBL;
-      const horizontal = this._colorTL !== this._colorTR;
-      if (vertical || horizontal) {
-        if (this._cornerColors) {
-          this.clearGradientOverlay();
-          this.updateGradientBands(vertical, horizontal, true);
-        } else {
-          this.updateGradientOverlay(vertical, horizontal, true);
-        }
-        if (this._written.effect !== undefined) this.writeIf('effect', null);
-      } else {
-        this.clearGradientBands();
-        this.clearGradientOverlay();
-        if (this._written.effect !== undefined) this.writeIf('effect', null);
-      }
+    const plan = planDecor({
+      tier: this.renderer.effectTier,
+      w,
+      h,
+      tl: this._colorTL,
+      tr: this._colorTR,
+      bl: this._colorBL,
+      br: this._colorBR,
+      image: type === 'poster',
+      blend: this._color,
+      shader: this._shader,
+    });
+    const effects = this.renderer.effects;
+    this._effect = effects.swap(this._effect, plan.effect);
+    this._layerEffect = effects.swap(this._layerEffect, plan.layerEffect);
+    if (type === 'rect') {
+      this.writeIf('width', plan.w);
+      this.writeIf('height', plan.h);
+      if (plan.x !== 0 || plan.y !== 0 || this._written.translation !== undefined) this.writeIf('translation', [plan.x, plan.y]);
+      this.writeIf('color', plan.color);
+      this.writeEffectField();
     } else {
-      this.clearGradientBands();
-      if (this._written.effect !== undefined) this.writeIf('effect', null);
+      this.writePoster(plan.x, plan.y, plan.w, plan.h, plan.color);
     }
+    this.syncLayers(plan.shadow, plan.layers);
+  }
+
+  private writeEffectField() {
+    if (this._effect) this.writeIf('effect', this._effect.node);
+    else if (this._written.effect !== undefined) this.writeIf('effect', null);
+  }
+
+  private writePoster(x: number, y: number, w: number, h: number, blend: string) {
+    const visual = this.visual;
+    const src = this.imageSrc;
+    if (this._sub) {
+      // Crop a region of the image. A Poster has no source rectangle: the
+      // whole bitmap is drawn inside the clipped Group, scaled so that the
+      // region fills the node, and moved so that the region starts at 0,0.
+      // That needs the bitmap's size, which is known once it has loaded.
+      const [sx, sy, sw, sh] = this._sub;
+      const bitmapW = Number(visual.bitmapWidth) || 0;
+      const bitmapH = Number(visual.bitmapHeight) || 0;
+      const sized = this._imageUri === src && !!this._imageRequest?.ready && bitmapW > 0 && bitmapH > 0;
+      const kx = sized && sw > 0 ? w / sw : 1;
+      const ky = sized && sh > 0 ? h / sh : 1;
+      this.writeIf('width', sized ? bitmapW * kx : w);
+      this.writeIf('height', sized ? bitmapH * ky : h);
+      this.writeIf('translation', sized ? [-sx * kx, -sy * ky] : [0, 0]);
+      this.writeIf('opacity', sized ? 1 : 0);
+      this.writeIf('loadDisplayMode', 'scaleToFill');
+    } else {
+      this.writeIf('width', w);
+      this.writeIf('height', h);
+      // A crop that was removed leaves its offset and opacity on the Poster.
+      if (x !== 0 || y !== 0 || this._written.translation !== undefined) this.writeIf('translation', [x, y]);
+      if (this._written.opacity !== undefined) this.writeIf('opacity', 1);
+      const resizeMode = this._textureOptions && this._textureOptions.resizeMode;
+      const contained =
+        this._contain === 'both' ||
+        resizeMode === 'contain' ||
+        (resizeMode && (resizeMode.type === 'contain' ||
+          (resizeMode.x === 'contain' && resizeMode.y === 'contain')));
+      const zoomed =
+        resizeMode && (resizeMode.type === 'cover' || resizeMode.type === 'zoom' ||
+          (resizeMode.x === 'cover' && resizeMode.y === 'cover'));
+      this.writeIf('loadDisplayMode', contained ? 'scaleToFit' : zoomed ? 'scaleToZoom' : 'scaleToFill');
+    }
+    this.writeIf('blendColor', blend);
+    // Roku asks for shaderCompatible on a Poster that takes an Effect, and for
+    // it to be written before the uri: the load starts when the uri is set.
+    this.writeIf('shaderCompatible', !!this._effect);
+    this.writeEffectField();
+    if (this._placeholder) this.writeIf('loadingBitmapUri', normalizeUri(this._placeholder));
+    if (this._fallback) this.writeIf('failedBitmapUri', normalizeUri(this._fallback));
+    if (this._sub) this.loadImage(visual, src, 0, 0, () => { if (this._sub) this.markVisual(); });
+    else this.loadImage(visual, src, w, h);
+  }
+
+  private writeLabel() {
+    if (!this._layout) return;
+    const parsed = weightOf(this._fontFamily, this._fontWeight);
+    const natural = fontMetrics(parsed.family, parsed.weight, this._fontSize).lineHeight;
+    // CSS line-height can be tighter than the font's natural line box.
+    // Negative spacing is valid and is what keeps 32px body copy at 32px
+    // instead of the font's 34px default.
+    const extra = Math.round(this._layout.lineHeightPx - natural);
+    const lineText = this._layout.lines.map((line) => line.text).join('\n');
+    if (this._fontFace && this._fontFace.node) this.writeIf('font', this._fontFace.node);
+    // Native glyph advances are not perfectly linear with the 32pt
+    // measurement face. Auto-width labels need a small margin or Roku
+    // ellipsizes the last glyph. Box-constrained text keeps its exact width.
+    const autoWidth = this._maxWidth === 0;
+    const labelW = autoWidth
+      ? Math.ceil(this._layout.labelW * 1.08) + 8
+      : Math.max(1, this._layout.labelW);
+    // The layout's boxY resolves verticalAlign inside the text box. Roku's
+    // Label paints its first line at the top of the line box, so add the CSS
+    // half-leading (extra / 2) to reproduce text centered in lineHeight. This
+    // is what puts Play/Resume, HD/CC and nav labels in the middle of their
+    // fixed-height containers instead of at the top.
+    const labelH = Math.max(1, Math.ceil(this._layout.height) + 8);
+    this.writeIf('width', labelW);
+    this.writeIf('height', labelH);
+    this.writeIf('text', lineText);
+    this.writeIf('wrap', true);
+    this.writeIf('maxLines', this._maxLines > 0 ? this._maxLines : 0);
+    this.writeIf('lineSpacing', extra);
+    this.writeIf('horizAlign', this._textAlign);
+    this.writeIf('vertAlign', 'top');
+    this.writeIf('color', toRokuColor(this._color, '0xFFFFFFFF'));
+    this.writeIf('translation', [0, this._layout.boxY + extra / 2]);
+    if (this._letterSpacing !== 0 && !(globalThis as any).__rokuLetterGap) {
+      (globalThis as any).__rokuLetterGap = true;
+      console.warn('ROKU_TEXT_GAP letterSpacing is measured but not drawn by the native Label');
+    }
+  }
+
+  // ---- shadow and fill layers --------------------------------------------
+
+  /** A new layer node, inserted before `before` (or last, when there is nothing after it). */
+  private makeLayer(poster: boolean, before: any): LayerNode {
+    const node = createElement(poster ? 'poster' : 'rectangle');
+    if (poster) setProp(node, 'loadDisplayMode', 'scaleToFill');
+    insertNode(this.dom, node, before);
+    return { node, poster, written: {} };
+  }
+
+  private writeLayer(layer: LayerNode, want: DecorLayer) {
+    const set = (name: string, value: any) => {
+      if (layer.written[name] !== undefined && same(layer.written[name], value)) return;
+      layer.written[name] = Array.isArray(value) ? value.slice() : value;
+      setProp(layer.node, name, value);
+    };
+    set('width', want.w);
+    set('height', want.h);
+    set('translation', [want.x, want.y]);
+    if (!layer.poster) {
+      set('color', want.color);
+      return;
+    }
+    set('blendColor', want.color);
+    const effect = want.rounded && this._layerEffect ? this._layerEffect.node : null;
+    if (effect) set('shaderCompatible', true);
+    if (effect || layer.written.effect !== undefined) set('effect', effect);
+    set('uri', want.uri);
+  }
+
+  /** Makes the shadow and layer nodes match the plan, reusing the nodes there are. */
+  private syncLayers(shadow: DecorLayer | null, layers: DecorLayer[]) {
+    const first = this._layers.length < layers.length || !this._shadow ? this.firstChildDom() : undefined;
+    if (shadow) {
+      if (!this._shadow) this._shadow = this.makeLayer(true, this.visual || (this._layers.length > 0 ? this._layers[0].node : first));
+      this.writeLayer(this._shadow, shadow);
+    } else if (this._shadow) {
+      tmTransaction.removeNode(this.dom, this._shadow.node);
+      this._shadow = null;
+    }
+    for (let i = 0; i < layers.length; i++) {
+      const poster = layers[i].uri !== null;
+      let have = this._layers[i];
+      if (!have || have.poster !== poster) {
+        if (have) tmTransaction.removeNode(this.dom, have.node);
+        have = this._layers[i] = this.makeLayer(poster, i + 1 < this._layers.length ? this._layers[i + 1].node : first ?? this.firstChildDom());
+      }
+      this.writeLayer(have, layers[i]);
+    }
+    while (this._layers.length > layers.length) {
+      tmTransaction.removeNode(this.dom, this._layers.pop()!.node);
+    }
+  }
+
+  /** The child that paints first: the node's own drawing goes before it. */
+  private firstChildDom(): any {
+    let first = this._children[0];
+    for (let i = 1; i < this._children.length; i++) {
+      if (this._children[i]._zIndex < first._zIndex) first = this._children[i];
+    }
+    return first ? first.dom : undefined;
+  }
+
+  /** Drops the shadow, the layers and the Effect nodes (there is no visual to carry them). */
+  private clearDecor() {
+    if (this._shadow) tmTransaction.removeNode(this.dom, this._shadow.node);
+    this._shadow = null;
+    for (let i = 0; i < this._layers.length; i++) tmTransaction.removeNode(this.dom, this._layers[i].node);
+    this._layers.length = 0;
+    const effects = this.renderer.effects;
+    this._effect = effects.swap(this._effect, null);
+    this._layerEffect = effects.swap(this._layerEffect, null);
   }
 
   private reorder() {
     const sorted = this._children.slice().sort((a, b) => a.zIndex - b.zIndex);
-    if (this.visual) {
-      // The node's own visual paints below its children. Insert it before the
-      // first child; a plain append here put focused button/card backgrounds
-      // over their text.
-      if (sorted.length > 0) insertNode(this.dom, this.visual, sorted[0].dom);
-      else insertNode(this.dom, this.visual);
-    }
+    // Appending a node that is already a child moves it to the end, so
+    // appending everything in paint order sorts the group: the node's own
+    // drawing first (shadow, visual, layers), then the children by zIndex.
+    if (this._shadow) insertNode(this.dom, this._shadow.node);
+    if (this.visual) insertNode(this.dom, this.visual);
+    for (let i = 0; i < this._layers.length; i++) insertNode(this.dom, this._layers[i].node);
     for (let i = 0; i < sorted.length; i++) insertNode(this.dom, sorted[i].dom);
-    this.reorderGradientOverlay();
-    this.reorderBands();
   }
 
   flush() {
@@ -1383,13 +1207,10 @@ export class RokuNode extends Events {
       this._clipDirty = false;
       this.writeClip();
     }
-    if (this._visualDirty) {
+    if (this._visualDirty || this._effectDirty) {
       this._visualDirty = false;
-      this.writeVisual();
-    }
-    if (this._effectDirty) {
       this._effectDirty = false;
-      this.writeEffect();
+      this.writeDecor();
     }
   }
 
@@ -1450,13 +1271,7 @@ export class RokuNode extends Events {
     this._children.length = 0;
     if (this._shader) this._shader.nodes.delete(this);
     this._imageRequest?.invalidate();
-    this.clearGradientBands();
-    this.clearGradientOverlay();
-    this.clearShadow();
-    if (this._effect) {
-      try { tmTransaction.removeNode(this.visual || this.dom, this._effect.node); } catch (e) { /* already detached */ }
-      this._effect = null;
-    }
+    this.clearDecor();
     if (this.visual) {
       try { tmTransaction.removeNode(this.dom, this.visual); } catch (e) { /* already detached */ }
       this.visual = null;

@@ -62,9 +62,12 @@ execFileSync(
 
 const previous = await activeApp(device);
 const results = [];
+let fresh = false;
 const reading = readConsole(
   device,
   (line) => {
+    // On connecting, the console replays what the last app printed.
+    if (!fresh) return false;
     const at = line.indexOf('CONFORMANCE ');
     if (at === -1) return false;
     const text = line.slice(at);
@@ -75,6 +78,8 @@ const reading = readConsole(
   120_000,
 );
 try {
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+  fresh = true;
   await sideload(device, zip);
   await reading.done;
 } finally {
