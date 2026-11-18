@@ -63,6 +63,8 @@ export function nativeEditorHost(root, target) {
         },
         blur() {
           field.dismissSoftInput();
+          if (apple) field.ios?.resignFirstResponder();
+          else field.android?.clearFocus();
         },
         value: () => field.text ?? '',
         setValue(value) {

@@ -91,7 +91,9 @@
     "./services/mobile-providers": "./hosts/nativescript/providers.mjs",
     "./services/desktop": "./hosts/desktop/services.mjs",
     "./services/roku": "./hosts/roku/services.ts",
-    "./motion": "./dist/src/sdk/motion.js"
+    "./motion": "./dist/src/sdk/motion.js",
+    "./focus": "./dist/src/sdk/focus.js",
+    "./permissions": "./dist/src/sdk/permissions.js"
   },
   "sideEffects": false,
   "scripts": {

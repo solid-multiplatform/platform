@@ -11,20 +11,21 @@ phase="${2:-all}"
 if [[ "$phase" == all ]]; then scratch=$(mktemp -d)
 else scratch="${RUNNER_TEMP:?}/solid-swift-$target"; mkdir -p "$scratch"; fi
 if [[ "$phase" != launch ]]; then
+framework=$(pwd)
 node cli/main.mjs init "$scratch/swift-probe" --targets "$target"
 cd "$scratch/swift-probe"
 corepack pnpm install
 corepack pnpm platform plugin new greeting
-# Replace only the test application's mount function to observe the bridge result.
-cat > src/app.tsx <<'APP'
-import { File, knownFolders } from '@nativescript/core';
-export function mount(plugins) {
-  const output = File.fromPath(knownFolders.documents().path + '/plugin-result.txt');
-  Promise.resolve().then(() => plugins.greeting.run())
-    .then(result => output.writeText(result), error => output.writeText(String(error)));
-  return () => {};
-}
-APP
+archive=$(cd "$framework/packages/video" && npm pack --silent --pack-destination "$scratch")
+corepack pnpm platform add video "$scratch/$archive"
+cp "$framework/tests/cli/apple-media-fixture.ts" src/app.tsx
+cp "$framework/tests/cli/media/clip.mp4" "targets/$target/clip.mp4"
+node --input-type=module - "$target" <<'JS'
+import fs from 'node:fs';
+const file='targets/'+process.argv[2]+'/webpack.config.js';
+fs.writeFileSync(file,fs.readFileSync(file,'utf8').replace('chainSolidTV(config);',`chainSolidTV(config);
+config.plugin('CopyWebpackPlugin').tap(args=>{args[0].patterns.push({from:path.resolve(__dirname,'clip.mp4'),to:'clip.mp4'});return args;});`));
+JS
 corepack pnpm build "$target"
 if [[ "$phase" == build ]]; then exit; fi
 fi

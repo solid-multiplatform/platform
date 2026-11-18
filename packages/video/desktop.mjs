@@ -108,6 +108,30 @@ export function createDesktopPlayer(host, options = {}) {
           else if (m.reason === 'eof') emit({ state: 'ended' });
         }
         if (m.event === 'property-change') {
+          if (m.name === 'track-list' && Array.isArray(m.data)) {
+            const tracks = {
+              audio: [],
+              text: [],
+              selectedAudioId: null,
+              selectedTextId: null,
+            };
+            for (const row of m.data) {
+              const kind = row.type === 'sub' ? 'text' : row.type;
+              if (kind !== 'audio' && kind !== 'text') continue;
+              const id = String(row.id);
+              tracks[kind].push({
+                id,
+                label: row.title || row.lang || kind,
+                language: row.lang,
+                available: true,
+              });
+              if (row.selected)
+                tracks[
+                  kind === 'audio' ? 'selectedAudioId' : 'selectedTextId'
+                ] = id;
+            }
+            emit({ tracks });
+          }
           if (m.name === 'duration') duration = m.data > 0 ? m.data : null;
           if (m.name === 'time-pos' && typeof m.data === 'number') {
             position = m.data;
@@ -146,7 +170,12 @@ export function createDesktopPlayer(host, options = {}) {
               'Unsupported media URL scheme',
             );
           await connect();
-          for (const [i, key] of ['duration', 'time-pos', 'pause'].entries())
+          for (const [i, key] of [
+            'duration',
+            'time-pos',
+            'pause',
+            'track-list',
+          ].entries())
             await send(['observe_property', i + 1, key]);
           await new Promise((resolve, reject) => {
             ready = resolve;
@@ -160,6 +189,8 @@ export function createDesktopPlayer(host, options = {}) {
         seek: (s) => send(['seek', s, 'absolute+exact']),
         setMuted: (v) => send(['set_property', 'mute', v]),
         setVolume: (v) => send(['set_property', 'volume', v * 100]),
+        selectAudioTrack: (id) => send(['set_property', 'aid', id]),
+        selectTextTrack: (id) => send(['set_property', 'sid', id ?? 'no']),
         setPictureMode: (mode) =>
           send(['set_property', 'panscan', mode === 'fill' ? 1 : 0]),
         dispose() {
@@ -172,6 +203,11 @@ export function createDesktopPlayer(host, options = {}) {
         },
       };
     },
-    { canSetVolume: true },
+    {
+      canSetVolume: true,
+      canSelectTextTrack: true,
+      canDisableTextTrack: true,
+      canSelectAudioTrack: true,
+    },
   );
 }

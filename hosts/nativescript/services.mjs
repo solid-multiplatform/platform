@@ -3,6 +3,7 @@ import {
   ApplicationSettings,
   Connectivity,
 } from '@nativescript/core';
+import { androidLinks } from './providers.mjs';
 import { services } from '@solid-multiplatform/platform/services';
 
 /** Application-owned push, secure-store and job providers can augment the device's ports. */
@@ -43,6 +44,7 @@ export function mobileServices(namespace, extensions = {}) {
     ...(typeof globalThis.fetch === 'function'
       ? { request: globalThis.fetch.bind(globalThis) }
       : {}),
+    ...(Application.android ? { links: androidLinks() } : {}),
     ...extensions,
   });
 }

@@ -47,7 +47,64 @@ export function createAndroidPlayer(root, { target = 'android', bounds } = {}) {
             seekable: player.isCurrentMediaItemSeekable(),
           },
         });
+      let trackMap = new Map();
+      const tracks = () => {
+        const groups = player.getCurrentTracks().getGroups();
+        const snapshot = {
+          audio: [],
+          text: [],
+          selectedAudioId: null,
+          selectedTextId: null,
+        };
+        trackMap = new Map();
+        for (let g = 0; g < groups.size(); g++) {
+          const group = groups.get(g),
+            type = group.getType();
+          if (type !== 1 && type !== 3) continue;
+          for (let i = 0; i < group.length; i++) {
+            const f = group.getTrackFormat(i),
+              kind = type === 1 ? 'audio' : 'text',
+              id = kind + ':' + g + ':' + i;
+            const available = group.isTrackSupported(i);
+            trackMap.set(id, { group, i, type, available });
+            snapshot[kind].push({
+              id,
+              label: f.label ?? f.language ?? kind,
+              language: f.language ?? undefined,
+              available,
+            });
+            if (group.isTrackSelected(i))
+              snapshot[type === 1 ? 'selectedAudioId' : 'selectedTextId'] = id;
+          }
+        }
+        emit({ tracks: snapshot });
+      };
+      const select = (type, id) => {
+        const builder = player
+          .getTrackSelectionParameters()
+          .buildUpon()
+          .clearOverridesOfType(type);
+        if (id === null) builder.setTrackTypeDisabled(type, true);
+        else {
+          const found = trackMap.get(id);
+          if (!found?.available || found.type !== type)
+            throw new PlayerOperationError(
+              'unsupported-operation',
+              'Unavailable track',
+            );
+          builder
+            .setTrackTypeDisabled(type, false)
+            .setOverrideForType(
+              new androidx.media3.common.TrackSelectionOverride(
+                found.group.getMediaTrackGroup(),
+                found.i,
+              ),
+            );
+        }
+        player.setTrackSelectionParameters(builder.build());
+      };
       const listener = new androidx.media3.common.Player.Listener({
+        onTracksChanged: tracks,
         onPlaybackStateChanged(state) {
           if (state === 3) {
             time();
@@ -79,6 +136,8 @@ export function createAndroidPlayer(root, { target = 'android', bounds } = {}) {
             timer = setInterval(time, 1000);
           });
         },
+        selectAudioTrack: (id) => select(1, id),
+        selectTextTrack: (id) => select(3, id),
         play: () => player.play(),
         pause: () => player.pause(),
         seek: (s) => player.seekTo(Math.round(s * 1000)),
@@ -102,6 +161,11 @@ export function createAndroidPlayer(root, { target = 'android', bounds } = {}) {
         },
       };
     },
-    { canSetVolume: true },
+    {
+      canSetVolume: true,
+      canSelectTextTrack: true,
+      canDisableTextTrack: true,
+      canSelectAudioTrack: true,
+    },
   );
 }

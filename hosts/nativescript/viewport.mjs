@@ -1,3 +1,4 @@
+import { Config } from '@solid-multiplatform/platform';
 import { Screen } from '@nativescript/core';
 import {
   updateViewport,
@@ -5,6 +6,7 @@ import {
 } from '@solid-multiplatform/platform/viewport';
 
 export function bindMobileViewport(root, target) {
+  Config.rendererOptions = { ...Config.rendererOptions, resizable: true };
   let keyboardInset = 0;
   const update = () => {
     const { width, height } = root.getActualSize();

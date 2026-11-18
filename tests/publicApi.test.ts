@@ -438,6 +438,8 @@ v.describe('package.json exports', () => {
       './services/desktop',
       './services/roku',
       './motion',
+      './focus',
+      './permissions',
     ]);
   });
 

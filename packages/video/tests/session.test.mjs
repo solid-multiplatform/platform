@@ -16,3 +16,8 @@ test('late driver state cannot overwrite replacement or dispose',async()=>{
   drivers[0].notify({state:'error'});assert.equal(p.snapshot.state,'playing');
   await p.dispose();drivers[1].notify({state:'playing'});assert.equal(p.snapshot.state,'disposed');
 });
+test('native open rejects authorization before allocating a player',async()=>{
+  const p=new NativePlayer('roku','test',()=>{throw Error('unexpected native allocation')});
+  await assert.rejects(p.open({url:'https://example.invalid/safe.mp4',kind:'vod',authorization:{cookie:'test-cookie'}}),{code:'authorization-unsupported'});
+  assert.equal(p.snapshot.state,'idle');
+});

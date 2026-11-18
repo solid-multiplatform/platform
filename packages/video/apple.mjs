@@ -34,6 +34,64 @@ export function createApplePlayer(root, { target = 'ios', bounds } = {}) {
       root.insertChild(view, 0);
       layout();
       let timer, ended, item, observer;
+      const trackMap = new Map();
+      function tracks() {
+        const result = {
+          audio: [],
+          text: [],
+          selectedAudioId: null,
+          selectedTextId: null,
+        };
+        trackMap.clear();
+        for (const [kind, type] of [
+          ['audio', AVMediaCharacteristicAudible],
+          ['text', AVMediaCharacteristicLegible],
+        ]) {
+          const group =
+            item.asset.mediaSelectionGroupForMediaCharacteristic(type);
+          if (!group) continue;
+          const selected =
+            item.currentMediaSelection.selectedMediaOptionInMediaSelectionGroup(
+              group,
+            );
+          for (let i = 0; i < group.options.count; i++) {
+            const option = group.options.objectAtIndex(i),
+              id = kind + ':' + i;
+            trackMap.set(id, { option, group, kind });
+            result[kind].push({
+              id,
+              label: option.displayName,
+              language: option.extendedLanguageTag ?? undefined,
+              available: option.playable,
+            });
+            if (option.isEqual(selected))
+              result[kind === 'audio' ? 'selectedAudioId' : 'selectedTextId'] =
+                id;
+          }
+        }
+        emit({ tracks: result });
+      }
+      function select(kind, id) {
+        const group = item.asset.mediaSelectionGroupForMediaCharacteristic(
+          kind === 'audio'
+            ? AVMediaCharacteristicAudible
+            : AVMediaCharacteristicLegible,
+        );
+        const entry = id === null ? null : trackMap.get(id);
+        if (
+          !group ||
+          (id !== null && (!entry?.option.playable || entry.kind !== kind))
+        )
+          throw new PlayerOperationError(
+            'unsupported-operation',
+            'Unavailable track',
+          );
+        item.selectMediaOptionInMediaSelectionGroup(
+          entry?.option ?? null,
+          group,
+        );
+        tracks();
+      }
       const clock = () => {
         const pos = CMTimeGetSeconds(player.currentTime()),
           dur = CMTimeGetSeconds(item.duration);
@@ -75,6 +133,7 @@ export function createApplePlayer(root, { target = 'ios', bounds } = {}) {
               if (item.status === 1) {
                 clearInterval(timer);
                 clock();
+                tracks();
                 observer =
                   player.addPeriodicTimeObserverForIntervalQueueUsingBlock(
                     CMTimeMake(1, 1),
@@ -86,6 +145,8 @@ export function createApplePlayer(root, { target = 'ios', bounds } = {}) {
             }, 50);
           });
         },
+        selectAudioTrack: (id) => select('audio', id),
+        selectTextTrack: (id) => select('text', id),
         play() {
           player.play();
           emit({ state: 'playing' });
@@ -134,6 +195,11 @@ export function createApplePlayer(root, { target = 'ios', bounds } = {}) {
         },
       };
     },
-    { canSetVolume: true },
+    {
+      canSetVolume: true,
+      canSelectTextTrack: true,
+      canDisableTextTrack: true,
+      canSelectAudioTrack: true,
+    },
   );
 }

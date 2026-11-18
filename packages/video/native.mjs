@@ -44,7 +44,11 @@ export class NativePlayer extends SessionPlayer {
         'authorization-unsupported',
         'Native delivery requires a source the device can open.',
       );
-    if (request.qualityId || request.audioTrackId || request.textTrackId)
+    if (
+      request.qualityId ||
+      (request.audioTrackId && !this.capabilities.canSelectAudioTrack) ||
+      (request.textTrackId && !this.capabilities.canSelectTextTrack)
+    )
       throw unsupported();
     this.closeDriver();
     const id = this.startSession(request.kind),
@@ -94,6 +98,13 @@ export class NativePlayer extends SessionPlayer {
       });
       const prepare = async () => {
         await driver.prepare(request.url);
+        if (!this.isCurrent(id)) return;
+        if (request.audioTrackId)
+          await driver.selectAudioTrack(request.audioTrackId);
+        if (!this.isCurrent(id)) return;
+        if (request.textTrackId !== undefined && driver.selectTextTrack)
+          await driver.selectTextTrack(request.textTrackId);
+
         if (!this.isCurrent(id)) return;
         if (request.kind === 'vod' && request.startAtSeconds > 0)
           await driver.seek(request.startAtSeconds);

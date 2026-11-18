@@ -19,6 +19,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm test
+      - run: node --test tests/cli/variants.test.mjs
+      - working-directory: packages/video
+        run: npm ci && npm test
       - run: node --test tests/native/*.test.mjs
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:webgl
