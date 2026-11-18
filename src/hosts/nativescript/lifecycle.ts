@@ -61,11 +61,20 @@ export function bindLifecycle(
       target.pause({ immediate: true });
     }
   };
+  // A native resume coincides with WindowManager relaying out the window
+  // (visibility, insets, focus). Drawing in that vsync guarantees a missed
+  // presentation deadline. Wait for two refresh cycles so the app's first
+  // frame is submitted after the window has settled.
   const resume = (): void => {
     const target = current();
-    if (target !== undefined) {
-      target.resume();
-    }
+    if (target === undefined) return;
+    const raf = (
+      globalThis as {
+        requestAnimationFrame?: (callback: () => void) => unknown;
+      }
+    ).requestAnimationFrame;
+    if (typeof raf === 'function') raf(() => raf(() => target.resume()));
+    else setTimeout(() => target.resume(), 32);
   };
   application.on('suspend', suspend);
   application.on('resume', resume);

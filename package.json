@@ -1,6 +1,6 @@
 {
   "name": "@solid-multiplatform/platform",
-  "version": "0.2.0-preview.6",
+  "version": "0.2.0-preview.7",
   "description": "Portable Solid primitives and device hosts",
   "type": "module",
   "exports": {

@@ -14,8 +14,7 @@ export function Home(p: ScreenProps) {
               width={rail() - 16}
               height={42}
               autofocus={i() === 0}
-              color={0x243145ff}
-              $focus={{ color: 0x385f92ff }}
+              style={{ color: 0x243145ff, $focus: { color: 0x385f92ff } }}
               onEnter={() => p.activate(name)}
               onUp={() => p.next(-1)}
               onDown={() => p.next(1)}

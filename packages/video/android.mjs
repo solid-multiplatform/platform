@@ -164,6 +164,25 @@ function bindEngine(root, bounds, context, player, emit, preparedView) {
       muted = v;
       player.setVolume(v ? 0 : volume);
     },
+    counters() {
+      const counter = player.getVideoDecoderCounters?.();
+      if (!counter) return {};
+      counter.ensureUpdated();
+      return {
+        rendered: counter.renderedOutputBufferCount,
+        dropped: counter.droppedBufferCount,
+        skipped: counter.skippedOutputBufferCount,
+      };
+    },
+    // A preview that is opened repeatedly can keep one engine and PlayerView
+    // alive and simply detach it between sessions. This avoids inflating a
+    // new PlayerView (and its first attach traversal) inside a key frame.
+    detach() {
+      if (view.parent === root) root.removeChild(view);
+    },
+    attach() {
+      if (view.parent !== root) root.insertChild(view, 0);
+    },
     dispose() {
       if (disposed) return;
       disposed = true;
@@ -174,9 +193,20 @@ function bindEngine(root, bounds, context, player, emit, preparedView) {
       failed = ready = undefined;
       player.removeListener(listener);
       view.off('loaded', loaded);
-      view.android?.setPlayer(null);
-      player.release();
+      // Detach and stop pulling frames first. Media3's release() blocks on its
+      // playback thread; running it inside an input frame stalls the compositor
+      // for 60-115 ms. Keep main-looper ownership but defer the blocking part
+      // until the current frame has been presented.
       if (view.parent === root) root.removeChild(view);
+      const engine = player;
+      const nativeView = view.android;
+      // setPlayer(null) also detaches the surface and can block while the
+      // player is playing. Move it out of the input frame together with the
+      // blocking release.
+      setTimeout(() => {
+        nativeView?.setPlayer(null);
+        engine.release();
+      }, 0);
     },
   };
 }

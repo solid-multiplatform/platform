@@ -25,6 +25,9 @@ function harness() {
   return { p, allocations };
 }
 const source = { url: 'test:movie', kind: 'vod', paused: true };
+// A late engine is released in a macrotask so a blocking Media3 teardown never
+// runs inside the input frame that delivered it.
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 test('stop cancels allocation and pending operations; a late engine is released once', async () => {
   const { p, allocations } = harness();
@@ -38,6 +41,8 @@ test('stop cancels allocation and pending operations; a late engine is released 
       released++;
     },
   });
+  assert.equal(released, 0, 'release must not run inside the delivery frame');
+  await tick();
   await p.dispose();
   assert.equal(allocations[0].canceled, 1);
   assert.equal(released, 1);
@@ -69,7 +74,8 @@ test('replacement attaches only its own engine and preserves queued commands', a
     },
   });
   await Promise.all([previous, open, command]);
-  assert.deepEqual(calls, ['release-old', 'test:next', 0.25, 'pause']);
+  await tick();
+  assert.deepEqual(calls, ['test:next', 0.25, 'pause', 'release-old']);
   await p.dispose();
   await p.dispose();
   assert.equal(calls.filter((s) => s === 'dispose').length, 1);
@@ -87,6 +93,8 @@ test('timeout cancels the native request and releases a late result', async () =
     },
   });
   assert.equal(allocations[0].canceled, 1);
+  assert.equal(released, false, 'release must be deferred out of this frame');
+  await tick();
   assert.equal(released, true);
 });
 

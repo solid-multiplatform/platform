@@ -171,6 +171,21 @@ export class NativePlayer extends SessionPlayer {
   pause() {
     return this.perform('pause');
   }
+  /** Detach the native view without releasing the engine. */
+  detach() {
+    const driver = this.driver;
+    if (driver?.detach) return driver.detach();
+  }
+  /** Reattach a previously detached native view. */
+  attach() {
+    const driver = this.driver;
+    if (driver?.attach) return driver.attach();
+  }
+  /** Decoder counters for the active engine, even while the view is detached. */
+  counters() {
+    const driver = this.driver;
+    return driver?.counters ? driver.counters() : {};
+  }
   async seek(seconds) {
     this.activeSessionOrThrow();
     if (!Number.isFinite(seconds) || seconds < 0)

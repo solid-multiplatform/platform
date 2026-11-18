@@ -14,8 +14,7 @@ export function Home(p: ScreenProps) {
             y={220 + Math.floor(i() / 5) * 160}
             width={312}
             height={132}
-            color={0x253040ff}
-            $focus={{ color: 0x31609bff }}
+            style={{ color: 0x253040ff, $focus: { color: 0x31609bff } }}
             autofocus={i() === 0}
             onLeft={() => p.next(-1)}
             onRight={() => p.next(1)}

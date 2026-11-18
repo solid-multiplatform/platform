@@ -54,7 +54,10 @@ export function runNativeApp(
         if (android) {
           canvas.on('surfaceDestroyed', lost);
           canvas.on('surfaceResize', restored);
-          Application.on('resume', redraw);
+          // The renderer resume is deliberately deferred by bindLifecycle so
+          // it does not draw in the window-visibility vsync. Only a lost
+          // surface needs an immediate redraw here; that arrives via
+          // surfaceResize -> restored().
         }
         let dispose;
         let active = true;
@@ -69,7 +72,6 @@ export function runNativeApp(
             if (android) {
               canvas.off('surfaceDestroyed', lost);
               canvas.off('surfaceResize', restored);
-              Application.off('resume', redraw);
             }
             Application.off('exit', cleanup);
           }

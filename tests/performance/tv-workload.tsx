@@ -144,13 +144,24 @@ export function mountGallery(
     );
     const step = count % 32,
       mode = dense();
-    if (count < 64)
-      setTimeout(() => {
+    if (count < 64) {
+      const deadline = performance.now() + 3000;
+      setTimeout(function capture() {
         const backend = root.lng.children;
         const back = root.children.find((n) => n.src?.includes('w1280-'));
         const cards = rail.children.filter(
           (n) => n.src && n.lng.renderState === 8,
         );
+        // A poster can still be decoding 410 ms after the rail moves. Wait for
+        // every visible poster rather than recording a transient underdraw as
+        // a failed preflight; the assertion below still requires them loaded.
+        if (
+          cards.filter((n) => loaded.has(n)).length < cards.length &&
+          performance.now() < deadline
+        ) {
+          setTimeout(capture, 50);
+          return;
+        }
         const sample = {
           mode,
           step,
@@ -177,6 +188,7 @@ export function mountGallery(
           }
         }
       }, 410);
+    }
     count++;
   }, 500);
   const gl = renderer.canvas.getContext('webgl2');

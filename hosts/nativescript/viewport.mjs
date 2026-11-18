@@ -1,5 +1,5 @@
 import { Config } from '@solid-multiplatform/platform';
-import { Screen } from '@nativescript/core';
+import { Application, Screen } from '@nativescript/core';
 import {
   updateViewport,
   zeroInsets,
@@ -36,7 +36,13 @@ export function bindMobileViewport(root, target) {
   Config.rendererOptions = { ...Config.rendererOptions, resizable: true };
   let keyboardInset = 0;
   const update = () => {
-    const { width, height } = root.getActualSize();
+    // A rotation can deliver a layout callback before the new bounds exist,
+    // and NativeScript returns undefined from getActualSize until then. Keep
+    // the last published viewport instead of throwing inside the native
+    // callback (and instead of publishing a zero-sized one).
+    const size = root.getActualSize();
+    if (!size || !(size.width > 0) || !(size.height > 0)) return;
+    const { width, height } = size;
     const scale = Screen.mainScreen.scale;
     let safeArea = zeroInsets;
     let reducedMotion = false;
@@ -139,6 +145,22 @@ export function bindMobileViewport(root, target) {
     dispose.push(() => {
       if (tree.isAlive()) tree.removeOnGlobalLayoutListener(listener);
     });
+  }
+  if (target === 'android') {
+    // A rotation also raises NativeScript's own orientation event, before the
+    // new window bounds exist. Measure once the window has been laid out: if
+    // the root's layout change is coalesced with another pass, or delivered
+    // while the old bounds are still attached, the viewport and every native
+    // control bounded from it must still follow the window.
+    const orientationChanged = () => {
+      const raf = globalThis.requestAnimationFrame;
+      if (typeof raf === 'function') raf(() => raf(update));
+      else update();
+    };
+    Application.on('orientationChanged', orientationChanged);
+    dispose.push(() =>
+      Application.off('orientationChanged', orientationChanged),
+    );
   }
   root.on('layoutChanged', update);
   update();

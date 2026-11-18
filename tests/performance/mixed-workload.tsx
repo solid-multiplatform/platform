@@ -41,23 +41,11 @@ export function mount(_plugins, fontRoot, _input, host) {
     modal: ElementNode,
     transport: ElementNode;
   let player: ReturnType<typeof createAndroidPlayer> | undefined;
+  let playerReady: Promise<void> | undefined;
   let busy = false;
 
   function counters() {
-    let result = {};
-    host.root.eachChildView((child) => {
-      const counter = child.android?.getPlayer?.()?.getVideoDecoderCounters?.();
-      if (counter) {
-        counter.ensureUpdated();
-        result = {
-          rendered: counter.renderedOutputBufferCount,
-          dropped: counter.droppedBufferCount,
-          skipped: counter.skippedOutputBufferCount,
-        };
-      }
-      return true;
-    });
-    return result;
+    return player?.counters() ?? {};
   }
 
   const focus = (node: ElementNode, event: string) => {
@@ -78,47 +66,67 @@ export function mount(_plugins, fontRoot, _input, host) {
     return focus(modal, 'modal');
   };
 
+  // Build the native PlayerView and Media3 engine once during startup, long
+  // before the first remote key. Repeated previews then only reattach the
+  // existing view; inflating ~30 ms of view hierarchy inside an input frame
+  // is what used to blow the app's presentation deadline.
+  function preparePlayer() {
+    const size = host.root.getActualSize();
+    const instance = createAndroidPlayer(host.root, {
+      target: 'android-tv',
+      bounds: {
+        x: size.width * 0.35,
+        y: size.height * 0.18,
+        width: size.width * 0.6,
+        height: size.height * 0.6,
+      },
+    });
+    playerReady = instance
+      .open({
+        url: 'asset:///app/gallery/clip.mp4',
+        kind: 'vod',
+        paused: true,
+        adoptEngineDuration: true,
+      })
+      .then(async () => {
+        await instance.pause();
+        instance.detach();
+        player = instance;
+      });
+    playerReady.catch((e) => record('error', { message: String(e) }));
+  }
+  // Let the first poster batch finish decoding before spending main-thread
+  // time inflating the preview PlayerView; otherwise the artwork preflight
+  // sees unloaded posters at step 0.
+  setTimeout(preparePlayer, 2500);
+
   async function play() {
     if (busy) return;
     busy = true;
     try {
-      if (!player) {
+      if (!player) await playerReady;
+      const entering = page() !== 'player';
+      if (entering) navigation.push({ path: 'player' });
+      player!.attach();
+      if (overVideo && !caption) {
         const size = host.root.getActualSize();
-        player = createAndroidPlayer(host.root, {
-          target: 'android-tv',
-          bounds: {
-            x: size.width * 0.35,
-            y: size.height * 0.18,
-            width: size.width * 0.6,
-            height: size.height * 0.6,
-          },
-        });
-        await player.open({
-          url: 'asset:///app/gallery/clip.mp4',
-          kind: 'vod',
-          paused: true,
-          adoptEngineDuration: true,
-        });
-        navigation.push({ path: 'player' });
-        if (overVideo) {
-          caption = new Label();
-          caption.text = 'Native caption';
-          caption.color = new Color('#ffffff');
-          caption.backgroundColor = new Color('#14675a');
-          caption.horizontalAlignment = 'left';
-          caption.verticalAlignment = 'top';
-          caption.marginLeft = (size.width * 900) / 1920;
-          caption.marginTop = (size.height * 325) / 1080;
-          caption.width = (size.width * 260) / 1920;
-          caption.height = (size.height * 70) / 1080;
-          host.root.addChild(caption);
-        }
-        focus(transport, 'player-focus');
+        caption = new Label();
+        caption.text = 'Native caption';
+        caption.color = new Color('#ffffff');
+        caption.backgroundColor = new Color('#14675a');
+        caption.horizontalAlignment = 'left';
+        caption.verticalAlignment = 'top';
+        caption.marginLeft = (size.width * 900) / 1920;
+        caption.marginTop = (size.height * 325) / 1080;
+        caption.width = (size.width * 260) / 1920;
+        caption.height = (size.height * 70) / 1080;
+        host.root.addChild(caption);
       }
-      await player.play();
+      if (entering) focus(transport, 'player-focus');
+      await player!.play();
       record('play', {
-        duration: player.snapshot.time.durationSeconds,
-        audio: player.snapshot.tracks.selectedAudioId ?? null,
+        duration: player!.snapshot.time.durationSeconds,
+        audio: player!.snapshot.tracks.selectedAudioId ?? null,
       });
     } catch (e) {
       record('error', { message: String(e) });
@@ -161,19 +169,20 @@ export function mount(_plugins, fontRoot, _input, host) {
   const back = () => {
     if (busy || page() === 'gallery') return false;
     if (page() === 'player' && player) {
-      const closing = player;
       record('player-exit', {
-        position: closing.snapshot.time.positionSeconds,
+        position: player.snapshot.time.positionSeconds,
         ...counters(),
       });
-      player = undefined;
+      // Detach after the key handler returns. Never inflate or tear down a
+      // native surface from inside an input frame.
+      const closing = player;
+      void closing.pause().then(() => closing.detach()).catch((e) =>
+        record('error', { message: String(e) }),
+      );
       if (caption) {
         host.root.removeChild(caption);
         caption = undefined;
       }
-      void closing
-        .dispose()
-        .catch((e) => record('error', { message: String(e) }));
     }
     navigation.back();
     return page() === 'modal'

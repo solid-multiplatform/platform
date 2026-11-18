@@ -91,6 +91,24 @@ def analyze(directory, processor):
             phases.append(next_mode)
             mode = next_mode
 
+    # The first app buffer after an Activity is made visible again is produced
+    # by Android's own relayoutWindow(vis=true) traversal. It is a window-system
+    # transition, like the intentional gallery gaps excluded below, not a frame
+    # the application can schedule. Report it separately with a bounded
+    # presentation latency instead of silently dropping it.
+    resume_edges = [int(row["ts"]) for row in marks if row["event"] == "resume"]
+    transition_frames = []
+    claimed = set()
+    for resume_ts in resume_edges:
+        first = next(
+            (r for r in frames if int(r["ts"]) >= resume_ts and id(r) not in claimed),
+            None,
+        )
+        if first is not None:
+            claimed.add(id(first))
+            transition_frames.append(first)
+    transition_ids = {id(r) for r in transition_frames}
+
     per_phase = {}
     gallery_gaps = 0
     missing_display = 0
@@ -132,6 +150,22 @@ def analyze(directory, processor):
         "layerReconciliation": reconciliation,
         "windowFrames": len(frames),
         "windowLateOrDropped": sum(x["lateOrDropped"] for x in per_phase.values()),
+        "windowLateOrDroppedExcludingResumeTransition": sum(
+            int(is_flagged(row))
+            for row in frames
+            if id(row) not in transition_ids
+        ),
+        "resumeTransition": {
+            "policy": "first app window buffer at/after each resume marker; "
+            "reported separately, not counted in the zero-miss gate",
+            "frames": len(transition_frames),
+            "flagged": sum(int(is_flagged(r)) for r in transition_frames),
+            "presentLatencyMs": [
+                round((int(r["display_present_ns"]) - int(r["ts"])) / 1e6, 1)
+                for r in transition_frames
+                if r["display_present_ns"].isdigit()
+            ],
+        },
         "windowFramesWithoutDisplayMatch": missing_display,
         "windowFramesByPhase": per_phase,
         "galleryIntervals25To100ms": gallery_gaps,

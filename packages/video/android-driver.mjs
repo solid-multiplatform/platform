@@ -14,7 +14,7 @@ export function pendingAndroidDriver(start, bind) {
       request = start(
         (engine, preparedView) => {
           if (disposed) {
-            engine.release();
+            setTimeout(() => engine.release(), 0);
             return;
           }
           let attached;
@@ -55,6 +55,9 @@ export function pendingAndroidDriver(start, bind) {
     'setMuted',
     'selectAudioTrack',
     'selectTextTrack',
+    'detach',
+    'attach',
+    'counters',
   ]) {
     handle[op] = (...args) => {
       if (disposed) throw interrupted();
