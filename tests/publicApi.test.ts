@@ -24,7 +24,7 @@ import * as focusManager from '@solid-multiplatform/platform/focusManager';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 240 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 247 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -55,10 +55,13 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'batteryState',
       'bindBackKey',
       'bindColorScheme',
+      'bindFileDrop',
+      'bindGamepadEvents',
       'bindMediaKeys',
       'biometricsAvailable',
       'breakpoint',
       'breakpointFor',
+      'buildRoute',
       'capturePhoto',
       'captureThumbnail',
       'clamp',
@@ -122,6 +125,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'formatList',
       'formatNumber',
       'formatRelativeTime',
+      'gamepadEdges',
       'getCurrentPosition',
       'getElementScreenRect',
       'getQueryData',
@@ -165,6 +169,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'log',
       'logEvent',
       'logRenderTree',
+      'matchRoute',
       'matchesCombo',
       'meetsTouchTarget',
       'memo',
@@ -176,10 +181,12 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'parseCombo',
       'parseVersion',
       'pickFiles',
+      'pickedFileFromWeb',
       'publicEnvironment',
       'readClipboard',
       'readFileBytes',
       'readFileText',
+      'readGamepads',
       'readingOrder',
       'registerDefaultShader',
       'registerDefaultShaderHolePunch',
@@ -630,6 +637,8 @@ v.describe('package.json exports', () => {
       './env',
       './transition',
       './capture',
+      './routes',
+      './gamepad',
     ]);
   });
 

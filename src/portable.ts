@@ -45,3 +45,5 @@ export * from './sdk/logging.js';
 export * from './sdk/env.js';
 export * from './sdk/transition.js';
 export * from './sdk/capture.js';
+export * from './sdk/routes.js';
+export * from './sdk/gamepad.js';

@@ -98,7 +98,7 @@ export function setFilePickerPort(next: FilePickerPort | undefined): void {
   pickerPort = next;
 }
 
-const wrapWebFile = (file: File): PickedFile => ({
+export const pickedFileFromWeb = (file: File): PickedFile => ({
   name: file.name,
   type: file.type,
   size: file.size,
@@ -125,7 +125,7 @@ export async function pickFiles(
     input.style.display = 'none';
     const cleanup = () => input.remove();
     input.addEventListener('change', () => {
-      const files = Array.from(input.files ?? []).map(wrapWebFile);
+      const files = Array.from(input.files ?? []).map(pickedFileFromWeb);
       cleanup();
       resolve(files);
     });
@@ -141,4 +141,30 @@ export async function pickFiles(
       reject(error);
     }
   });
+}
+
+/**
+ * Accept files dropped onto an element. Call from a desktop/web surface that
+ * owns its own DOM; the same `PickedFile` shape is returned by `pickFiles`.
+ */
+export function bindFileDrop(
+  target: HTMLElement,
+  handler: (files: PickedFile[]) => void,
+): () => void {
+  const over = (event: DragEvent) => {
+    event.preventDefault();
+  };
+  const drop = (event: DragEvent) => {
+    event.preventDefault();
+    const files = Array.from(event.dataTransfer?.files ?? []).map(
+      pickedFileFromWeb,
+    );
+    if (files.length) handler(files);
+  };
+  target.addEventListener('dragover', over);
+  target.addEventListener('drop', drop);
+  return () => {
+    target.removeEventListener('dragover', over);
+    target.removeEventListener('drop', drop);
+  };
 }

@@ -4,9 +4,11 @@ import { Config } from '../core/config.js';
 
 export interface ImageProps extends NodeProps {
   src: string;
-  /* image to load while src is being loaded */
+  /** Image to load while src is being loaded. */
   placeholder?: string;
   fallback?: string;
+  /** How the texture fits the node. Defaults to the renderer's cover mode. */
+  fit?: 'cover' | 'contain';
 }
 
 export const Image: Component<ImageProps> = (props) => {
@@ -47,9 +49,21 @@ export const Image: Component<ImageProps> = (props) => {
     setTexture(srcTexture);
   });
 
+  const viewProps = () => {
+    const { fit, ...rest } = props;
+    if (!fit) return rest;
+    return {
+      ...rest,
+      textureOptions: {
+        ...(rest.textureOptions ?? {}),
+        resizeMode: { type: fit },
+      },
+    };
+  };
+
   return (
     <view
-      {...props}
+      {...viewProps()}
       src={src()}
       color={props.color || 0xffffffff}
       texture={texture()}
