@@ -220,9 +220,16 @@ function buildTarget(root, target, dev, legacy) {
       );
   }
   const browser = target === 'web' || browserTVs.includes(target);
-  const fonts =
-    target === 'roku' || legacy
-      ? 'undefined'
+  // Roku draws text with font files. The starter's (targets/roku/fonts, from
+  // init) is imported by the generated entry, which registers it under the
+  // family the app names; the Roku preset packages the file and its layout
+  // table.
+  const rokuFont =
+    target === 'roku' && existsSync(path.join(dir, 'fonts/Lato-Regular.ttf'));
+  const fonts = legacy
+    ? 'undefined'
+    : target === 'roku'
+      ? "'pkg:/fonts'"
       : browser
         ? "'./fonts'"
         : "'file:///app/fonts'";
@@ -230,11 +237,13 @@ function buildTarget(root, target, dev, legacy) {
     path.join(work, 'main.ts'),
     browser
       ? browserEntry(target, legacy, project(root).name, fonts)
-      : `import { mount as start } from './src/app';
+      : `${rokuFont ? "import { loadFonts } from '@solid-multiplatform/platform'; import lato from '../fonts/Lato-Regular.ttf';" : ''}
+import { mount as start } from './src/app';
 import { attachPlugins } from '@solid-multiplatform/platform/plugins';
 import { plugins } from './plugins.mjs';
 export function mount(host = { target: '${target}' }) {
   const detach = attachPlugins(plugins, host);
+  ${rokuFont ? "void loadFonts([{ fontFamily: 'Lato', fontUrl: lato }]).catch((error) => console.error(error));" : ''}
   try {
     const dispose = start(plugins, ${fonts}, host.input, host);
     return () => { try { dispose?.(); } finally { detach(); } };
@@ -246,6 +255,12 @@ export function mount(host = { target: '${target}' }) {
     copy(
       path.join(root, 'assets/fonts'),
       browser ? path.join(dir, 'public/fonts') : path.join(work, 'fonts'),
+    );
+  else if (rokuFont && existsSync(path.join(dir, 'fonts/Lato-OFL.txt')))
+    // The licence travels with the font into the package.
+    copy(
+      path.join(dir, 'fonts/Lato-OFL.txt'),
+      path.join(work, 'assets/fonts/Lato-OFL.txt'),
     );
   if (target === 'android-tv' || target === 'android')
     android(root, work, plugins, target);

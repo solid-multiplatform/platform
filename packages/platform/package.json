@@ -110,6 +110,7 @@
     "./services/native/secure-storage": "./hosts/nativescript/secure-storage.mjs",
     "./services/native/notifications": "./hosts/nativescript/notifications.mjs",
     "./permissions/android": "./hosts/android/permissions.mjs",
+    "./services/android": "./hosts/nativescript/providers/android/manifest.ts",
     "./editor/roku": "./hosts/roku/editor.ts",
     "./scroll": "./dist/src/sdk/scroll.js",
     "./network": "./dist/src/sdk/network.js",
@@ -434,7 +435,8 @@
     "watch": "tsc -w",
     "prepack": "npm run build && node cli/renderer-archive.mjs",
     "test:browser": "vitest --config=vitest.browser.config.ts",
-    "test:webgl": "vitest run --config=vitest.webgl.config.ts"
+    "test:webgl": "vitest run --config=vitest.webgl.config.ts",
+    "typecheck:native": "tsc -p hosts/nativescript/tsconfig.android.json"
   },
   "keywords": [
     "lightning",
@@ -453,6 +455,7 @@
   },
   "devDependencies": {
     "@lightningtv/vite-hex-transform": "^1.1.0",
+    "@nativescript/types": "9.1.1",
     "@solid-devtools/debugger": "^0.28.1",
     "@solidjs/testing-library": "^0.8.10",
     "@vitest/browser-playwright": "^4.1.6",

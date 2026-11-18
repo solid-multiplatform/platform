@@ -1,345 +1,503 @@
 /**
- * Native font faces and measurement for the SceneGraph renderer.
+ * The fonts of one SceneGraph renderer.
  *
- * SolidTV's flex layout asks a text node for its width synchronously. Roku
- * can only measure a font once the firmware has published it, and there is no
- * synchronous "load this font now" call. The renderer therefore waits for a
- * small set of base faces (Roboto regular/bold, Raleway) during startup and
- * measures at a fixed base size; every requested size is that measurement
- * scaled linearly, which is how the renderer's own NormalizedFontMetrics work
- * too. Once the base faces are ready, all text measurement is synchronous.
+ * An app registers each font file under a family, weight and style, with the
+ * layout table the build made from the file (font-metrics.ts). Text naming a
+ * registered family is laid out from that table at once: nothing is measured
+ * on the device and nothing waits for the firmware to load the file. A family
+ * nobody registered is drawn in the Roku system font, said once on the
+ * console; that font has no table, so its text is measured on the device and
+ * laid out when the firmware can measure it.
+ *
+ * Nothing here runs while a scene is idle. The only timers are the bounded
+ * waits for a font to load or for the system font to become measurable, and
+ * each ends with its poll cancelled.
  */
-import { createElement, insertNode, setProp } from '@roku-sdk/solid';
+import { createElement, insertNode, setProp, tmTransaction } from '@roku-sdk/solid';
 import { getFontMeasure, whenFontReady } from '@roku-sdk/rsg-ts/runtime';
 import type { TmNodeRef } from '@roku-sdk/interfaces';
-import { FONT_METRICS, measureMsdf } from './font-metrics.js';
+import { FontMetrics } from './font-metrics.js';
+import type { LineMetrics, SizedFont } from './font-metrics.js';
 
-export const BASE_FONT_SIZE = 32;
-
-const ROBOTO_REGULAR = 'pkg:/fonts/Roboto-Regular.ttf';
-const ROBOTO_BOLD = 'pkg:/fonts/Roboto-Bold.ttf';
-const RALEWAY_BOLD = 'pkg:/fonts/Raleway-ExtraBold.ttf';
-const ONEST_400 = 'pkg:/fonts/remote_onest_400.ttf';
-const ONEST_500 = 'pkg:/fonts/remote_onest_500.ttf';
-const ONEST_600 = 'pkg:/fonts/remote_onest_600.ttf';
-const ONEST_700 = 'pkg:/fonts/remote_onest_700.ttf';
-const BRICOLAGE_800 = 'pkg:/fonts/remote_bricolage_800.ttf';
-
-export interface FontFace {
-  key: string;
+/** A font file registered with a renderer. */
+export interface FontDescription {
+  family: string;
+  /** 100 to 900, or `normal` / `bold`. Default 400. */
+  weight?: number | string;
+  /** `normal` (default), `italic` or `oblique`. */
+  style?: string;
+  /** The packaged file: what importing the font file gives, a path under `pkg:/fonts/`. */
   uri: string;
-  size: number;
-  node: any;
-  ref: TmNodeRef | null;
-  ready: boolean;
-  failed: boolean;
-  /** Natural line height at BASE_FONT_SIZE. */
-  lineHeight: number;
-  ascent: number;
-  descent: number;
-  /** Per-text width cache at BASE_FONT_SIZE. */
-  widths: Map<string, number>;
-  /** Measurement retries after a transient getOneLineWidth failure. */
-  retries: number;
-  retryTimer: any;
+  /** The file's layout table, decoded or as the build packed it. */
+  metrics: FontMetrics | string | Uint8Array;
 }
 
-const faces = new Map<string, FontFace>();
-let measureApi: any = null;
-let measureApiError: string | null = null;
-let fontVersion = 0;
-const fontListeners = new Set<() => void>();
+/** How long a font may take to load before it is given up on, in ms. */
+export const FONT_LOAD_TIMEOUT = 3000;
+/** The size a font is loaded at to find out whether its file loads. */
+const PROBE_SIZE = 32;
+const SYSTEM_FONT = 'font:SystemFontFile';
+const SYSTEM_BOLD_FONT = 'font:BoldSystemFontFile';
 
-export function subscribeFontChanges(notify: () => void) {
-  fontListeners.add(notify);
-  return () => { fontListeners.delete(notify); };
+// ---- tables made at build time ----------------------------------------------
+
+const tables = new Map<string, FontMetrics | string | Uint8Array>();
+
+/**
+ * The layout table of a packaged font file, by its URI. The Roku preset calls
+ * this from the module an imported `.ttf`/`.otf` becomes, so the table is there
+ * before the app runs; `loadFont` then finds it by the font's URI.
+ */
+export function registerFontMetrics(uri: string, metrics: FontMetrics | string | Uint8Array): void {
+  tables.set(uri, metrics);
 }
 
-/** Increments whenever a face becomes measurable. */
-export function getFontVersion(): number {
-  return fontVersion;
+/** The table registered for `uri`, as it was registered: packed until a text node first draws with it. */
+export function fontTable(uri: string): FontMetrics | string | Uint8Array | undefined {
+  return tables.get(uri);
+}
+
+/** The table registered for `uri`, decoded. */
+export function fontMetricsFor(uri: string): FontMetrics | undefined {
+  const found = tables.get(uri);
+  if (found === undefined || found instanceof FontMetrics) return found;
+  const decoded = FontMetrics.decode(found);
+  tables.set(uri, decoded);
+  return decoded;
+}
+
+// ---- waiting on the firmware ------------------------------------------------
+
+interface Wait {
+  done: Promise<void>;
+  cancel(): void;
 }
 
 /**
- * Tell the live renderer that text metrics changed. Bumping the version alone
- * is not enough: a dirty-driven renderer only reflows nodes it is asked to
- * flush, so a face that becomes measurable after first paint would otherwise
- * leave auto-width text at its stale zero width.
+ * Resolves when the firmware can measure `font`, rejects after `ms`. Either
+ * way the timer is cleared and the SDK's poll is stopped: the abort signal
+ * given to `whenFontReady` has listeners, which is what makes the SDK drop
+ * its poll at once instead of at its next tick.
  */
-export function notifyFontChanged(): void {
-  fontVersion++;
-  fontListeners.forEach((notify) => notify());
-}
-
-function api(): any {
-  if (measureApi !== null) return measureApi;
-  if (measureApiError !== null) return null;
-  try {
-    measureApi = getFontMeasure();
-    return measureApi;
-  } catch (e) {
-    measureApiError = String((e as any)?.message ?? e);
-    console.error('ROKU_FONT_MEASURE unavailable: ' + measureApiError);
-    return null;
-  }
-}
-
-/** Map a SolidTV family/weight to a bundled TTF. */
-export function resolveFontUri(fontFamily: string | undefined, fontWeight?: number | string): string {
-  const family = String(fontFamily || 'Onest');
-  const weightText = String(fontWeight === undefined ? '' : fontWeight);
-  const bold =
-    /bold|black|heavy|semibold|demibold/i.test(family) ||
-    /bold|black|heavy|semibold|demibold/i.test(weightText) ||
-    (Number(weightText) >= 600 && !Number.isNaN(Number(weightText)));
-  // tv-web names the design faces directly (Onest400/500/600/700,
-  // Bricolage700/800). Keep those real faces for the native labels instead of
-  // falling back to Roboto, which changes line widths and wrapping.
-  if (/bricolage/i.test(family)) return BRICOLAGE_800;
-  if (/onest/i.test(family)) {
-    if (/700/.test(family)) return ONEST_700;
-    if (/600/.test(family)) return ONEST_600;
-    if (/500/.test(family)) return ONEST_500;
-    return ONEST_400;
-  }
-  if (/raleway/i.test(family)) return RALEWAY_BOLD;
-  return bold ? ROBOTO_BOLD : ROBOTO_REGULAR;
-}
-
-function cacheWidth(face: FontFace, text: string): number {
-  let w = face.widths.get(text);
-  if (w !== undefined) return w;
-  if (face.ref === null || !face.ready) return 0;
-  const m = api();
-  if (m === null) return 0;
-  try {
-    w = Number(m.getOneLineWidth(face.ref, text, 1920) ?? 0);
-  } catch (e) {
-    // The first measurement can race font publication. Retry on a timer and
-    // ask the renderer to reflow; permanently marking the face unready here
-    // left auto-width labels (the keyboard action keys) at 8 px.
-    if (face.retries < 6) {
-      face.retries++;
-      if (face.retryTimer === null || face.retryTimer === undefined) {
-        face.retryTimer = setTimeout(() => {
-          face.retryTimer = null;
-          notifyFontChanged();
-        }, 120);
-      }
-    } else {
-      face.ready = false;
-    }
-    // A not-yet-published face is expected during boot. Logging every
-    // measurement floods the remote console and makes the UI feel sluggish.
-    if (!(face as any).measureFailureLogged) {
-      (face as any).measureFailureLogged = true;
-      console.warn('ROKU_FONT_MEASURE waiting for face: ' + face.uri);
-    }
-    return 0;
-  }
-  if (face.widths.size > 4000) face.widths.clear();
-  face.widths.set(text, w);
-  return w;
-}
-
-/** Width of `text` at `fontSize` pixels. Returns 0 until the face is ready. */
-export function measureText(fontFamily: string | undefined, fontWeight: number | string | undefined, fontSize: number, text: string): number {
-  const uri = resolveFontUri(fontFamily, fontWeight);
-  const size = Math.max(1, Math.round(fontSize));
-  // Prefer the exact face the Label uses. Roku unloads a Font node that no
-  // visible Label references, so the 32 pt measurement face can report
-  // "Font is not yet loaded" after boot even though its object is still in
-  // our map. The per-size face is kept loaded by the Label that uses it.
-  const exact = faces.get(uri + '@' + size);
-  const face = exact !== undefined && exact.ready ? exact : faces.get(uri);
-  if (face === undefined || !face.ready) return 0;
-  return (cacheWidth(face, text) * fontSize) / face.size;
-}
-
-/**
- * Web renderer line-box ratio for the fonts the shared app configures.
- * `src/fonts.ts` overrides Roboto's metrics to ascender 1000 / descender 100 /
- * unitsPerEm 1000 (bare line height 0.9 x fontSize); Raleway uses its JSON
- * metrics (940 - (-234)) / 1000. Layout must use these, not Roku's FontMeasure
- * line box, or multi-line blocks are one line-height too tall.
- */
-export function webLineHeight(fontFamily: string | undefined, fontWeight: number | string | undefined, fontSize: number): number {
-  const uri = resolveFontUri(fontFamily, fontWeight);
-  if (uri === BRICOLAGE_800) return 1.2 * fontSize;
-  if (uri === ONEST_400 || uri === ONEST_500 || uri === ONEST_600 || uri === ONEST_700)
-    return 1.275 * fontSize;
-  if (uri === RALEWAY_BOLD) return 1.174 * fontSize;
-  return 0.9 * fontSize;
-}
-
-/**
- * Width using the web renderer's MSDF advances, for line-breaking decisions.
- * Falls back to the native TTF measurement when the face is not in the table.
- */
-export function measureWrapText(fontFamily: string | undefined, fontWeight: number | string | undefined, fontSize: number, text: string): number {
-  const uri = resolveFontUri(fontFamily, fontWeight);
-  const metrics = FONT_METRICS[uri];
-  if (metrics === undefined) return measureText(fontFamily, fontWeight, fontSize, text);
-  return (measureMsdf(metrics, text) * fontSize) / metrics.size;
-}
-
-export function fontMetrics(fontFamily: string | undefined, fontWeight: number | string | undefined, fontSize: number) {
-  const uri = resolveFontUri(fontFamily, fontWeight);
-  const size = Math.max(1, Math.round(fontSize));
-  const exact = faces.get(uri + '@' + size);
-  if (exact !== undefined && exact.ready) {
-    return { lineHeight: exact.lineHeight, ascent: exact.ascent, descent: exact.descent };
-  }
-  const face = faces.get(uri);
-  const scale = fontSize / BASE_FONT_SIZE;
-  if (face === undefined || !face.ready) {
-    return { lineHeight: fontSize * 1.2, ascent: fontSize * 0.8, descent: fontSize * 0.2 };
-  }
-  return { lineHeight: face.lineHeight * scale, ascent: face.ascent * scale, descent: face.descent * scale };
-}
-
-export function isFontReady(fontFamily: string | undefined, fontWeight?: number | string): boolean {
-  const face = faces.get(resolveFontUri(fontFamily, fontWeight));
-  return face !== undefined && face.ready;
-}
-
-export function anyFontReady(): boolean {
-  for (const face of faces.values()) if (face.ready) return true;
-  return false;
-}
-
-/**
- * Create a Font node at the measurement size, publish it (preUpdate before
- * uri/size, per the SDK's font rules) and wait for the firmware to make it
- * measurable. The node is attached to `root` so it is part of the scene; a
- * Font node draws nothing.
- */
-export function loadFace(uri: string, root: any, size: number = BASE_FONT_SIZE): FontFace {
-  const faceSize = Math.max(1, Math.round(size));
-  // The base face is the measurement font; every distinct render size needs
-  // its own Font node because SceneGraph Labels take their size from `font`.
-  const key = faceSize === BASE_FONT_SIZE ? uri : uri + '@' + faceSize;
-  const existing = faces.get(key);
-  if (existing !== undefined) return existing;
-
-  const node = createElement('font');
-  const face: FontFace = {
-    key,
-    uri,
-    size: faceSize,
-    node,
-    ref: null,
-    ready: false,
-    failed: false,
-    lineHeight: BASE_FONT_SIZE * 1.2,
-    ascent: BASE_FONT_SIZE * 0.8,
-    descent: BASE_FONT_SIZE * 0.2,
-    widths: new Map(),
-    retries: 0,
-    retryTimer: null,
+function waitMeasurable(font: TmNodeRef, ms: number): Wait {
+  const listeners: (() => void)[] = [];
+  let aborted = false;
+  const signal = {
+    get aborted() {
+      return aborted;
+    },
+    reason: new Error('not loaded after ' + ms + ' ms'),
+    addEventListener(_type: 'abort', listener: () => void) {
+      listeners.push(listener);
+    },
+    removeEventListener(_type: 'abort', listener: () => void) {
+      const at = listeners.indexOf(listener);
+      if (at >= 0) listeners.splice(at, 1);
+    },
   };
-  faces.set(key, face);
-  try {
-    // The documented order: preUpdate first, then uri and size.
-    setProp(node, 'preUpdate', true);
-    setProp(node, 'uri', uri);
-    setProp(node, 'size', faceSize);
-    if (root !== undefined && root !== null) {
-      // Attach it so the firmware publishes it even where a detached Font
-      // node with preUpdate is not enough.
-      insertNode(root, node);
-    }
-    face.ref = (node as any).r as TmNodeRef;
-  } catch (e) {
-    face.failed = true;
-    console.error('ROKU_FONT create failed ' + uri + ': ' + String((e as any)?.message ?? e));
-    return face;
-  }
-
-  const m = api();
-  const ready = (ref: TmNodeRef) => {
-    if (face.ready) return;
-    face.ready = true;
-    try {
-      face.lineHeight = m.getOneLineHeight(ref);
-      face.ascent = m.getAscent(ref);
-      face.descent = m.getDescent(ref);
-    } catch (e) {
-      face.ready = false;
-      console.error('ROKU_FONT metrics failed ' + uri + ': ' + String((e as any)?.message ?? e));
-    }
-    if (face.ready) notifyFontChanged();
+  const cancel = () => {
+    if (aborted) return;
+    aborted = true;
+    clearTimeout(timer);
+    listeners.slice().forEach((listener) => listener());
   };
-
-  if (m !== null && face.ref !== null) {
-    try {
-      // Already published (a warm start or a repeated face): no await needed.
-      if (m.getOneLineHeight(face.ref) > 0) ready(face.ref);
-    } catch (e) {
-      /* not published yet */
-    }
-  }
-  if (!face.ready && face.ref !== null) {
-    whenFontReady(face.ref).then(
-      () => ready(face.ref!),
-      (e: any) => {
-        face.failed = true;
-        console.error('ROKU_FONT load failed ' + uri + ': ' + String(e?.message ?? e));
-      },
-    );
-  }
-  return face;
+  const timer = setTimeout(cancel, ms);
+  const done = whenFontReady(font, { signal }).then(
+    () => {
+      clearTimeout(timer);
+      // Aborted in the tick the font became ready: still a timeout.
+      if (aborted) throw signal.reason;
+    },
+    (error) => {
+      clearTimeout(timer);
+      throw error;
+    },
+  );
+  return { done, cancel };
 }
 
-/**
- * Load the bundled faces used by the demo. Returns when all have settled
- * (ready or failed) so the first layout has real metrics.
- */
-export async function loadBundledFonts(root: any): Promise<void> {
-  console.log('ROKU_FONTS begin');
-  const uris = [
-    ONEST_400,
-    ONEST_500,
-    ONEST_600,
-    ONEST_700,
-    BRICOLAGE_800,
-    ROBOTO_REGULAR,
-    ROBOTO_BOLD,
-    RALEWAY_BOLD,
-  ];
-  const pending = uris.map((uri) => {
-    const face = loadFace(uri, root);
-    if (face.ready || face.failed || face.ref === null) return Promise.resolve();
-    // Never hold the first frame on a font that the firmware has not published
-    // yet. The version counter reflows text once it does become measurable.
-    return Promise.race([
-      whenFontReady(face.ref),
-      new Promise<void>((resolve) => setTimeout(resolve, 2500)),
-    ]).then(
+// ---- faces: a font at one size ----------------------------------------------
+
+/** A font at one size: its measurements, its SceneGraph Font node, and how many text nodes use it. */
+export interface Face {
+  readonly key: string;
+  /** The Font node a Label takes in its `font` field. */
+  readonly node: any;
+  readonly font: SizedFont;
+  /** False for a system-font face the firmware cannot measure yet (or at all): its text has no layout. */
+  readonly measurable: boolean;
+  /** True once a system-font face has been given up on: its text is drawn unmeasured. */
+  readonly failed: boolean;
+  uses: number;
+}
+
+/** A registered font at one size. Its Font node is made when a Label first draws with it: measuring needs none. */
+class TableFace implements Face {
+  uses = 0;
+  readonly measurable = true;
+  readonly failed = false;
+  /** The Font node, once made. */
+  made: any = null;
+
+  constructor(
+    readonly key: string,
+    readonly font: SizedFont,
+    private readonly make: () => any,
+  ) {}
+
+  get node(): any {
+    if (this.made === null) this.made = this.make();
+    return this.made;
+  }
+}
+
+/** The system font at one size, measured on the device once the firmware has it. */
+class SystemFace implements Face, SizedFont {
+  uses = 0;
+  measurable = false;
+  failed = false;
+  metrics: LineMetrics = { ascender: 0, descender: 0, lineGap: 0, capHeight: 0, xHeight: 0 };
+  labelAscent = 0;
+  labelLineHeight = 0;
+  private widths = new Map<string, number>();
+  private wait: Wait | null = null;
+  private attempts = 0;
+
+  constructor(
+    readonly key: string,
+    readonly node: any,
+    private readonly registry: FontRegistry,
+  ) {
+    this.watch();
+  }
+
+  get font(): SizedFont {
+    return this;
+  }
+
+  /** Waits (bounded) for the firmware to be able to measure this face, then has its text laid out. */
+  private watch() {
+    if (this.wait !== null || this.failed) return;
+    if (++this.attempts > 2) {
+      this.failed = true;
+      console.error('ROKU_FONT the system font cannot be measured at ' + this.key + ': its text is drawn unmeasured');
+      this.registry.changed();
+      return;
+    }
+    const wait = waitMeasurable(this.node.r, FONT_LOAD_TIMEOUT / 2);
+    this.wait = wait;
+    wait.done.then(
       () => {
-        if (!face.ready) {
-          try {
-            const m = api();
-            face.ready = true;
-            face.lineHeight = m.getOneLineHeight(face.ref!);
-            face.ascent = m.getAscent(face.ref!);
-            face.descent = m.getDescent(face.ref!);
-          } catch (e) {
-            face.ready = false;
-          }
-          if (face.ready) notifyFontChanged();
+        this.wait = null;
+        try {
+          const measure = getFontMeasure();
+          const ascent = measure.getAscent(this.node.r);
+          this.labelAscent = ascent;
+          this.labelLineHeight = measure.getOneLineHeight(this.node.r);
+          this.metrics = {
+            ascender: ascent,
+            descender: -measure.getDescent(this.node.r),
+            lineGap: 0,
+            capHeight: ascent * 0.7,
+            xHeight: ascent * 0.5,
+          };
+          this.measurable = true;
+          this.registry.changed();
+        } catch (error) {
+          this.watch();
         }
       },
       () => {
-        face.failed = true;
+        if (this.wait !== wait) return; // released
+        this.wait = null;
+        this.watch();
       },
     );
-  });
-  await Promise.all(pending);
-  console.log(
-    'ROKU_FONTS ' +
-      Array.from(faces.values())
-        .map((f) => `${f.uri}:${f.ready ? 'ready' : f.failed ? 'failed' : 'pending'}`)
-        .join(' '),
-  );
+  }
+
+  measure(text: string, spacing: number): number {
+    if (!this.measurable) return 0;
+    if (spacing !== 0) {
+      // Letter-spaced text is drawn a glyph at a time.
+      let width = 0;
+      for (const glyph of text) width += this.width(glyph) + spacing;
+      return width;
+    }
+    return this.width(text);
+  }
+
+  private width(text: string): number {
+    let width = this.widths.get(text);
+    if (width !== undefined) return width;
+    try {
+      width = Number(getFontMeasure().getOneLineWidth(this.node.r, text, 100000)) || 0;
+    } catch (error) {
+      // The firmware dropped the font (it keeps only fonts a drawn Label uses): wait for it again.
+      this.measurable = false;
+      this.widths.clear();
+      this.watch();
+      return 0;
+    }
+    if (this.widths.size >= 2000) this.widths.clear();
+    this.widths.set(text, width);
+    return width;
+  }
+
+  release() {
+    const wait = this.wait;
+    this.wait = null;
+    if (wait !== null) wait.cancel();
+  }
+}
+
+interface RegisteredFont {
+  family: string;
+  weight: number;
+  style: string;
+  uri: string;
+  metrics: FontMetrics | string | Uint8Array;
+  /** The file did not load: text naming the family does not use this font. */
+  failed: boolean;
+}
+
+const weightOf = (weight: number | string | undefined): number => {
+  if (typeof weight === 'number') return Number.isFinite(weight) && weight > 0 ? weight : 400;
+  if (weight === undefined || weight === null || weight === '') return 400;
+  const parsed = Number(weight);
+  if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  return /bold|black|heavy/i.test(weight) ? 700 : 400;
+};
+
+const styleOf = (style: string | undefined) => (style === 'italic' || style === 'oblique' ? 'italic' : 'normal');
+
+/**
+ * The family and weight a name stands for. The platform writes a weight into
+ * the family (`Roboto700`), in a text node's props and in the fonts an app
+ * loads alike, so a name ending in three digits is that family at that weight
+ * unless a weight is given beside it.
+ */
+function named(family: string, weight: number | string | undefined): [string, number] {
+  if (weight === undefined || weight === null || weight === '') {
+    const suffix = /^(.+?)(\d{3})$/.exec(family);
+    if (suffix !== null) return [suffix[1], Number(suffix[2])];
+  }
+  return [family, weightOf(weight)];
+}
+
+export class FontRegistry {
+  /** Goes up whenever text may lay out differently: a font registered, failed, or the system font became measurable. */
+  version = 0;
+  private families = new Map<string, RegisteredFont[]>();
+  private resolved = new Map<string, RegisteredFont | null>();
+  private warned = new Set<string>();
+  private faces = new Map<string, Face>();
+  private decoded = new Map<string | Uint8Array, FontMetrics>();
+  /** By URI: the load of a file in flight or finished, so a second `load` of it joins the first. */
+  private loads = new Map<string, Promise<void>>();
+  private waits = new Set<Wait>();
+  private destroyed = false;
+
+  /**
+   * @param root the SceneGraph node Font nodes are attached under.
+   * @param onChange called when `version` goes up: the renderer lays its text out again.
+   */
+  constructor(
+    private readonly root: any,
+    private readonly onChange: () => void,
+  ) {}
+
+  changed() {
+    if (this.destroyed) return;
+    this.version++;
+    this.resolved.clear();
+    this.onChange();
+  }
+
+  /** Registers a font file. Text naming its family lays out from its table from now on. */
+  registerFont(font: FontDescription): void {
+    this.add(font);
+  }
+
+  private add(font: FontDescription): RegisteredFont {
+    const [family, weight] = named(font.family, font.weight);
+    const style = styleOf(font.style);
+    let faces = this.families.get(family);
+    if (faces === undefined) {
+      faces = [];
+      this.families.set(family, faces);
+    }
+    let entry = faces.find((face) => face.weight === weight && face.style === style);
+    if (entry !== undefined && entry.uri === font.uri && entry.metrics === font.metrics && !entry.failed) return entry;
+    if (entry === undefined) {
+      entry = { family, weight, style, uri: font.uri, metrics: font.metrics, failed: false };
+      faces.push(entry);
+    } else {
+      entry.uri = font.uri;
+      entry.metrics = font.metrics;
+      entry.failed = false;
+    }
+    this.changed();
+    return entry;
+  }
+
+  /**
+   * Registers a font and loads its file. Resolves when the firmware has the
+   * font; rejects when it has not within `timeout` ms (a missing or broken
+   * file), after which text naming the family uses another weight of it or
+   * the system font. Text is laid out from the table either way and does not
+   * wait for this.
+   */
+  load(font: FontDescription, timeout: number = FONT_LOAD_TIMEOUT): Promise<void> {
+    const uri = this.add(font).uri;
+    let loading = this.loads.get(uri);
+    if (loading === undefined) {
+      loading = this.probe(uri, timeout).catch((error) => {
+        if (this.destroyed) throw error;
+        // A later `load` of the file tries again.
+        this.loads.delete(uri);
+        this.families.forEach((faces) => {
+          for (const face of faces) if (face.uri === uri) face.failed = true;
+        });
+        console.error('ROKU_FONT ' + uri + ' did not load: ' + String(error?.message ?? error));
+        this.changed();
+        throw error;
+      });
+      this.loads.set(uri, loading);
+    }
+    return loading;
+  }
+
+  /**
+   * Whether the firmware loads `uri`: a Font node is published and waited on.
+   * A font that is not measurable half way through is tried once more on a
+   * new node, because the firmware now and then never reports a good font.
+   */
+  private async probe(uri: string, timeout: number): Promise<void> {
+    let failure: unknown;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (this.destroyed) break;
+      const node = this.fontNode(uri, PROBE_SIZE);
+      const wait = waitMeasurable(node.r, timeout / 2);
+      this.waits.add(wait);
+      try {
+        await wait.done;
+        return;
+      } catch (error) {
+        failure = error;
+      } finally {
+        this.waits.delete(wait);
+        tmTransaction.removeNode(this.root, node);
+      }
+    }
+    throw failure ?? new Error('the renderer was destroyed');
+  }
+
+  /** A published Font node. `size` is written before `uri`, or the firmware first loads the file at size 1. */
+  private fontNode(uri: string, size: number): any {
+    const node: any = createElement('font');
+    setProp(node, 'preUpdate', true);
+    setProp(node, 'size', size);
+    setProp(node, 'uri', uri);
+    insertNode(this.root, node);
+    return node;
+  }
+
+  /**
+   * The registered font for what a text node names: the family, then the
+   * nearest weight of it in the wanted style. Null for a family that is not
+   * registered (or whose files did not load), which is said once.
+   */
+  private resolve(name: string, weight: number | string | undefined, style: string): RegisteredFont | null {
+    const key = name + '|' + weight + '|' + style;
+    const cached = this.resolved.get(key);
+    if (cached !== undefined) return cached;
+    const [family, wanted] = named(name, weight);
+    const faces = this.families.get(family);
+    let best: RegisteredFont | null = null;
+    let bestDistance = Infinity;
+    if (faces !== undefined) {
+      for (const face of faces) {
+        if (face.failed) continue;
+        // Between two equally near weights the lighter wins below 500, the heavier above.
+        const delta = face.weight - wanted;
+        const distance =
+          Math.abs(delta) * 2 + (delta !== 0 && delta > 0 === wanted < 500 ? 1 : 0) + (face.style === style ? 0 : 2000);
+        if (distance < bestDistance) {
+          best = face;
+          bestDistance = distance;
+        }
+      }
+    }
+    if (best === null && family !== '' && !this.warned.has(family)) {
+      this.warned.add(family);
+      console.warn(
+        'ROKU_FONT family "' + family + '" ' + (faces !== undefined ? 'has no font that loaded' : 'is not registered') +
+          ': its text uses the system font. Register it with loadFonts([{ fontFamily, fontUrl }]).',
+      );
+    }
+    this.resolved.set(key, best);
+    return best;
+  }
+
+  /**
+   * The face a text node draws with, counted as one more use of it. Give it
+   * back with `release` when the node names another font or size, or goes.
+   */
+  acquire(family: string, weight: number | string | undefined, style: string | undefined, size: number): Face {
+    const wantedStyle = styleOf(style);
+    let font = this.resolve(family, weight, wantedStyle);
+    // The table is decoded when the font is first drawn with, not when it is registered.
+    while (font !== null && !(font.metrics instanceof FontMetrics)) {
+      try {
+        // One decode per table, however many families name the file.
+        let decoded = this.decoded.get(font.metrics);
+        if (decoded === undefined) {
+          decoded = FontMetrics.decode(font.metrics);
+          this.decoded.set(font.metrics, decoded);
+        }
+        font.metrics = decoded;
+      } catch (error) {
+        font.failed = true;
+        console.error('ROKU_FONT ' + font.family + ' ' + font.weight + ' (' + font.uri + '): ' + String((error as any)?.message ?? error));
+        this.resolved.clear();
+        font = this.resolve(family, weight, wantedStyle);
+      }
+    }
+    const pixels = Math.max(1, Math.round(size));
+    const uri = font !== null ? font.uri : named(family, weight)[1] >= 600 ? SYSTEM_BOLD_FONT : SYSTEM_FONT;
+    const key = uri + '@' + pixels;
+    let face = this.faces.get(key);
+    if (face === undefined) {
+      if (font === null) face = new SystemFace(key, this.fontNode(uri, pixels), this);
+      else face = new TableFace(key, (font.metrics as FontMetrics).at(pixels), () => this.fontNode(uri, pixels));
+      this.faces.set(key, face);
+    }
+    face.uses++;
+    return face;
+  }
+
+  /** One use less of `face`; its Font node goes with the last. */
+  release(face: Face) {
+    if (--face.uses > 0 || this.faces.get(face.key) !== face) return;
+    this.faces.delete(face.key);
+    if (face instanceof SystemFace) {
+      face.release();
+      tmTransaction.removeNode(this.root, face.node);
+    } else if ((face as TableFace).made !== null) tmTransaction.removeNode(this.root, (face as TableFace).made);
+  }
+
+  /** Ends every wait and forgets every font. Loads in flight reject. */
+  destroy() {
+    this.destroyed = true;
+    this.waits.forEach((wait) => wait.cancel());
+    this.waits.clear();
+    this.faces.forEach((face) => {
+      if (face instanceof SystemFace) face.release();
+    });
+    this.faces.clear();
+    this.families.clear();
+    this.resolved.clear();
+    this.loads.clear();
+    this.decoded.clear();
+  }
 }
