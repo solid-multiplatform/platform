@@ -23,6 +23,9 @@ jobs:
       - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      - name: Install the Roku example so its tsconfig resolves for type-aware lint
+        working-directory: examples/roku
+        run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - name: Parse every host, CLI and video module
         run: |
