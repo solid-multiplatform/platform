@@ -52,6 +52,7 @@ export async function runServicesProbe(form: 'phone' | 'tv'): Promise<void> {
   results.installed = installedServices();
   results.unavailable = (
     [
+      'appReview',
       'battery',
       'biometrics',
       'clipboard',
@@ -279,7 +280,6 @@ export async function runServicesProbe(form: 'phone' | 'tv'): Promise<void> {
     );
     return opened;
   });
-  // Last: C interop with Network.framework and SystemConfiguration.
   await check('connectivity', async () => {
     const port = await loadService('connectivity');
     const before = port.online();
@@ -291,6 +291,30 @@ export async function runServicesProbe(form: 'phone' | 'tv'): Promise<void> {
     expect(reported !== undefined, 'no path update within 5 s');
     return 'online ' + before + ', monitor ' + reported;
   });
+  await check('colorSchemeChange', async () => {
+    const port = peekService('colorScheme');
+    expect(port !== undefined, 'not synchronous');
+    const before = port!.current();
+    let changed: string | undefined;
+    const stop = port!.subscribe((scheme) => (changed = scheme));
+    // The smoke script flips the simulator's appearance once it sees this.
+    results.awaitingAppearance = true;
+    write();
+    for (let n = 0; n < 75 && changed === undefined; n++) await wait(200);
+    stop();
+    expect(changed !== undefined, 'no change reported after ' + before);
+    expect(changed !== before, 'reported ' + changed + ' again');
+    expect(port!.current() === changed, 'current() disagrees');
+    return before + ' -> ' + changed;
+  });
+  if (form === 'phone') {
+    // Last: the system may put its review prompt over the app.
+    await check('appReview', async () => {
+      const requested = await (await loadService('appReview')).request();
+      expect(requested === true, 'no scene to ask in');
+      return 'requested';
+    });
+  }
   results.done = true;
   write();
 }

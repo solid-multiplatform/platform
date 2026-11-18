@@ -2,7 +2,8 @@
 // scheme, lifecycle, connectivity, memory, keep-awake, external links, key
 // events, files, the media session and (with the host's delegate hook) deep
 // links; on iOS also clipboard, share sheet, haptics, battery, biometrics,
-// local notifications, location and (with its delegate hook) orientation.
+// local notifications, location, the store review prompt and (with its
+// delegate hook) orientation.
 //
 // Installing the map does no work. A lazy entry imports its module on first
 // use. `locale`, `colorScheme`, `memory`, `keyEvents`, `fileSystem`,
@@ -46,6 +47,7 @@ export interface AppleServiceOptions {
 
 /** The services iOS has and tvOS does not. `orientation` also needs its hook. */
 export const phoneOnlyServices = [
+  'appReview',
   'battery',
   'biometrics',
   'clipboard',
@@ -86,6 +88,7 @@ export function appleServices({
   if (form === 'tv') return shared;
   return {
     ...shared,
+    appReview: () => import('./app-review.js').then((m) => m.appReview()),
     battery: () => import('./battery.js').then((m) => m.battery()),
     biometrics: () => import('./biometrics.js').then((m) => m.biometrics()),
     clipboard: () => import('./clipboard.js').then((m) => m.clipboard()),

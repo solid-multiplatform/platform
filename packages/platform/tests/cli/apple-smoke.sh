@@ -78,7 +78,13 @@ for attempt in {1..90}; do
     fi
     SIMCTL_CHILD_SOLID_SERVICES_PROBE=1 xcrun simctl launch "$udid" "$bundle"
     linked=
-    for tick in {1..120}; do
+    themed=
+    for tick in {1..180}; do
+      if [[ -z "$themed" ]] && grep -q '"awaitingAppearance":true' "$report" 2>/dev/null; then
+        themed=1
+        if [[ "$(xcrun simctl ui "$udid" appearance 2>/dev/null)" == dark ]]; then next=light; else next=dark; fi
+        xcrun simctl ui "$udid" appearance "$next" || true
+      fi
       if [[ -z "$linked" ]] && grep -q '"awaitingLink":true' "$report" 2>/dev/null; then
         linked=1
         xcrun simctl openurl "$udid" 'solidprobe://services/probe?from=simctl' || true

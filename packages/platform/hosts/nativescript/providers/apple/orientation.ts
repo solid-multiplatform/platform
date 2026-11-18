@@ -1,4 +1,5 @@
 import type { OrientationPort } from '@solid-multiplatform/platform/device';
+import { windowScene } from './scene.js';
 
 /** The host's application-delegate hook: `captureAppleOrientation`. */
 export interface OrientationHook {
@@ -8,15 +9,6 @@ export interface OrientationHook {
 
 const UIInterfaceOrientationMaskPortrait = 2;
 const UIInterfaceOrientationMaskLandscape = 24;
-
-function windowScene(): UIWindowScene | undefined {
-  const scenes = UIApplication.sharedApplication.connectedScenes.allObjects;
-  for (let i = 0; i < scenes.count; i++) {
-    const scene = scenes.objectAtIndex(i);
-    if (scene instanceof UIWindowScene) return scene;
-  }
-  return undefined;
-}
 
 /**
  * iOS only, iOS 16 and later. The lock narrows what the application delegate

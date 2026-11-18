@@ -14,6 +14,7 @@ import { confine } from '../hosts/nativescript/providers/apple/paths.js';
 import { appleInfoPlistRequirements } from '../hosts/nativescript/providers/apple/plist.js';
 
 const lazyModules = [
+  'app-review',
   'battery',
   'biometrics',
   'clipboard',
@@ -58,6 +59,7 @@ describe('Apple service manifest', () => {
     const map = appleServices({ form: 'phone' });
     install(map);
     expect(Object.keys(map).sort()).toEqual([
+      'appReview',
       'battery',
       'biometrics',
       'clipboard',

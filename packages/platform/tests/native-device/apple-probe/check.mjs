@@ -8,6 +8,7 @@ console.log(JSON.stringify(results, null, 2));
 
 const tv = target === 'apple-tv';
 const phoneOnly = [
+  'appReview',
   'battery',
   'biometrics',
   'clipboard',
@@ -72,6 +73,18 @@ for (const name of probed) {
 }
 if (tv && phoneOnly.some((name) => name in results))
   failures.push('a phone-only service was probed on tvOS');
+// Needs the simulator to switch appearance on request, which is outside the
+// app: a miss is reported, and the change notification stays unverified.
+const unverified = [];
+if (!passed('colorSchemeChange')) {
+  unverified.push('colorSchemeChange');
+  console.log(
+    '::warning::colorScheme change UNVERIFIED on ' +
+      target +
+      ': ' +
+      results.colorSchemeChange,
+  );
+}
 
 if (failures.length) {
   console.error('Services probe failed on ' + target + ':');
@@ -79,3 +92,4 @@ if (failures.length) {
   process.exit(1);
 }
 console.log('Services probe passed on ' + target + ': ' + probed.join(', '));
+if (!unverified.length) console.log('Also verified: colorScheme change');
