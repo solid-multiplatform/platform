@@ -86,7 +86,8 @@ export function packageDesktop(root) {
     const out = path.join(dir, 'dist');
     mkdirSync(out, { recursive: true });
     const archive = path.join(out, name + '.tar.gz');
-    command('tar', ['-czf', archive + '.partial', '-C', scratch, name], root);
+    command('tar', ['-czf', 'distribution.tar.gz', name], scratch);
+    copy(path.join(scratch, 'distribution.tar.gz'), archive + '.partial');
     renameSync(archive + '.partial', archive);
     console.log(archive);
   } finally {

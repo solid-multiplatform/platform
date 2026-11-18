@@ -53,3 +53,8 @@ jobs:
           name: desktop-${{ runner.os }}-${{ runner.arch }}
           path: gallery-app/targets/desktop/dist/*.tar.gz
           if-no-files-found: error
+      - name: Verify native window pixels
+        run: |
+          cp tests/cli/desktop-frame-probe.mjs gallery-app/targets/desktop/work/
+          cd gallery-app/targets/desktop/work
+          node --import ./desktop-frame-probe.mjs run.mjs
