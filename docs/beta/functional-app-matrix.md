@@ -40,7 +40,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 | Flex row/column                             | Yoga/Flexbox, Flutter Row/Column                | S      | `src/core/flex*`, contract tests                                           | —     |
 | Grid                                        | CSS grid, Flutter GridView                      | S      | `Grid`, `VirtualGrid`                                                      | —     |
 | Absolute positioning and z-order            | CSS position/z-index                            | S      | `x/y/zIndex`, paint-order tests                                            | —     |
-| Min/max sizing, aspect ratio                | CSS min/max/aspect-ratio                        | P      | Check coverage in `contract-flex`; aspect ratio not first-class            | 1     |
+| Min/max sizing, aspect ratio                | CSS min/max/aspect-ratio                        | S      | min/max props + `aspectRatio` derives the missing dimension                | —     |
 | Padding/margin/borders                      | CSS box model                                   | S      | `borderBox`, contract tests                                                | —     |
 | Border radius                               | CSS radius, Flutter BorderRadius                | S      | `borderRadius` prop backed by rounded shaders; shader tests                | —     |
 | Clipping and overflow                       | CSS overflow, Flutter clipBehavior              | S      | Flex clipping/culling                                                      | —     |
@@ -99,7 +99,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 | Password masking and autofill | Android autofill, Apple Password AutoFill   | S      | `purpose`, password smoke tested                                     | —     |
 | Keyboard types and return key | RN keyboardType/returnKeyType               | S      | `EditorOptions.purpose`/`multiline`; native keyboard hints           | —     |
 | Validation and error messages | HTML constraint validation, Flutter Form    | S      | `createForm` touched validation and per-field errors                 | —     |
-| Focus traversal inside forms  | HTML tab order, Flutter FocusTraversal      | P      | Tab works globally; no form grouping                                 | 1     |
+| Focus traversal inside forms  | HTML tab order, Flutter FocusTraversal      | S      | `FocusGroup` + `createFocusTraversal`: Tab/Shift+Tab with wrapping   | —     |
 | Date/time picker              | RN community datetimepicker                 | S      | `DatePicker` calendar grid, month navigation, optional time steppers | —     |
 | Select/picker                 | RN Picker, Flutter Dropdown                 | S      | `Select` dropdown built on `Menu` with controlled value              | —     |
 | Search field                  | Flutter SearchBar                           | S      | `SearchField` native editor with `purpose: search`                   | —     |
@@ -322,7 +322,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 12. Implementation phases
 
-Progress: Phases 0–6 and 8 are implemented, including theme/capabilities/insets, keyboard/forms, modal/presentation primitives, tabs/guards/history/restoration, pointer drag/wheel/cursors, data/query/offline persistence, lists and a11y/i18n. Phase 7 media covers playback state/bookmarks, media sessions, fullscreen/PiP, thumbnails, audio and DRM reporting. Phase 5 services cover clipboard/share/haptics, files/pickers, geolocation, biometrics, notifications/jobs ports, keep-awake, orientation, system bars, updates and app review. Remaining work is platform delivery (signing/notarization and OTA installation) and deferred renderer/app primitives: aspect ratio, rich-text spans, SVG, form Tab grouping, gesture alternatives, and the optional contacts/sensors/maps integrations.
+Progress: Phases 0–6 and 8 are implemented, including theme/capabilities/insets, keyboard/forms, modal/presentation primitives, tabs/guards/history/restoration, pointer drag/wheel/cursors, data/query/offline persistence, lists and a11y/i18n. Phase 7 media covers playback state/bookmarks, media sessions, fullscreen/PiP, thumbnails, audio and DRM reporting. Phase 5 services cover clipboard/share/haptics, files/pickers, geolocation, biometrics, notifications/jobs ports, keep-awake, orientation, system bars, updates and app review. Remaining work is platform delivery (signing/notarization and OTA installation) and deferred renderer/app primitives: rich-text spans, SVG, pinch gestures, gesture alternatives, and the optional contacts/sensors/maps integrations.
 
 ### Phase 0 — Contracts and theme foundation
 

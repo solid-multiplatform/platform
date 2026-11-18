@@ -429,6 +429,7 @@ export interface ElementNode extends RendererNode, FocusNode {
   _animationQueueSettings?: AnimationSettings;
   _animationRunning?: boolean;
   _animationSettings?: AnimationSettings;
+  _aspectRatio?: number;
   _autofocus?: any;
   _containsFlexGrow?: boolean | null;
   _hasRenderedChildren?: boolean;
@@ -918,6 +919,7 @@ export class ElementNode {
     this._animationQueueSettings = undefined;
     this._animationRunning = undefined;
     this._animationSettings = undefined;
+    this._aspectRatio = undefined;
     this._autofocus = undefined;
     this._calcWidth = undefined;
     this._calcHeight = undefined;
@@ -1030,14 +1032,36 @@ export class ElementNode {
 
   set height(h: number) {
     this.h = h;
+    if (this._aspectRatio && !this.w) this.w = h * this._aspectRatio;
   }
 
   get width(): number {
     return this.maxWidth || this.w;
   }
 
+  /**
+   * Width/height ratio. When only one dimension is provided, the other is
+   * derived from it. Providing both overrides the ratio. Mirrors CSS
+   * `aspect-ratio` and Flutter's `AspectRatio`.
+   */
+  set aspectRatio(ratio: number | undefined) {
+    if (ratio !== undefined && (!Number.isFinite(ratio) || ratio <= 0)) {
+      return;
+    }
+    this._aspectRatio = ratio;
+    if (this._aspectRatio) {
+      if (this.w && !this.h) this.h = this.w / this._aspectRatio;
+      else if (this.h && !this.w) this.w = this.h * this._aspectRatio;
+    }
+  }
+
+  get aspectRatio(): number | undefined {
+    return this._aspectRatio;
+  }
+
   set width(w: number) {
     this.w = w;
+    if (this._aspectRatio && !this.h) this.h = w / this._aspectRatio;
   }
 
   set fontWeight(v) {
@@ -1757,6 +1781,11 @@ export class ElementNode {
     }
 
     const props = node.lng;
+    // Explicit dimensions live on the element until render; copy them before
+    // the missing-dimension fallback below so aspect-ratio-derived sizes and
+    // plain width/height agree with the renderer node.
+    if (this.w) props.w = this.w;
+    if (this.h) props.h = this.h;
     const parentWidth = parent.w || 0;
     const parentHeight = parent.h || 0;
 

@@ -21,11 +21,13 @@ type Listener = (event: KeyEventLike) => void;
 
 export interface TestKeyEvent extends KeyEventLike {
   preventDefault: v.Mock<() => void>;
+  shiftKey?: boolean;
 }
 
 export interface KeyOptions {
   keyCode?: number;
   repeat?: boolean;
+  shiftKey?: boolean;
 }
 
 /** A key-event host only one focus manager listens on. */
@@ -47,6 +49,7 @@ export class KeyTarget implements KeyEventTarget {
       key,
       keyCode: opts.keyCode ?? 0,
       repeat: opts.repeat ?? false,
+      shiftKey: opts.shiftKey ?? false,
       preventDefault: v.vi.fn<() => void>(),
     };
     for (const listener of this.listeners[type].slice()) listener(event);

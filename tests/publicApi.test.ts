@@ -282,7 +282,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   });
 
   v.test(
-    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 81 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 82 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
@@ -297,6 +297,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'Drawer',
         'FPSCounter',
         'FadeInOut',
+        'FocusGroup',
         'FocusStackProvider',
         'Grid',
         'Image',
