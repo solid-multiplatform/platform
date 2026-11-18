@@ -25,7 +25,10 @@ strip = true
 # nobody with a screen reader can use is not finished, and it costs nothing
 # at run time until an app describes its scene. It costs 2.6 MB of the
 # executable, most of it the D-Bus client.
-default = ["accessibility", "notifications"]
+default = ["accessibility", "notifications", "connectivity"]
+# Whether the machine is connected, from NetworkManager's signal on the
+# system bus. The same D-Bus client again.
+connectivity = ["dep:zbus", "dep:blocking"]
 # The desktop's notification service, over the session bus. It shares the
 # D-Bus client with accessibility, so beside it it costs little.
 notifications = ["dep:zbus", "dep:blocking"]

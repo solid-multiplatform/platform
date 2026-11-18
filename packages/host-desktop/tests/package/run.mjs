@@ -148,6 +148,7 @@ const environment = {
   XDG_CONFIG_HOME: path.join(home, 'config'),
   // Not the user's session: no portal, no input method, no notifications.
   DBUS_SESSION_BUS_ADDRESS: 'unix:path=/nonexistent/solid-desktop-test',
+  DBUS_SYSTEM_BUS_ADDRESS: 'unix:path=/nonexistent/solid-desktop-test',
 };
 delete environment.SOLID_DESKTOP_RUNTIME;
 // From a directory that is neither the package nor the build.

@@ -36,10 +36,18 @@ cpSync(path.join(platform, 'tests/webgl/fonts'), path.join(out, 'fonts'), {
   recursive: true,
 });
 
+const NO_BUS = {
+  DBUS_SESSION_BUS_ADDRESS: 'unix:path=/nonexistent/solid-desktop-test',
+  DBUS_SYSTEM_BUS_ADDRESS: 'unix:path=/nonexistent/solid-desktop-test',
+};
+
 function runDesktop(script) {
   const result = spawnSync(defaultRuntime, [script], {
     encoding: 'utf8',
     timeout: 60000,
+    // Not the user's session: the host asks the session and system buses
+    // which services they have, and SDL uses the session bus too.
+    env: { ...process.env, ...NO_BUS },
   });
   const line = result.stdout.split('\n').find((l) => l.startsWith('SCENE '));
   assert.ok(

@@ -118,6 +118,7 @@ Object.assign(environment, {
   LANG: 'fr_FR.UTF-8',
   PATH: `${bin}:${process.env.PATH}`,
   DBUS_SESSION_BUS_ADDRESS: 'unix:path=/nonexistent/solid-desktop-test',
+  DBUS_SYSTEM_BUS_ADDRESS: 'unix:path=/nonexistent/solid-desktop-test',
   SDL_FILE_DIALOG_DRIVER: 'zenity',
   SOLID_DESKTOP_TEST: '1',
 });

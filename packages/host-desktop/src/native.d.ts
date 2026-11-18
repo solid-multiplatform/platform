@@ -246,6 +246,18 @@ interface SolidNative {
       done: SolidDone<number>,
     ): void;
   };
+  /**
+   * NetworkManager on the system bus (native/src/network.rs); absent in a
+   * runtime built without it.
+   */
+  readonly network?: {
+    /** Whether NetworkManager is running: one question to the bus. */
+    available(): boolean;
+    /** Its state now (`NMState`): 70 is connected with the internet reachable. */
+    state(): number;
+    /** `callback(state)` on every change, from the first call on. */
+    watch(callback: (state: number) => void): void;
+  };
   /** Made-up input, when SOLID_DESKTOP_TEST is set: see native/src/testing.rs. */
   readonly test?: {
     key(

@@ -15,6 +15,8 @@ mod images;
 mod input;
 mod keys;
 mod napi;
+#[cfg(all(feature = "connectivity", target_os = "linux"))]
+mod network;
 #[cfg(all(feature = "notifications", target_os = "linux"))]
 mod notify;
 mod runtime;
@@ -61,6 +63,8 @@ unsafe fn diagnostics() -> ! {
     println!("accessibility {}", if accessibility { "at-spi" } else { "none" });
     let notifications = cfg!(all(feature = "notifications", target_os = "linux"));
     println!("notifications {}", if notifications { "dbus" } else { "none" });
+    let connectivity = cfg!(all(feature = "connectivity", target_os = "linux"));
+    println!("connectivity {}", if connectivity { "networkmanager" } else { "none" });
     exit(0);
 }
 
@@ -217,6 +221,8 @@ fn main() {
         http::install(env, host);
         #[cfg(all(feature = "notifications", target_os = "linux"))]
         notify::install(env, host);
+        #[cfg(all(feature = "connectivity", target_os = "linux"))]
+        network::install(env, host);
         if !window.is_null() {
             gl::install(env, host);
             window::install(env, host, window);

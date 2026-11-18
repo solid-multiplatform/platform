@@ -1,7 +1,8 @@
-// The test of the services that live on the session bus: notifications.
-// Starts a session bus of its own, runs app.ts in the runtime (without a
-// window) while a stand-in for the desktop's notification service is on
-// that bus, and again when nothing is: the service must then be absent.
+// The test of the services that live on a bus: notifications (the session
+// bus) and connectivity (NetworkManager on the system bus). Starts a bus of
+// its own, which stands in for both, and runs app.ts and network.ts in the
+// runtime (without a window) while a stand-in for each service is on that
+// bus, and when none is: the service must then be absent.
 //
 //   node tests/services/run.mjs
 //
@@ -48,6 +49,7 @@ if (
   skip("Python's GLib bindings (python3-gi) are not installed");
 }
 
+const NOWHERE = 'unix:path=/nonexistent/solid-desktop-test';
 // A short path: a socket's is limited to about a hundred bytes.
 const out = mkdtempSync(path.join(tmpdir(), 'solid-bus-'));
 const home = path.join(out, 'home');
@@ -74,6 +76,8 @@ const environment = {
   XDG_CACHE_HOME: path.join(home, 'cache'),
   XDG_CONFIG_HOME: path.join(home, 'config'),
   XDG_RUNTIME_DIR: home,
+  // Until the test's own bus stands in for it.
+  DBUS_SYSTEM_BUS_ADDRESS: NOWHERE,
 };
 delete environment.DBUS_SESSION_BUS_ADDRESS;
 
@@ -137,13 +141,14 @@ try {
     entry: path.join(here, 'app.ts'),
     outfile: path.join(out, 'services.js'),
   });
-  environment.DBUS_SESSION_BUS_ADDRESS = (
+  const bus = (
     await start('dbus-daemon', [
       `--config-file=${path.join(out, 'session.conf')}`,
       '--nofork',
       '--print-address',
     ])
   ).line;
+  environment.DBUS_SESSION_BUS_ADDRESS = bus;
 
   // A bus with nothing on it that shows notifications: no such service.
   const without = runApp(script);
@@ -189,15 +194,68 @@ try {
   );
 
   // No session bus at all, as in the host test's world: absent again.
-  environment.DBUS_SESSION_BUS_ADDRESS =
-    'unix:path=/nonexistent/solid-desktop-test';
+  environment.DBUS_SESSION_BUS_ADDRESS = NOWHERE;
   assert.equal(runApp(script).available, 'unavailable');
+
+  // Connectivity. The test's bus stands in for the system bus; with no
+  // NetworkManager on it the service is absent.
+  const network = await bundle({
+    entry: path.join(here, 'network.ts'),
+    outfile: path.join(out, 'network.js'),
+  });
+  environment.DBUS_SYSTEM_BUS_ADDRESS = bus;
+  const absent = spawnSync(defaultRuntime, ['--headless', network], {
+    env: environment,
+    encoding: 'utf8',
+    timeout: 30000,
+  });
+  assert.equal(absent.stdout + absent.stderr, 'ABSENT\n');
+  // With the stand-in for NetworkManager: connected; then it goes offline
+  // and comes back, and the app hears both from the signal alone.
+  const manager = (await start('python3', [path.join(here, 'network-stub.py')]))
+    .child;
+  const heard = [];
+  const app = spawn(defaultRuntime, ['--headless', network], {
+    env: environment,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  started.push(app);
+  let errors = '';
+  app.stderr.setEncoding('utf8').on('data', (chunk) => (errors += chunk));
+  let partial = '';
+  app.stdout.setEncoding('utf8').on('data', (chunk) => {
+    partial += chunk;
+    const lines = partial.split('\n');
+    partial = lines.pop();
+    for (const line of lines) {
+      heard.push(line);
+      // Each state the app reports is answered with the next change.
+      if (line === 'ONLINE true' || line === 'CHANGED false false') {
+        manager.kill('SIGUSR1');
+      }
+    }
+  });
+  const timer = setTimeout(() => app.kill('SIGKILL'), 30000);
+  const status = await new Promise((resolve) => app.on('close', resolve));
+  clearTimeout(timer);
+  assert.equal(status, 0, `${heard.join(' | ')}\n${errors}`);
+  assert.equal(errors, '', 'unexpected output on standard error');
+  assert.deepEqual(heard.slice(0, 3), [
+    'ONLINE true',
+    'CHANGED false false',
+    'CHANGED true true',
+  ]);
+  const idleWakeups = Number(/^IDLE (\d+)$/.exec(heard[3] ?? '')?.[1] ?? NaN);
+  assert.ok(idleWakeups <= 1, `the loop: ${heard[3]}`);
 
   console.log(
     `services: notifications absent without a notification service or a bus; with one, ${notified.length} shown through it, one replaced by id`,
   );
   console.log(
     `services: asking the bus took ${withService.installMs.toFixed(1)} ms of the start (${without.installMs.toFixed(1)} ms with no service); idle afterwards`,
+  );
+  console.log(
+    'services: connectivity absent without NetworkManager; with it, online, then offline and online again from its signal; idle afterwards',
   );
 } finally {
   await stopped();

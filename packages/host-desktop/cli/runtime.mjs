@@ -98,7 +98,7 @@ export function findRuntime() {
  * What a runtime says it is made of (`--diagnostics`).
  *
  * @param {string} runtime
- * @returns {{ version: string, target: string, sdl: string, sdlLinkage: 'static' | 'dynamic', videoDrivers: string[], accessibility: string, notifications: string }}
+ * @returns {{ version: string, target: string, sdl: string, sdlLinkage: 'static' | 'dynamic', videoDrivers: string[], accessibility: string, notifications: string, connectivity: string }}
  */
 export function runtimeDiagnostics(runtime) {
   const lines = Object.fromEntries(
@@ -120,5 +120,7 @@ export function runtimeDiagnostics(runtime) {
     accessibility: lines.accessibility?.[0] ?? 'none',
     // `dbus` where the desktop's notification service can be reached.
     notifications: lines.notifications?.[0] ?? 'none',
+    // `networkmanager` where the connectivity service can be there.
+    connectivity: lines.connectivity?.[0] ?? 'none',
   };
 }

@@ -44,7 +44,10 @@ jobs:
           # and xdotool for the tests; a session bus, the accessibility bus
           # with its registry, and Python's GLib bindings (the stand-in for
           # a notification service) for the tests on a bus of their own.
-          sudo apt-get install -y --no-install-recommends \
+          # Nothing may stop to ask: not a package's questions, and not the
+          # restart of services whose libraries were replaced.
+          sudo env DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 \
+            apt-get install -y --no-install-recommends \
             build-essential cmake ninja-build pkg-config python3 \
             libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev \
             libxi-dev libxss-dev libxtst-dev libxkbcommon-dev \
@@ -52,7 +55,9 @@ jobs:
             libegl1-mesa-dev libgles2-mesa-dev libgl1-mesa-dev libdrm-dev libgbm-dev \
             libdbus-1-dev libibus-1.0-dev libudev-dev \
             xvfb xauth xdotool openssl libgl1-mesa-dri libegl1 libgles2 \
-            dbus at-spi2-core python3-gi gir1.2-glib-2.0
+            at-spi2-core python3-gi gir1.2-glib-2.0
+          # The image has a session bus daemon; the tests need it.
+          command -v dbus-daemon busctl
 
       # The Hermes and SDL builds are saved as soon as they are made, not at
       # the end of the job: a later step that fails must not cost the next

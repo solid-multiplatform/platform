@@ -5,15 +5,16 @@
 // Provided: clipboard, openExternal, deviceInfo, battery, memory, keepAwake,
 // colorScheme, locale, keyEvents, lifecycle, settings, fileSystem,
 // filePicker, download, request, links (the link the app was opened with),
-// and notifications where the session bus has a notification service.
+// notifications where the session bus has a notification service, and
+// connectivity where NetworkManager is on the system bus.
 //
-// Not provided, so `unavailable`: connectivity (the system offers no event
-// for it through SDL, and watching would mean polling), secureStorage,
-// share, haptics, orientation, systemBars, appReview, push, jobs.
+// Not provided, so `unavailable`: secureStorage, share, haptics,
+// orientation, systemBars, appReview, push, jobs.
 //
-// One thing is asked when these are installed: whether the session bus has
-// a notification service, because whether `notifications` is there at all
-// depends on it. That is one question to the bus (under a millisecond on a
+// Two things are asked when these are installed, because whether those two
+// services are there at all depends on the answers: whether the session
+// bus has a notification service, and whether the system bus has
+// NetworkManager. Each is one question to a bus (under a millisecond on a
 // running desktop, nothing where there is no bus).
 //
 // On a browser some of these must be there before the user's gesture; here
@@ -21,6 +22,7 @@
 // the same, because several SDK functions (`deviceMemory`, `createI18n`,
 // `bindColorScheme`, `createShortcuts`) are synchronous.
 import type { ProviderMap } from '@solid-multiplatform/platform/services';
+import { connectivity, connectivityAvailable } from './connectivity.js';
 import {
   battery,
   clipboard,
@@ -64,6 +66,7 @@ export function desktopServices(app: DesktopApp): ProviderMap {
     ...(notificationsAvailable()
       ? { notifications: () => notifications(app.name ?? app.id) }
       : {}),
+    ...(connectivityAvailable() ? { connectivity } : {}),
     // These need the window.
     ...(__solid.window === undefined
       ? {}

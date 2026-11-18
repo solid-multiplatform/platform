@@ -112,6 +112,7 @@ Object.assign(environment, {
   XDG_CACHE_HOME: path.join(home, 'cache'),
   XDG_CONFIG_HOME: path.join(home, 'config'),
   XDG_RUNTIME_DIR: runtimeDirectory,
+  DBUS_SYSTEM_BUS_ADDRESS: 'unix:path=/nonexistent/solid-desktop-test',
   // Settings in memory: nothing of dconf is read or written.
   GSETTINGS_BACKEND: 'memory',
 });
