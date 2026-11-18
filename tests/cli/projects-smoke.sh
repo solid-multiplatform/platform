@@ -3,8 +3,19 @@ set -euo pipefail
 framework=$(pwd)
 scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
-node cli/main.mjs init "$scratch/smoke-app" --targets web,desktop,roku
+corepack pnpm pack --pack-destination "$scratch"
+tar -xzf "$scratch"/solid-multiplatform-platform-*.tgz -C "$scratch"
+node "$scratch/package/cli/main.mjs" init "$scratch/smoke-app" --targets web,desktop,roku
 cd "$scratch/smoke-app"
+node --input-type=module -e '
+  import assert from "node:assert/strict";
+  import {readFileSync} from "node:fs";
+  const manifest = path => JSON.parse(readFileSync(path));
+  const expected = manifest("targets/roku/package.json").packageManager;
+  assert.match(expected, /^pnpm@[\d.]+$/);
+  for (const file of ["package.json", "targets/web/package.json", "targets/desktop/package.json"])
+    assert.equal(manifest(file).packageManager, expected);
+'
 corepack pnpm install
 corepack pnpm platform plugin new greeting
 if corepack pnpm platform plugin new greeting; then exit 1; fi

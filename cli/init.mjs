@@ -119,6 +119,10 @@ export default rokuConfig({ title: ${JSON.stringify(json(path.join(root, 'solid-
 export function init(destination, selected) {
   const name = validateName(path.basename(destination));
   const meta = json(path.join(framework, 'package.json'));
+  // pnpm pack strips packageManager from the top-level release manifest.
+  const packageManager =
+    meta.packageManager ??
+    json(path.join(framework, 'examples/roku/package.json')).packageManager;
   if (!existsSync(path.join(framework, 'dist/src/index.js')))
     throw new Error(
       'Build the platform package before running init from a source checkout.',
@@ -147,7 +151,7 @@ export function init(destination, selected) {
       version: '0.1.0',
       private: true,
       type: 'module',
-      packageManager: meta.packageManager,
+      packageManager,
       scripts: {
         platform: 'solid-platform',
         check: 'solid-platform check',
@@ -208,7 +212,7 @@ export function init(destination, selected) {
         );
         writeJson(path.join(dest, 'package.json'), {
           name: 'desktop-host',
-          packageManager: meta.packageManager,
+          packageManager,
           solidDesktopWindow: true,
           dependencies: {
             ...dependencies,
@@ -233,7 +237,7 @@ export function init(destination, selected) {
           name: 'web-host',
           private: true,
           type: 'module',
-          packageManager: meta.packageManager,
+          packageManager,
           scripts: { build: 'vite build', dev: 'vite' },
           dependencies,
           devDependencies: {
