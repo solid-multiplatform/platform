@@ -82,6 +82,7 @@ A script that throws while it starts ends the process with status 1. Later error
 - `__solid.system`: the machine (`info`, `power`, `locales`) and `openURL`. `__solid.store` and `__solid.fs`: an app's settings file and its own directories, confined (`src/storage.rs`). `__solid.dialog`: the system's file dialogs. `__solid.http`: HTTP(S) requests on worker threads (`src/http.rs`).
 - `__solid.readFile`, `readText` and `decodeImage`: files and images, read and decoded on worker threads.
 - `__solid.a11y`: the scene's semantics for assistive technology (see "Accessibility").
+- `__solid.notifications`: the desktop's notification service on the session bus (`org.freedesktop.Notifications`): `available()` asks the bus whether anything provides it, which the host does once as it starts so that `notifications` is absent where nothing does; `show` makes the call on a worker thread. Titles and bodies only: what the user does with a notification is not reported, because nothing listens on the bus. The `notifications` cargo feature, on by default, Linux only; 0.3 MB beside accessibility, whose D-Bus client it shares.
 - `__solid.appDir`, `args`, `exit` and `stats` (the loop's counters, for tests). With `SOLID_DESKTOP_TEST` set, `__solid.test` puts made-up input on SDL's queue (`src/testing.rs`).
 
 `__solid` is the host module's interface, not an app's: apps use the platform's APIs, which `../src` implements over it (`desktopHost()`, the services, and the web-standard globals Hermes lacks).
@@ -123,6 +124,7 @@ Frames are paced by the buffer swap when it waits for the display, and by the cl
 - `src/input.rs`, `src/keys.rs`, `src/window.rs`: input, key names, the window and clipboard.
 - `src/system.rs`, `src/storage.rs`, `src/dialog.rs`, `src/http.rs`: what the services are made of.
 - `src/a11y.rs`: the scene's semantics for assistive technology.
+- `src/notify.rs`: notifications.
 - `src/testing.rs`: made-up input for tests.
 - `src/worker.rs`: the thread pools for work that must not run on the JavaScript thread (decodes; files; requests). Every thread blocks until it has work.
 - `src/gl/`: the GL context and binding. `table.rs` is the binding as one table, `bind.rs` the macro that generates code from it, `calls.rs` the calls that need more than argument conversion.
@@ -132,4 +134,4 @@ Frames are paced by the buffer swap when it waits for the display, and by the cl
 
 ## Not done yet
 
-`Intl` (Hermes has no backend for it on Linux at this commit; one over ICU4X is measured but not wired in), gamepads, a connectivity service, secure storage, notifications, tray and menus, accessibility on Windows and macOS, losing and recreating the GL context (`renderer.destroy()` leaves its GL objects until the process exits), an AppImage, packaging for Windows and macOS and builds for them, handing a link to an instance that is already running. HTTPS trusts Mozilla's roots compiled in, not the system's store. Response bodies are buffered whole; there are no streams.
+`Intl` (Hermes has no backend for it on Linux at this commit; one over ICU4X is measured but not wired in), gamepads, a connectivity service, secure storage, notifications' actions and notifications on Windows and macOS, tray and menus, accessibility on Windows and macOS, losing and recreating the GL context (`renderer.destroy()` leaves its GL objects until the process exits), an AppImage, packaging for Windows and macOS and builds for them, handing a link to an instance that is already running. HTTPS trusts Mozilla's roots compiled in, not the system's store. Response bodies are buffered whole; there are no streams.

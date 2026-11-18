@@ -98,7 +98,7 @@ export function findRuntime() {
  * What a runtime says it is made of (`--diagnostics`).
  *
  * @param {string} runtime
- * @returns {{ version: string, target: string, sdl: string, sdlLinkage: 'static' | 'dynamic', videoDrivers: string[], accessibility: string }}
+ * @returns {{ version: string, target: string, sdl: string, sdlLinkage: 'static' | 'dynamic', videoDrivers: string[], accessibility: string, notifications: string }}
  */
 export function runtimeDiagnostics(runtime) {
   const lines = Object.fromEntries(
@@ -118,5 +118,7 @@ export function runtimeDiagnostics(runtime) {
     videoDrivers: lines['video-drivers'] ?? [],
     // `at-spi` where the scene's semantics reach assistive technology.
     accessibility: lines.accessibility?.[0] ?? 'none',
+    // `dbus` where the desktop's notification service can be reached.
+    notifications: lines.notifications?.[0] ?? 'none',
   };
 }

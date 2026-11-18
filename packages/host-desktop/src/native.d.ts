@@ -230,6 +230,22 @@ interface SolidNative {
     /** Whether assistive technology has asked for the tree. */
     active(): boolean;
   };
+  /**
+   * The desktop's notification service on the session bus
+   * (native/src/notify.rs); absent in a runtime built without it.
+   */
+  readonly notifications?: {
+    /** Whether the session bus has the service: one question to the bus. */
+    available(): boolean;
+    /** `replaces` is the id of the notification to replace, or 0. */
+    show(
+      app: string,
+      title: string,
+      body: string,
+      replaces: number,
+      done: SolidDone<number>,
+    ): void;
+  };
   /** Made-up input, when SOLID_DESKTOP_TEST is set: see native/src/testing.rs. */
   readonly test?: {
     key(

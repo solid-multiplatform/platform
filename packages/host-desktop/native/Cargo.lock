@@ -1024,6 +1024,7 @@ dependencies = [
  "sdl3-sys",
  "unicode-segmentation",
  "ureq",
+ "zbus",
 ]
 
 [[package]]

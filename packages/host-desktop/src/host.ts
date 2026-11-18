@@ -114,6 +114,7 @@ export function launchDesktop(
   const removeServices = installServices(
     desktopServices({
       id: options.id ?? 'app',
+      name: options.title,
       version: options.version,
       keys: keys as unknown as EventTarget,
     }),

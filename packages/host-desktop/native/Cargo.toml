@@ -25,7 +25,10 @@ strip = true
 # nobody with a screen reader can use is not finished, and it costs nothing
 # at run time until an app describes its scene. It costs 2.6 MB of the
 # executable, most of it the D-Bus client.
-default = ["accessibility"]
+default = ["accessibility", "notifications"]
+# The desktop's notification service, over the session bus. It shares the
+# D-Bus client with accessibility, so beside it it costs little.
+notifications = ["dep:zbus", "dep:blocking"]
 # SDL compiled from source into the executable, for packaged apps: nothing of
 # SDL has to be installed where the app runs. Off by default because it adds
 # a CMake build of SDL to every build of the runtime.
@@ -60,6 +63,8 @@ accesskit_unix = { version = "0.24", optional = true }
 # half a second without work. tests/a11y/run.mjs fails when a thread keeps
 # waking, so it says when this pin can go.
 blocking = { version = "=1.6.2", optional = true }
+# The D-Bus client AccessKit's adapter brings, with its blocking calls too.
+zbus = { version = "5.19", optional = true, default-features = false, features = ["async-io", "blocking-api"] }
 # Decoders only, all in Rust: no encoders, no C libraries.
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
 # Where one user-perceived character ends and the next begins, for the caret

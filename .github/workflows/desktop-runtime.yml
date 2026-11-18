@@ -41,8 +41,9 @@ jobs:
           sudo apt-get update
           # A compiler and build tools; what SDL's X11, Wayland and D-Bus
           # support is built against; a virtual display, Mesa's software GL
-          # and xdotool for the tests; a session bus and the accessibility
-          # bus with its registry for the accessibility test.
+          # and xdotool for the tests; a session bus, the accessibility bus
+          # with its registry, and Python's GLib bindings (the stand-in for
+          # a notification service) for the tests on a bus of their own.
           sudo apt-get install -y --no-install-recommends \
             build-essential cmake ninja-build pkg-config python3 \
             libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev \
@@ -51,7 +52,7 @@ jobs:
             libegl1-mesa-dev libgles2-mesa-dev libgl1-mesa-dev libdrm-dev libgbm-dev \
             libdbus-1-dev libibus-1.0-dev libudev-dev \
             xvfb xauth xdotool openssl libgl1-mesa-dri libegl1 libgles2 \
-            dbus at-spi2-core
+            dbus at-spi2-core python3-gi gir1.2-glib-2.0
 
       # The Hermes and SDL builds are saved as soon as they are made, not at
       # the end of the job: a later step that fails must not cost the next
@@ -137,8 +138,9 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Test
         env:
-          # Here the accessibility test must run, not skip.
+          # Here the tests that need a bus of their own must run, not skip.
           SOLID_DESKTOP_REQUIRE_A11Y: 1
+          SOLID_DESKTOP_REQUIRE_DBUS: 1
         run: bash packages/host-desktop/tests/run.sh
 
       # The runtime that ships: SDL compiled in, so an app needs none

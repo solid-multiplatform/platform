@@ -117,12 +117,26 @@ Object.assign(environment, {
 });
 
 const started = [];
+const running = (child) => child.exitCode === null && child.signalCode === null;
 const stopAll = () => {
-  for (const child of started.reverse()) {
-    if (child.exitCode === null && child.signalCode === null) child.kill();
+  for (const child of [...started].reverse()) {
+    if (running(child)) child.kill();
   }
 };
 process.on('exit', stopAll);
+/** Stops what was started and waits until it is gone: a bus removes its
+ * socket as it ends, and the directory must not be removed under it. */
+const stopped = () =>
+  Promise.all(
+    started.map(
+      (child) =>
+        new Promise((resolve) => {
+          if (!running(child)) return resolve();
+          child.once('close', resolve);
+          child.kill();
+        }),
+    ),
+  );
 
 /** Starts the session bus; resolves with its address. */
 function startBus() {
@@ -493,6 +507,11 @@ try {
     `a11y: idle for ${idle.ms} ms with the tree being read: ${idle.wakeups} wakeup, ${idle.frames} frames, ${idle.presents} presents`,
   );
 } finally {
-  stopAll();
-  rmSync(out, { recursive: true, force: true });
+  await stopped();
+  // The accessibility bus was the launcher's child, not this test's, and
+  // may still be removing its socket.
+  for (let tries = 0; existsSync(out) && tries < 20; tries++) {
+    rmSync(out, { recursive: true, force: true });
+    if (existsSync(out)) await sleep(100);
+  }
 }

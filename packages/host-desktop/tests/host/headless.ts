@@ -46,7 +46,9 @@ async function run(): Promise<void> {
       typeof (globalThis as { document?: unknown }).document === 'undefined',
   );
 
-  // Installing providers does nothing: no service is made, nothing is read.
+  // Installing providers makes no service and reads nothing; it asks the
+  // session bus one thing (is there a notification service), and here
+  // there is no bus to ask.
   const before = __solid.stats().wakeups;
   const remove = installServices(
     desktopServices({ id: 'solid.test.headless', version: '9' }),

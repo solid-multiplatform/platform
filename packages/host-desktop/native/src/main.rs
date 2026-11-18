@@ -15,6 +15,8 @@ mod images;
 mod input;
 mod keys;
 mod napi;
+#[cfg(all(feature = "notifications", target_os = "linux"))]
+mod notify;
 mod runtime;
 mod storage;
 mod system;
@@ -57,6 +59,8 @@ unsafe fn diagnostics() -> ! {
     println!("video-drivers {}", drivers.join(" "));
     let accessibility = cfg!(all(feature = "accessibility", target_os = "linux"));
     println!("accessibility {}", if accessibility { "at-spi" } else { "none" });
+    let notifications = cfg!(all(feature = "notifications", target_os = "linux"));
+    println!("notifications {}", if notifications { "dbus" } else { "none" });
     exit(0);
 }
 
@@ -211,6 +215,8 @@ fn main() {
         system::install(env, host);
         storage::install(env, host);
         http::install(env, host);
+        #[cfg(all(feature = "notifications", target_os = "linux"))]
+        notify::install(env, host);
         if !window.is_null() {
             gl::install(env, host);
             window::install(env, host, window);
