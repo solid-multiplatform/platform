@@ -1,6 +1,7 @@
 import { Show, createEffect, onCleanup, type JSX } from 'solid-js';
 import type { ElementNode } from '../core/elementNode.js';
 import { activeElement } from '../core/activeElement.js';
+import { pushFocusTrap } from '../core/focusManager.js';
 import { viewport } from '../sdk/viewport.js';
 import { Portal } from './portal.jsx';
 
@@ -42,6 +43,7 @@ export function Modal(props: ModalProps): JSX.Element {
     typeof props.visible === 'function' ? props.visible() : props.visible;
   let dialog: ElementNode | undefined;
   let previous: ElementNode | undefined;
+  let releaseTrap: (() => void) | undefined;
   let open = false;
 
   createEffect(() => {
@@ -50,6 +52,7 @@ export function Modal(props: ModalProps): JSX.Element {
       open = true;
       previous = activeElement();
       queueMicrotask(() => {
+        if (dialog && !releaseTrap) releaseTrap = pushFocusTrap(dialog);
         const focus = props.initialFocus;
         const target =
           typeof focus === 'function' ? focus() : focus ?? dialog;
@@ -57,12 +60,16 @@ export function Modal(props: ModalProps): JSX.Element {
       });
     } else if (open) {
       open = false;
+      releaseTrap?.();
+      releaseTrap = undefined;
       previous?.setFocus();
       previous = undefined;
     }
   });
 
   onCleanup(() => {
+    releaseTrap?.();
+    releaseTrap = undefined;
     if (open) previous?.setFocus();
   });
 

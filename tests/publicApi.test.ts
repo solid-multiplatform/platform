@@ -147,11 +147,12 @@ v.describe('Exports: runtime export names of every entry point', () => {
   });
 
   v.test(
-    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 69 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 73 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
         'ALPHA_NONE',
+        'Alert',
         'Announcer',
         'BorderBoxStyle',
         'Column',
@@ -165,13 +166,16 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'LazyRow',
         'Marquee',
         'MarqueeText',
+        'Menu',
         'Modal',
+        'Popover',
         'Portal',
         'Row',
         'SafeArea',
         'Sheet',
         'Suspense',
         'Toast',
+        'Tooltip',
         'VirtualColumn',
         'VirtualGrid',
         'VirtualRow',
@@ -284,12 +288,14 @@ v.describe('Exports: runtime export names of every entry point', () => {
   );
 
   v.test(
-    '@solid-multiplatform/platform/focusManager (src/core/focusManager.ts): 8 names',
+    '@solid-multiplatform/platform/focusManager (src/core/focusManager.ts): 10 names',
     () => {
       v.expect(names(focusManager)).toEqual([
+        'currentFocusTrap',
         'focusPath',
         'getFocusHistory',
         'printFocusHistory',
+        'pushFocusTrap',
         'releaseKeySuppression',
         'setActiveElementCore',
         'setFocusPath',

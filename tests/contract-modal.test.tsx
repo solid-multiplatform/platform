@@ -1,7 +1,14 @@
 import * as v from 'vitest';
 import { createSignal } from 'solid-js';
 import * as lng from '@solid-multiplatform/platform';
-import { Modal, Toast } from '@solid-multiplatform/platform/primitives';
+import {
+  Alert,
+  Menu,
+  Modal,
+  Popover,
+  Toast,
+  Tooltip,
+} from '@solid-multiplatform/platform/primitives';
 import { useFocusManager } from '@solid-multiplatform/platform/focusManager';
 import { renderer, waitForUpdate } from './setup.js';
 
@@ -44,6 +51,11 @@ v.describe('Modal', () => {
     await flush();
     v.expect(lng.activeElement()).toBe(panel);
 
+    // The trap rejects focus on elements outside the dialog.
+    trigger.setFocus();
+    await flush();
+    v.expect(lng.activeElement()).toBe(panel);
+
     setOpen(false);
     await waitForUpdate();
     await flush();
@@ -73,4 +85,29 @@ v.describe('Toast', () => {
     v.expect(open()).toBe(false);
     dispose();
   });
+});
+
+v.describe('overlay primitives', () => {
+  v.it(
+    'mounts Alert, Popover, Menu and Tooltip without a focus trap leak',
+    async () => {
+      const anchor = { x: 40, y: 40, width: 120, height: 40 };
+      const dispose = renderer.render(() => (
+        <>
+          <Alert visible title="Delete?" message="This cannot be undone" />
+          <Popover visible anchor={anchor} label="Filters">
+            <view width={100} height={40} />
+          </Popover>
+          <Menu
+            visible
+            anchor={anchor}
+            items={[{ label: 'One' }, { label: 'Two', disabled: true }]}
+          />
+          <Tooltip visible anchor={anchor} label="Hint" />
+        </>
+      ));
+      await waitForUpdate();
+      dispose();
+    },
+  );
 });

@@ -39,3 +39,7 @@ export type * from './types.js';
 export type { KeyHandler } from '../core/focusManager.js';
 export type { SpeechType } from './announcer/speech.js';
 export * from './Sheet.jsx';
+export * from './Alert.jsx';
+export * from './Popover.jsx';
+export * from './Menu.jsx';
+export * from './Tooltip.jsx';

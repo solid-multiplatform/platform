@@ -229,7 +229,39 @@ export const printFocusHistory = (count: number): void => {
  * a custom `Config.setActiveElement` (wired to a setter) from recursing back
  * through the focus-path logic.
  */
+/**
+ * Modal-style focus containment. The innermost trap wins. Elements outside
+ * the trap cannot become active until it is released, so a dialog keeps
+ * directional navigation and programmatic focus inside its panel.
+ */
+const focusTraps: ElementNode[] = [];
+
+/** Push a focus trap. The returned function removes it. */
+export function pushFocusTrap(root: ElementNode): () => void {
+  focusTraps.push(root);
+  return () => {
+    const index = focusTraps.lastIndexOf(root);
+    if (index >= 0) focusTraps.splice(index, 1);
+  };
+}
+
+/** The innermost active focus trap, if any. */
+export function currentFocusTrap(): ElementNode | undefined {
+  return focusTraps[focusTraps.length - 1];
+}
+
+const insideFocusTrap = (elm: ElementNode, root: ElementNode): boolean => {
+  let node: ElementNode | undefined = elm;
+  while (node) {
+    if (node === root) return true;
+    node = node.parent;
+  }
+  return false;
+};
+
 export const setActiveElementCore = (elm: ElementNode) => {
+  const trap = currentFocusTrap();
+  if (trap && !insideFocusTrap(elm, trap)) return;
   const prev = activeElement();
   if (elm === prev) return;
   updateFocusPath(elm, prev);
