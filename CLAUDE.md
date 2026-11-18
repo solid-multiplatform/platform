@@ -52,7 +52,7 @@ Type-aware lint needs `packages/platform/examples/roku` installed (`corepack pnp
 ## How things fit
 
 - `packages/platform/src/render.ts` + `solidOpts.ts`: Solid universal renderer over `ElementNode`.
-- `src/core/elementNode.ts`: forwards props to the backend node, runs flex layout (`flexLayout.ts`; `flex.ts` is being removed), states, transitions.
+- `src/core/elementNode.ts`: forwards props to the backend node, runs flex layout (`flexLayout.ts`), states, transitions.
 - `src/core/focusManager.ts`: key handling and the focus path; takes a key event target.
 - Unit tests run against a DOM renderer in jsdom (`SOLIDTV_DOM_RENDERING` define in `vitest.config.ts`); each test imports `tests/setup.ts` itself. WebGL, Canvas and the Roku backend are covered by `tests/webgl` and the renderer's own tests.
 - The `@solidtv/source` import condition resolves package subpaths to TypeScript sources in tests and dev.

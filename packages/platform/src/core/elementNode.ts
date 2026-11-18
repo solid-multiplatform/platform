@@ -16,12 +16,7 @@ import {
   type DollarString,
 } from './intrinsicTypes.js';
 import States, { type NodeStates } from './states.js';
-import calculateFlexOld from './flex.js';
-import calculateFlexNew from './flexLayout.js';
-
-const calculateFlex = import.meta.env?.VITE_USE_NEW_FLEX
-  ? calculateFlexNew
-  : calculateFlexOld;
+import calculateFlex from './flexLayout.js';
 import {
   log,
   isArray,
@@ -432,6 +427,9 @@ export interface ElementNode extends RendererNode, FocusNode {
   _aspectRatio?: number;
   _autofocus?: any;
   _containsFlexGrow?: boolean | null;
+  /** Main-axis size flex grow/shrink last wrote to this child, and its own size before that. */
+  _flexSized?: number;
+  _flexBase?: number;
   _hasRenderedChildren?: boolean;
   _effects?: Record<string, any>;
   /** The props of a shader convertToShader made, kept to swap its type. */
@@ -1859,12 +1857,12 @@ export class ElementNode {
 
         if (!textProps.maxWidth) {
           textProps.maxWidth =
-            parentWidth - textProps.x! - (textProps.marginRight || 0);
+            parentWidth - textProps.x! - (node.marginRight || 0);
         }
 
         if (textProps.contain === 'both' && !textProps.maxHeight) {
           textProps.maxHeight =
-            parentHeight - textProps.y! - (textProps.marginBottom || 0);
+            parentHeight - textProps.y! - (node.marginBottom || 0);
         } else if (textProps.maxLines === 1) {
           textProps.maxHeight =
             textProps.maxHeight || textProps.lineHeight || textProps.fontSize;

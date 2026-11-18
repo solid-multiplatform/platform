@@ -2,8 +2,7 @@
 //
 // These pin today's behaviour (1.6.4) through public node props and the
 // public `states` API only. Where today's behaviour is odd it is pinned anyway
-// and the comment says so; where it looks like a genuine bug the
-// correct-behaviour test is an `it.skip` marked `// BUG:`.
+// and the comment says so.
 //
 // vitest runs with `isolate: false`: Config and focus state are shared across
 // files in a worker, so every test disposes its render and restores Config.
@@ -329,12 +328,7 @@ v.describe('contract: state keys with and without $', () => {
     },
   );
 
-  // BUG: toggle("focus") while "$focus" is on does nothing. toggle() asks
-  // has("focus") (true: has() accepts the bare name), then calls
-  // remove("focus"), which is strict and finds nothing to remove
-  // (src/core/states.ts:60-61 in toggle, :94 in remove). A toggle must
-  // change the state.
-  v.it.skip('toggle("focus") while "$focus" is on turns it off', () => {
+  v.it('toggle("focus") while "$focus" is on turns it off', () => {
     let node!: lng.ElementNode;
     const dispose = renderer.render(() => (
       <view ref={node} style={{ color: RED, $focus: { color: BLUE } }} />

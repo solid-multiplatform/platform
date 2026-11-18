@@ -132,24 +132,7 @@ describe('contract: text props reach the renderer node (el.lng)', () => {
     dispose();
   });
 
-  it('contain "width" without a width: maxWidth = parent width - x (marginRight is ignored today)', () => {
-    let t!: lng.ElementNode;
-    const dispose = renderer.render(() => (
-      <view width={800} height={600}>
-        <text ref={t} contain="width" x={100} marginRight={40}>
-          B
-        </text>
-      </view>
-    ));
-    expect(raw(t).maxWidth).toBe(700);
-    expect(raw(t).maxLines).toBe(99);
-    dispose();
-  });
-
-  // BUG: src/core/elementNode.ts:1612 (and :1617 for marginBottom) reads
-  // marginRight from the renderer props bag, where it is never stored (margins
-  // live on the ElementNode), so the subtraction is always 0.
-  it.skip('BUG: contain "width" without a width subtracts marginRight from maxWidth', () => {
+  it('contain "width" without a width: maxWidth = parent width - x - marginRight', () => {
     let t!: lng.ElementNode;
     const dispose = renderer.render(() => (
       <view width={800} height={600}>
@@ -159,6 +142,7 @@ describe('contract: text props reach the renderer node (el.lng)', () => {
       </view>
     ));
     expect(raw(t).maxWidth).toBe(660);
+    expect(raw(t).maxLines).toBe(99);
     dispose();
   });
 
@@ -750,7 +734,7 @@ describe('contract: text in a flex container (DOM renderer)', () => {
     dispose();
   });
 
-  it('flexGrow next to a text (docs example): the grow item takes the rest; it never shrinks back when the text grows', async () => {
+  it('flexGrow next to a text (docs example): the grow item takes the rest and gives space back when the text grows', async () => {
     mockTextMeasure();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const [label, setLabel] = s.createSignal('Flex Grow');
@@ -769,13 +753,12 @@ describe('contract: text in a flex container (DOM renderer)', () => {
     expect(grow.width).toBe(490);
     expect(row.width).toBe(600);
 
-    // Today the grown width is the item's base on the next pass, so it keeps
-    // 490 and the row overflows (200 + 490 = 690 > 600).
+    // The grow item gives space back: 600 - 180 - 20 = 400.
     setLabel('Flex Grow Longer!!');
     await waitForUpdate();
     expect(t.width).toBe(180);
     expect(grow.x).toBe(200);
-    expect(grow.width).toBe(490);
+    expect(grow.width).toBe(400);
 
     // A shorter text lets it grow again.
     setLabel('Flex');
@@ -783,28 +766,6 @@ describe('contract: text in a flex container (DOM renderer)', () => {
     expect(grow.x).toBe(60);
     expect(grow.width).toBe(540);
     expect(warn).not.toHaveBeenCalled();
-    dispose();
-  });
-
-  // BUG: flexGrow should be computed from the item's own size each pass, so
-  // the grow item shrinks to 600 - 180 - 20 = 400 when the text grows.
-  // flex.ts:146 / flexLayout.ts:199 add the free space to the current
-  // (already grown) width.
-  it.skip('BUG: a flexGrow item shrinks back when a text sibling grows', async () => {
-    mockTextMeasure();
-    const [label, setLabel] = s.createSignal('Flex Grow');
-    let grow!: lng.ElementNode;
-    const dispose = renderer.render(() => (
-      <view width={600} display="flex" gap={20} height={42}>
-        <text>{label()}</text>
-        <view ref={grow} flexGrow={1} height={4} />
-      </view>
-    ));
-    await waitForUpdate();
-    setLabel('Flex Grow Longer!!');
-    await waitForUpdate();
-    expect(grow.x).toBe(200);
-    expect(grow.width).toBe(400);
     dispose();
   });
 });

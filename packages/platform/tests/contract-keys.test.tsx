@@ -603,38 +603,8 @@ v.describe('contract: hold', () => {
     },
   );
 
-  // CONTRACT GAP: on<Name>Hold and the { userKeyHoldMap, holdThreshold }
-  // options were part of the key contract until 1.5.1 removed them (1.6.4
-  // has neither); useHold is the replacement. This is the pre-1.5.1
-  // behaviour (78f5fde^:src/core/focusManager.ts, handleKeyEvents): a
-  // hold-mapped key-down is delayed; past holdThreshold on<Name>Hold fires and
-  // on<Key> does not; a release before it fires on<Key> on key-up. Unskip,
-  // and delete the "not dispatched" test above, if hold maps come back.
-  v.it.skip(
-    'on<Name>Hold fires once a key is held past holdThreshold; a quicker release is an on<Key> tap',
-    async () => {
-      const r = recorder();
-      const { down, up, dispose } = await mountLegacy({
-        id: 'legacy',
-        onEnter: r.handler('onEnter'),
-        onEnterHold: r.handler('onEnterHold'),
-      });
-      v.vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-      down('Enter', 13);
-      v.vi.advanceTimersByTime(999);
-      v.expect(r.order()).toEqual([]);
-      v.vi.advanceTimersByTime(1);
-      v.expect(r.order()).toEqual(['legacy.onEnterHold']);
-      up('Enter', 13);
-      r.clear();
-
-      down('Enter', 13);
-      v.vi.advanceTimersByTime(100);
-      up('Enter', 13);
-      v.expect(r.order()).toEqual(['legacy.onEnter']);
-      dispose();
-    },
-  );
+  // on<Name>Hold and the { userKeyHoldMap, holdThreshold } options were removed
+  // in 1.5.1; useHold is the replacement.
 
   async function mountUseHold() {
     const r = recorder();
