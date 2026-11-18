@@ -10,6 +10,7 @@ import {
   json,
   project,
   targets,
+  template,
   validateName,
   write,
   writeJson,
@@ -68,9 +69,10 @@ function android(root, work, plugins, target) {
     return `include ':plugin-${name}'\nproject(':plugin-${name}').projectDir = new File(settingsDir, '${relative}')`;
   });
   write(path.join(work, 'plugins.settings.gradle'), modules.join('\n') + '\n');
-  const dependencies = plugins.map(
-    ({ name }) => `    implementation project(':plugin-${name}')`,
-  );
+  const pluginPaths = plugins.map(({ name }) => `':plugin-${name}'`);
+  const dependencies = [
+    '    solidPluginPaths.each { implementation project(it) }',
+  ];
   const host = json(path.join(root, 'targets', target, 'package.json'));
   if (host.dependencies?.['@solid-multiplatform/video']) {
     // Match the Media3 engine supplied by the Android canvas-media plugin.
@@ -81,7 +83,9 @@ function android(root, work, plugins, target) {
   }
   write(
     path.join(work, 'plugins.app.gradle'),
-    `dependencies {\n${dependencies.join('\n')}\n}\n` +
+    `def solidPluginPaths = [${pluginPaths.join(', ')}]\n` +
+      `dependencies {\n${dependencies.join('\n')}\n}\n` +
+      template('android/plugin-metadata.gradle', {}) +
       (plugins.some((p) => p.androidKind === 'sidecar')
         ? 'android.packaging.jniLibs.useLegacyPackaging = true\n'
         : ''),
@@ -172,19 +176,20 @@ function buildTarget(root, target, dev, legacy) {
   write(
     path.join(work, 'main.ts'),
     `${target === 'web' ? "import { browserSemantics } from '@solid-multiplatform/platform/semantics'; import { bindBrowserViewport } from '@solid-multiplatform/platform/viewport/web'; import {createInputScope,bindPointerEvents} from '@solid-multiplatform/platform/input';" : ''}
-${browserTVs.includes(target) ? "import { bindBrowserTV } from '@solid-multiplatform/platform/browser-tv/input';" : ''}
+${browserTVs.includes(target) ? "import { bindBrowserTV, bindTVViewport } from '@solid-multiplatform/platform/browser-tv/input';" : ''}
 ${legacy ? "import {useCanvas} from '@solid-multiplatform/platform/browser-tv/canvas'; useCanvas();" : ''}
 import { mount as start } from './src/app';
 import { attachPlugins } from '@solid-multiplatform/platform/plugins';
 import { plugins } from './plugins.mjs';
 export function mount(host = { target: '${target}' }) {
   ${target === 'web' ? "const el=document.getElementById('app');const stopViewport=bindBrowserViewport(el);host.semantics=browserSemantics(el); const input=host.input=createInputScope();const stopPointer=bindPointerEvents(el,input,(x,y)=>{const r=el.getBoundingClientRect();return {x:x-r.left,y:y-r.top};});" : ''}
-  ${browserTVs.includes(target) ? "const tv=bindBrowserTV(host.target,document.getElementById('app'));host.input=tv.input;" : ''}
+  ${browserTVs.includes(target) ? "const el=document.getElementById('app'); const display=bindTVViewport(el); const tv=bindBrowserTV(host.target,el,display.point);host.input=tv.input;" : ''}
   const detach = attachPlugins(plugins, host);
   try {
     const dispose = start(plugins, ${fonts}, host.input, host);
-    return () => { try { dispose?.(); } finally { detach(); ${target === 'web' ? 'stopPointer(); input.dispose(); host.semantics.dispose();stopViewport();' : browserTVs.includes(target) ? 'tv.dispose();' : ''} } };
-  } catch (error) { detach(); ${target === 'web' ? 'stopPointer(); input.dispose(); host.semantics.dispose();stopViewport();' : browserTVs.includes(target) ? 'tv.dispose();' : ''} throw error; }
+    ${browserTVs.includes(target) ? 'display.attach();' : ''}
+    return () => { try { dispose?.(); } finally { detach(); ${target === 'web' ? 'stopPointer(); input.dispose(); host.semantics.dispose();stopViewport();' : browserTVs.includes(target) ? 'tv.dispose();display.dispose();' : ''} } };
+  } catch (error) { detach(); ${target === 'web' ? 'stopPointer(); input.dispose(); host.semantics.dispose();stopViewport();' : browserTVs.includes(target) ? 'tv.dispose();display.dispose();' : ''} throw error; }
 }
 ` + (browser ? 'mount();\n' : ''),
   );

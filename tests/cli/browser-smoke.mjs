@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
@@ -39,6 +40,62 @@ try {
   page.on('pageerror', (error) => console.error(error));
   await page.goto('http://127.0.0.1:' + server.address().port);
   await page.waitForSelector('canvas');
+  if (process.argv.includes('--tv')) {
+    const cdp = await page.context().newCDPSession(page);
+    for (const [width, height, dpr] of [
+      [1920, 1080, 1],
+      [1280, 720, 1],
+      [960, 720, 1],
+      [960, 720, 2],
+    ]) {
+      await cdp.send('Emulation.setDeviceMetricsOverride', {
+        width,
+        height,
+        deviceScaleFactor: dpr,
+        mobile: false,
+      });
+      const scale = Math.min(width / 1920, height / 1080);
+      const h = Math.round(scale * 1080),
+        w = Math.round(scale * 1920);
+      const top = (height - h) / 2,
+        left = (width - w) / 2;
+      await page.waitForFunction(
+        ({ w, h, left, top, dpr }) => {
+          const canvas = document.querySelector('canvas');
+          const rect = canvas.getBoundingClientRect();
+          return (
+            rect.width === w &&
+            rect.height === h &&
+            rect.left === left &&
+            rect.top === top &&
+            canvas.width === w * dpr &&
+            canvas.height === h * dpr
+          );
+        },
+        { w, h, left, top, dpr },
+        { timeout: 4000 },
+      );
+      await page.evaluate(
+        () => delete document.documentElement.dataset.pluginResult,
+      );
+      if (top) {
+        await page.mouse.click(160 * scale + left, top / 2);
+        assert.equal(
+          await page.locator('html').getAttribute('data-plugin-result'),
+          null,
+        );
+      }
+      await page.mouse.click(160 * scale + left, 270 * scale + top);
+      await page.waitForFunction(
+        () => document.documentElement.dataset.pluginResult === 'greeting',
+        undefined,
+        { timeout: 3000 },
+      );
+    }
+  }
+  await page.evaluate(
+    () => delete document.documentElement.dataset.pluginResult,
+  );
   // Focus is assigned after the renderer's first update.
   for (let attempt = 0; attempt < 30; attempt++) {
     await page.keyboard.press('Enter');

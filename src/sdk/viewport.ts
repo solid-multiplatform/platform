@@ -39,7 +39,10 @@ const [viewport, publish] = createSignal<Viewport>({
 export { viewport };
 
 /** Called by host layout events, never from the frame loop. Sizes use logical units. */
-export function updateViewport(next: Geometry) {
+export function updateViewport(
+  next: Geometry,
+  scene: ReturnType<typeof getRenderer> | null = getRenderer(),
+) {
   if (
     ![next.width, next.height, next.scale].every(
       (n) => Number.isFinite(n) && n > 0,
@@ -63,7 +66,6 @@ export function updateViewport(next: Geometry) {
     resizable: true,
   });
   if (resized) {
-    const scene = getRenderer();
     if (scene && 'resize' in scene && typeof scene.resize === 'function')
       scene.resize(next.width, next.height, next.scale);
   }

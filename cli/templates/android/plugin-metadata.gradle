@@ -1,0 +1,18 @@
+// NativeScript scans these classes when its bridge metadata task runs.
+// Declare local libraries as inputs so incremental builds see new and edited commands.
+tasks.matching { it.name == 'buildMetadata' }.configureEach { metadata ->
+    def variant = project.ext.selectedBuildType
+    metadata.inputs.property('solidPluginPaths', solidPluginPaths)
+    solidPluginPaths.each { path ->
+        def library = project(path)
+        def compilers = library.tasks.matching {
+            it.name in ["compile${variant.capitalize()}Kotlin", "compile${variant.capitalize()}JavaWithJavac"]
+        }
+        metadata.dependsOn(compilers)
+        ["tmp/kotlin-classes/${variant}", "intermediates/javac/${variant}"].each { folder ->
+            metadata.inputs.files(library.fileTree(library.layout.buildDirectory.dir(folder)) {
+                include '**/*.class'
+            })
+        }
+    }
+}

@@ -14,20 +14,23 @@ const remoteKeys = {
   413: 'MediaStop',
   10252: 'MediaPlayPause',
 };
-export function bindBrowserTV(target, root) {
+export { bindTVViewport } from './viewport.mjs';
+export function bindBrowserTV(target, root, toScene) {
   const scope = createInputScope();
   const release = [];
   const on = (el, type, fn, opts) => {
     el.addEventListener(type, fn, opts);
     release.push(() => el.removeEventListener(type, fn, opts));
   };
-  const point = (e) => {
-    const box = root.getBoundingClientRect();
-    return {
-      x: ((e.clientX - box.left) * 1920) / box.width,
-      y: ((e.clientY - box.top) * 1080) / box.height,
-    };
-  };
+  const point =
+    toScene ??
+    ((e) => {
+      const box = root.getBoundingClientRect();
+      return {
+        x: ((e.clientX - box.left) * 1920) / box.width,
+        y: ((e.clientY - box.top) * 1080) / box.height,
+      };
+    });
   on(root, 'mousedown', (e) => {
     if (e.button === 0) scope.down(1, point(e));
   });

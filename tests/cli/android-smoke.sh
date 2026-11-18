@@ -7,6 +7,8 @@ trap 'rm -rf "$scratch"' EXIT
 node cli/main.mjs init "$scratch/plugin-probe" --targets android-tv
 cd "$scratch/plugin-probe"
 corepack pnpm install
+# Users can add native modules to an application that has already been built.
+corepack pnpm build android-tv
 for kind in kotlin jni service sidecar; do
   corepack pnpm platform plugin new "check-$kind" --android-kind "$kind"
 done
@@ -30,10 +32,26 @@ apk=targets/android-tv/platforms/android/app/build/outputs/apk/debug/app-debug.a
 python3 - "$apk" <<'PY'
 import sys,zipfile
 with zipfile.ZipFile(sys.argv[1]) as apk:
+    names = apk.read('assets/metadata/treeStringsStream.dat')
+    assert b'pcheck_kotlin' in names and b'pcheck_jni' in names
     for cpu in ('armeabi-v7a','arm64-v8a','x86_64'):
         for lib in ('libsolidcheck_sidecar.so','libsolidcheck_jni.so'):
             assert apk.read(f'lib/{cpu}/{lib}')[:4] == b'\x7fELF'
 print("Packaged JNI and executable plugins for all three Android ABIs")
+PY
+python3 - <<'PY'
+from pathlib import Path
+module = Path('plugins/check-kotlin/android-tv')
+command = next(module.glob('src/main/java/**/Commands.kt'))
+command.write_text(command.read_text().replace('fun run()', 'fun editedPluginCommand()'))
+binding = module / 'index.mjs'
+binding.write_text(binding.read_text().replace('Commands.run()', 'Commands.editedPluginCommand()'))
+PY
+corepack pnpm build android-tv
+python3 - "$apk" <<'PY'
+import sys, zipfile
+with zipfile.ZipFile(sys.argv[1]) as apk:
+    assert b'editedPluginCommand' in apk.read('assets/metadata/treeStringsStream.dat')
 PY
 if [[ -z "$serial" ]]; then exit; fi
 if [[ "$serial" != emulator-* ]]; then echo 'Expected a test emulator serial' >&2; exit 2; fi

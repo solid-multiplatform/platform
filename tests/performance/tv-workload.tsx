@@ -94,8 +94,26 @@ export function mount(_plugins, fontRoot) {
     </view>
   ));
   // Advance only on navigation ticks. The renderer interpolates the rail between ticks.
+  const documents = knownFolders.documents().path;
+  const request = documents + '/gallery-audit';
+  const auditId = File.exists(request)
+    ? File.fromPath(request).readTextSync().trim()
+    : '';
+  const audit = /^[a-f0-9]{32}$/.test(auditId)
+    ? {
+        checkpoint: File.fromPath(documents + '/gallery-checkpoint-' + auditId),
+        acknowledged: File.fromPath(documents + '/gallery-ack-' + auditId),
+      }
+    : null;
   let count = 0;
   const timer = setInterval(() => {
+    // In the separate pixel audit, hold the scene still for the external screen capture.
+    if (
+      audit &&
+      (count >= 64 ||
+        (count && audit.acknowledged.readTextSync() !== String(count - 1)))
+    )
+      return;
     if (count && count % 32 === 0) setDense((d) => 1 - d);
     const y = -scenes[dense()].offsets[count % 32];
     rail.lng.animateProp('y', y, { duration: 300, easing: 'ease-in-out' });
@@ -123,6 +141,7 @@ export function mount(_plugins, fontRoot) {
           loaded: cards.filter((n) => loaded.has(n)).length,
         };
         inventory.push(sample);
+        audit?.checkpoint.writeTextSync(JSON.stringify(sample));
         if (inventory.length === 64) {
           void output('inventory.json', inventory);
           if (

@@ -5,7 +5,7 @@ scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
 corepack pnpm pack --pack-destination "$scratch"
 tar -xzf "$scratch"/solid-multiplatform-platform-*.tgz -C "$scratch"
-node "$scratch/package/cli/main.mjs" init "$scratch/smoke-app" --targets web,desktop,roku
+node "$scratch/package/cli/main.mjs" init "$scratch/smoke-app" --targets web,desktop,roku,tizen
 cd "$scratch/smoke-app"
 node --input-type=module -e '
   import assert from "node:assert/strict";
@@ -28,6 +28,11 @@ export async function run() { document.documentElement.dataset.pluginResult = 'g
 JS
 corepack pnpm build web
 node "$framework/tests/cli/browser-smoke.mjs" targets/web/dist
+cp plugins/greeting/web/index.mjs plugins/greeting/tizen/index.mjs
+corepack pnpm build tizen
+node "$framework/tests/cli/browser-smoke.mjs" targets/tizen/dist --tv
+corepack pnpm build tizen --legacy
+node "$framework/tests/cli/browser-smoke.mjs" targets/tizen/dist-legacy --tv
 corepack pnpm build roku
 python3 - <<'PY'
 from zipfile import ZipFile

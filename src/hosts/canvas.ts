@@ -27,6 +27,10 @@ export function useCanvas(options: Partial<RendererMainSettings> = {}) {
           appWidth,
           appHeight,
           deviceLogicalPixelRatio,
+          devicePhysicalPixelRatio:
+            settings && 'devicePhysicalPixelRatio' in settings
+              ? settings.devicePhysicalPixelRatio
+              : undefined,
           boundsMargin,
           ...options,
           renderEngine: CanvasRenderer,
