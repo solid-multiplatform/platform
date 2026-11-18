@@ -141,6 +141,7 @@ export function init(destination, selected) {
       'solid-js': '1.9.17',
       '@solidjs/router': '0.16.1',
     });
+    write(path.join(root, 'pnpm-workspace.yaml'), "packages:\n  - '.'\n");
     writeJson(path.join(root, 'package.json'), {
       name,
       version: '0.1.0',
@@ -200,7 +201,11 @@ export function init(destination, selected) {
     for (const target of selected) {
       const dest = path.join(root, 'targets', target);
       const dependencies = deps('../../vendor/');
-      if (target === 'desktop')
+      if (target === 'desktop') {
+        write(
+          path.join(dest, 'pnpm-workspace.yaml'),
+          "packages:\n  - '.'\nonlyBuiltDependencies:\n  - esbuild\n  - koffi\n  - sharp\n  - webgl-raub\n  - deps-opengl-raub\n  - segfault-raub\n",
+        );
         writeJson(path.join(dest, 'package.json'), {
           name: 'desktop-host',
           packageManager: meta.packageManager,
@@ -230,7 +235,7 @@ export function init(destination, selected) {
           private: true,
           type: 'module',
         });
-      else if (target === 'web' || browserTVs.includes(target)) {
+      } else if (target === 'web' || browserTVs.includes(target)) {
         writeJson(path.join(dest, 'package.json'), {
           name: 'web-host',
           private: true,
