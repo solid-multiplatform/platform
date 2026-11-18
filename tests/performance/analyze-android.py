@@ -32,6 +32,13 @@ for meta in sorted(args.trace_directory.glob('pass-*.json')):
     cadence={'matchedDisplayFrames':len(presents),'intervals25To100ms':sum(25<=v<100 for v in intervals)}
     with gzip.GzipFile(str(args.out/(meta.stem+'-frames.csv.gz')),'wb',mtime=0) as f:f.write(output.encode())
     reports.append({**record,'appFrames':len(rows),'sampleSpanSeconds':round(span,2),'misses':misses,'presentation':counts,'cadence60Hz':cadence})
-summary={'status':'preview','reason':'Missed presentation deadlines' if any(r['misses'] for r in reports) else 'Full scenario coverage and active-frame expectation evidence required','passes':reports}
+reason='Full scenario coverage and active-frame expectation evidence required'
+if not reports or any(not r['appFrames'] or not r['cadence60Hz']['matchedDisplayFrames'] for r in reports):
+    reason='Missing application or display frame timing'
+elif any(r['misses'] for r in reports):
+    reason='Missed presentation deadlines'
+elif any(r['cadence60Hz']['intervals25To100ms'] for r in reports):
+    reason='Short multi-refresh gaps in the 60 Hz gallery workload'
+summary={'status':'preview','reason':reason,'passes':reports}
 (args.out/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
 print(json.dumps([(r['pass'],r['appFrames'],r['misses']) for r in reports]))

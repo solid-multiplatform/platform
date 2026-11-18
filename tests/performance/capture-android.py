@@ -4,12 +4,17 @@ p=argparse.ArgumentParser()
 p.add_argument('--serial',required=True);p.add_argument('--out',type=pathlib.Path,required=True)
 p.add_argument('--package',required=True);p.add_argument('--seconds',type=int,default=600)
 p.add_argument('--passes',type=int,default=3)
+p.add_argument('--start-pass',type=int,default=1,help='First output pass number for a resumed session')
 args=p.parse_args()
+if min(args.start_pass,args.passes,args.seconds)<1:p.error('Pass number, count and duration must be positive')
 adb=['adb','-s',args.serial]
 def shell(*words):return subprocess.check_output(adb+['shell',*words],text=True).strip()
 args.out.mkdir(parents=True,exist_ok=True)
+numbers=range(args.start_pass,args.start_pass+args.passes)
+if any((args.out/f'pass-{i}.{ext}').exists() for i in numbers for ext in ('json','perfetto-trace')):
+    p.error('Pass files already exist. Choose a new output folder or the next --start-pass.')
 model=shell('getprop','ro.product.model');firmware=shell('getprop','ro.build.fingerprint')
-for i in range(1,args.passes+1):
+for i in numbers:
     pid=shell('pidof',args.package)
     if shell('run-as',args.package,'cat','files/workload-ready')!='gallery':raise RuntimeError('Scene not ready')
     remote='/data/misc/perfetto-traces/solid-'+uuid.uuid4().hex+'.perfetto-trace'

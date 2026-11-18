@@ -1,0 +1,67 @@
+{
+  "status": "preview",
+  "reason": "Missed presentation deadlines",
+  "passes": [
+    {
+      "model": "onn. Streaming Device 4K pro",
+      "firmware": "onn/jarvis/SNA:14/URO4.260304.011.B1/15051976:user/release-keys",
+      "package": "dev.solidapp.arailprobe",
+      "pass": 1,
+      "seconds": 600,
+      "sha256": "987965d22cd9e620e58c7dbc33d4d0a7a79315564106c79ce207a3d7bf128037",
+      "scope": "artwork-and-scroll",
+      "releaseStatus": "preview",
+      "appFrames": 18016,
+      "sampleSpanSeconds": 600.02,
+      "misses": 0,
+      "presentation": {
+        "On-time Present / None": 18016
+      },
+      "cadence60Hz": {
+        "matchedDisplayFrames": 18016,
+        "intervals25To100ms": 4295
+      }
+    },
+    {
+      "model": "onn. Streaming Device 4K pro",
+      "firmware": "onn/jarvis/SNA:14/URO4.260304.011.B1/15051976:user/release-keys",
+      "package": "dev.solidapp.arailprobe",
+      "pass": 2,
+      "seconds": 600,
+      "sha256": "d9fb698b1b67c279ab48b4d318e44bac44c9140af382888ca4fd7cc49c9f77f9",
+      "scope": "artwork-and-scroll",
+      "releaseStatus": "preview",
+      "appFrames": 17547,
+      "sampleSpanSeconds": 599.98,
+      "misses": 0,
+      "presentation": {
+        "On-time Present / None": 17547
+      },
+      "cadence60Hz": {
+        "matchedDisplayFrames": 17547,
+        "intervals25To100ms": 4396
+      }
+    },
+    {
+      "model": "onn. Streaming Device 4K pro",
+      "firmware": "onn/jarvis/SNA:14/URO4.260304.011.B1/15051976:user/release-keys",
+      "package": "dev.solidapp.arailprobe",
+      "pass": 3,
+      "seconds": 600,
+      "sha256": "30d79f82178b8f046dc3971e88f84e3e18c1ded9485b18e0f61b5936a58a58cc",
+      "scope": "artwork-and-scroll",
+      "releaseStatus": "preview",
+      "appFrames": 17854,
+      "sampleSpanSeconds": 600.0,
+      "misses": 3,
+      "presentation": {
+        "On-time Present / None": 17851,
+        "Late Present / App Deadline Missed": 3
+      },
+      "cadence60Hz": {
+        "matchedDisplayFrames": 17854,
+        "intervals25To100ms": 4193
+      }
+    }
+  ]
+}

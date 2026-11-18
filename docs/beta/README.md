@@ -9,7 +9,7 @@ The 0.2 archives are an engineering preview. TV promotion requires three ten-min
 | Windows / macOS desktop          | Extracted Windows x64 and macOS arm64 packages launched in CI and rendered the starter labels and focus panel                   |
 | Android handset / iOS / Apple TV | Separate host builds, native input/editor and plugin integrations; report device and simulator results separately               |
 | Roku OS 16                       | SceneGraph ZIP and native task build. Physical developer slot occupied; existing channel preserved                              |
-| Android TV                       | Physical onn. 4K Pro at 60 Hz. Gallery timing failed the zero-miss gate                                                         |
+| Android TV                       | Physical onn. 4K Pro at 60 Hz. Visible gallery recorded 0, 0 and 3 late frames in three ten-minute runs                         |
 | Tizen / webOS / Vizio            | Generated WebGL and legacy Canvas apps rendered their title and reacted to remote Enter in Chromium 85. Physical timing pending |
 
 Baseline refs: platform 6140e99b4ae7f0b990f11a53d5c1237439dc085e, renderer 39a7dccb4d9087d11af083affd16d85c33bc6b6d. The benchmark now resolves these exact revisions from Git history and the checked-in package archive. The Chromium CPU smoke measurement is diagnostic and does not measure TV presentation timing.
@@ -29,3 +29,19 @@ The Android archive supplied by the renderer release retains the upstream JavaSc
 Inspection of the intermediate physical captures found two visual faults. The gallery rail had inherited the viewport height while its content extended to 5,472 logical pixels. The backend could therefore cull a rail containing on-screen children. Also, a keyed background replaced at runtime could paint over an existing foreground sibling. The earlier traces are diagnostic evidence from this underdrawn scene and cannot qualify the intended workload.
 
 The fixture now sizes the rail to the actual content extent. The framework synchronizes native sibling paint order during anchored insertions and same-parent moves. A Chromium regression reproduced the old background covering the foreground and now checks the actual foreground pixels after replacement on both WebGL and Canvas. The corrected physical workload records a preflight inventory for all 32 navigation steps in both modes and starts timing only if loaded posters are visible and in front of the backdrop at every checkpoint.
+
+### Physical gallery with verified foreground artwork
+
+The 64-step preflight on the onn. 4K Pro found all visible posters loaded, with at least 11 posters at each checkpoint. The display operated at 60 Hz. Perfetto matched every recorded app frame to its SurfaceFlinger display frame.
+
+| Ten-minute run | Presented frames | Late app frames | Presentation intervals of 25–100 ms |
+| -------------- | ---------------: | --------------: | ----------------------------------: |
+| 1              |           18,016 |               0 |                               4,295 |
+| 2              |           17,547 |               0 |                               4,396 |
+| 3              |           17,854 |               3 |                               4,193 |
+
+The gallery animates for 300 ms and rests for 200 ms. Short multi-refresh intervals occurred in all three runs. The third run also missed three app deadlines. Android TV remains in preview. An interrupted 489-second capture was excluded and repeated. Use `--start-pass 3 --passes 1` to resume a recording in a directory containing two completed passes.
+
+[Device report and presentation timestamps](./onn-visible/summary.json) · [FrameTimeline conventions](https://perfetto.dev/docs/data-sources/frametimeline)
+
+On the same device, a separate interaction run opened the details view with DPAD input, played an eight-second clip, returned with Back and resumed the app from the launcher. The frame timings above cover the gallery. [Physical evidence archive](https://github.com/solid-multiplatform/platform/releases/download/v0.2.0-preview.3/physical-tv-evidence.zip)
