@@ -245,9 +245,15 @@ export async function runServicesProbe(form: 'phone' | 'tv'): Promise<void> {
         const window = application.keyWindow;
         const scene = window?.windowScene;
         expect(!!scene, 'no window scene');
-        // What UIKit is told the window supports: the lock itself.
+        // What the delegate tells UIKit the window supports. UIApplication's
+        // own method of that name only reads Info.plist.
         const allowed = () =>
-          Number(application.supportedInterfaceOrientationsForWindow(window!));
+          Number(
+            application.delegate.applicationSupportedInterfaceOrientationsForWindow?.(
+              application,
+              window!,
+            ),
+          );
         const declared = allowed();
         // UIInterfaceOrientation: 1 portrait, 3 and 4 landscape.
         const turned = async (landscape: boolean) => {
@@ -264,9 +270,22 @@ export async function runServicesProbe(form: 'phone' | 'tv'): Promise<void> {
         await port.lock('portrait');
         expect(allowed() === 2, 'portrait lock allows ' + allowed());
         expect(await turned(false), 'did not turn back to portrait');
+        // The lock holds: UIKit refuses a rotation out of it.
+        let refusal = '';
+        scene!.requestGeometryUpdateWithPreferencesErrorHandler(
+          UIWindowSceneGeometryPreferencesIOS.alloc().initWithInterfaceOrientations(
+            24,
+          ),
+          (error) => (refusal = error.localizedDescription),
+        );
+        await wait(2500);
+        expect(
+          Number(scene!.interfaceOrientation) < 3,
+          'turned to landscape while locked to portrait',
+        );
         await port.lock('any');
         expect(allowed() === declared, 'unlocked allows ' + allowed());
-        return 'Info.plist allows ' + declared;
+        return 'Info.plist allows ' + declared + '; refused: ' + refusal;
       });
   }
   // The host installs `links` only when the delegate method it added is live.
