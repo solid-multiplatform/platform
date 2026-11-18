@@ -285,14 +285,14 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ### Apple (iOS / iPadOS / tvOS)
 
-| Feature                            | Status | Gap                                                          |
-| ---------------------------------- | ------ | ------------------------------------------------------------ |
-| NativeScript hosts, touch, plugins | S      | CI simulator evidence                                        |
-| Safe area / keyboard               | S      | —                                                            |
-| Dynamic Island                     | P      | Covered by safe-area top inset; no separate rect (by design) |
-| Push/background tasks              | P      | Ports exist; end-to-end flow missing                         |
-| Apple TV focus/remote              | P      | Build/tested, no physical device                             |
-| Signing/distribution               | M      | App-owned identity required                                  |
+| Feature                            | Status | Gap                                                                                           |
+| ---------------------------------- | ------ | --------------------------------------------------------------------------------------------- |
+| NativeScript hosts, touch, plugins | S      | CI simulator evidence                                                                         |
+| Safe area / keyboard               | S      | —                                                                                             |
+| Dynamic Island                     | P      | Covered by safe-area top inset; no separate rect (by design)                                  |
+| Push/background tasks              | P      | Ports exist; end-to-end flow missing                                                          |
+| Apple TV focus/remote              | P      | Build/tested, no physical device                                                              |
+| Signing/distribution               | P      | `hosts/apple/signing.mjs` codesign/notarytool/stapler hooks; identity and CI runner app-owned |
 
 ### Desktop (Linux / Windows / macOS)
 
@@ -310,19 +310,19 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ### Roku
 
-| Feature                                                        | Status | Gap                              |
-| -------------------------------------------------------------- | ------ | -------------------------------- |
-| SceneGraph host, focus, remote                                 | S      | —                                |
-| BrighterScript plugin preset                                   | S      | CLI template                     |
-| Registry/storage/tasks                                         | S      | `roku/storage`, `roku/tasks`     |
-| Video/captions/trick play                                      | P      | Video node integration partial   |
-| Deep linking / roInputEvent                                    | S      | `bindDeepLinks` + typed routes   |
-| Voice keyboard/PIN                                             | P      | Native text dialog bridge exists |
-| Certification budgets (15s launch, 3s scenes, 250ms keys, 4MB) | P      | No automated gate                |
+| Feature                                                        | Status | Gap                                                                     |
+| -------------------------------------------------------------- | ------ | ----------------------------------------------------------------------- |
+| SceneGraph host, focus, remote                                 | S      | —                                                                       |
+| BrighterScript plugin preset                                   | S      | CLI template                                                            |
+| Registry/storage/tasks                                         | S      | `roku/storage`, `roku/tasks`                                            |
+| Video/captions/trick play                                      | P      | Video node integration partial                                          |
+| Deep linking / roInputEvent                                    | S      | `bindDeepLinks` + typed routes                                          |
+| Voice keyboard/PIN                                             | P      | Native text dialog bridge exists                                        |
+| Certification budgets (15s launch, 3s scenes, 250ms keys, 4MB) | S      | `checkRokuCertification` + `solid-platform certify roku <metrics.json>` |
 
 ## 12. Implementation phases
 
-Progress: Phases 0–6 and 8 are implemented, including theme/capabilities/insets, keyboard/forms, modal/presentation primitives, tabs/guards/history/restoration, pointer drag/wheel/cursors, data/query/offline persistence, lists and a11y/i18n. Phase 7 media covers playback state/bookmarks, media sessions, fullscreen/PiP, thumbnails, audio and DRM reporting. Phase 5 services cover clipboard/share/haptics, files/pickers, geolocation, biometrics, notifications/jobs ports, keep-awake, orientation, system bars, updates and app review. Every core matrix row is now shipped at the framework level. Platform tables additionally cover Web PWA/offline and downloads, and desktop window-state persistence; native providers for the remaining contacts/calendar/sensor/map ports, signing/store credentials, the native OTA installer, and device-dependent Apple/Roku checks remain host/app-owned. Desktop menus/tray use a GTK/AppIndicator provider, and single-instance/updater delivery are wired in the host.
+Progress: Phases 0–6 and 8 are implemented, including theme/capabilities/insets, keyboard/forms, modal/presentation primitives, tabs/guards/history/restoration, pointer drag/wheel/cursors, data/query/offline persistence, lists and a11y/i18n. Phase 7 media covers playback state/bookmarks, media sessions, fullscreen/PiP, thumbnails, audio and DRM reporting. Phase 5 services cover clipboard/share/haptics, files/pickers, geolocation, biometrics, notifications/jobs ports, keep-awake, orientation, system bars, updates and app review. Every core matrix row is now shipped at the framework level. Platform tables additionally cover Web PWA/offline and downloads, and desktop window-state persistence; native providers for the remaining contacts/calendar/sensor/map ports, signing/store credentials, the native OTA installer, and device-dependent Apple/Roku checks remain host/app-owned. Desktop menus/tray use a GTK/AppIndicator provider, and single-instance/updater delivery are wired in the host. Apple signing/notarization command hooks and Roku certification budget gating are implemented; physical Apple TV/Roku qualification remains device/toolchain-bound.
 
 ### Phase 0 — Contracts and theme foundation
 

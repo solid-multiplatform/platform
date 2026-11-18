@@ -61,3 +61,4 @@ export * from './sdk/pwa.js';
 export * from './sdk/download.js';
 export * from './sdk/menus.js';
 export * from './sdk/window-state.js';
+export * from './sdk/certification.js';

@@ -37,19 +37,7 @@ export function localNotificationPort(notifications) {
     },
   };
 }
-/** The app provisions APNs/FCM entitlements and submits the returned token to its backend. */
-export function messagingPort(messaging) {
-  return {
-    async register() {
-      await messaging.registerDeviceForRemoteMessages();
-      return messaging.getToken();
-    },
-    async unregister() {
-      await messaging.deleteToken();
-      await messaging.unregisterDeviceForRemoteMessages();
-    },
-  };
-}
+export { appleJobs, messagingPort } from './apple-providers.mjs';
 export function androidLinks() {
   const app = Application.android;
   const uri = (intent) => intent?.getDataString()?.toString() ?? null;

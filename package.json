@@ -380,6 +380,13 @@
         "types": "./dist/src/sdk/window-state.d.ts",
         "default": "./dist/src/sdk/window-state.js"
       }
+    },
+    "./certification": {
+      "@solidtv/source": "./src/sdk/certification.ts",
+      "import": {
+        "types": "./dist/src/sdk/certification.d.ts",
+        "default": "./dist/src/sdk/certification.js"
+      }
     }
   },
   "sideEffects": false,

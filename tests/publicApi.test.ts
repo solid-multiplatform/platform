@@ -24,7 +24,7 @@ import * as focusManager from '@solid-multiplatform/platform/focusManager';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 307 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 309 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -38,6 +38,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'MIN_TOUCH_TARGET',
       'Match',
       'NodeType',
+      'ROKU_CERTIFICATION_BUDGETS',
       'SHADERS_ENABLED',
       'Show',
       'Suspense',
@@ -67,6 +68,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'capturePhoto',
       'captureThumbnail',
       'checkForUpdate',
+      'checkRokuCertification',
       'clamp',
       'clearIconRegistry',
       'clearTasks',
@@ -719,6 +721,7 @@ v.describe('package.json exports', () => {
       './download',
       './menus',
       './window-state',
+      './certification',
     ]);
   });
 
