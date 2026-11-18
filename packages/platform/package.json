@@ -74,8 +74,20 @@
     "./editor": "./dist/src/sdk/editor.js",
     "./editor/native": "./hosts/nativescript/editors.mjs",
     "./android/system": "./hosts/android/system.mjs",
-    "./services": "./dist/src/sdk/services.js",
-    "./services/web": "./dist/src/sdk/web-services.js",
+    "./services": {
+      "@solidtv/source": "./src/sdk/services.ts",
+      "import": {
+        "types": "./dist/src/sdk/services.d.ts",
+        "default": "./dist/src/sdk/services.js"
+      }
+    },
+    "./services/web": {
+      "@solidtv/source": "./src/hosts/web-services/index.ts",
+      "import": {
+        "types": "./dist/src/hosts/web-services/index.d.ts",
+        "default": "./dist/src/hosts/web-services/index.js"
+      }
+    },
     "./services/native": "./hosts/nativescript/services.mjs",
     "./navigation": "./dist/src/sdk/navigation.js",
     "./controls": {
@@ -386,6 +398,27 @@
       "import": {
         "types": "./dist/src/sdk/certification.d.ts",
         "default": "./dist/src/sdk/certification.js"
+      }
+    },
+    "./host": {
+      "@solidtv/source": "./src/host.ts",
+      "import": {
+        "types": "./dist/src/host.d.ts",
+        "default": "./dist/src/host.js"
+      }
+    },
+    "./host/web": {
+      "@solidtv/source": "./src/hosts/web.ts",
+      "import": {
+        "types": "./dist/src/hosts/web.d.ts",
+        "default": "./dist/src/hosts/web.js"
+      }
+    },
+    "./host/dom": {
+      "@solidtv/source": "./src/hosts/dom.ts",
+      "import": {
+        "types": "./dist/src/hosts/dom.d.ts",
+        "default": "./dist/src/hosts/dom.js"
       }
     }
   },

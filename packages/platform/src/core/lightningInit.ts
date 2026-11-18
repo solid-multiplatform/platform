@@ -4,7 +4,7 @@ import {
   prefetchFont,
   browserHost,
 } from '#default-backend';
-import type { HostRenderer } from '@solid-multiplatform/renderer/contracts';
+import type { SceneRenderer } from '@solid-multiplatform/renderer/contracts';
 import { Config, DOM_RENDERING } from './config.js';
 import type { DOMRendererMain } from '@solid-multiplatform/renderer/dom';
 import { DomRendererMainSettings } from '@solid-multiplatform/renderer/dom';
@@ -12,7 +12,7 @@ import { FontLoadOptions } from './intrinsicTypes.js';
 
 export type SdfFontType = 'ssdf' | 'msdf';
 // Global renderer instance: can be either the Lightning or DOM implementation
-export let renderer: lng.RendererMain | DOMRendererMain | HostRenderer;
+export let renderer: lng.RendererMain | DOMRendererMain | SceneRenderer;
 
 export const getRenderer = () => renderer;
 
@@ -26,7 +26,7 @@ export const getRenderer = () => renderer;
 export type RendererFactory = (
   settings: lng.RendererMainSettings | DomRendererMainSettings,
   rootId: string | object,
-) => HostRenderer;
+) => SceneRenderer;
 
 let rendererFactory: RendererFactory | undefined;
 type HostFontLoader = (fonts: FontLoadOptions[]) => Promise<void>;
@@ -177,7 +177,10 @@ function attachFonts(fonts: FontLoadOptions[]) {
         'type' in font &&
         (font.type === 'msdf' || font.type === 'ssdf')
       ) {
-        return renderer.stage.loadFont('sdf', font as lng.FontLoadOptions);
+        return (renderer as lng.RendererMain).stage.loadFont(
+          'sdf',
+          font as lng.FontLoadOptions,
+        );
       }
       // DOM — Web
       if ('fontUrl' in font && enableDomRenderer) {

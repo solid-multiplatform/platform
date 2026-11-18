@@ -155,7 +155,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 | Feature                                | Established pattern                         | Status | Evidence / gap                                                             | Phase |
 | -------------------------------------- | ------------------------------------------- | ------ | -------------------------------------------------------------------------- | ----- |
-| Lifecycle (active/background)          | RN AppState, Flutter AppLifecycleState      | S      | `AppServices.lifecycle`, host bindings                                     | —     |
+| Lifecycle (active/background)          | RN AppState, Flutter AppLifecycleState      | S      | `lifecycle` service, host bindings                                         | —     |
 | Orientation lock                       | Expo ScreenOrientation                      | S      | `lockOrientation` with a host port or Screen Orientation API               | —     |
 | Status/navigation bars                 | Capacitor StatusBar/SystemBars              | S      | `applySystemBarStyle` host port + theme-color fallback                     | —     |
 | Keyboard inset and visibility          | Android IME insets, iOS notifications       | S      | `viewport().keyboardInset`                                                 | —     |

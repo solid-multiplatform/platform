@@ -1,5 +1,11 @@
 import { createSignal, type Accessor } from 'solid-js';
-import { CapabilityError, type Store } from './services.js';
+import {
+  CapabilityError,
+  peekService,
+  serviceAvailable,
+  withService,
+} from './registry.js';
+import type { Store } from './services.js';
 
 export interface Bookmark {
   /** Last position in seconds. */
@@ -153,19 +159,6 @@ export interface MediaSessionPort {
   ): void;
 }
 
-let mediaSessionPort: MediaSessionPort | undefined;
-
-/** Register the host media-session implementation (Android MediaSession). */
-export function setMediaSessionPort(port: MediaSessionPort | undefined): void {
-  mediaSessionPort = port;
-}
-
-const webMediaSession = (): MediaSession | undefined => {
-  if (typeof navigator === 'undefined') return undefined;
-  return (navigator as Navigator & { mediaSession?: MediaSession })
-    .mediaSession;
-};
-
 export interface ConfigureMediaSessionOptions {
   metadata?: MediaMetadata;
   playbackState?: 'none' | 'paused' | 'playing';
@@ -174,66 +167,28 @@ export interface ConfigureMediaSessionOptions {
 }
 
 /**
- * Publish now-playing metadata and hardware transport handlers. This is the
- * W3C Media Session API on web and a small port on Android/TV/Roku. Returns a
- * disposer that clears metadata and handlers when playback ends.
+ * Publish now-playing metadata and hardware transport handlers through the
+ * host's `mediaSession` service: the W3C Media Session API on the web, a small
+ * port on Android/TV/Roku. Returns a disposer that clears the handlers when
+ * playback ends. Does nothing on a host without a media session.
  */
 export function configureMediaSession(
   options: ConfigureMediaSessionOptions,
 ): () => void {
-  const session = mediaSessionPort;
-  if (session) {
-    session.setMetadata(options.metadata ?? { title: '' });
-    session.setPlaybackState(options.playbackState ?? 'none');
-    if (options.position) session.setPositionState?.(options.position);
-    const actions = options.actions ?? {};
-    for (const action of Object.keys(actions) as MediaAction[]) {
-      session.setActionHandler(action, actions[action]);
-    }
-    return () => {
-      for (const action of Object.keys(actions) as MediaAction[]) {
-        session.setActionHandler(action, undefined);
-      }
-      session.setPlaybackState('none');
-    };
-  }
-
-  const web = webMediaSession();
-  if (!web) return () => {};
-  const metadata = options.metadata;
-  const MetadataCtor = (
-    globalThis as unknown as {
-      MediaMetadata?: new (init: unknown) => unknown;
-    }
-  ).MediaMetadata;
-  if (metadata && MetadataCtor) {
-    web.metadata = new MetadataCtor(metadata) as typeof web.metadata;
-  }
-  web.playbackState = options.playbackState ?? 'none';
-  if (options.position && web.setPositionState) {
-    try {
-      web.setPositionState(options.position);
-    } catch {
-      // Ignore invalid position states (e.g. position > duration).
-    }
-  }
+  const session = peekService('mediaSession');
+  if (!session) return () => {};
+  if (options.metadata) session.setMetadata(options.metadata);
+  session.setPlaybackState(options.playbackState ?? 'none');
+  if (options.position) session.setPositionState?.(options.position);
   const actions = options.actions ?? {};
   for (const action of Object.keys(actions) as MediaAction[]) {
-    try {
-      web.setActionHandler(action, actions[action] ?? null);
-    } catch {
-      // A browser may not support every action.
-    }
+    session.setActionHandler(action, actions[action]);
   }
   return () => {
     for (const action of Object.keys(actions) as MediaAction[]) {
-      try {
-        web.setActionHandler(action, null);
-      } catch {
-        // Ignore unsupported actions during cleanup.
-      }
+      session.setActionHandler(action, undefined);
     }
-    web.playbackState = 'none';
+    session.setPlaybackState('none');
   };
 }
 
@@ -243,45 +198,23 @@ export interface FullscreenPort {
   pictureInPicture?(element?: unknown): Promise<void>;
 }
 
-let fullscreenPort: FullscreenPort | undefined;
-
-export function setFullscreenPort(port: FullscreenPort | undefined): void {
-  fullscreenPort = port;
-}
-
-const documentElement = (): HTMLElement | undefined =>
-  typeof document === 'undefined' ? undefined : document.documentElement;
-
-/** Enter fullscreen through the host port or the browser Fullscreen API. */
+/** Enter fullscreen through the host's `fullscreen` service. */
 export async function enterFullscreen(element?: unknown): Promise<void> {
-  if (fullscreenPort) return fullscreenPort.enter(element);
-  const target = (element as HTMLElement | undefined) ?? documentElement();
-  if (!target?.requestFullscreen) throw new CapabilityError('fullscreen');
-  await target.requestFullscreen();
+  return withService('fullscreen', (port) => port.enter(element));
 }
 
 export async function exitFullscreen(): Promise<void> {
-  if (fullscreenPort) return fullscreenPort.exit();
-  if (typeof document === 'undefined' || !document.exitFullscreen) {
-    throw new CapabilityError('fullscreen');
-  }
-  await document.exitFullscreen();
+  return withService('fullscreen', (port) => port.exit());
 }
 
-/** Enter picture-in-picture for a video element through the host or browser. */
+/** Enter picture-in-picture for a video element, where the host can. */
 export async function enterPictureInPicture(element?: unknown): Promise<void> {
-  if (fullscreenPort?.pictureInPicture) {
-    return fullscreenPort.pictureInPicture(element);
-  }
-  const video = element as
-    | (HTMLVideoElement & {
-        requestPictureInPicture?(): Promise<unknown>;
-      })
-    | undefined;
-  if (!video?.requestPictureInPicture) {
+  if (serviceAvailable('fullscreen') === 'unavailable')
     throw new CapabilityError('pictureInPicture');
-  }
-  await video.requestPictureInPicture();
+  return withService('fullscreen', (port) => {
+    if (!port.pictureInPicture) throw new CapabilityError('pictureInPicture');
+    return port.pictureInPicture(element);
+  });
 }
 
 export interface ThumbnailPort {
@@ -289,49 +222,31 @@ export interface ThumbnailPort {
   capture(source: string, time: number): Promise<string>;
 }
 
-let thumbnailPort: ThumbnailPort | undefined;
-
-export function setThumbnailPort(port: ThumbnailPort | undefined): void {
-  thumbnailPort = port;
+declare module './registry.js' {
+  interface ServiceProviders {
+    mediaSession: MediaSessionPort;
+    fullscreen: FullscreenPort;
+    thumbnails: ThumbnailPort;
+  }
 }
 
 /**
- * Capture a poster frame. Native hosts provide the port; on the web, pass a
- * video source and the helper uses a temporary `<video>` plus canvas.
+ * Capture a poster frame through the host's `thumbnails` service. The web
+ * host seeks a temporary `<video>` and draws it to a canvas.
  */
 export async function captureThumbnail(
   source: string,
   time = 0,
 ): Promise<string> {
-  if (thumbnailPort) return thumbnailPort.capture(source, time);
-  if (typeof document === 'undefined') {
-    throw new CapabilityError('thumbnail');
-  }
-  const video = document.createElement('video');
-  video.crossOrigin = 'anonymous';
-  video.muted = true;
-  video.src = source;
-  await new Promise<void>((resolve, reject) => {
-    video.onloadeddata = () => resolve();
-    video.onerror = () => reject(new CapabilityError('thumbnail'));
-  });
-  video.currentTime = Math.max(0, time);
-  await new Promise<void>((resolve) => {
-    video.onseeked = () => resolve();
-  });
-  const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  const context = canvas.getContext('2d');
-  if (!context) throw new CapabilityError('thumbnail');
-  context.drawImage(video, 0, 0);
-  return canvas.toDataURL('image/png');
+  return withService('thumbnails', (port) => port.capture(source, time));
 }
 
 /**
  * Map hardware media keys to transport actions. TV remotes and keyboards
  * report several spellings (`MediaPlayPause`, `MediaTrackNext`, …); this
- * helper accepts all of them and returns a disposer.
+ * helper accepts all of them and returns a disposer. Without `target` it
+ * listens on the host's `keyEvents` service, and does nothing where the host
+ * has none.
  */
 export function bindMediaKeys(
   actions: Partial<
@@ -340,9 +255,7 @@ export function bindMediaKeys(
       () => void
     >
   >,
-  target: EventTarget | undefined = typeof window === 'undefined'
-    ? undefined
-    : window,
+  target: EventTarget | undefined = peekService('keyEvents')?.target(),
 ): () => void {
   const listener = (event: Event) => {
     if (!(event instanceof KeyboardEvent)) return;

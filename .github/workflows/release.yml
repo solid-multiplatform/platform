@@ -1,0 +1,59 @@
+name: Release
+# Pushing a tag vX.Y.Z (or vX.Y.Z-beta.N) builds and tests the workspace, packs
+# the three packages, and publishes them as a GitHub release with checksums.
+# When the repository has an NPM_TOKEN secret the same packages go to npm.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to check the packages against; nothing is published
+        required: true
+permissions:
+  contents: read
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      PUBLISH: ${{ github.event_name == 'push' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - uses: pnpm/action-setup@v4
+      - run: node scripts/release.mjs check "$TAG"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm test
+      - run: node scripts/release.mjs pack release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: release
+          if-no-files-found: error
+      - name: Publish the GitHub release
+        if: env.PUBLISH == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=(--generate-notes --verify-tag)
+          # A version with a pre-release part (0.3.0-beta.1) is a pre-release.
+          if [[ "$TAG" == *-* ]]; then flags+=(--prerelease); fi
+          gh release create "$TAG" release/* "${flags[@]}"
+      - name: Publish to npm
+        if: env.PUBLISH == 'true' && env.NODE_AUTH_TOKEN != ''
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # Pre-releases go to the "next" tag so "latest" stays a stable version.
+          if [[ "$TAG" == *-* ]]; then tag=next; else tag=latest; fi
+          for archive in release/*.tgz; do
+            npm publish "$archive" --access public --tag "$tag" --provenance
+          done

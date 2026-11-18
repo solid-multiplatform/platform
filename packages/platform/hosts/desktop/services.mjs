@@ -1,9 +1,11 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
-import { services } from '@solid-multiplatform/platform/services';
 
-/** Each setting is a separate atomically replaced file inside an app-owned directory. */
+/**
+ * The desktop host's application services, for `installServices`. Each setting
+ * is a separate atomically replaced file inside an app-owned directory.
+ */
 export function desktopServices(
   appData,
   { keyring, namespace = 'solid-app', ...providers } = {},
@@ -36,9 +38,9 @@ export function desktopServices(
     remove: (k) => fs.rm(file(k), { force: true }),
   };
   const secret = (k) => new keyring.AsyncEntry(namespace, k);
-  return services({
+  return {
     settings,
-    request: globalThis.fetch.bind(globalThis),
+    request: { fetch: globalThis.fetch.bind(globalThis) },
     ...providers,
     ...(keyring
       ? {
@@ -49,5 +51,5 @@ export function desktopServices(
           },
         }
       : {}),
-  });
+  };
 }

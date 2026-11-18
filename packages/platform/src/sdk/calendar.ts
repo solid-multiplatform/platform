@@ -1,4 +1,4 @@
-import { CapabilityError } from './services.js';
+import { CapabilityError, serviceAvailable, withService } from './registry.js';
 
 export interface CalendarRange {
   /** Unix milliseconds. */
@@ -30,32 +30,34 @@ export interface CalendarPort {
   create?(event: CalendarDraft): Promise<CalendarEvent>;
 }
 
-let port: CalendarPort | undefined;
-
-export function setCalendarPort(next: CalendarPort | undefined): void {
-  port = next;
+declare module './registry.js' {
+  interface ServiceProviders {
+    calendar: CalendarPort;
+  }
 }
 
 export function calendarAvailable(): boolean {
-  return port !== undefined;
+  return serviceAvailable('calendar') === 'available';
 }
 
 /** List events intersecting `[start, end]` through the host calendar. */
 export async function getCalendarEvents(
   query: CalendarQuery,
 ): Promise<CalendarEvent[]> {
-  if (!port) throw new CapabilityError('calendar');
-  if (query.end < query.start) {
-    throw new RangeError('Calendar range end must be after start');
-  }
-  return port.list(query);
+  return withService('calendar', (port) => {
+    if (query.end < query.start) {
+      throw new RangeError('Calendar range end must be after start');
+    }
+    return port.list(query);
+  });
 }
 
 /** Create an event. Hosts without write access throw a capability error. */
 export async function createCalendarEvent(
   event: CalendarDraft,
 ): Promise<CalendarEvent> {
-  if (!port) throw new CapabilityError('calendar');
-  if (!port.create) throw new CapabilityError('calendar.create');
-  return port.create(event);
+  return withService('calendar', (port) => {
+    if (!port.create) throw new CapabilityError('calendar.create');
+    return port.create(event);
+  });
 }

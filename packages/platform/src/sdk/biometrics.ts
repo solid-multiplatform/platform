@@ -1,3 +1,5 @@
+import { serviceAvailable, withService } from './registry.js';
+
 export type BiometricError =
   | 'cancelled'
   | 'failed'
@@ -22,11 +24,11 @@ export interface BiometricsPort {
   authenticate(options: BiometricOptions): Promise<BiometricResult>;
 }
 
-let port: BiometricsPort | undefined;
-
-/** Register Face ID / Touch ID / BiometricPrompt. */
-export function setBiometricsPort(next: BiometricsPort | undefined): void {
-  port = next;
+declare module './registry.js' {
+  interface ServiceProviders {
+    /** Face ID / Touch ID / BiometricPrompt. */
+    biometrics: BiometricsPort;
+  }
 }
 
 /**
@@ -34,7 +36,7 @@ export function setBiometricsPort(next: BiometricsPort | undefined): void {
  * host decisions; this only says whether app code can ask.
  */
 export function biometricsAvailable(): boolean {
-  return port !== undefined;
+  return serviceAvailable('biometrics') === 'available';
 }
 
 /**
@@ -45,6 +47,6 @@ export function biometricsAvailable(): boolean {
 export async function authenticate(
   options: BiometricOptions,
 ): Promise<BiometricResult> {
-  if (!port) return { success: false, error: 'unavailable' };
-  return port.authenticate(options);
+  if (!biometricsAvailable()) return { success: false, error: 'unavailable' };
+  return withService('biometrics', (port) => port.authenticate(options));
 }

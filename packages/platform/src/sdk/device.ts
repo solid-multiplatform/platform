@@ -1,4 +1,11 @@
-import { CapabilityError } from './services.js';
+import {
+  CapabilityError,
+  loadService,
+  peekService,
+  serviceAvailable,
+  useService,
+  withService,
+} from './registry.js';
 
 export type DevicePlatform =
   | 'web'
@@ -66,143 +73,86 @@ export interface HapticsPort {
   vibrate(milliseconds: number): Promise<void>;
 }
 
-/**
- * Ports a native or desktop host can provide. Every method is optional: when
- * a port is absent the web implementation is used, and unsupported optional
- * features (haptics) are silent no-ops.
- */
-export interface DevicePorts {
-  clipboard?: ClipboardPort;
-  share?(options: ShareOptions): Promise<ShareResult>;
-  haptics?: HapticsPort;
-  deviceInfo?(): Promise<DeviceInfo>;
-  battery?(): Promise<BatteryState>;
-  memory?(): DeviceMemoryInfo;
-  keepAwake?(active: boolean): Promise<void>;
-  openExternal?(url: string): Promise<void>;
-  lockOrientation?(orientation: OrientationLock): Promise<void>;
-  systemBars?: SystemBarsPort;
-  appReview?: { request(): Promise<boolean> };
+export interface SharePort {
+  share(options: ShareOptions): Promise<ShareResult>;
 }
 
-let ports: DevicePorts = {};
+export interface DeviceInfoPort {
+  get(): Promise<DeviceInfo>;
+}
+
+export interface BatteryPort {
+  /** Undefined when the device has no battery to report. */
+  get(): Promise<BatteryState | undefined>;
+}
+
+export interface MemoryPort {
+  get(): DeviceMemoryInfo;
+}
+
+export interface KeepAwakePort {
+  set(active: boolean): Promise<void>;
+}
+
+export interface OpenExternalPort {
+  open(url: string): Promise<void>;
+}
+
+export interface OrientationPort {
+  lock(orientation: OrientationLock): Promise<void>;
+}
+
+export interface AppReviewPort {
+  request(): Promise<boolean>;
+}
+
+declare module './registry.js' {
+  interface ServiceProviders {
+    clipboard: ClipboardPort;
+    share: SharePort;
+    haptics: HapticsPort;
+    deviceInfo: DeviceInfoPort;
+    battery: BatteryPort;
+    memory: MemoryPort;
+    keepAwake: KeepAwakePort;
+    openExternal: OpenExternalPort;
+    orientation: OrientationPort;
+    systemBars: SystemBarsPort;
+    appReview: AppReviewPort;
+  }
+}
+
 let appVersion: string | undefined;
 
-/**
- * Register host implementations. Hosts call this once during boot; app code
- * then uses the exported functions without knowing the target.
- */
-export function setDevicePorts(next: DevicePorts): void {
-  ports = { ...ports, ...next };
-}
-
-/** Remove host ports, e.g. when a test or a host is torn down. */
-export function resetDevicePorts(): void {
-  ports = {};
-  appVersion = undefined;
-}
-
 /** Record the app version reported by `deviceInfo()`. */
-export function setAppVersion(version: string): void {
+export function setAppVersion(version: string | undefined): void {
   appVersion = version;
 }
 
-const navigatorLike = () =>
-  typeof navigator === 'undefined'
-    ? undefined
-    : (navigator as Navigator & {
-        clipboard?: ClipboardPort;
-        share?(data: ShareData): Promise<void>;
-        vibrate?(pattern: number | number[]): boolean;
-        getBattery?(): Promise<{
-          level: number;
-          charging: boolean;
-        }>;
-        deviceMemory?: number;
-        wakeLock?: {
-          request(type: 'screen'): Promise<{ release(): Promise<void> }>;
-        };
-      });
-
-const screenLike = () =>
-  typeof screen === 'undefined'
-    ? undefined
-    : (screen as Screen & {
-        orientation?: {
-          lock?(orientation: string): Promise<void>;
-          unlock?(): void;
-        };
-      });
-
-const writeWithLegacyCopy = (text: string): void => {
-  if (typeof document === 'undefined') {
-    throw new CapabilityError('clipboard');
-  }
-  const area = document.createElement('textarea');
-  area.value = text;
-  area.setAttribute('readonly', '');
-  area.style.position = 'fixed';
-  area.style.opacity = '0';
-  document.body.append(area);
-  area.select();
-  const copied =
-    typeof document.execCommand === 'function' && document.execCommand('copy');
-  area.remove();
-  if (!copied) throw new CapabilityError('clipboard');
-};
-
-const clipboardPort = (): ClipboardPort => {
-  if (ports.clipboard) return ports.clipboard;
-  const nav = navigatorLike();
-  if (nav?.clipboard) {
-    return {
-      readText: () => nav.clipboard!.readText(),
-      writeText: (text) => nav.clipboard!.writeText(text),
-    };
-  }
-  if (typeof navigator !== 'undefined' && nav) {
-    return {
-      async readText() {
-        throw new CapabilityError('clipboard.readText');
-      },
-      async writeText(text) {
-        writeWithLegacyCopy(text);
-      },
-    };
-  }
-  throw new CapabilityError('clipboard');
-};
-
-export function readClipboard(): Promise<string> {
-  return clipboardPort().readText();
+export async function readClipboard(): Promise<string> {
+  return withService('clipboard', (port) => port.readText());
 }
 
-export function writeClipboard(text: string): Promise<void> {
-  return clipboardPort().writeText(text);
+export async function writeClipboard(text: string): Promise<void> {
+  return withService('clipboard', (port) => port.writeText(text));
 }
 
 /**
- * Open the platform share sheet. On the web where `navigator.share` is
- * unavailable (most desktop browsers), the payload is copied to the clipboard
- * and the result is `copied` — the same graceful fallback used by Capacitor.
+ * Open the platform share sheet. Where there is no share service, or it
+ * reports that it cannot share here (most desktop browsers), the payload is
+ * copied to the clipboard and the result is `copied` — the same graceful
+ * fallback used by Capacitor.
  */
 export async function share(options: ShareOptions): Promise<ShareResult> {
-  if (ports.share) return ports.share(options);
-  const nav = navigatorLike();
-  const payload = {
-    title: options.title,
-    text: options.text,
-    url: options.url,
-  };
-  if (typeof nav?.share === 'function') {
+  if (serviceAvailable('share') === 'available') {
     try {
-      await nav.share(payload);
-      return 'shared';
+      // No tick before the port where it is already there, and none before
+      // the copy below when the port refuses at once: the share sheet and the
+      // clipboard both need the user's gesture.
+      const port = peekService('share') ?? (await loadService('share'));
+      return await port.share(options);
     } catch (error) {
-      if ((error as { name?: string }).name === 'AbortError') {
-        return 'dismissed';
-      }
-      throw error;
+      if (!(error instanceof CapabilityError)) throw error;
     }
   }
   const fallback = [options.title, options.text, options.url]
@@ -212,71 +162,48 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
   return 'copied';
 }
 
-const vibrateWeb = (milliseconds: number): void => {
-  const nav = navigatorLike();
-  if (typeof nav?.vibrate === 'function') nav.vibrate(milliseconds);
-};
-
 /** Short physical feedback. A silent no-op on targets without haptics. */
 export async function impact(style: HapticStyle = 'medium'): Promise<void> {
-  if (ports.haptics) return ports.haptics.impact(style);
-  vibrateWeb(style === 'light' ? 10 : style === 'heavy' ? 35 : 20);
+  if (serviceAvailable('haptics') === 'unavailable') return;
+  return withService('haptics', (port) => port.impact(style));
 }
 
 /** Vibration pattern in milliseconds, as in the Vibration API. */
 export async function vibrate(milliseconds = 20): Promise<void> {
-  if (ports.haptics) return ports.haptics.vibrate(milliseconds);
-  vibrateWeb(milliseconds);
+  if (serviceAvailable('haptics') === 'unavailable') return;
+  return withService('haptics', (port) => port.vibrate(milliseconds));
 }
 
+/** What the host reports about the device, plus the app version. */
 export async function deviceInfo(): Promise<DeviceInfo> {
-  if (ports.deviceInfo) {
-    const info = await ports.deviceInfo();
-    return appVersion
-      ? { ...info, appVersion: info.appVersion ?? appVersion }
-      : info;
-  }
-  const nav = navigatorLike();
-  return {
-    platform: 'web',
-    model: nav?.userAgent,
-    userAgent: nav?.userAgent,
-    appVersion,
-  };
+  const info = await withService('deviceInfo', (port) => port.get());
+  return appVersion
+    ? { ...info, appVersion: info.appVersion ?? appVersion }
+    : info;
 }
 
 /**
  * Low-RAM signal for image cache/list window budgets. Android hosts can map
- * `ActivityManager.isLowRamDevice()`; the web uses `navigator.deviceMemory`.
+ * `ActivityManager.isLowRamDevice()`; the web host reports
+ * `navigator.deviceMemory`. A host with no memory service reports no signal.
  */
 export function deviceMemory(thresholdGb = 2): DeviceMemoryInfo {
-  if (ports.memory) {
-    const info = ports.memory();
-    return {
-      deviceMemoryGb: info.deviceMemoryGb,
-      lowMemory:
-        info.lowMemory ||
-        (info.deviceMemoryGb !== undefined &&
-          info.deviceMemoryGb <= thresholdGb),
-    };
-  }
-  const value = navigatorLike()?.deviceMemory;
+  const info = peekService('memory')?.get();
   return {
-    deviceMemoryGb: value,
-    lowMemory: value !== undefined && value <= thresholdGb,
+    deviceMemoryGb: info?.deviceMemoryGb,
+    lowMemory:
+      info !== undefined &&
+      (info.lowMemory ||
+        (info.deviceMemoryGb !== undefined &&
+          info.deviceMemoryGb <= thresholdGb)),
   };
 }
 
 /** Battery level/charging state, or `undefined` when the host has no API. */
 export async function batteryState(): Promise<BatteryState | undefined> {
-  if (ports.battery) return ports.battery();
-  const nav = navigatorLike();
-  if (typeof nav?.getBattery !== 'function') return undefined;
-  const battery = await nav.getBattery();
-  return { level: battery.level, charging: battery.charging };
+  if (serviceAvailable('battery') === 'unavailable') return undefined;
+  return withService('battery', (port) => port.get());
 }
-
-let wakeSentinel: { release(): Promise<void> } | undefined;
 
 /**
  * Keep the screen awake (video playback, recipes, dashboards). Mirrors Expo
@@ -284,62 +211,30 @@ let wakeSentinel: { release(): Promise<void> } | undefined;
  * `true` acquires once, `false` releases.
  */
 export async function keepAwake(active: boolean): Promise<void> {
-  if (ports.keepAwake) return ports.keepAwake(active);
-  const nav = navigatorLike();
-  if (!nav?.wakeLock) throw new CapabilityError('keepAwake');
-  if (active) {
-    if (!wakeSentinel) wakeSentinel = await nav.wakeLock.request('screen');
-  } else if (wakeSentinel) {
-    const sentinel = wakeSentinel;
-    wakeSentinel = undefined;
-    await sentinel.release();
-  }
+  return withService('keepAwake', (port) => port.set(active));
 }
 
 /** Lock orientation where the host supports it (Expo ScreenOrientation). */
 export async function lockOrientation(
   orientation: OrientationLock,
 ): Promise<void> {
-  if (ports.lockOrientation) return ports.lockOrientation(orientation);
-  const target = screenLike()?.orientation;
-  if (orientation === 'any') {
-    target?.unlock?.();
+  // Nothing can hold a lock where there is no service, so releasing is done.
+  if (
+    orientation === 'any' &&
+    serviceAvailable('orientation') === 'unavailable'
+  )
     return;
-  }
-  if (!target?.lock) throw new CapabilityError('lockOrientation');
-  await target.lock(orientation);
+  return withService('orientation', (port) => port.lock(orientation));
 }
 
 /**
  * Apply status/navigation bar colours and icon polarity. Android hosts map
- * this to `Window.setStatusBarColor` + `WindowInsetsController`; the web
- * fallback is the theme-color meta tag. Returns a disposer that restores the
+ * this to `Window.setStatusBarColor` + `WindowInsetsController`; the web host
+ * uses the theme-color meta tag. Returns a disposer that restores the
  * previous appearance.
  */
 export function applySystemBarStyle(style: SystemBarStyle): () => void {
-  if (ports.systemBars) return ports.systemBars.apply(style);
-  if (typeof document === 'undefined') throw new CapabilityError('systemBars');
-  const existing = document.querySelector('meta[name="theme-color"]');
-  const previous = existing?.getAttribute('content') ?? null;
-  let meta: HTMLMetaElement | null = existing as HTMLMetaElement | null;
-  let created = false;
-  if (style.statusBarColor !== undefined) {
-    const color = `#${(style.statusBarColor >>> 8)
-      .toString(16)
-      .padStart(6, '0')}`;
-    if (!meta) {
-      const createdMeta = document.createElement('meta');
-      createdMeta.name = 'theme-color';
-      meta = createdMeta;
-      document.head.append(meta);
-      created = true;
-    }
-    meta.setAttribute('content', color);
-  }
-  return () => {
-    if (created) meta?.remove();
-    else if (meta && previous !== null) meta.setAttribute('content', previous);
-  };
+  return useService('systemBars').apply(style);
 }
 
 /**
@@ -347,8 +242,8 @@ export function applySystemBarStyle(style: SystemBarStyle): () => void {
  * review flow or declined to show it.
  */
 export async function requestAppReview(): Promise<boolean> {
-  if (!ports.appReview) return false;
-  return ports.appReview.request();
+  if (serviceAvailable('appReview') === 'unavailable') return false;
+  return withService('appReview', (port) => port.request());
 }
 
 /**
@@ -356,9 +251,5 @@ export async function requestAppReview(): Promise<boolean> {
  * hosts decide whether to use `Linking.openURL` or an in-app browser tab.
  */
 export async function openExternal(url: string): Promise<void> {
-  if (ports.openExternal) return ports.openExternal(url);
-  if (typeof window === 'undefined') throw new CapabilityError('openExternal');
-  const opened = window.open(url, '_blank', 'noopener,noreferrer');
-  if (!opened) throw new CapabilityError('openExternal');
-  opened.opener = null;
+  return withService('openExternal', (port) => port.open(url));
 }
