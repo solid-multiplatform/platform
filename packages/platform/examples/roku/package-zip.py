@@ -14,7 +14,7 @@ modules = {
 runtimes = [name for name in modules if name.endswith("/solid-js/dist/solid.js")]
 if len(runtimes) != 1:
     raise SystemExit(f"Expected one Solid runtime, found {runtimes}")
-forbidden = ("/dom-renderer/domRenderer.js", "/webgl/src/Renderer.js",
+forbidden = ("/dom/domRenderer.js", "/webgl/src/Renderer.js",
              "/webgl/src/core/RendererCore.js", "/canvas/src/main-api/Renderer.js")
 if any(name.endswith(forbidden) for name in modules):
     raise SystemExit("A browser renderer entered the Roku bundle")
