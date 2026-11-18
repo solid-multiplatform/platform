@@ -310,6 +310,13 @@
         "types": "./dist/src/sdk/svg.d.ts",
         "default": "./dist/src/sdk/svg.js"
       }
+    },
+    "./gestures": {
+      "@solidtv/source": "./src/sdk/gestures.ts",
+      "import": {
+        "types": "./dist/src/sdk/gestures.d.ts",
+        "default": "./dist/src/sdk/gestures.js"
+      }
     }
   },
   "sideEffects": false,

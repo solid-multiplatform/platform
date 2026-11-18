@@ -83,7 +83,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 | Media transport keys             | Android TV media keys, Roku                | S      | `bindMediaKeys` maps hardware transport keys to actions                               | —     |
 | Drag and drop files              | Desktop/web DnD                            | S      | `bindFileDrop` with `PickedFile` wrapping                                             | —     |
 | Pointer cursor styles            | CSS cursor                                 | S      | `cursorStyle` on elements, `useCursor`/`setCursor`; applied by `useMouse`             | —     |
-| Pinch/rotate gestures            | Pointer Events multi-touch                 | M      | Not required for beta; document as non-goal                                           | —     |
+| Pinch/rotate gestures            | Pointer Events multi-touch                 | S      | `createPinchGesture`: two-pointer scale, accumulated rotation, centre delta           | —     |
 
 ## 4. Controls, forms and editing
 
@@ -219,7 +219,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 | Modal semantics / hide siblings | aria-modal, accessibilityViewIsModal | S      | `browserSemantics` sets `aria-hidden`/`inert` on siblings while a dialog is registered | —     |
 | Live announcements              | aria-live, UIAccessibility.post      | S      | announcer primitives                                                                   | —     |
 | Touch targets ≥44pt/48dp        | Apple HIG, Material                  | S      | `MIN_TOUCH_TARGET`, `meetsTouchTarget`, `ensureTouchTarget`                            | —     |
-| Gesture alternatives            | WCAG 2.5.1                           | P      | Not enforced                                                                           | 8     |
+| Gesture alternatives            | WCAG 2.5.1                           | S      | `createGestureAlternatives` + `GestureAlternatives` button bar and semantics           | —     |
 | Text scaling                    | Dynamic Type, sp                     | S      | `setTextScale` + theme typography scaling                                              | —     |
 | High contrast                   | WCAG 1.4.11                          | S      | `setHighContrast`, high-contrast light/dark palettes                                   | —     |
 | Reduced motion                  | WCAG 2.3.3                           | S      | `reducedMotion`                                                                        | —     |
@@ -322,7 +322,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 12. Implementation phases
 
-Progress: Phases 0–6 and 8 are implemented, including theme/capabilities/insets, keyboard/forms, modal/presentation primitives, tabs/guards/history/restoration, pointer drag/wheel/cursors, data/query/offline persistence, lists and a11y/i18n. Phase 7 media covers playback state/bookmarks, media sessions, fullscreen/PiP, thumbnails, audio and DRM reporting. Phase 5 services cover clipboard/share/haptics, files/pickers, geolocation, biometrics, notifications/jobs ports, keep-awake, orientation, system bars, updates and app review. Remaining work is platform delivery (signing/notarization and OTA installation), pinch gestures, gesture alternatives, and the optional contacts/sensors/maps integrations.
+Progress: Phases 0–6 and 8 are implemented, including theme/capabilities/insets, keyboard/forms, modal/presentation primitives, tabs/guards/history/restoration, pointer drag/wheel/cursors, data/query/offline persistence, lists and a11y/i18n. Phase 7 media covers playback state/bookmarks, media sessions, fullscreen/PiP, thumbnails, audio and DRM reporting. Phase 5 services cover clipboard/share/haptics, files/pickers, geolocation, biometrics, notifications/jobs ports, keep-awake, orientation, system bars, updates and app review. Remaining work is platform delivery (signing/notarization and OTA installation) and the optional contacts/sensors/maps integrations.
 
 ### Phase 0 — Contracts and theme foundation
 

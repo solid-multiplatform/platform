@@ -24,7 +24,7 @@ import * as focusManager from '@solid-multiplatform/platform/focusManager';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 261 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 263 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -79,11 +79,13 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'createComponent',
       'createElement',
       'createForm',
+      'createGestureAlternatives',
       'createI18n',
       'createLogger',
       'createOfflineQueue',
       'createPagedList',
       'createPersistentStore',
+      'createPinchGesture',
       'createPullToRefresh',
       'createQuery',
       'createRawShaderAccessor',
@@ -291,7 +293,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   });
 
   v.test(
-    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 85 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 86 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
@@ -308,6 +310,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'FadeInOut',
         'FocusGroup',
         'FocusStackProvider',
+        'GestureAlternatives',
         'Grid',
         'Icon',
         'Image',
@@ -662,6 +665,7 @@ v.describe('package.json exports', () => {
       './drm',
       './rich-text',
       './svg',
+      './gestures',
     ]);
   });
 

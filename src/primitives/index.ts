@@ -52,3 +52,4 @@ export * from './DatePicker.jsx';
 export * from './FocusGroup.jsx';
 export * from './RichText.jsx';
 export * from './Svg.jsx';
+export * from './GestureAlternatives.jsx';
