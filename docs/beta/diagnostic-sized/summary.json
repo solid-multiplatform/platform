@@ -1,0 +1,23 @@
+{
+  "status": "preview",
+  "reason": "Missed presentation deadlines",
+  "passes": [
+    {
+      "model": "onn. Streaming Device 4K pro",
+      "firmware": "onn/jarvis/SNA:14/URO4.260304.011.B1/15051976:user/release-keys",
+      "package": "dev.solidapp.aframeprobe",
+      "pass": 1,
+      "seconds": 96,
+      "sha256": "38affcc7970c395c65965ce5684daf66e63a56e930f2bf4982d18cee5d9f16b7",
+      "scope": "artwork-and-scroll",
+      "releaseStatus": "preview",
+      "appFrames": 2853,
+      "sampleSpanSeconds": 95.95,
+      "misses": 7,
+      "presentation": {
+        "On-time Present / None": 2846,
+        "Late Present / App Deadline Missed": 7
+      }
+    }
+  ]
+}

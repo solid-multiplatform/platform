@@ -1,3 +1,4 @@
+import { desktopSemantics } from './semantics.mjs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { readFile } from 'node:fs/promises';
@@ -21,6 +22,20 @@ globalThis.self = globalThis;
 const surface = new EventTarget();
 surface.style = {};
 const gl = createGraphics(windowHost, surface);
+let needsPresent = false;
+for (const name of ['clear', 'drawElements']) {
+  const operation = gl[name];
+  gl[name] = (...args) => {
+    operation(...args);
+    needsPresent = true;
+  };
+}
+function present() {
+  if (needsPresent) {
+    needsPresent = false;
+    windowHost.swap();
+  }
+}
 surface.getContext = () => gl;
 surface.getBoundingClientRect = () => ({
   left: 0,
@@ -65,7 +80,7 @@ const frame = (callback) => {
     timers.delete(timer);
     if (closed) return;
     callback(performance.now());
-    if (!closed) windowHost.swap();
+    if (!closed) present();
   }, 1);
   timers.add(timer);
   return timer;
@@ -75,6 +90,7 @@ globalThis.cancelAnimationFrame = (timer) => {
   clearTimeout(timer);
   timers.delete(timer);
 };
+let semantics;
 function shutdown() {
   if (closed) return;
   closed = true;
@@ -83,12 +99,18 @@ function shutdown() {
   try {
     dispose?.();
   } finally {
+    semantics?.dispose();
     windowHost.close();
   }
 }
 try {
   boot = await import('./scene.mjs');
+  semantics = desktopSemantics(
+    windowHost,
+    process.env.SOLID_APP_TITLE ?? 'Solid Multiplatform',
+  );
   const host = {
+    semantics,
     target: 'desktop',
     window: windowHost,
     canvas: surface,
@@ -113,7 +135,14 @@ try {
     requestAnimationFrame: frame,
     cancelAnimationFrame: globalThis.cancelAnimationFrame,
     now: () => performance.now(),
-    setTimeout,
+    setTimeout(fn, ms) {
+      return setTimeout(() => {
+        if (!closed) {
+          fn();
+          present();
+        }
+      }, ms);
+    },
     hidden: () => false,
     present() {},
     createWorker: () => null,
@@ -147,10 +176,12 @@ try {
   dispose = boot.start(host);
   let pressed = false;
   pump = setInterval(
-    () =>
+    () => (
+      semantics.dispatch(),
       windowHost.events((name, values) => {
         if (name === 'close') return shutdown();
         if (name === 'resize') {
+          semantics.resize();
           boot.resize(windowHost.geometry());
           return;
         }
@@ -158,14 +189,19 @@ try {
           boot.repaint();
           return;
         }
-        if (name === 'blur') pressed = false;
+        if (name === 'blur') {
+          pressed = false;
+          semantics.active(false);
+        }
+        if (name === 'focus') semantics.active(true);
         messages.dispatchEvent(event(name, values));
         if (name === 'pointerdown' && values.button === 0) pressed = true;
         if (name === 'pointerup' && pressed) {
           pressed = false;
           messages.dispatchEvent(event('click', values));
         }
-      }),
+      })
+    ),
     12,
   );
   process.once('SIGINT', shutdown);

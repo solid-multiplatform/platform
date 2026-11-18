@@ -1354,9 +1354,16 @@ packages:
     resolution: {directory: ../.., type: directory}
     hasBin: true
     peerDependencies:
+      '@nativescript/local-notifications': ^7.0.0
+      '@nativescript/secure-storage': ^4.0.2
       '@solid-multiplatform/renderer': 0.2.0-preview.1
       '@solidjs/router': ^0.16.1
       solid-js: '*'
+    peerDependenciesMeta:
+      '@nativescript/local-notifications':
+        optional: true
+      '@nativescript/secure-storage':
+        optional: true
 
   '@solid-multiplatform/renderer@file:../../vendor/solid-multiplatform-renderer-0.2.0-preview.1.tgz':
     resolution: {integrity: sha512-NHPft7MlexwXWLiA9lEmkgr9JhPjxrzhF+bXdngUbCBJlUw7htizOpsWS/UPOKqpn812iUH8uoU/jxHMvHW3zA==, tarball: file:../../vendor/solid-multiplatform-renderer-0.2.0-preview.1.tgz}

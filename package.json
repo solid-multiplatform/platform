@@ -94,7 +94,13 @@
     "./motion": "./dist/src/sdk/motion.js",
     "./focus": "./dist/src/sdk/focus.js",
     "./permissions": "./dist/src/sdk/permissions.js",
-    "./semantics": "./dist/src/sdk/semantics.js"
+    "./semantics": "./dist/src/sdk/semantics.js",
+    "./services/native/secure-storage": "./hosts/nativescript/secure-storage.mjs",
+    "./services/native/notifications": "./hosts/nativescript/notifications.mjs",
+    "./permissions/android": "./hosts/android/permissions.mjs",
+    "./editor/roku": "./hosts/roku/editor.ts",
+    "./scroll": "./dist/src/sdk/scroll.js",
+    "./network": "./dist/src/sdk/network.js"
   },
   "sideEffects": false,
   "scripts": {
@@ -162,9 +168,18 @@
   "peerDependencies": {
     "@solidjs/router": "^0.16.1",
     "@solid-multiplatform/renderer": "0.2.0-preview.1",
-    "solid-js": "*"
+    "solid-js": "*",
+    "@nativescript/secure-storage": "^4.0.2",
+    "@nativescript/local-notifications": "^7.0.0"
   },
-  "peerDependenciesMeta": {},
+  "peerDependenciesMeta": {
+    "@nativescript/secure-storage": {
+      "optional": true
+    },
+    "@nativescript/local-notifications": {
+      "optional": true
+    }
+  },
   "repository": "github:solid-multiplatform/platform",
   "files": [
     "dist",
@@ -189,7 +204,8 @@
     "examples/apple-tv/svg-compat",
     "examples/android-tv/native",
     "examples/android-tv/App_Resources",
-    "examples/apple-tv/App_Resources"
+    "examples/apple-tv/App_Resources",
+    "docs/beta/README.md"
   ],
   "packageManager": "pnpm@10.33.4",
   "publishConfig": {

@@ -1,6 +1,13 @@
+import { createAngle } from './angle.mjs';
 // SDL 3.2 event layouts. Decode only the public fixed-width fields we consume.
 import koffi from 'koffi';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+if (process.platform === 'win32' && process.arch === 'x64') {
+  const base = fileURLToPath(new URL('./windows/lib/', import.meta.url));
+  process.env.SOLID_ANGLE_DIR ??= path.join(base, 'angle');
+  process.env.SOLID_SDL3_LIBRARY ??= path.join(base, 'SDL3.dll');
+}
 if (process.platform === 'win32' && process.env.SOLID_ANGLE_DIR) {
   const bin = process.env.SOLID_ANGLE_DIR;
   process.env.PATH = bin + path.delimiter + process.env.PATH;
@@ -32,6 +39,9 @@ const number = fn(
 const pointer = fn(
   'void *SDL_GetPointerProperty(uint32_t,const char *,void *)',
 );
+const position = fn(
+  'bool SDL_GetWindowPosition(void *, _Out_ int *, _Out_ int *)',
+);
 const size = fn('bool SDL_GetWindowSize(void *, _Out_ int *, _Out_ int *)');
 const pixels = fn(
   'bool SDL_GetWindowSizeInPixels(void *, _Out_ int *, _Out_ int *)',
@@ -56,7 +66,26 @@ export function openWindow(title) {
     gl,
     core = false;
   const profiles = process.platform === 'darwin' ? [1] : [4, 1];
-  for (const profile of profiles) {
+  let angle;
+  if (process.platform === 'win32' && process.env.SOLID_ANGLE_DIR) {
+    handle = create(title, 960, 600, 0x2020);
+    if (!handle) {
+      const reason = error();
+      quit();
+      throw new Error(reason);
+    }
+    try {
+      angle = createAngle(
+        pointer(properties(handle), 'SDL.window.win32.hwnd', null),
+        process.env.SOLID_ANGLE_DIR,
+      );
+    } catch (e) {
+      destroy(handle);
+      quit();
+      throw e;
+    }
+  }
+  for (const profile of angle ? [] : profiles) {
     setAttr(20, profile);
     setAttr(17, 3);
     setAttr(18, profile === 1 ? 2 : 0);
@@ -71,17 +100,26 @@ export function openWindow(title) {
       handle = null;
     }
   }
-  if (!gl) {
+  if (!gl && !angle) {
     const reason = error();
     quit();
     throw new Error(reason);
   }
-  vsync(1);
+  if (!angle) vsync(1);
   const buffer = Buffer.alloc(128);
   return {
     handle,
     core,
+    bind: angle?.bind,
     proc,
+    accessHandle() {
+      const id = properties(handle);
+      return process.platform === 'darwin'
+        ? pointer(id, 'SDL.window.cocoa.window', null)
+        : process.platform === 'win32'
+          ? pointer(id, 'SDL.window.win32.hwnd', null)
+          : null;
+    },
     nativeVideoId() {
       const id = properties(handle);
       if (process.platform === 'win32') {
@@ -91,7 +129,7 @@ export function openWindow(title) {
       const xid = number(id, 'SDL.window.x11.window', 0);
       return xid ? String(xid) : null;
     },
-    swap: () => swap(handle),
+    swap: () => (angle ? angle.present() : swap(handle)),
     textInput(enabled) {
       return enabled ? textStart(handle) : textStop(handle);
     },
@@ -102,7 +140,12 @@ export function openWindow(title) {
         ph = [0];
       size(handle, w, h);
       pixels(handle, pw, ph);
+      const x = [0],
+        y = [0];
+      position(handle, x, y);
       return {
+        x: x[0],
+        y: y[0],
         width: w[0],
         height: h[0],
         pixelWidth: pw[0],
@@ -120,6 +163,7 @@ export function openWindow(title) {
         if (type === 0x206 || type === 0x207 || type === 0x214) send('resize');
         else if (type === 0x204) send('expose');
         else if (type === 0x20f) send('blur');
+        else if (type === 0x20e) send('focus');
         else if (type === 0x300 || type === 0x301) {
           const raw = keyName(buffer.readUInt32LE(28));
           send(type === 0x300 ? 'keydown' : 'keyup', {
@@ -153,7 +197,8 @@ export function openWindow(title) {
       }
     },
     close() {
-      release(gl);
+      if (angle) angle.close();
+      else release(gl);
       destroy(handle);
       quit();
     },

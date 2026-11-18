@@ -1,0 +1,58 @@
+{
+  "status": "preview",
+  "reason": "Missed presentation deadlines",
+  "passes": [
+    {
+      "model": "onn. Streaming Device 4K pro",
+      "firmware": "onn/jarvis/SNA:14/URO4.260304.011.B1/15051976:user/release-keys",
+      "package": "dev.solidapp.aframeprobe",
+      "pass": 1,
+      "seconds": 600,
+      "sha256": "8245db0f7a21a2ff1e449399dc8a3d0f80a10a0bda92732aa90bb1e7c383553c",
+      "scope": "artwork-and-scroll",
+      "releaseStatus": "preview",
+      "appFrames": 3003,
+      "sampleSpanSeconds": 599.8,
+      "misses": 3003,
+      "presentation": {
+        "Late Present / Display HAL, App Deadline Missed": 2269,
+        "Late Present / Display HAL, App Deadline Missed, Buffer Stuffing": 734
+      }
+    },
+    {
+      "model": "onn. Streaming Device 4K pro",
+      "firmware": "onn/jarvis/SNA:14/URO4.260304.011.B1/15051976:user/release-keys",
+      "package": "dev.solidapp.aframeprobe",
+      "pass": 2,
+      "seconds": 600,
+      "sha256": "37bf2f231a48dfef0fbf5cc3cdb2656dc4532b593412838ad0703a6355edaa6d",
+      "scope": "artwork-and-scroll",
+      "releaseStatus": "preview",
+      "appFrames": 2983,
+      "sampleSpanSeconds": 599.92,
+      "misses": 2983,
+      "presentation": {
+        "Late Present / Display HAL, App Deadline Missed": 2234,
+        "Late Present / Display HAL, App Deadline Missed, Buffer Stuffing": 749
+      }
+    },
+    {
+      "model": "onn. Streaming Device 4K pro",
+      "firmware": "onn/jarvis/SNA:14/URO4.260304.011.B1/15051976:user/release-keys",
+      "package": "dev.solidapp.aframeprobe",
+      "pass": 3,
+      "seconds": 600,
+      "sha256": "3018c4721051162077b117c1224aa26fbe68d472393de36408e88d7a12057e0e",
+      "scope": "artwork-and-scroll",
+      "releaseStatus": "preview",
+      "appFrames": 2957,
+      "sampleSpanSeconds": 599.93,
+      "misses": 2957,
+      "presentation": {
+        "Late Present / Display HAL, App Deadline Missed": 2216,
+        "Late Present / Display HAL, App Deadline Missed, Buffer Stuffing": 738,
+        "Late Present / SurfaceFlinger CPU Deadline Missed, App Deadline Missed": 3
+      }
+    }
+  ]
+}

@@ -14,8 +14,25 @@ export function buildDesktopUI(root, dir, work, launch) {
     ],
     dir,
   );
+  command(
+    process.execPath,
+    [path.join(framework, 'hosts/desktop/accessibility/build.mjs'), dir],
+    dir,
+  );
+  if (process.platform === 'win32' && process.arch === 'x64')
+    command(
+      process.execPath,
+      [path.join(framework, 'hosts/desktop/windows-runtime.mjs'), dir],
+      dir,
+    );
   copy(path.join(root, 'assets/fonts'), path.join(work, 'fonts'));
-  for (const file of ['window.mjs', 'graphics.mjs', 'run.mjs'])
+  for (const file of [
+    'window.mjs',
+    'angle.mjs',
+    'graphics.mjs',
+    'semantics.mjs',
+    'run.mjs',
+  ])
     copy(path.join(framework, 'hosts/desktop', file), path.join(work, file));
   write(
     path.join(work, 'scene.ts'),

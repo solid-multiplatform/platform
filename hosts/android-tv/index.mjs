@@ -4,7 +4,7 @@ import { bindAndroidCanvas } from './platform.android.ts';
 
 export function runAndroidTV(loadApp) {
   runNativeApp('android-tv', loadApp, (canvas, bridge) => {
-    bindAndroidCanvas(canvas);
+    bindAndroidCanvas(canvas, true);
     return bindAndroidInput(bridge, canvas.android);
   });
 }

@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@nativescript/local-notifications':
+        specifier: ^7.0.0
+        version: 7.0.0
+      '@nativescript/secure-storage':
+        specifier: ^4.0.2
+        version: 4.0.2
       '@solid-primitives/event-listener':
         specifier: ^2.4.5
         version: 2.4.5(solid-js@1.9.17)
@@ -676,6 +682,18 @@ packages:
     peerDependencies:
       '@emnapi/core': ^1.7.1
       '@emnapi/runtime': ^1.7.1
+
+  '@nativescript-community/perms@3.0.12':
+    resolution: {integrity: sha512-pNRawjbDlRho3SnVB/HlpyHLHoAAxRZpIh/OaL2qP6QyYBdle1KFY+cyHEq2GpT47u/MAGUUiQ546uMewpHI4A==}
+
+  '@nativescript/local-notifications@7.0.0':
+    resolution: {integrity: sha512-LpxXqCxu3Nx04j7CKxicGpxWdXLP/M/r3zQNSI1hTn3LBsmGVpnX+1gr6/gLxQyIR3xzD/MxRWgO3qdSCCieeg==}
+
+  '@nativescript/secure-storage@4.0.2':
+    resolution: {integrity: sha512-4sWU4tmvGjh9ZfuApt0enwcT3tGN88dR5IeOuQsYqUSeUQbxK7Xo2JTF1dy7KIxnh0Fnxrs5O61x7hp9JBn/kw==}
+
+  '@nativescript/shared-notification-delegate@1.0.2':
+    resolution: {integrity: sha512-Wh6F1WH9Aj23K+nyolA5MrA6MXku/5rSPt9r20ekbyx2FkRpBr0stjg4uD6KSyUvWY8YT+KQ9WlOUzhq7g7Ycw==}
 
   '@nothing-but/utils@0.17.0':
     resolution: {integrity: sha512-TuCHcHLOqDL0SnaAxACfuRHBNRgNJcNn9X0GiH5H3YSDBVquCr3qEIG3FOQAuMyZCbu9w8nk2CHhOsn7IvhIwQ==}
@@ -3169,6 +3187,17 @@ snapshots:
       '@emnapi/runtime': 1.10.0
       '@tybys/wasm-util': 0.10.2
     optional: true
+
+  '@nativescript-community/perms@3.0.12': {}
+
+  '@nativescript/local-notifications@7.0.0':
+    dependencies:
+      '@nativescript-community/perms': 3.0.12
+      '@nativescript/shared-notification-delegate': 1.0.2
+
+  '@nativescript/secure-storage@4.0.2': {}
+
+  '@nativescript/shared-notification-delegate@1.0.2': {}
 
   '@nothing-but/utils@0.17.0': {}
 

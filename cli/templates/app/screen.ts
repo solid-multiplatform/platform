@@ -6,7 +6,7 @@ export interface ScreenHost {
   semantics?: {
     register(
       value: import('@solid-multiplatform/platform/semantics').Semantics,
-    ): { dispose(): void };
+    ): { dispose(): void; focus?(): void };
   };
 }
 export interface ScreenProps {

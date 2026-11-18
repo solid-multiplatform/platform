@@ -1,8 +1,13 @@
 // A canvas keeps its first context attributes for life. Probe with renderer settings.
 export const contextAttributes = Object.freeze({
-  alpha: true, antialias: false, depth: false, stencil: false,
-  desynchronized: false, powerPreference: 'high-performance',
-  premultipliedAlpha: true, preserveDrawingBuffer: false
+  alpha: true,
+  antialias: false,
+  depth: false,
+  stencil: false,
+  desynchronized: false,
+  powerPreference: 'high-performance',
+  premultipliedAlpha: true,
+  preserveDrawingBuffer: false,
 });
 
 export function createNativeContext(canvas, options = {}) {

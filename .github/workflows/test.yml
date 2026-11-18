@@ -25,6 +25,14 @@ jobs:
       - run: node --test tests/native/*.test.mjs
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:webgl
+      - name: Compare actual Canvas and WebGL pixels
+        run: node tests/visual/run.mjs "$RUNNER_TEMP/visual"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: renderer-visual-samples
+          path: ${{ runner.temp }}/visual/*.png
+          if-no-files-found: ignore
       - working-directory: examples/roku
         run: pnpm install --frozen-lockfile && pnpm build
       - run: pnpm lint

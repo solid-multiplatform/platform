@@ -57,6 +57,9 @@ export function packageDesktop(root) {
     copy(license, path.join(stage, 'licenses', 'Node-LICENSE'));
     const sdl =
       process.env.SOLID_SDL3_LIBRARY ??
+      (process.platform === 'win32' && process.arch === 'x64'
+        ? path.join(dir, 'work/windows/lib/SDL3.dll')
+        : undefined) ??
       (process.platform === 'linux'
         ? [
             '/usr/lib/libSDL3.so.0',

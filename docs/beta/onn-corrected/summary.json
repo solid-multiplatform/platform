@@ -1,0 +1,57 @@
+{
+  "status": "preview",
+  "reason": "Missed presentation deadlines",
+  "passes": [
+    {
+      "model": "onn. Streaming Device 4K pro",
+      "firmware": "onn/jarvis/SNA:14/URO4.260304.011.B1/15051976:user/release-keys",
+      "package": "dev.solidapp.aframeprobe",
+      "pass": 1,
+      "seconds": 600,
+      "sha256": "d82098e43666117b3a3cbd6d866e57a15f85aa5c6060c9156df32e14173ddac9",
+      "scope": "artwork-and-scroll",
+      "releaseStatus": "preview",
+      "appFrames": 17334,
+      "sampleSpanSeconds": 599.98,
+      "misses": 59,
+      "presentation": {
+        "On-time Present / None": 17275,
+        "Late Present / App Deadline Missed": 59
+      }
+    },
+    {
+      "model": "onn. Streaming Device 4K pro",
+      "firmware": "onn/jarvis/SNA:14/URO4.260304.011.B1/15051976:user/release-keys",
+      "package": "dev.solidapp.aframeprobe",
+      "pass": 2,
+      "seconds": 600,
+      "sha256": "8f82b90a3837e45ab9102effcb76f8ce5a9429fe37cadc3a3fb1f5c348924870",
+      "scope": "artwork-and-scroll",
+      "releaseStatus": "preview",
+      "appFrames": 17902,
+      "sampleSpanSeconds": 599.95,
+      "misses": 52,
+      "presentation": {
+        "On-time Present / None": 17850,
+        "Late Present / App Deadline Missed": 52
+      }
+    },
+    {
+      "model": "onn. Streaming Device 4K pro",
+      "firmware": "onn/jarvis/SNA:14/URO4.260304.011.B1/15051976:user/release-keys",
+      "package": "dev.solidapp.aframeprobe",
+      "pass": 3,
+      "seconds": 600,
+      "sha256": "f12682d5fa578a2c2864b4dcad701fa082da0e55a23fc85e88259de2cb420b96",
+      "scope": "artwork-and-scroll",
+      "releaseStatus": "preview",
+      "appFrames": 18109,
+      "sampleSpanSeconds": 599.98,
+      "misses": 47,
+      "presentation": {
+        "On-time Present / None": 18062,
+        "Late Present / App Deadline Missed": 47
+      }
+    }
+  ]
+}

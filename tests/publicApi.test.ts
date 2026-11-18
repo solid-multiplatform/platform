@@ -441,6 +441,12 @@ v.describe('package.json exports', () => {
       './focus',
       './permissions',
       './semantics',
+      './services/native/secure-storage',
+      './services/native/notifications',
+      './permissions/android',
+      './editor/roku',
+      './scroll',
+      './network',
     ]);
   });
 

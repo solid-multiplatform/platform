@@ -59,12 +59,19 @@ export function mount(
     function register(name: string, node: ElementNode) {
       rows.set(name, node);
       const semantics = host?.semantics?.register({
+        bounds: () => ({
+          x: node.lng?.absX ?? 0,
+          y: node.lng?.absY ?? 0,
+          width: node.width ?? 0,
+          height: node.height ?? 0,
+        }),
         role: 'button',
         label: name,
         focus: () => node.setFocus(),
         activate: () => activate(name),
       });
 
+      if (semantics?.focus) node.onFocus = () => semantics.focus?.();
       const remove = pointer?.register({
         bounds: () => ({
           x: node.lng.absX ?? 0,

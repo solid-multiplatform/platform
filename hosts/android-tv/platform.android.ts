@@ -1,3 +1,4 @@
+import { tvBackingScale } from './scale.mjs';
 import { File, knownFolders, Http } from '@nativescript/core';
 import type { Canvas } from '@nativescript/canvas';
 import { TvPlatform } from '@solid-multiplatform/platform/nativescript';
@@ -7,6 +8,7 @@ import { createNativeContext } from './gl-context.mjs';
 import { httpArrayBuffer } from './http-buffer.android';
 
 let surface: Canvas;
+let tvSurface = false;
 let webgl2 = true;
 const glOptions = { threaded: true, desynchronized: false };
 
@@ -44,6 +46,17 @@ export class AndroidPlatform extends TvPlatform {
   ): Partial<RendererMainSettings> {
     return {
       ...super.resolveSettings(settings),
+      ...(tvSurface && settings.devicePhysicalPixelRatio === undefined
+        ? {
+            devicePhysicalPixelRatio: tvBackingScale(
+              surface.android?.getWidth(),
+              surface.android?.getHeight(),
+              settings.appWidth,
+              settings.appHeight,
+              settings.deviceLogicalPixelRatio,
+            ),
+          }
+        : {}),
       canvas: surface as any,
       forceWebGL2: webgl2,
     };
@@ -99,7 +112,8 @@ export class AndroidPlatform extends TvPlatform {
   }
 }
 
-export function bindAndroidCanvas(canvas: Canvas) {
+export function bindAndroidCanvas(canvas: Canvas, isTV = false) {
+  tvSurface = isTV;
   surface = canvas;
   const selected = createNativeContext(canvas, glOptions);
   webgl2 = selected.webgl2;

@@ -217,6 +217,7 @@ export function init(destination, selected) {
           },
           devDependencies: {
             esbuild: '0.27.4',
+            fflate: '0.8.2',
             '@babel/core': '7.29.7',
             'babel-preset-solid': '1.9.15',
             '@babel/preset-typescript': '7.29.7',

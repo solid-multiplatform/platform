@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@nativescript/core": "9.1.3",
-    "@nativescript/canvas": "3.0.0-beta.6",
+    "@nativescript/canvas": "https://github.com/solid-multiplatform/renderer/releases/download/v0.2.0-preview.1/nativescript-canvas-android-3.0.0-beta.6-solid.2.tgz",
     "@nativescript/canvas-polyfill": "3.0.0-beta.6",
     "@nativescript/canvas-svg": "3.0.0-beta.6",
     "@nativescript/canvas-media": "3.0.0-beta.6",

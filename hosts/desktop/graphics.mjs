@@ -4,6 +4,7 @@ import koffi from 'koffi';
 
 export function createGraphics(window, canvas) {
   function bind(name, result, params) {
+    if (window.bind) return window.bind('gl' + name, result, params);
     const address = window.proc('gl' + name);
     if (!address) throw new Error('The desktop context lacks gl' + name);
     const type = koffi.proto(result, params);

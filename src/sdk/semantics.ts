@@ -1,4 +1,5 @@
 export interface Semantics {
+  bounds?: () => { x: number; y: number; width: number; height: number };
   label: string;
   role: 'button' | 'heading' | 'status' | 'switch' | 'slider' | 'group';
   disabled?: boolean;
