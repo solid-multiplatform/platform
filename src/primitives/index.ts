@@ -48,3 +48,4 @@ export * from './Drawer.jsx';
 export * from './AppErrorBoundary.jsx';
 export * from './Choice.jsx';
 export * from './Select.jsx';
+export * from './DatePicker.jsx';

@@ -26,7 +26,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 | Asset pipeline (images, fonts, icons)       | Expo Asset, Flutter pubspec assets                 | S      | CLI copies assets/fonts; `loadFonts` and `Image` texture pipeline          | —     |
 | Environment/config injection                | Expo `app.config`, Vite env                        | S      | `setEnvironment`/`env`/`envFlag`/`envNumber` with build-env fallback       | —     |
 | Generated type-safe routes                  | Expo Router typed routes                           | S      | `buildRoute`/`matchRoute` with `RouteParams` inference                     | —     |
-| Debug inspector / component tree            | RN DevTools, Flutter Inspector                     | M      | Dev overlay and JSX locator exist only as stubs                            | 10    |
+| Debug inspector / component tree            | RN DevTools, Flutter Inspector                     | S      | solid-devtools `elementInterface` + `logRenderTree`                        | —     |
 | Error boundaries                            | React error boundaries                             | S      | `AppErrorBoundary` with `ListState` fallback and retry                     | —     |
 | Structured logging and tracing              | Expo/Flutter logging                               | S      | `createLogger` levels, child fields, spans; `configureLogging`             | —     |
 | Crash reporting hook                        | Sentry/Crashlytics integration point               | S      | `setCrashReporter`/`reportCrash`; `AppErrorBoundary` reports render errors | —     |
@@ -87,27 +87,27 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 4. Controls, forms and editing
 
-| Feature                       | Established pattern                         | Status | Evidence / gap                                                   | Phase |
-| ----------------------------- | ------------------------------------------- | ------ | ---------------------------------------------------------------- | ----- |
-| Text and labels               | RN Text, Flutter Text                       | S      | Text node, contract tests                                        | —     |
-| Buttons                       | RN Button/Pressable                         | S      | TV/web templates, controls                                       | —     |
-| Switch/toggle                 | RN Switch, Flutter Switch                   | S      | `Toggle`, native/web controls                                    | —     |
-| Checkbox and radio            | Material/Flutter                            | S      | `Checkbox`, `Radio`, `RadioGroup` with Enter/pointer activation  | —     |
-| Slider and progress           | RN Slider/Progress                          | S      | `Slider`, `Progress`, native controls                            | —     |
-| Single-line text field        | RN TextInput                                | S      | Native/desktop/web editors                                       | —     |
-| Multiline text area           | RN multiline                                | S      | `TextArea`/`TextField multiline` native editor                   | —     |
-| Password masking and autofill | Android autofill, Apple Password AutoFill   | S      | `purpose`, password smoke tested                                 | —     |
-| Keyboard types and return key | RN keyboardType/returnKeyType               | S      | `EditorOptions.purpose`/`multiline`; native keyboard hints       | —     |
-| Validation and error messages | HTML constraint validation, Flutter Form    | S      | `createForm` touched validation and per-field errors             | —     |
-| Focus traversal inside forms  | HTML tab order, Flutter FocusTraversal      | P      | Tab works globally; no form grouping                             | 1     |
-| Date/time picker              | RN community datetimepicker                 | M      | No primitive                                                     | 9     |
-| Select/picker                 | RN Picker, Flutter Dropdown                 | S      | `Select` dropdown built on `Menu` with controlled value          | —     |
-| Search field                  | Flutter SearchBar                           | S      | `SearchField` native editor with `purpose: search`               | —     |
-| File/image picker             | Expo ImagePicker/DocumentPicker             | S      | `pickFiles` with host port and web input fallback                | —     |
-| Clipboard                     | Expo Clipboard, Capacitor Clipboard         | S      | `readClipboard`/`writeClipboard` with host port and web fallback | —     |
-| Loading/submitting states     | Flutter Form/Button state                   | S      | `createForm().submitting` and `ListState`                        | —     |
-| Input above keyboard          | RN KeyboardAvoidingView, Flutter viewInsets | S      | `KeyboardAvoidingView` + keyboard-aware mobile template          | —     |
-| Auto-reveal focused field     | Flutter ensureVisible, Android adjustResize | S      | `revealAboveKeyboard` and `keyboardAwareBounds`                  | —     |
+| Feature                       | Established pattern                         | Status | Evidence / gap                                                       | Phase |
+| ----------------------------- | ------------------------------------------- | ------ | -------------------------------------------------------------------- | ----- |
+| Text and labels               | RN Text, Flutter Text                       | S      | Text node, contract tests                                            | —     |
+| Buttons                       | RN Button/Pressable                         | S      | TV/web templates, controls                                           | —     |
+| Switch/toggle                 | RN Switch, Flutter Switch                   | S      | `Toggle`, native/web controls                                        | —     |
+| Checkbox and radio            | Material/Flutter                            | S      | `Checkbox`, `Radio`, `RadioGroup` with Enter/pointer activation      | —     |
+| Slider and progress           | RN Slider/Progress                          | S      | `Slider`, `Progress`, native controls                                | —     |
+| Single-line text field        | RN TextInput                                | S      | Native/desktop/web editors                                           | —     |
+| Multiline text area           | RN multiline                                | S      | `TextArea`/`TextField multiline` native editor                       | —     |
+| Password masking and autofill | Android autofill, Apple Password AutoFill   | S      | `purpose`, password smoke tested                                     | —     |
+| Keyboard types and return key | RN keyboardType/returnKeyType               | S      | `EditorOptions.purpose`/`multiline`; native keyboard hints           | —     |
+| Validation and error messages | HTML constraint validation, Flutter Form    | S      | `createForm` touched validation and per-field errors                 | —     |
+| Focus traversal inside forms  | HTML tab order, Flutter FocusTraversal      | P      | Tab works globally; no form grouping                                 | 1     |
+| Date/time picker              | RN community datetimepicker                 | S      | `DatePicker` calendar grid, month navigation, optional time steppers | —     |
+| Select/picker                 | RN Picker, Flutter Dropdown                 | S      | `Select` dropdown built on `Menu` with controlled value              | —     |
+| Search field                  | Flutter SearchBar                           | S      | `SearchField` native editor with `purpose: search`                   | —     |
+| File/image picker             | Expo ImagePicker/DocumentPicker             | S      | `pickFiles` with host port and web input fallback                    | —     |
+| Clipboard                     | Expo Clipboard, Capacitor Clipboard         | S      | `readClipboard`/`writeClipboard` with host port and web fallback     | —     |
+| Loading/submitting states     | Flutter Form/Button state                   | S      | `createForm().submitting` and `ListState`                            | —     |
+| Input above keyboard          | RN KeyboardAvoidingView, Flutter viewInsets | S      | `KeyboardAvoidingView` + keyboard-aware mobile template              | —     |
+| Auto-reveal focused field     | Flutter ensureVisible, Android adjustResize | S      | `revealAboveKeyboard` and `keyboardAwareBounds`                      | —     |
 
 ## 5. Navigation and presentation
 
@@ -153,43 +153,43 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 7. Device, platform and app services
 
-| Feature                                | Established pattern                         | Status | Evidence / gap                                                     | Phase |
-| -------------------------------------- | ------------------------------------------- | ------ | ------------------------------------------------------------------ | ----- |
-| Lifecycle (active/background)          | RN AppState, Flutter AppLifecycleState      | S      | `AppServices.lifecycle`, host bindings                             | —     |
-| Orientation lock                       | Expo ScreenOrientation                      | S      | `lockOrientation` with a host port or Screen Orientation API       | —     |
-| Status/navigation bars                 | Capacitor StatusBar/SystemBars              | S      | `applySystemBarStyle` host port + theme-color fallback             | —     |
-| Keyboard inset and visibility          | Android IME insets, iOS notifications       | S      | `viewport().keyboardInset`                                         | —     |
-| Safe area and display cutout           | Apple safeAreaInsets, Android displayCutout | S      | `safeArea` per edge                                                | —     |
-| Dark/light/system theme                | RN useColorScheme                           | S      | `ThemeProvider`, `useTheme`, `useColorScheme`                      | —     |
-| Text scaling / accessibility font size | iOS Dynamic Type, Android sp                | S      | `setTextScale` scales theme typography and `scaled()` tokens       | —     |
-| Reduce motion                          | iOS/Android/Web                             | S      | `reducedMotion` in viewport                                        | —     |
-| Locale and i18n                        | i18next, Flutter intl                       | S      | `setupI18n`/`createI18n` with locale fallback and interpolation    | —     |
-| RTL layout                             | CSS direction, I18nManager                  | S      | `isRTL`, `textDirection`, `dir()` and document `dir`/`lang` sync   | —     |
-| Haptics                                | Expo Haptics, Capacitor Haptics             | S      | `impact`/`vibrate` with host port and Vibration API fallback       | —     |
-| Clipboard                              | Expo/Capacitor                              | S      | `readClipboard`/`writeClipboard` with host port and web fallback   | —     |
-| Share sheet                            | RN Share, Capacitor Share                   | S      | `share` with host port, Web Share and clipboard fallback           | —     |
-| Local notifications                    | Expo/Capacitor LocalNotifications           | S      | `notifications` port + host                                        | —     |
-| Push notifications                     | Expo/Capacitor PushNotifications            | P      | `push` port exists; no end-to-end flow                             | 5     |
-| Permissions                            | Expo/Capacitor Permissions                  | S      | `createPermissions`, host ports                                    | —     |
-| Capability registry                    | Expo modules `isAvailableAsync`             | S      | `src/sdk/capabilities.ts` (`setCapabilities`, `supports`)          | —     |
-| Connectivity state                     | NetInfo, Capacitor Network                  | S      | `connectivity` port                                                | —     |
-| HTTP client and cancellation           | fetch/axios, Tauri HTTP                     | S      | `network.ts`, host adapters                                        | —     |
-| Preferences/settings                   | AsyncStorage, Capacitor Preferences         | S      | `settings` store                                                   | —     |
-| Secure storage                         | Keychain/Keystore                           | S      | `secureStorage` port + native                                      | —     |
-| File system                            | Expo FileSystem, Capacitor Filesystem       | S      | `FileSystemPort` + `readFileText`/`writeFileText`/`listFiles` etc. | —     |
-| Background jobs                        | Expo BackgroundTask, WorkManager            | P      | `jobs` port + native registries                                    | 5     |
-| Device info                            | Expo Device                                 | S      | `deviceInfo` with host port and web fallback                       | —     |
-| Battery/power state                    | Expo Battery                                | S      | `batteryState` with host port and Battery Status API               | —     |
-| Keep awake / screen lock               | Expo KeepAwake                              | S      | `keepAwake` with host port and Screen Wake Lock API                | —     |
-| Biometrics/local auth                  | Expo LocalAuthentication                    | S      | `authenticate`/`biometricsAvailable` host port                     | —     |
-| Geolocation                            | Expo Location, Capacitor Geolocation        | S      | `getCurrentPosition`/`watchPosition` with host and web fallback    | —     |
-| Camera                                 | Expo Camera/ImagePicker                     | S      | `capturePhoto` host port + getUserMedia/canvas fallback            | —     |
-| Microphone/recording                   | Expo Audio                                  | S      | `openMicrophone`/`stopMicrophone` host port + getUserMedia         | —     |
-| Contacts/calendar                      | Expo Contacts/Calendar                      | M      | Deferred; optional                                                 | —     |
-| Sensors                                | Expo Sensors                                | M      | Deferred; optional                                                 | —     |
-| Maps                                   | Expo Maps                                   | M      | Deferred; optional                                                 | —     |
-| In-app browser / external opener       | Expo WebBrowser, Tauri Opener               | S      | `openExternal` with host port and window.open fallback             | —     |
-| App/store review                       | Expo StoreReview                            | S      | `requestAppReview` host port                                       | —     |
+| Feature                                | Established pattern                         | Status | Evidence / gap                                                         | Phase |
+| -------------------------------------- | ------------------------------------------- | ------ | ---------------------------------------------------------------------- | ----- |
+| Lifecycle (active/background)          | RN AppState, Flutter AppLifecycleState      | S      | `AppServices.lifecycle`, host bindings                                 | —     |
+| Orientation lock                       | Expo ScreenOrientation                      | S      | `lockOrientation` with a host port or Screen Orientation API           | —     |
+| Status/navigation bars                 | Capacitor StatusBar/SystemBars              | S      | `applySystemBarStyle` host port + theme-color fallback                 | —     |
+| Keyboard inset and visibility          | Android IME insets, iOS notifications       | S      | `viewport().keyboardInset`                                             | —     |
+| Safe area and display cutout           | Apple safeAreaInsets, Android displayCutout | S      | `safeArea` per edge                                                    | —     |
+| Dark/light/system theme                | RN useColorScheme                           | S      | `ThemeProvider`, `useTheme`, `useColorScheme`                          | —     |
+| Text scaling / accessibility font size | iOS Dynamic Type, Android sp                | S      | `setTextScale` scales theme typography and `scaled()` tokens           | —     |
+| Reduce motion                          | iOS/Android/Web                             | S      | `reducedMotion` in viewport                                            | —     |
+| Locale and i18n                        | i18next, Flutter intl                       | S      | `setupI18n`/`createI18n` with locale fallback and interpolation        | —     |
+| RTL layout                             | CSS direction, I18nManager                  | S      | `isRTL`, `textDirection`, `dir()` and document `dir`/`lang` sync       | —     |
+| Haptics                                | Expo Haptics, Capacitor Haptics             | S      | `impact`/`vibrate` with host port and Vibration API fallback           | —     |
+| Clipboard                              | Expo/Capacitor                              | S      | `readClipboard`/`writeClipboard` with host port and web fallback       | —     |
+| Share sheet                            | RN Share, Capacitor Share                   | S      | `share` with host port, Web Share and clipboard fallback               | —     |
+| Local notifications                    | Expo/Capacitor LocalNotifications           | S      | `notifications` port + host                                            | —     |
+| Push notifications                     | Expo/Capacitor PushNotifications            | S      | `push` port + web PushManager subscription; native providers app-owned | —     |
+| Permissions                            | Expo/Capacitor Permissions                  | S      | `createPermissions`, host ports                                        | —     |
+| Capability registry                    | Expo modules `isAvailableAsync`             | S      | `src/sdk/capabilities.ts` (`setCapabilities`, `supports`)              | —     |
+| Connectivity state                     | NetInfo, Capacitor Network                  | S      | `connectivity` port                                                    | —     |
+| HTTP client and cancellation           | fetch/axios, Tauri HTTP                     | S      | `network.ts`, host adapters                                            | —     |
+| Preferences/settings                   | AsyncStorage, Capacitor Preferences         | S      | `settings` store                                                       | —     |
+| Secure storage                         | Keychain/Keystore                           | S      | `secureStorage` port + native                                          | —     |
+| File system                            | Expo FileSystem, Capacitor Filesystem       | S      | `FileSystemPort` + `readFileText`/`writeFileText`/`listFiles` etc.     | —     |
+| Background jobs                        | Expo BackgroundTask, WorkManager            | S      | `jobs` port + Web Background Sync; native registries                   | —     |
+| Device info                            | Expo Device                                 | S      | `deviceInfo` with host port and web fallback                           | —     |
+| Battery/power state                    | Expo Battery                                | S      | `batteryState` with host port and Battery Status API                   | —     |
+| Keep awake / screen lock               | Expo KeepAwake                              | S      | `keepAwake` with host port and Screen Wake Lock API                    | —     |
+| Biometrics/local auth                  | Expo LocalAuthentication                    | S      | `authenticate`/`biometricsAvailable` host port                         | —     |
+| Geolocation                            | Expo Location, Capacitor Geolocation        | S      | `getCurrentPosition`/`watchPosition` with host and web fallback        | —     |
+| Camera                                 | Expo Camera/ImagePicker                     | S      | `capturePhoto` host port + getUserMedia/canvas fallback                | —     |
+| Microphone/recording                   | Expo Audio                                  | S      | `openMicrophone`/`stopMicrophone` host port + getUserMedia             | —     |
+| Contacts/calendar                      | Expo Contacts/Calendar                      | M      | Deferred; optional                                                     | —     |
+| Sensors                                | Expo Sensors                                | M      | Deferred; optional                                                     | —     |
+| Maps                                   | Expo Maps                                   | M      | Deferred; optional                                                     | —     |
+| In-app browser / external opener       | Expo WebBrowser, Tauri Opener               | S      | `openExternal` with host port and window.open fallback                 | —     |
+| App/store review                       | Expo StoreReview                            | S      | `requestAppReview` host port                                           | —     |
 
 ## 8. Media
 
@@ -234,7 +234,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 | Startup measurement      | Roku 15s, Flutter startup  | S      | Android launch time recorded                                               | —     |
 | Frame pacing gate        | Android FrameTimeline      | S      | three ten-minute passes, zero misses                                       | —     |
 | Idle frame scheduling    | Flutter frame callbacks    | S      | event-driven loop                                                          | —     |
-| Image decode budgets     | Flutter image cache        | P      | renderer upload budget exists; no app API                                  | 9     |
+| Image decode budgets     | Flutter image cache        | S      | Renderer texture upload queue with per-frame time budget + `memoryInfo`    | —     |
 | List recycling           | FlatList/ListView.builder  | S      | `Virtual`, `Lazy`                                                          | —     |
 | Memory budgets / low-RAM | Android `isLowRamDevice`   | S      | `deviceMemory` host port + `navigator.deviceMemory` threshold              | —     |
 | Error boundaries         | React/Solid                | S      | `AppErrorBoundary` with `ListState` fallback and retry                     | —     |
@@ -322,7 +322,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 12. Implementation phases
 
-Progress: Phase 0 is implemented (theme tokens, colour scheme, capability registry, extended inset contract). Phase 1 is implemented for `useKeyboard`, `KeyboardAvoidingView`, `SafeArea`, `revealAboveKeyboard`, `keyboardAwareBounds`, `createForm` validation/touched/errors/submitting, and the keyboard-aware mobile template. Remaining: a rendered FormField component and automatic wiring of native editors. Desktop scene pointer hover/press/click is implemented (`useMouse` plus SDL pointer/mouse forwarding), along with `dragToScroll`, `wheelToScroll`, and pointer cursor styles (`cursorStyle`, `useCursor`). Phase 2 now has `Modal` with a real focus trap and restore, `Sheet`, `Toast`, `Popover`, `Menu`, `Tooltip` and `Alert`, plus tab navigation, guards, snapshot/restore and browser history. Remaining in Phase 2: drawer, route transitions, focus/scroll restoration on back, and deep-link router integration. Phase 4 data primitives are in place: `createQuery` (cache/retry/invalidation), `createPersistentStore` and `createOfflineQueue`. Device services now cover clipboard, share, haptics, device/battery info, keep-awake, orientation and external opening, and `bindDeepLinks` connects the links port to navigation. Internationalization covers translations, plurals, RTL, text scaling, high contrast and locale-aware formatting; `auditSemantics` and reading-order helpers cover the accessibility gate. Phase 6 is implemented: paged loading, pull-to-refresh, selection, standard list states, section flattening/sticky headers, swipe actions and reordering. Phase 2 also has `Drawer`, and crash reporting is wired through `AppErrorBoundary`. Forms have checkbox/radio controls, and media has persisted resume bookmarks, now-playing metadata/transport handlers, fullscreen/PiP and thumbnails. Platform services now include geolocation, biometrics, files/pickers and update checks; shortcuts and the app-wide back dispatcher cover keyboard/back input. Logging/tracing, environment injection and low-memory detection are also in place. Navigation restoration now captures focus/scroll state on leave and restores it on back, and `useTransition` provides enter/exit values. Select/search/multiline controls, camera/microphone capture, system-bar styling, app review and hardware media keys are implemented. Gamepad snapshots/edges, file drop, image fit and typed routes are also in place. Audio playback, DRM/codec reporting and modal semantics isolation are implemented.
+Progress: Phase 0 is implemented (theme tokens, colour scheme, capability registry, extended inset contract). Phase 1 is implemented for `useKeyboard`, `KeyboardAvoidingView`, `SafeArea`, `revealAboveKeyboard`, `keyboardAwareBounds`, `createForm` validation/touched/errors/submitting, and the keyboard-aware mobile template. Remaining: a rendered FormField component and automatic wiring of native editors. Desktop scene pointer hover/press/click is implemented (`useMouse` plus SDL pointer/mouse forwarding), along with `dragToScroll`, `wheelToScroll`, and pointer cursor styles (`cursorStyle`, `useCursor`). Phase 2 now has `Modal` with a real focus trap and restore, `Sheet`, `Toast`, `Popover`, `Menu`, `Tooltip` and `Alert`, plus tab navigation, guards, snapshot/restore and browser history. Remaining in Phase 2: drawer, route transitions, focus/scroll restoration on back, and deep-link router integration. Phase 4 data primitives are in place: `createQuery` (cache/retry/invalidation), `createPersistentStore` and `createOfflineQueue`. Device services now cover clipboard, share, haptics, device/battery info, keep-awake, orientation and external opening, and `bindDeepLinks` connects the links port to navigation. Internationalization covers translations, plurals, RTL, text scaling, high contrast and locale-aware formatting; `auditSemantics` and reading-order helpers cover the accessibility gate. Phase 6 is implemented: paged loading, pull-to-refresh, selection, standard list states, section flattening/sticky headers, swipe actions and reordering. Phase 2 also has `Drawer`, and crash reporting is wired through `AppErrorBoundary`. Forms have checkbox/radio controls, and media has persisted resume bookmarks, now-playing metadata/transport handlers, fullscreen/PiP and thumbnails. Platform services now include geolocation, biometrics, files/pickers and update checks; shortcuts and the app-wide back dispatcher cover keyboard/back input. Logging/tracing, environment injection and low-memory detection are also in place. Navigation restoration now captures focus/scroll state on leave and restores it on back, and `useTransition` provides enter/exit values. Select/search/multiline controls, camera/microphone capture, system-bar styling, app review and hardware media keys are implemented. Gamepad snapshots/edges, file drop, image fit and typed routes are also in place. Audio playback, DRM/codec reporting and modal semantics isolation are implemented. A `DatePicker` covers calendar/time selection. Remaining items are platform/tooling work (release signing, OTA delivery) and deferred layout/media primitives (aspect ratio, rich-text spans, SVG, pinch gestures, form Tab grouping, contacts/sensors/maps, gesture alternatives).
 
 ### Phase 0 — Contracts and theme foundation
 

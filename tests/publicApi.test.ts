@@ -282,7 +282,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   });
 
   v.test(
-    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 80 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 81 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
@@ -293,6 +293,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'BorderBoxStyle',
         'Checkbox',
         'Column',
+        'DatePicker',
         'Drawer',
         'FPSCounter',
         'FadeInOut',
