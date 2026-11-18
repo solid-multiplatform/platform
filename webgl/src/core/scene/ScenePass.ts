@@ -1,6 +1,7 @@
 import { premultiplyColorABGR } from '../../common/color.js';
 import type { BoundsMargin } from '../../common/types.js';
 import type { NodeStore } from '../nodes/NodeStore.js';
+import type { TextState } from '../nodes/TextNode.js';
 import type { ClipStore } from './ClipStore.js';
 import type { VertexStream } from '../gl/VertexStream.js';
 import type { OpList } from '../gl/OpList.js';
@@ -127,8 +128,7 @@ export interface PassHooks {
   /**
    * Emit a queued text node: write its glyph quads into the shared stream
    * and add their ops to the shared op list, calling ScenePass.flush when
-   * the stream is full. Runs after the walk, or before a non-text quad with
-   * a non-zero zIndex (spec 7.3).
+   * the stream is full. The walk flushes queued ink before a covering quad.
    */
   emitText(id: number): void;
   /**
@@ -243,6 +243,10 @@ export class ScenePass {
   /** Text nodes queued by this walk, in walk order (spec 7.3). */
   private pendingText = new Int32Array(64);
   private pendingCount = 0;
+  private textLeft = Infinity;
+  private textTop = Infinity;
+  private textRight = -Infinity;
+  private textBottom = -Infinity;
 
   constructor(
     nodes: NodeStore,
@@ -976,16 +980,17 @@ export class ScenePass {
   private emit(id: number, state: number): void {
     const s = this.nodes;
     if ((state & ST_TEXT) !== 0) {
-      this.queueText(id);
+      this.queueText(id, state);
       this.emitted++;
       return;
     }
-    // A non-text quad with a non-zero zIndex draws above the text queued
-    // before it (spec 7.3; 1.10 WebGlRenderer.addQuad flushed its deferred
-    // text ops the same way).
+    // Disjoint text may share an atlas batch across intervening quads. A quad
+    // covering any pending ink must follow it, including at the default zIndex.
     const fo = id * F_STRIDE;
     const o = id * I_STRIDE;
-    if (this.pendingCount > 0 && s.f64[fo + F_Z_INDEX] !== 0) {
+    if (this.pendingCount > 0 && (
+      s.f64[fo + F_Z_INDEX] !== 0 || s.shaderRefs[id] != null || this.overlapsQueuedText(fo)
+    )) {
       this.flushText();
       if (s.i32[o + I_UID] === 0) {
         return;
@@ -1100,8 +1105,35 @@ export class ScenePass {
     this.emitted++;
   }
 
-  private queueText(id: number): void {
+  private overlapsQueuedText(fo: number): boolean {
+    const f = this.nodes.f64;
+    // Axis-aligned mirrors and negative sizes may reverse the stored endpoints.
+    const x0 = f[fo + F_BX0]!, x1 = f[fo + F_BX1]!;
+    const y0 = f[fo + F_BY0]!, y1 = f[fo + F_BY1]!;
+    return Math.max(x0, x1) >= this.textLeft && Math.min(x0, x1) <= this.textRight &&
+      Math.max(y0, y1) >= this.textTop && Math.min(y0, y1) <= this.textBottom;
+  }
+
+  private queueText(id: number, state: number): void {
     const n = this.pendingCount;
+    if (n === 0) {
+      this.textLeft = this.textTop = Infinity;
+      this.textRight = this.textBottom = -Infinity;
+    }
+    const s = this.nodes;
+    const layout = (s.texts[id] as TextState | null)?.layout;
+    if ((state & ST_WORLD_TRANSLATE) === 0 || !layout || layout.fontScale < 0) {
+      // Rotated/scaled text stays in painter order without computing a second transform.
+      this.textLeft = this.textTop = -Infinity;
+      this.textRight = this.textBottom = Infinity;
+    } else if (layout.glyphCount > 0) {
+      const fo = id * F_STRIDE;
+      const x = s.f64[fo + F_WTX]!, y = s.f64[fo + F_WTY]!;
+      this.textLeft = Math.min(this.textLeft, x + layout.inkLeft);
+      this.textTop = Math.min(this.textTop, y + layout.inkTop);
+      this.textRight = Math.max(this.textRight, x + layout.inkRight);
+      this.textBottom = Math.max(this.textBottom, y + layout.inkBottom);
+    }
     if (n === this.pendingText.length) {
       const grown = new Int32Array(n * 2);
       grown.set(this.pendingText);

@@ -1058,6 +1058,11 @@ export interface TextLayout {
   readonly f32: Float32Array;
   readonly u32: Uint32Array;
   readonly glyphCount: number;
+  /** Local ink-quad bounds in logical pixels, including glyph overhang and atlas padding. */
+  readonly inkLeft: number;
+  readonly inkTop: number;
+  readonly inkRight: number;
+  readonly inkBottom: number;
   readonly width: number;
   readonly height: number;
   readonly fontScale: number;
@@ -1091,6 +1096,7 @@ export function layoutText(
       f32: new Float32Array(empty),
       u32: new Uint32Array(empty),
       glyphCount: 0,
+      inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0,
       width: 0,
       height: 0,
       fontScale,
@@ -1130,6 +1136,7 @@ export function layoutText(
   const kernAmounts = font.kernAmounts;
   let o = 0;
   let glyphCount = 0;
+  let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
     const textLine = line[0];
@@ -1186,6 +1193,10 @@ export function layoutText(
       f32[o + 1] = baseline + glyph.yoffset - atlasBase;
       f32[o + 2] = glyph.width;
       f32[o + 3] = glyph.height;
+      left = Math.min(left, f32[o]!);
+      top = Math.min(top, f32[o + 1]!);
+      right = Math.max(right, f32[o]! + f32[o + 2]!);
+      bottom = Math.max(bottom, f32[o + 1]! + f32[o + 3]!);
       f32[o + 4] = glyph.u1;
       f32[o + 5] = glyph.v1;
       f32[o + 6] = glyph.u2;
@@ -1200,6 +1211,10 @@ export function layoutText(
     f32,
     u32,
     glyphCount,
+    inkLeft: glyphCount ? left * fontScale : 0,
+    inkTop: glyphCount ? top * fontScale : 0,
+    inkRight: glyphCount ? right * fontScale : 0,
+    inkBottom: glyphCount ? bottom * fontScale : 0,
     width: layout[5] * fontScale,
     height: layout[6],
     fontScale,

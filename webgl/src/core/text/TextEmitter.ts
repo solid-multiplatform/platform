@@ -28,8 +28,7 @@ const WHITE = 0xffffffff;
 
 /**
  * Glyph quads (spec 10.3): PassHooks.emitText, run for each text node the
- * walk queued, in walk order, after the walk or before a quad with a
- * zIndex. Each glyph's four vertices are written into the frame's stream
+ * walk queued, in walk order, before a covering quad or at the end of the walk. Each glyph's four vertices are written into the frame's stream
  * from the node's world transform and the layout's glyph runs (one
  * multiply-add per coordinate for a translate-only node), every drawn frame:
  * nothing is cached between frames. A node's glyphs form one op run keyed
