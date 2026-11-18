@@ -132,24 +132,24 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 6. Lists, data and async UI
 
-| Feature                      | Established pattern             | Status | Evidence / gap                               | Phase |
-| ---------------------------- | ------------------------------- | ------ | -------------------------------------------- | ----- |
-| Flat/vertical list           | FlatList, ListView              | S      | `Virtual`, templates                         | —     |
-| Section list                 | RN SectionList                  | M      | No primitive                                 | 6     |
-| Grid list                    | Flutter GridView                | S      | `VirtualGrid`                                | —     |
-| Windowed rendering           | FlatList windowSize             | S      | `Virtual`, `Lazy` buffer                     | —     |
-| Lazy route/component loading | React.lazy, Flutter deferred    | S      | `lazy()`                                     | —     |
-| Infinite scroll/pagination   | FlatList onEndReached           | M      | No primitive                                 | 6     |
-| Pull to refresh              | RN RefreshControl               | M      | No primitive                                 | 6     |
-| Sticky headers               | Flutter SliverAppBar            | M      | No primitive                                 | 6     |
-| Swipe actions                | Flutter Dismissible             | M      | No primitive                                 | 6     |
-| Reorder/drag                 | Flutter ReorderableListView     | M      | No primitive                                 | 6     |
-| Selection/multi-select       | Flutter/React patterns          | M      | No primitive                                 | 6     |
-| Empty/loading/error states   | Flutter/React patterns          | M      | No standard components                       | 6     |
-| Async resource/Suspense      | Solid resources, React Suspense | P      | Solid signals/Suspense exist; no data helper | 4     |
-| Global store and persistence | Redux/Zustand, Flutter provider | M      | No official store contract                   | 4     |
-| Offline queue and retry      | React Query/SWR                 | M      | No API                                       | 4     |
-| Cache invalidation           | React Query                     | M      | No API                                       | 4     |
+| Feature                      | Established pattern             | Status | Evidence / gap                                                       | Phase |
+| ---------------------------- | ------------------------------- | ------ | -------------------------------------------------------------------- | ----- |
+| Flat/vertical list           | FlatList, ListView              | S      | `Virtual`, templates                                                 | —     |
+| Section list                 | RN SectionList                  | M      | No primitive                                                         | 6     |
+| Grid list                    | Flutter GridView                | S      | `VirtualGrid`                                                        | —     |
+| Windowed rendering           | FlatList windowSize             | S      | `Virtual`, `Lazy` buffer                                             | —     |
+| Lazy route/component loading | React.lazy, Flutter deferred    | S      | `lazy()`                                                             | —     |
+| Infinite scroll/pagination   | FlatList onEndReached           | M      | No primitive                                                         | 6     |
+| Pull to refresh              | RN RefreshControl               | M      | No primitive                                                         | 6     |
+| Sticky headers               | Flutter SliverAppBar            | M      | No primitive                                                         | 6     |
+| Swipe actions                | Flutter Dismissible             | M      | No primitive                                                         | 6     |
+| Reorder/drag                 | Flutter ReorderableListView     | M      | No primitive                                                         | 6     |
+| Selection/multi-select       | Flutter/React patterns          | M      | No primitive                                                         | 6     |
+| Empty/loading/error states   | Flutter/React patterns          | M      | No standard components                                               | 6     |
+| Async resource/Suspense      | Solid resources, React Suspense | S      | `createQuery`: data/loading/error, retry/backoff, staleTime, refetch | —     |
+| Global store and persistence | Redux/Zustand, Flutter provider | S      | `createPersistentStore` over the `settings`/`secureStorage` ports    | —     |
+| Offline queue and retry      | React Query/SWR                 | S      | `createOfflineQueue`: durable FIFO, connectivity-triggered retry     | —     |
+| Cache invalidation           | React Query                     | S      | `invalidateQueries`, `setQueryData`, keyed `createQuery` cache       | —     |
 
 ## 7. Device, platform and app services
 
@@ -239,8 +239,8 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 | Memory budgets / low-RAM | Android `isLowRamDevice`   | M      | No signal                                                 | 9     |
 | Error boundaries         | React/Solid                | P      | Minimal export only                                       | 4     |
 | Crash reporting hook     | Sentry/Crashlytics         | M      | No port                                                   | 5     |
-| Offline/retry            | React Query                | M      | No API                                                    | 4     |
-| State persistence        | React Navigation persist   | M      | No API                                                    | 2     |
+| Offline/retry            | React Query                | S      | `createOfflineQueue` with persisted items and retry       | —     |
+| State persistence        | React Navigation persist   | S      | `createPersistentStore` snapshot persistence              | —     |
 | Version/update check     | Tauri updater              | M      | No API                                                    | 5     |
 | Profiling overlay        | RN/Flutter DevTools        | P      | FPSCounter primitive                                      | 10    |
 | Automated a11y audit     | axe, Accessibility Scanner | M      | No gate                                                   | 8     |
@@ -322,7 +322,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 12. Implementation phases
 
-Progress: Phase 0 is implemented (theme tokens, colour scheme, capability registry, extended inset contract). Phase 1 is implemented for `useKeyboard`, `KeyboardAvoidingView`, `SafeArea`, `revealAboveKeyboard`, `keyboardAwareBounds`, `createForm` validation/touched/errors/submitting, and the keyboard-aware mobile template. Remaining: a rendered FormField component and automatic wiring of native editors. Desktop scene pointer hover/press/click is implemented (`useMouse` plus SDL pointer/mouse forwarding), along with `dragToScroll`, `wheelToScroll`, and pointer cursor styles (`cursorStyle`, `useCursor`). Phase 2 now has `Modal` with a real focus trap and restore, `Sheet`, `Toast`, `Popover`, `Menu`, `Tooltip` and `Alert`, plus tab navigation, guards, snapshot/restore and browser history. Remaining in Phase 2: drawer, route transitions, focus/scroll restoration on back, and deep-link router integration.
+Progress: Phase 0 is implemented (theme tokens, colour scheme, capability registry, extended inset contract). Phase 1 is implemented for `useKeyboard`, `KeyboardAvoidingView`, `SafeArea`, `revealAboveKeyboard`, `keyboardAwareBounds`, `createForm` validation/touched/errors/submitting, and the keyboard-aware mobile template. Remaining: a rendered FormField component and automatic wiring of native editors. Desktop scene pointer hover/press/click is implemented (`useMouse` plus SDL pointer/mouse forwarding), along with `dragToScroll`, `wheelToScroll`, and pointer cursor styles (`cursorStyle`, `useCursor`). Phase 2 now has `Modal` with a real focus trap and restore, `Sheet`, `Toast`, `Popover`, `Menu`, `Tooltip` and `Alert`, plus tab navigation, guards, snapshot/restore and browser history. Remaining in Phase 2: drawer, route transitions, focus/scroll restoration on back, and deep-link router integration. Phase 4 data primitives are in place: `createQuery` (cache/retry/invalidation), `createPersistentStore` and `createOfflineQueue`.
 
 ### Phase 0 — Contracts and theme foundation
 

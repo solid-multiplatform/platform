@@ -27,3 +27,4 @@ export * from './sdk/capabilities.js';
 export * from './sdk/keyboard.js';
 export * from './sdk/form.js';
 export * from './sdk/cursor.js';
+export * from './sdk/data.js';

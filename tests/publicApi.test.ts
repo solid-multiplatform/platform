@@ -24,7 +24,7 @@ import * as focusManager from '@solid-multiplatform/platform/focusManager';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 121 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 127 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -57,6 +57,9 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'createComponent',
       'createElement',
       'createForm',
+      'createOfflineQueue',
+      'createPersistentStore',
+      'createQuery',
       'createRawShaderAccessor',
       'createRenderer',
       'createTextNode',
@@ -75,6 +78,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'enqueueDelete',
       'flattenStyles',
       'getElementScreenRect',
+      'getQueryData',
       'getRenderer',
       'getRendererFactory',
       'getWebglSupportedVersions',
@@ -84,6 +88,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'hexColor',
       'insert',
       'insertNode',
+      'invalidateQueries',
       'isArray',
       'isDev',
       'isDomRenderer',
@@ -130,6 +135,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'setColorScheme',
       'setCursor',
       'setProp',
+      'setQueryData',
       'setRendererFactory',
       'setTasksEnabled',
       'shaderAccessor',
@@ -486,6 +492,7 @@ v.describe('package.json exports', () => {
       './keyboard',
       './form',
       './cursor',
+      './data',
     ]);
   });
 

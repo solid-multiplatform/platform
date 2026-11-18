@@ -142,6 +142,13 @@
         "types": "./dist/src/sdk/cursor.d.ts",
         "default": "./dist/src/sdk/cursor.js"
       }
+    },
+    "./data": {
+      "@solidtv/source": "./src/sdk/data.ts",
+      "import": {
+        "types": "./dist/src/sdk/data.d.ts",
+        "default": "./dist/src/sdk/data.js"
+      }
     }
   },
   "sideEffects": false,
