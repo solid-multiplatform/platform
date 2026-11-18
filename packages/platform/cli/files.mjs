@@ -11,6 +11,7 @@ import {
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { loadConfig } from './config.mjs';
 
 export const framework = fileURLToPath(new URL('../', import.meta.url));
 export const available = [
@@ -95,11 +96,8 @@ export function command(bin, args, cwd) {
   if (p.status !== 0)
     throw new Error(bin + ' failed (' + (p.status ?? p.signal) + ')');
 }
+// The project's settings: solid-platform.config.{mjs,js,json}, or
+// solid-platform.json in apps created before the config file.
 export function project(root) {
-  const config = json(path.join(root, 'solid-platform.json'));
-  validateName(config.name);
-  if (!Array.isArray(config.targets))
-    throw new Error('Invalid project targets');
-  targets(config.targets.join(','));
-  return config;
+  return loadConfig(root);
 }

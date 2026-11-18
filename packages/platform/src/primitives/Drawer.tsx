@@ -44,6 +44,7 @@ export function Drawer(props: DrawerProps): JSX.Element {
         width={width()}
         height={viewport().height - safe().top - safe().bottom}
         color={theme().colors.surface}
+        role="none"
         onMouseClick={() => true}
         onEnter={() => true}
       >
@@ -63,6 +64,7 @@ export function Drawer(props: DrawerProps): JSX.Element {
           width={44}
           height={44}
           color={theme().colors.surfaceRaised}
+          ariaLabel="Close"
           onEnter={() => props.onRequestClose?.()}
           onMouseClick={() => props.onRequestClose?.()}
           cursorStyle="pointer"

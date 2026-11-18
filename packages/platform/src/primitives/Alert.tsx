@@ -36,6 +36,7 @@ export function Alert(props: AlertProps): JSX.Element {
       visible={props.visible}
       onRequestClose={cancel}
       label={props.title}
+      role="alertdialog"
       initialFocus={props.initialFocus}
     >
       <view

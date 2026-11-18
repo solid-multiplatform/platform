@@ -59,6 +59,7 @@ export function GestureAlternatives(
                   : theme().colors.surfaceRaised
               }
               borderRadius={theme().radius.small}
+              ariaDisabled={disabled(action)}
               onEnter={run}
               onMouseClick={run}
               cursorStyle={disabled(action) ? 'not-allowed' : 'pointer'}

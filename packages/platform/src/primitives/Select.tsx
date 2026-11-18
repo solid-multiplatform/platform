@@ -52,6 +52,9 @@ export function Select<T>(props: SelectProps<T>): JSX.Element {
         height={height()}
         color={theme().colors.surfaceRaised}
         borderRadius={theme().radius.small}
+        ariaLabel={props.label}
+        ariaValueText={props.label ? selected()?.label : undefined}
+        ariaExpanded={open()}
         onEnter={() => setOpen((value) => !value)}
         onMouseClick={() => setOpen((value) => !value)}
         cursorStyle="pointer"
@@ -76,6 +79,7 @@ export function Select<T>(props: SelectProps<T>): JSX.Element {
           textAlign="center"
           fontSize={18}
           color={theme().colors.textMuted}
+          ariaHidden
         >
           ▾
         </text>
