@@ -25,6 +25,7 @@ import {
   cpSync,
   existsSync,
   mkdirSync,
+  readdirSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -131,6 +132,17 @@ export async function packageDesktop(options) {
 
   const directory = path.resolve(outDir, name);
   const resources = path.join(directory, 'resources');
+  // A package made before is replaced; anything else with that name is
+  // somebody's directory and is left alone.
+  if (
+    existsSync(directory) &&
+    !existsSync(path.join(directory, 'bin', name)) &&
+    readdirSync(directory).length > 0
+  ) {
+    throw new Error(
+      `packageDesktop: ${directory} exists and is not a package of "${name}"; remove it or choose another outDir`,
+    );
+  }
   rmSync(directory, { recursive: true, force: true });
   mkdirSync(path.join(directory, 'bin'), { recursive: true });
   mkdirSync(resources, { recursive: true });

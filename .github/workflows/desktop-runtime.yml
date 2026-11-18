@@ -26,6 +26,8 @@ env:
   # runner image has no SDL3 package, so it is built from the release tarball.
   SDL_VERSION: 3.4.20
   SDL_SHA256: f3bb06f55bed9557227a700af2ea62e49497ebdf58037732a731a5fb3ef8581f
+  # Where system packages come from when the runner's own mirror stalls.
+  APT_MIRRORS: http://azure.archive.ubuntu.com/ubuntu/ http://archive.ubuntu.com/ubuntu/
 jobs:
   linux:
     runs-on: ubuntu-24.04
@@ -39,30 +41,41 @@ jobs:
       - name: System packages
         run: |
           set -euo pipefail
-          # The package mirror sometimes stops answering in the middle of a
-          # download, and apt waits for it for minutes. For every apt run of
-          # this job (Playwright's too): give up on a silent connection after
-          # twenty seconds and try again.
-          printf 'Acquire::Retries "6";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\n' |
-            sudo tee /etc/apt/apt.conf.d/99-desktop-runtime-timeouts >/dev/null
-          sudo apt-get update
           # A compiler and build tools; what SDL's X11, Wayland and D-Bus
           # support is built against; a virtual display, Mesa's software GL
           # and xdotool for the tests; a session bus, the accessibility bus
           # with its registry, and Python's GLib bindings (the stand-in for
           # a notification service) for the tests on a bus of their own.
-          # Nothing may stop to ask: not a package's questions, and not the
-          # restart of services whose libraries were replaced.
-          sudo env DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 \
-            apt-get install -y --no-install-recommends \
-            build-essential cmake ninja-build pkg-config python3 \
-            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev \
-            libxi-dev libxss-dev libxtst-dev libxkbcommon-dev \
-            libwayland-dev wayland-protocols libdecor-0-dev \
-            libegl1-mesa-dev libgles2-mesa-dev libgl1-mesa-dev libdrm-dev libgbm-dev \
-            libdbus-1-dev libibus-1.0-dev libudev-dev \
-            xvfb xauth xdotool openssl libgl1-mesa-dri libegl1 libgles2 \
-            at-spi2-core python3-gi gir1.2-glib-2.0
+          packages="build-essential cmake ninja-build pkg-config python3
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev
+            libxi-dev libxss-dev libxtst-dev libxkbcommon-dev
+            libwayland-dev wayland-protocols libdecor-0-dev
+            libegl1-mesa-dev libgles2-mesa-dev libgl1-mesa-dev libdrm-dev libgbm-dev
+            libdbus-1-dev libibus-1.0-dev libudev-dev
+            xvfb xauth xdotool openssl libgl1-mesa-dri libegl1 libgles2
+            at-spi2-core python3-gi gir1.2-glib-2.0"
+          # The runner's package mirror sometimes stops in the middle of a
+          # download and apt waits on it for many minutes. The downloads
+          # normally take a quarter of a minute: after two minutes they are
+          # stopped (only downloads: nothing is being installed yet) and
+          # fetched from another mirror, which the rest of the job then uses.
+          fetch() {
+            sudo timeout 120 apt-get update &&
+              sudo timeout 120 apt-get install -y --download-only --no-install-recommends $packages
+          }
+          if ! fetch; then
+            for mirror in $APT_MIRRORS; do
+              echo "::warning::The package mirror did not deliver in two minutes: using $mirror"
+              sudo sed -i -E "s|https?://[^ ]*ubuntu\.com/ubuntu/?|$mirror|g" \
+                /etc/apt/sources.list.d/ubuntu.sources
+              if fetch; then break; fi
+            done
+          fi
+          # From what was downloaded. Nothing may stop to ask: not a
+          # package's questions, and not the restart of services whose
+          # libraries were replaced.
+          sudo timeout 600 env DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 \
+            apt-get install -y --no-install-recommends $packages
           # The image has a session bus daemon; the tests need it.
           command -v dbus-daemon busctl
 
@@ -145,9 +158,27 @@ jobs:
           cargo test --release --locked
 
       - run: pnpm install --frozen-lockfile
-      # The scene test compares the runtime's frame with Chromium's.
-      - working-directory: packages/platform
-        run: pnpm exec playwright install --with-deps chromium
+      # The scene test compares the runtime's frame with Chromium's. Its
+      # system packages come through apt as well: the same patience, and
+      # the same way out.
+      - name: Chromium
+        working-directory: packages/platform
+        run: |
+          set -euo pipefail
+          # As root, so that stopping it stops the apt it started.
+          packages() {
+            sudo timeout 240 env "PATH=$PATH" ./node_modules/.bin/playwright install-deps chromium
+          }
+          if ! packages; then
+            mirror=${APT_MIRRORS%% *}
+            echo "::warning::Chromium's packages did not arrive in four minutes: using $mirror"
+            sudo sed -i -E "s|https?://[^ ]*ubuntu\.com/ubuntu/?|$mirror|g" \
+              /etc/apt/sources.list.d/ubuntu.sources
+            # In case the wait ended while a package was being unpacked.
+            sudo dpkg --configure -a
+            packages
+          fi
+          pnpm exec playwright install chromium
       - name: Test
         env:
           # Here the tests that need a bus of their own must run, not skip.
