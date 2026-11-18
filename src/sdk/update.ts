@@ -29,6 +29,8 @@ export function compareVersions(a: string, b: string): -1 | 0 | 1 {
 
 export interface UpdateInfo {
   version: string;
+  /** Optional SHA-256 of the downloaded package. */
+  sha256?: string;
   notes?: string;
   /** Store or installer URL. */
   url?: string;
@@ -168,4 +170,30 @@ export function createUpdateDelivery(
       }
     },
   };
+}
+
+export interface UpdateSource {
+  /** Resolve with the latest release, or null when the feed has none. */
+  check(): Promise<UpdateInfo | null>;
+}
+
+let source: UpdateSource | undefined;
+
+/** Hosts install a feed source (desktop updater, Expo Updates, Tauri). */
+export function setUpdateSource(next: UpdateSource | undefined): void {
+  source = next;
+}
+
+export function updateSource(): UpdateSource | undefined {
+  return source;
+}
+
+/** Check the configured host feed and filter out current/older versions. */
+export async function checkForUpdate(
+  currentVersion: string,
+): Promise<UpdateInfo | null> {
+  if (!source) throw new CapabilityError('updateSource');
+  const info = await source.check();
+  if (!info) return null;
+  return compareVersions(info.version, currentVersion) > 0 ? info : null;
 }

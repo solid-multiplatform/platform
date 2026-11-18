@@ -47,6 +47,7 @@ const size = fn('bool SDL_GetWindowSize(void *, _Out_ int *, _Out_ int *)');
 const setPosition = fn('bool SDL_SetWindowPosition(void *,int,int)');
 const setSize = fn('bool SDL_SetWindowSize(void *,int,int)');
 const maximize = fn('bool SDL_MaximizeWindow(void *)');
+const raiseWindow = fn('void SDL_RaiseWindow(void *)');
 const pixels = fn(
   'bool SDL_GetWindowSizeInPixels(void *, _Out_ int *, _Out_ int *)',
 );
@@ -156,6 +157,10 @@ export function openWindow(title) {
     },
     textInput(enabled) {
       return enabled ? textStart(handle) : textStop(handle);
+    },
+    raise() {
+      show(handle);
+      raiseWindow(handle);
     },
     setGeometry({ x, y, width, height, maximized } = {}) {
       if (width && height) setSize(handle, Math.round(width), Math.round(height));

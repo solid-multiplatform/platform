@@ -5,8 +5,12 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import os from 'node:os';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { normalizeWindowBounds } from '@solid-multiplatform/platform/window-state';
+import { createSingleInstance } from './single-instance.mjs';
+import { createDesktopUpdater } from './updater.mjs';
+import { desktopDataDir } from './paths.mjs';
 import { createGraphics } from './graphics.mjs';
 import { channel } from 'node:diagnostics_channel';
 import sharp from 'sharp';
@@ -15,19 +19,23 @@ import { createDesktopMenuProvider } from './menus.mjs';
 import { setMenusPort } from '@solid-multiplatform/platform/menus';
 
 setCapabilities('desktop');
-const windowHost = openWindow(
-  process.env.SOLID_APP_TITLE ?? 'Solid Multiplatform',
-);
+const title = process.env.SOLID_APP_TITLE ?? 'Solid Multiplatform';
+const appData = desktopDataDir();
+const messages = new EventTarget();
+let windowHost;
+const instance = await createSingleInstance({
+  name: title,
+  args: process.argv.slice(2),
+  onActivate(args) {
+    messages.dispatchEvent(event('second-instance', { args }));
+    windowHost?.raise();
+  },
+});
+if (!instance.isPrimary) process.exit(0);
+windowHost = openWindow(title);
 const stateFile =
   process.env.SOLID_WINDOW_STATE ??
-  path.join(
-    process.env.SOLID_APP_DATA ??
-      path.join(
-        process.env.XDG_CONFIG_HOME ?? path.join(os.homedir(), '.config'),
-        'solid-multiplatform',
-      ),
-    'window-state.json',
-  );
+  path.join(appData, 'window-state.json');
 function loadWindowState() {
   try {
     return normalizeWindowBounds(
@@ -52,7 +60,6 @@ const work = path.dirname(fileURLToPath(import.meta.url));
 function event(name, values = {}) {
   return Object.assign(new Event(name, { cancelable: true }), values);
 }
-const messages = new EventTarget();
 globalThis.window = messages;
 globalThis.document = messages;
 globalThis.location = pathToFileURL(path.join(work, 'index.html'));
@@ -143,6 +150,7 @@ function shutdown() {
     saveWindowState();
     menuProvider?.dispose();
     setMenusPort(undefined);
+    instance.dispose();
     editors?.dispose();
     semantics?.dispose();
     windowHost.close();
@@ -155,6 +163,14 @@ try {
     process.env.SOLID_APP_TITLE ?? 'Solid Multiplatform',
   );
   windowHost.show();
+  createDesktopUpdater({
+    appData,
+    feedUrl: process.env.SOLID_UPDATE_FEED,
+    currentVersion: process.env.SOLID_APP_VERSION ?? '0.0.0',
+    installer: process.env.SOLID_UPDATE_INSTALLER
+      ? (file) => promisify(execFile)(process.env.SOLID_UPDATE_INSTALLER, [file]).then(() => undefined)
+      : undefined,
+  }).wire();
   // The tray provider is optional; never delay the first frame for it.
   createDesktopMenuProvider().then((provider) => {
     if (!provider) return;

@@ -24,7 +24,7 @@ import * as focusManager from '@solid-multiplatform/platform/focusManager';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 304 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 307 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -66,6 +66,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'calendarAvailable',
       'capturePhoto',
       'captureThumbnail',
+      'checkForUpdate',
       'clamp',
       'clearIconRegistry',
       'clearTasks',
@@ -291,6 +292,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'setThumbnailPort',
       'setTray',
       'setUpdateDeliveryPort',
+      'setUpdateSource',
       'setupI18n',
       'shaderAccessor',
       'share',
@@ -310,6 +312,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'themeFor',
       'touchTargetSize',
       'unregisterServiceWorkers',
+      'updateSource',
       'use',
       'useBreakpoint',
       'useCapabilities',

@@ -34,6 +34,9 @@ export function buildDesktopUI(root, dir, work, launch) {
     'editors.mjs',
     'menus.mjs',
     'menu-helper.py',
+    'paths.mjs',
+    'single-instance.mjs',
+    'updater.mjs',
     'run.mjs',
   ])
     copy(path.join(framework, 'hosts/desktop', file), path.join(work, file));
