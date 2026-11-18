@@ -50,3 +50,5 @@ export * from './Choice.jsx';
 export * from './Select.jsx';
 export * from './DatePicker.jsx';
 export * from './FocusGroup.jsx';
+export * from './RichText.jsx';
+export * from './Svg.jsx';

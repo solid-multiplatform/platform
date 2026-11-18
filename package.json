@@ -296,6 +296,20 @@
         "types": "./dist/src/sdk/drm.d.ts",
         "default": "./dist/src/sdk/drm.js"
       }
+    },
+    "./rich-text": {
+      "@solidtv/source": "./src/sdk/richText.ts",
+      "import": {
+        "types": "./dist/src/sdk/richText.d.ts",
+        "default": "./dist/src/sdk/richText.js"
+      }
+    },
+    "./svg": {
+      "@solidtv/source": "./src/sdk/svg.ts",
+      "import": {
+        "types": "./dist/src/sdk/svg.d.ts",
+        "default": "./dist/src/sdk/svg.js"
+      }
     }
   },
   "sideEffects": false,

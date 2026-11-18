@@ -49,3 +49,5 @@ export * from './sdk/routes.js';
 export * from './sdk/gamepad.js';
 export * from './sdk/audio.js';
 export * from './sdk/drm.js';
+export * from './sdk/richText.js';
+export * from './sdk/svg.js';

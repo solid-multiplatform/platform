@@ -1,4 +1,9 @@
-import { type Component, createRenderEffect, createSignal } from 'solid-js';
+import {
+  type Component,
+  createEffect,
+  createRenderEffect,
+  createSignal,
+} from 'solid-js';
 import { ImageTexture, renderer, type NodeProps } from '@solid-multiplatform/platform';
 import { Config } from '../core/config.js';
 
@@ -14,13 +19,23 @@ export interface ImageProps extends NodeProps {
 export const Image: Component<ImageProps> = (props) => {
   const [texture, setTexture] = createSignal<ImageTexture | null>(null);
   const [src, setSrc] = createSignal<string | null>(props.placeholder || null);
+  let generation = 0;
+
+  // Follow placeholder/src changes immediately; the loaded image replaces the
+  // placeholder once it arrives, and a stale load never overwrites a newer one.
+  createEffect(() => {
+    props.src;
+    props.placeholder;
+    setSrc(props.placeholder || null);
+  });
 
   createRenderEffect(() => {
+    const request = ++generation;
     if (Config.domRendererEnabled) {
       const img = new window.Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
-        setSrc(props.src);
+        if (request === generation) setSrc(props.src);
       };
       if (props.fallback) {
         img.onerror = () => {

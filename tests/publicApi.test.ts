@@ -24,7 +24,7 @@ import * as focusManager from '@solid-multiplatform/platform/focusManager';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 252 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 261 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -65,6 +65,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'capturePhoto',
       'captureThumbnail',
       'clamp',
+      'clearIconRegistry',
       'clearTasks',
       'combineStyles',
       'combineStylesMemo',
@@ -116,6 +117,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'env',
       'envFlag',
       'envNumber',
+      'estimateTextWidth',
       'exitFullscreen',
       'fileDirectories',
       'fileExists',
@@ -129,6 +131,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'gamepadEdges',
       'getCurrentPosition',
       'getElementScreenRect',
+      'getIcon',
       'getQueryData',
       'getRenderer',
       'getRendererFactory',
@@ -139,6 +142,8 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'hexColor',
       'highContrastDarkTheme',
       'highContrastLightTheme',
+      'iconDataUrl',
+      'iconSvg',
       'impact',
       'insert',
       'insertNode',
@@ -161,6 +166,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'keepAwake',
       'keyExists',
       'keyboardAwareBounds',
+      'layoutRichText',
       'lightTheme',
       'listFiles',
       'loadFontToDom',
@@ -200,6 +206,8 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'registerDefaultShaderRoundedWithShadow',
       'registerDefaultShaderShadow',
       'registerDefaultShaders',
+      'registerIcon',
+      'registerIcons',
       'removeFile',
       'renderer',
       'reportCrash',
@@ -255,6 +263,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'supportsOnlyWebGL2',
       'supportsWebGL',
       'supportsWebGL2',
+      'svgDataUrl',
       't',
       'textDirection',
       'themeFor',
@@ -282,7 +291,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   });
 
   v.test(
-    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 82 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 85 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
@@ -300,6 +309,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'FocusGroup',
         'FocusStackProvider',
         'Grid',
+        'Icon',
         'Image',
         'KeyboardAvoidingView',
         'LazyColumn',
@@ -313,11 +323,13 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'Portal',
         'Radio',
         'RadioGroup',
+        'RichText',
         'Row',
         'SafeArea',
         'Select',
         'Sheet',
         'Suspense',
+        'Svg',
         'Toast',
         'Tooltip',
         'VirtualColumn',
@@ -648,6 +660,8 @@ v.describe('package.json exports', () => {
       './gamepad',
       './audio',
       './drm',
+      './rich-text',
+      './svg',
     ]);
   });
 
