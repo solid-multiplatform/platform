@@ -25,3 +25,6 @@ packages/platform/examples/**/hooks
 packages/video/upstream
 packages/video/core
 packages/video/core.mjs
+
+# Rust build output
+packages/host-desktop/native/target

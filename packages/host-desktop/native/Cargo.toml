@@ -1,0 +1,24 @@
+[package]
+name = "solid-desktop"
+version = "0.0.0"
+edition = "2021"
+publish = false
+description = "Solid Multiplatform desktop runtime: Hermes, SDL3 and a GL scene surface in one executable"
+license = "Apache-2.0"
+
+[[bin]]
+name = "solid-desktop"
+path = "src/main.rs"
+
+[build-dependencies]
+cc = "1"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[dependencies]
+sdl3-sys = "0.7.3"
