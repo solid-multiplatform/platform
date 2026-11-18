@@ -1,3 +1,4 @@
+import { desktopEditors } from './editors.mjs';
 import { desktopSemantics } from './semantics.mjs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -90,7 +91,7 @@ globalThis.cancelAnimationFrame = (timer) => {
   clearTimeout(timer);
   timers.delete(timer);
 };
-let semantics;
+let semantics, editors;
 function shutdown() {
   if (closed) return;
   closed = true;
@@ -99,6 +100,7 @@ function shutdown() {
   try {
     dispose?.();
   } finally {
+    editors?.dispose();
     semantics?.dispose();
     windowHost.close();
   }
@@ -109,7 +111,10 @@ try {
     windowHost,
     process.env.SOLID_APP_TITLE ?? 'Solid Multiplatform',
   );
+  windowHost.show();
+  editors = desktopEditors(windowHost);
   const host = {
+    editors,
     semantics,
     target: 'desktop',
     window: windowHost,
@@ -194,6 +199,7 @@ try {
           semantics.active(false);
         }
         if (name === 'focus') semantics.active(true);
+        if (editors.handle(name, values)) return;
         messages.dispatchEvent(event(name, values));
         if (name === 'pointerdown' && values.button === 0) pressed = true;
         if (name === 'pointerup' && pressed) {

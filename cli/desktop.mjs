@@ -31,6 +31,7 @@ export function buildDesktopUI(root, dir, work, launch) {
     'angle.mjs',
     'graphics.mjs',
     'semantics.mjs',
+    'editors.mjs',
     'run.mjs',
   ])
     copy(path.join(framework, 'hosts/desktop', file), path.join(work, file));

@@ -27,6 +27,7 @@ const create = fn('void *SDL_CreateWindow(const char *,int,int,uint64_t)'),
   destroy = fn('void SDL_DestroyWindow(void *)');
 const context = fn('void *SDL_GL_CreateContext(void *)'),
   release = fn('bool SDL_GL_DestroyContext(void *)');
+const show = fn('bool SDL_ShowWindow(void *)');
 const swap = fn('bool SDL_GL_SwapWindow(void *)'),
   vsync = fn('bool SDL_GL_SetSwapInterval(int)');
 const poll = fn('bool SDL_PollEvent(void *)'),
@@ -48,6 +49,10 @@ const pixels = fn(
 );
 const textStart = fn('bool SDL_StartTextInput(void *)'),
   textStop = fn('bool SDL_StopTextInput(void *)');
+const textArea = fn('bool SDL_SetTextInputArea(void *,const int *,int)');
+const setClipboard = fn('bool SDL_SetClipboardText(str)');
+const getClipboard = fn('void *SDL_GetClipboardText()');
+const free = fn('void SDL_free(void *)');
 const keyName = fn('const char *SDL_GetKeyName(uint32_t)');
 const names = {
   Up: 'ArrowUp',
@@ -68,7 +73,7 @@ export function openWindow(title) {
   const profiles = process.platform === 'darwin' ? [1] : [4, 1];
   let angle;
   if (process.platform === 'win32' && process.env.SOLID_ANGLE_DIR) {
-    handle = create(title, 960, 600, 0x2020);
+    handle = create(title, 960, 600, 0x2028);
     if (!handle) {
       const reason = error();
       quit();
@@ -89,7 +94,7 @@ export function openWindow(title) {
     setAttr(20, profile);
     setAttr(17, 3);
     setAttr(18, profile === 1 ? 2 : 0);
-    handle = create(title, 960, 600, 0x2022);
+    handle = create(title, 960, 600, 0x202a);
     if (handle) {
       gl = context(handle);
       if (gl) {
@@ -109,6 +114,7 @@ export function openWindow(title) {
   const buffer = Buffer.alloc(128);
   return {
     handle,
+    show: () => show(handle),
     core,
     bind: angle?.bind,
     proc,
@@ -130,6 +136,20 @@ export function openWindow(title) {
       return xid ? String(xid) : null;
     },
     swap: () => (angle ? angle.present() : swap(handle)),
+    imeRect(r) {
+      const box = Int32Array.from([r.x, r.y, r.width, r.height], Math.round);
+      textArea(handle, box, 0);
+    },
+    copy: (s) => setClipboard(s),
+    paste() {
+      const data = getClipboard();
+      if (!data) return '';
+      try {
+        return koffi.decode(data, 'char', -1);
+      } finally {
+        free(data);
+      }
+    },
     textInput(enabled) {
       return enabled ? textStart(handle) : textStop(handle);
     },
@@ -170,6 +190,8 @@ export function openWindow(title) {
             key: names[raw] ?? raw,
             repeat: !!buffer[37],
             shiftKey: !!(buffer.readUInt16LE(32) & 3),
+            ctrlKey: !!(buffer.readUInt16LE(32) & 0xc0),
+            metaKey: !!(buffer.readUInt16LE(32) & 0xc00),
           });
         } else if (type >= 0x400 && type <= 0x402) {
           send(['pointermove', 'pointerdown', 'pointerup'][type - 0x400], {
