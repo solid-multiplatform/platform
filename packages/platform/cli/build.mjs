@@ -187,9 +187,16 @@ function buildTarget(root, target, dev, legacy) {
       );
   }
   const browser = target === 'web' || browserTVs.includes(target);
-  const fonts =
-    target === 'roku' || legacy
-      ? 'undefined'
+  // Roku draws text with font files. The starter's (targets/roku/fonts, from
+  // init) is imported by the generated entry, which registers it under the
+  // family the app names; the Roku preset packages the file and its layout
+  // table.
+  const rokuFont =
+    target === 'roku' && existsSync(path.join(dir, 'fonts/Lato-Regular.ttf'));
+  const fonts = legacy
+    ? 'undefined'
+    : target === 'roku'
+      ? "'pkg:/fonts'"
       : browser
         ? "'./fonts'"
         : "'file:///app/fonts'";
@@ -199,6 +206,7 @@ function buildTarget(root, target, dev, legacy) {
 ${browserTVs.includes(target) ? "import { bindBrowserTV, bindTVViewport } from '@solid-multiplatform/platform/browser-tv/input';" : ''}
 ${browser ? "import { installServices } from '@solid-multiplatform/platform/services'; import { webAppServices, webServices } from '@solid-multiplatform/platform/services/web';" : ''}
 ${legacy ? "import {useCanvas} from '@solid-multiplatform/platform/browser-tv/canvas'; useCanvas();" : ''}
+${rokuFont ? "import { loadFonts } from '@solid-multiplatform/platform'; import lato from '../fonts/Lato-Regular.ttf';" : ''}
 import { mount as start } from './src/app';
 import { attachPlugins } from '@solid-multiplatform/platform/plugins';
 import { plugins } from './plugins.mjs';
@@ -207,6 +215,7 @@ export function mount(host = { target: '${target}' }) {
   ${target === 'web' ? "const el=document.getElementById('app');const stopViewport=bindBrowserViewport(el);host.semantics=browserSemantics(el); const input=host.input=createInputScope();const stopPointer=bindPointerEvents(el,input,(x,y)=>{const r=el.getBoundingClientRect();return {x:x-r.left,y:y-r.top};});" : ''}
   ${browserTVs.includes(target) ? "const el=document.getElementById('app'); const display=bindTVViewport(el); const tv=bindBrowserTV(host.target,el,display.point);host.input=tv.input;" : ''}
   const detach = attachPlugins(plugins, host);
+  ${rokuFont ? "void loadFonts([{ fontFamily: 'Lato', fontUrl: lato }]).catch((error) => console.error(error));" : ''}
   try {
     const dispose = start(plugins, ${fonts}, host.input, host);
     ${browserTVs.includes(target) ? 'display.attach();' : ''}
@@ -219,6 +228,12 @@ export function mount(host = { target: '${target}' }) {
     copy(
       path.join(root, 'assets/fonts'),
       browser ? path.join(dir, 'public/fonts') : path.join(work, 'fonts'),
+    );
+  else if (rokuFont && existsSync(path.join(dir, 'fonts/Lato-OFL.txt')))
+    // The licence travels with the font into the package.
+    copy(
+      path.join(dir, 'fonts/Lato-OFL.txt'),
+      path.join(work, 'assets/fonts/Lato-OFL.txt'),
     );
   if (target === 'android-tv' || target === 'android')
     android(root, work, plugins, target);
