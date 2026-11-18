@@ -29,7 +29,8 @@
     "./desktop": {
       "types": "./desktop.d.mts",
       "default": "./desktop.mjs"
-    }
+    },
+    "./swift": "./swift/SolidPlayback.swift"
   },
   "dependencies": {
     "@mediabunny/ac3": "1.57.0",
@@ -54,9 +55,23 @@
     "upstream",
     "roku.mjs",
     "desktop.mjs",
-    "*.d.mts"
+    "*.d.mts",
+    "swift",
+    "PROVENANCE.md"
   ],
   "scripts": {
     "test": "node --test tests/*.test.mjs"
+  },
+  "peerDependencies": {
+    "@roku-sdk/solid": "2.19.0",
+    "@nativescript/core": ">=9.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@roku-sdk/solid": {
+      "optional": true
+    },
+    "@nativescript/core": {
+      "optional": true
+    }
   }
 }

@@ -2,6 +2,7 @@ import { packageTV } from './tv-package.mjs';
 import { buildDesktopUI } from './desktop.mjs';
 import { stageSources, browserTVs } from './variants.mjs';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import {
   command,
@@ -201,6 +202,17 @@ export function mount(host = { target: '${target}' }) {
   if (target === 'apple-tv' || target === 'ios') {
     const swiftDir = path.join(work, 'swift');
     mkdirSync(swiftDir, { recursive: true });
+    if (
+      json(path.join(dir, 'package.json')).dependencies?.[
+        '@solid-multiplatform/video'
+      ]
+    ) {
+      const app = createRequire(path.join(dir, 'package.json'));
+      copy(
+        app.resolve('@solid-multiplatform/video/swift'),
+        path.join(swiftDir, 'SolidPlayback.swift'),
+      );
+    }
     for (const { name } of plugins) {
       const from = path.join(root, 'plugins', name, 'apple');
       for (const file of readdirSync(from).filter((f) =>

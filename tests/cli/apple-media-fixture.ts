@@ -9,7 +9,11 @@ export function mount(plugins, _fonts, _input, host) {
     bounds: { x: 12, y: 12, width: 220, height: 140 },
   });
   let active = true;
+  const progress = File.fromPath(
+    knownFolders.documents().path + '/media-progress.txt',
+  );
   async function check() {
+    progress.writeTextSync('started');
     const result = await plugins.greeting.run();
     const path = knownFolders.currentApp().path + '/clip.mp4';
     await player.open({
@@ -18,13 +22,16 @@ export function mount(plugins, _fonts, _input, host) {
       paused: true,
       adoptEngineDuration: true,
     });
+    progress.writeTextSync('opened');
     await player.play();
     for (let n = 0; n < 30 && player.snapshot.time.positionSeconds <= 0; n++)
       await new Promise((r) => setTimeout(r, 200));
     if (player.snapshot.time.positionSeconds <= 0)
       throw new Error('No AVPlayer progress');
+    progress.writeTextSync('advanced');
     await player.pause();
     await player.seek(2);
+    progress.writeTextSync('seek complete');
     await player.stop();
     if (active) await output.writeText(result);
   }

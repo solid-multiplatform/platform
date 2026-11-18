@@ -58,5 +58,6 @@ for attempt in {1..90}; do
   fi
   sleep 1
 done
+cat "$container/Documents/media-progress.txt" || true
 xcrun simctl spawn "$udid" log show --last 2m --predicate 'process == "SolidMultiplatform"' | tail -80
 exit 1
