@@ -121,12 +121,6 @@ export async function runServicesProbe(form: 'phone' | 'tv'): Promise<void> {
     await port.set(false);
     expect(application.idleTimerDisabled === false, 'idle timer still off');
   });
-  await check('openExternal', async () => {
-    // Opening a URL would leave the app: only that the port loads.
-    const port = await loadService('openExternal');
-    expect(typeof port.open === 'function', 'open');
-    return 'loaded';
-  });
   if (form === 'phone') {
     await check('clipboard', async () => {
       const port = await loadService('clipboard');
@@ -244,42 +238,81 @@ export async function runServicesProbe(form: 'phone' | 'tv'): Promise<void> {
       expect(near(watched!, 48.8584), 'watched latitude ' + watched);
       return once.latitude + ',' + once.longitude;
     });
-    await check('orientation', async () => {
-      const port = await loadService('orientation');
-      const scene = UIApplication.sharedApplication.keyWindow?.windowScene;
-      expect(!!scene, 'no window scene');
-      // UIInterfaceOrientation: 1 portrait, 3 and 4 landscape.
-      const turned = async (landscape: boolean) => {
-        for (let n = 0; n < 40; n++) {
-          if (Number(scene!.interfaceOrientation) >= 3 === landscape)
-            return true;
-          await wait(200);
-        }
-        return false;
-      };
-      await port.lock('landscape');
-      expect(await turned(true), 'did not turn to landscape');
-      await port.lock('portrait');
-      expect(await turned(false), 'did not turn back to portrait');
-      await port.lock('any');
+    if (serviceAvailable('orientation') === 'available')
+      await check('orientation', async () => {
+        const port = await loadService('orientation');
+        const application = UIApplication.sharedApplication;
+        const window = application.keyWindow;
+        const scene = window?.windowScene;
+        expect(!!scene, 'no window scene');
+        // What UIKit is told the window supports: the lock itself.
+        const allowed = () =>
+          Number(application.supportedInterfaceOrientationsForWindow(window!));
+        const declared = allowed();
+        // UIInterfaceOrientation: 1 portrait, 3 and 4 landscape.
+        const turned = async (landscape: boolean) => {
+          for (let n = 0; n < 40; n++) {
+            if (Number(scene!.interfaceOrientation) >= 3 === landscape)
+              return true;
+            await wait(200);
+          }
+          return false;
+        };
+        await port.lock('landscape');
+        expect(allowed() === 24, 'landscape lock allows ' + allowed());
+        expect(await turned(true), 'did not turn to landscape');
+        await port.lock('portrait');
+        expect(allowed() === 2, 'portrait lock allows ' + allowed());
+        expect(await turned(false), 'did not turn back to portrait');
+        await port.lock('any');
+        expect(allowed() === declared, 'unlocked allows ' + allowed());
+        return 'Info.plist allows ' + declared;
+      });
+  }
+  // The host installs `links` only when the delegate method it added is live.
+  results.delegateOpensURLs =
+    UIApplication.sharedApplication.delegate?.respondsToSelector(
+      'application:openURL:options:',
+    ) === true;
+  const links = peekService('links');
+  let opened: string | undefined;
+  const stopLinks = links?.subscribe((link) => (opened = link));
+  const arrives = async (link: string, seconds: number) => {
+    for (let n = 0; n < seconds * 5 && opened !== link; n++) await wait(200);
+    return opened === link;
+  };
+  await check('openExternal', async () => {
+    // The app's own URL scheme: the system hands the URL straight back.
+    const port = await loadService('openExternal');
+    if (!links) return 'loaded only: nothing here receives the URL';
+    await port.open('solidprobe://services/probe?from=app');
+  });
+  if (links) {
+    await check('links', async () => {
+      expect(
+        await arrives('solidprobe://services/probe?from=app', 10),
+        'the URL this app opened did not arrive: ' + opened,
+      );
+      return opened;
+    });
+    // Soft: the system may ask the user before it opens a URL for simctl.
+    await check('linksFromSystem', async () => {
+      const lifecycle = await loadService('lifecycle');
+      const seen: boolean[] = [];
+      const stop = lifecycle.subscribe((active) => seen.push(active));
+      // The smoke script opens the URL with `simctl openurl` once it sees this.
+      results.awaitingLink = true;
+      write();
+      const arrived = await arrives(
+        'solidprobe://services/probe?from=simctl',
+        15,
+      );
+      stop();
+      expect(arrived, 'not delivered; lifecycle changes: ' + seen.join());
+      return opened;
     });
   }
-  await check('links', async () => {
-    const port = peekService('links');
-    expect(port !== undefined, 'not installed');
-    let opened: string | undefined;
-    const stop = port!.subscribe((link) => (opened = link));
-    // The smoke script opens the URL with `simctl openurl` once it sees this.
-    results.awaitingLink = true;
-    write();
-    for (let n = 0; n < 150 && opened === undefined; n++) await wait(200);
-    stop();
-    expect(
-      opened === 'solidprobe://services/probe?from=simctl',
-      String(opened),
-    );
-    return opened;
-  });
+  stopLinks?.();
   await check('connectivity', async () => {
     const port = await loadService('connectivity');
     const before = port.online();

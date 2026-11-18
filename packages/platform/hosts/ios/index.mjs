@@ -1,5 +1,6 @@
 import { installServices } from '@solid-multiplatform/platform/services';
 import { appleServices } from '../nativescript/providers/apple/manifest.ts';
+import { liveDelegateHook } from '../apple/delegate.mjs';
 import { captureAppleLinks } from '../apple/links.mjs';
 import { captureAppleOrientation } from '../apple/orientation.mjs';
 import { bindMobileViewport } from '../nativescript/viewport.mjs';
@@ -13,7 +14,14 @@ export function runIOS(loadApp) {
   runNativeApp('ios', loadApp, (canvas, _bridge, platform, root) => {
     // Lazy providers: nothing is constructed until the app uses a service.
     const removeServices = installServices(
-      appleServices({ form: 'phone', links, orientation }),
+      appleServices({
+        form: 'phone',
+        links: liveDelegateHook(links, 'application:openURL:options:'),
+        orientation: liveDelegateHook(
+          orientation,
+          'application:supportedInterfaceOrientationsForWindow:',
+        ),
+      }),
     );
     // The native controls overlay the host's black render surface.
     root.ios.overrideUserInterfaceStyle = 2; // UIUserInterfaceStyleDark

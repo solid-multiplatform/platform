@@ -15,7 +15,6 @@ const phoneOnly = [
   'geolocation',
   'haptics',
   'notifications',
-  'orientation',
   'share',
 ];
 const everywhere = [
@@ -26,7 +25,6 @@ const everywhere = [
   'keepAwake',
   'keyEvents',
   'lifecycle',
-  'links',
   'locale',
   'mediaSession',
   'memory',
@@ -34,56 +32,62 @@ const everywhere = [
   'secureStorage',
   'settings',
 ];
+// Installed by the host only when the application-delegate method they need
+// is live. Where it is not, the service is absent: reported, not a failure.
+const hooked = tv ? ['links'] : ['links', 'orientation'];
 // errSecMissingEntitlement: an unsigned simulator build has no Keychain
 // access group. Reported, never counted as verified.
 const missingEntitlement = 'OSStatus -34018';
 const failures = [];
+const warn = (message) => console.log('::warning::' + target + ': ' + message);
+const installed = (name) => results.installed?.includes(name) === true;
 const passed = (name) =>
   typeof results[name] === 'string' && !results[name].startsWith('fail');
 
-for (const name of everywhere) {
-  if (results.installed?.includes(name) !== true)
-    failures.push(name + ' is not installed');
-}
+for (const name of everywhere)
+  if (!installed(name)) failures.push(name + ' is not installed');
 for (const name of phoneOnly) {
-  const installed = results.installed?.includes(name) === true;
   const unavailable = results.unavailable?.includes(name) === true;
-  if (tv && (installed || !unavailable))
+  if (tv && (installed(name) || !unavailable))
     failures.push(name + ' must be unavailable on tvOS');
-  if (!tv && (!installed || unavailable))
+  if (!tv && (!installed(name) || unavailable))
     failures.push(name + ' must be available on iOS');
 }
+if (tv && installed('orientation'))
+  failures.push('orientation must be unavailable on tvOS');
+
 const probed = [
   ...everywhere,
   // The share sheet is not presented: availability only.
   ...(tv ? [] : phoneOnly.filter((name) => name !== 'share')),
 ];
+for (const name of hooked) {
+  if (installed(name)) probed.push(name);
+  else warn(name + ' ABSENT: the application delegate hook is not live');
+}
 for (const name of probed) {
   if (passed(name)) continue;
   if (
     name === 'secureStorage' &&
     String(results[name]).includes(missingEntitlement)
   ) {
-    console.log(
-      '::warning::secureStorage UNVERIFIED on ' + target + ': ' + results[name],
-    );
+    warn('secureStorage UNVERIFIED: ' + results[name]);
     continue;
   }
   failures.push(name + ': ' + results[name]);
 }
-if (tv && phoneOnly.some((name) => name in results))
+if (tv && [...phoneOnly, 'orientation'].some((name) => name in results))
   failures.push('a phone-only service was probed on tvOS');
-// Needs the simulator to switch appearance on request, which is outside the
-// app: a miss is reported, and the change notification stays unverified.
-const unverified = [];
-if (!passed('colorSchemeChange')) {
-  unverified.push('colorSchemeChange');
-  console.log(
-    '::warning::colorScheme change UNVERIFIED on ' +
-      target +
-      ': ' +
-      results.colorSchemeChange,
-  );
+
+// These need the simulator to act on request from outside the app (switch
+// appearance, open a URL without asking). A miss is reported and the
+// behaviour stays unverified on this target.
+const outside = { colorSchemeChange: 'colorScheme change' };
+if (installed('links')) outside.linksFromSystem = 'links from simctl openurl';
+const also = [];
+for (const name of Object.keys(outside)) {
+  if (passed(name)) also.push(outside[name]);
+  else warn(outside[name] + ' UNVERIFIED: ' + results[name]);
 }
 
 if (failures.length) {
@@ -92,4 +96,4 @@ if (failures.length) {
   process.exit(1);
 }
 console.log('Services probe passed on ' + target + ': ' + probed.join(', '));
-if (!unverified.length) console.log('Also verified: colorScheme change');
+if (also.length) console.log('Also verified: ' + also.join(', '));
