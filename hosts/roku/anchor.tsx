@@ -9,6 +9,7 @@ import {
 import { dispatchNativeKey, installBrowserServices } from './browser-services';
 import { createNativeTextEntry } from './native-text-entry';
 import { setTaskRoot } from './worker-task';
+import { createRokuVideoApi, type RokuVideoFactory } from './video-bridge';
 
 export default defineAnchorNode(
   {
@@ -46,8 +47,17 @@ export default defineAnchorNode(
       };
       void loadBundledFonts(root);
       const app = await import('solid-app-entry');
+      const video = createRokuVideoApi(
+        root,
+        (app as { createVideoPlayer?: RokuVideoFactory }).createVideoPlayer,
+      );
       if (active)
-        disposeApp = app.mount({ target: 'roku', root, textEntry: text });
+        disposeApp = app.mount({
+          target: 'roku',
+          root,
+          textEntry: text,
+          video,
+        });
     });
     onCleanup(() => {
       active = false;

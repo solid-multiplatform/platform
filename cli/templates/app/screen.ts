@@ -3,6 +3,15 @@ import type { Viewport } from '@solid-multiplatform/platform/viewport';
 export interface ScreenHost {
   target: string;
   root?: object;
+  /** Roku only: app-provided video adapter bound to the scene root. */
+  video?: {
+    create(options?: {
+      x?: number;
+      y?: number;
+      width?: number;
+      height?: number;
+    }): unknown;
+  };
   semantics?: {
     register(
       value: import('@solid-multiplatform/platform/semantics').Semantics,

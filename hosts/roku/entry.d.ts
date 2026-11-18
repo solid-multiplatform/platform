@@ -3,5 +3,6 @@ declare module 'solid-app-entry' {
     target: 'roku';
     root: object;
     textEntry?: import('./native-text-types').NativeTextPort;
+    video?: import('./video-bridge').RokuVideoApi;
   }): () => void;
 }
