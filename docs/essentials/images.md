@@ -1,101 +1,94 @@
-# Displaying Images
+# Images
 
-It's very easy to display images in your SolidTV App:
+Give any `<view>` a `src`, a width and a height.
 
-```jsx
-<view width={200} height={200} src={imgSrc} />
+```tsx
+<view width={200} height={200} src={imageUrl} />
 ```
 
-Just give any `<view>` tag a src to an image. Be sure to also give it a width and height for it to display properly. If you want to load images from filesystem, make sure to include them in the `public/` directory. Learn more about [Static Asset Handling](https://vitejs.dev/guide/assets) from Vite.
+A node with a `src` that you set later must also have a visible `color`. A
+`<view>` without a `src` at creation is transparent, so set
+`color={0xffffffff}` when the image arrives.
 
-> If you lazy load images (src isn't known at time initial node is created), then you'll need to set color=0xffffffff otherwise the image won't be visible.
+## Size
 
-## Sizing and Scaling and Autosize
+The backend scales the image to the node's width and height. If you do not know
+the image's size, set `autosize`. The node then takes the texture's own
+dimensions once it loads.
 
-The SolidTV renderer will scale the image to fit the width and height dimensions provided. If you don't know the size of the image you can use `autosize` attribute for the Renderer to set the image size when it loads.
+`autosize` does only that. It does not size a container to its children; use
+flex for that. It does nothing on `<text>`.
 
-Since renderer 1.8 `autosize` means only that: take the texture's intrinsic
-dimensions once it loads. It does not size a container to its children (use flex
-for that), and it is a no-op on `<text>` nodes.
+Keep source images as small as you can. If you draw an image at 200 by 200
+pixels, the file should be that size or smaller. Large textures cost memory and
+upload time on TVs.
 
-For the best performance, it's important to keep your source images as small as possible. If you're displaying an image at `200px x 200px`, make sure the image is exactly that size or _smaller_. The latter option may lead to some quality loss, but can positively impact the overall performance of your App.
+## `textureOptions`
 
-## textureOptions for images
+- `preload` (`boolean`): load the texture before the node is drawn.
+- `preventCleanup` (`boolean`): never free the texture while unused.
+- `flipX`, `flipY` (`boolean`): flip the image.
+- `resizeMode`: how the image fits the node.
+  - `{ type: 'cover' }` scales and crops to fill. Optional `clipX` and `clipY`
+    (0 to 1) set the crop origin.
+  - `{ type: 'contain' }` scales to fit without cropping.
 
-- **`preload`** (`boolean`, default: `false`):
-  Load the texture immediately, even if it's not yet rendered. Reduces delay when the image first appears.
-
-- **`preventCleanup`** (`boolean`, default: `false`):
-  Prevent the texture from being unloaded when unused. Useful for persistent or frequently reused images.
-
-- **`flipX`** (`boolean`, default: `false`):
-  Flips the image horizontally.
-
-- **`flipY`** (`boolean`, default: `false`):
-  Flips the image vertically.
-
-- **`resizeMode`** (`object`):
-  Determines how the image fits within a given space. Options:
-  - `type: 'cover'`: Scales and crops the image to fill the space. Optional `clipX` and `clipY` values (0–1) control the crop origin.
-  - `type: 'contain'`: Scales the image to fit within the space without cropping.
-
-```jsx
+```tsx
 <view
-  src={props.imgSrc}
-  width={100}
-  textureOptions={{
-    resizeMode: {
-      type: 'contain',
-    },
-  }}
+  src={props.image}
+  width={300}
+  height={200}
+  textureOptions={{ resizeMode: { type: 'contain' } }}
 />
 ```
 
-## SVG Images
+## Loading and failure
 
-The renderer does support SVG images, just set the src.
+Images load asynchronously and can fail. Use `onEvent` to react.
 
-## Loaded Events / Failback Images / Poster background color
+```tsx
+import type { ElementNode, NodeProps } from '@solid-multiplatform/platform';
 
-All images are loaded asynchronously (and can possibly fail to load). Here is how you'd provide a fallback image.
+const fallback = './images/fallback.png';
 
-```jsx
-// Create the Thumbnail component
-const Thumbnail = (props) => (
-  const handleLoad = (node) => {
+const onEvent = {
+  loaded: (node: ElementNode) => {
     node.color = 0xffffffff;
-  };
+  },
+  failed: (node: ElementNode) => {
+    node.src = fallback;
+  },
+};
 
-  const handleFail = (node, msg) => {
-    node.src = fallbackImage;
-  };
-
-  const onEvent = {
-    loaded: handleLoad,
-    failed: handleFail,
-  };
-
-  <view
-    width={200}
-    height={200}
-    // Add loading background color
-    color={0xff573366}
-    src={props.imgSrc}
-    onEvents={onEvents}
-  />
-);
+function Thumbnail(props: NodeProps) {
+  return (
+    <view
+      width={200}
+      height={200}
+      // Placeholder color while the image loads.
+      color={0xff573366}
+      {...props}
+      onEvent={onEvent}
+    />
+  );
+}
 ```
 
-## Colorization
+## Tinting
 
-You also have the option to _colorize_ an image. Just add a `color` attribute. You can use a single color, or apply a gradient.
+`color` multiplies the image. Use the edge colors for a fade.
 
-```jsx
+```tsx
 <view
   width={200}
   height={200}
-  src={imgSrc}
+  src={imageUrl}
   colorTop={0xffffffff}
   colorBottom={0x000000ff}
 />
 ```
+
+## Related
+
+The `Image` primitive from `@solid-multiplatform/platform/primitives` wraps
+these patterns.

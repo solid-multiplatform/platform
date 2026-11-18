@@ -1,82 +1,74 @@
-# `Marquee`
+# Marquee
 
-A wrapper component around `MarqueeText` that accepts standard `view` layout props and `TextProps`, managing `clipWidth` automatically via layout.
-
-### Usage
-
-```tsx
-<Marquee
-  width={400}
-  marquee={inFocus()}
-  easing="ease-in-out"
-  textProps={{
-    fontSize: 28,
-  }}
->
-  This is a long text that will scroll when it overflows the container.
-</Marquee>
-```
-
-### Props
-
-Extends all standard [`NodeProps`](/solid/#/primitives/view) (excluding `children`), plus:
-
-| Prop        | Type               | Description                                                 | Default       |
-| ----------- | ------------------ | ----------------------------------------------------------- | ------------- |
-| `children`  | `string \| number` | The text to display.                                        | **Required**  |
-| `marquee`   | `boolean`          | Whether to scroll or statically contain the text.           | `false`       |
-| `speed`     | `number`           | Scroll speed in pixels per second.                          | `200`         |
-| `delay`     | `number`           | Delay between scroll loops in milliseconds.                 | `1000`        |
-| `scrollGap` | `number`           | Gap between scroll loops in pixels.                         | `0.5 * width` |
-| `easing`    | `string`           | CSS-compatible easing function for the scroll animation.    | `'linear'`    |
-| `textProps` | `TextProps`        | Additional props to pass to the internal `<text>` elements. | `{}`          |
-
-### Notes
-
-- Computes `clipWidth` and `clipHeight` based on layout and `textProps`.
-- Automatically sets `clipping={true}` when `marquee` is enabled.
-- Intended for simple marquee use cases without manually managing layout or `clipWidth`.
-
----
-
-# `MarqueeText`
-
-Displays a single-line text that scrolls when its content overflows the visible width.
-
-When the `marquee` prop is `true` and the text exceeds the `clipWidth`, `MarqueeText` duplicates the content and scrolls it from right to left in a seamless loop. Otherwise, it shows the text statically.
-
-### Usage
+`Marquee` scrolls a single line of text when it is wider than its container.
+Text that fits is shown as is.
 
 ```tsx
-<view width={400} height={28} clipping>
-  <MarqueeText
-    clipWidth={400}
-    marquee={inFocus()}
-    speed={200}
-    delay={1000}
-    scrollGap={24}
-    easing="ease-in-out"
-  >
-    This is a long text that will scroll when it overflows the container.
-  </MarqueeText>
-</view>
+import { createSignal } from 'solid-js';
+import { Marquee } from '@solid-multiplatform/platform/primitives';
+
+export const Title = () => {
+  const [focused, setFocused] = createSignal(false);
+
+  return (
+    <view width={400} height={60} onFocusChanged={setFocused} autofocus>
+      <Marquee
+        width={400}
+        marquee={focused()}
+        easing="ease-in-out"
+        textProps={{ fontSize: 28 }}
+      >
+        This is a long text that scrolls when it overflows the container.
+      </Marquee>
+    </view>
+  );
+};
 ```
 
-### Props
+Drive `marquee` from focus. The animation runs only while `marquee` is `true`
+and the text overflows, so a row of unfocused titles schedules nothing.
 
-Extends [`TextProps`](/solid/#/elements/text), with the following additions:
+## Marquee props
 
-| Prop        | Type      | Description                                                              | Default           |
-| ----------- | --------- | ------------------------------------------------------------------------ | ----------------- |
-| `clipWidth` | `number`  | Width of the visible container in pixels.                                | **Required**      |
-| `marquee`   | `boolean` | Whether to scroll or display the text statically.                        | `false`           |
-| `speed`     | `number`  | Speed of the scroll animation in pixels per second.                      | `200`             |
-| `delay`     | `number`  | Time in milliseconds to wait before starting each animation cycle.       | `1000`            |
-| `scrollGap` | `number`  | Space between the end of one scroll cycle and the beginning of the next. | `0.5 * clipWidth` |
-| `easing`    | `string`  | Easing function for the animation (e.g. `linear`, `ease-in-out`).        | `'linear'`        |
+`Marquee` accepts every `<view>` prop except `children`, plus:
 
-### Notes
+- `children`: the text.
+- `marquee` (`boolean`, required): scroll the text, or show it clipped.
+- `speed` (`number`, default `200`): pixels per second.
+- `delay` (`number`, default `1000`): milliseconds between two passes.
+- `scrollGap` (`number`, default half the container width): space between the
+  end of the text and its next pass.
+- `easing` (`string`, default `'linear'`): easing of the scroll.
+- `textProps` (`TextProps`): props for the inner `<text>` nodes.
 
-- Automatically hides itself if the text fits within the `clipWidth`.
-- Uses double `<text>` elements to create a seamless scroll.
-- Ensures animation stops when the component unmounts.
+`Marquee` reads its width from layout and turns `clipping` on while `marquee`
+is `true`. Its height defaults to `textProps.lineHeight`, or 1.5 times the
+font size.
+
+## MarqueeText
+
+`MarqueeText` is the part that scrolls. Use it when you manage the clipping
+container yourself.
+
+```tsx
+import { MarqueeText } from '@solid-multiplatform/platform/primitives';
+
+export const Title = (props: { focused: boolean }) => (
+  <view width={400} height={28} clipping>
+    <MarqueeText
+      clipWidth={400}
+      marquee={props.focused}
+      speed={200}
+      delay={1000}
+      scrollGap={24}
+    >
+      This is a long text that scrolls when it overflows the container.
+    </MarqueeText>
+  </view>
+);
+```
+
+`MarqueeText` accepts every `<text>` prop, the `marquee`, `speed`, `delay`,
+`scrollGap` and `easing` props above, and:
+
+- `clipWidth` (`number`, required): width of the visible container.

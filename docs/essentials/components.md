@@ -1,89 +1,83 @@
 # Components
 
-There are two core intrinsic elements provided by SolidTV Lightning: **`<view>`** & **`<text>`**. These are registered with the renderer and require no import.
+There are two intrinsic elements: `<view>` and `<text>`. They need no import.
+You never write DOM elements, CSS classes or `style={{}}` objects with CSS.
 
-## Creating a Counter Component
+Everything else is a normal Solid component. Read the
+[Solid documentation](https://docs.solidjs.com/) for signals, effects, stores
+and control flow. All of it applies here.
 
-The following code demonstrates how to create a simple Counter component using SolidTV. This component displays a text element with custom styles.
+## A Counter component
 
-### Imports and Typescript
-
-First, necessary functions and types are imported from `solid-js` and `@solidtv/solid`:
-
-```jsx
-import { type Component } from 'solid-js';
-import { type NodeProps } from '@solidtv/solid';
-```
-
-### Component Interface
-
-An interface `CounterProps` is defined, extending `NodeProps` and you can define your properties to be passed into the component:
-
-```jsx
-interface CounterProps extends NodeProps {
-  count: number
-}
-```
-
-### Counter Component
-
-The `Counter` component is defined as a SolidTV component that accepts `CounterProps`:
-
-```jsx
-import { type Component } from 'solid-js';
-import { type NodeProps } from '@solidtv/solid';
+```tsx
+import { createSignal, type Component } from 'solid-js';
+import type { NodeProps, NodeStyles } from '@solid-multiplatform/platform';
 
 interface CounterProps extends NodeProps {
   count: number;
 }
 
-const styles = {
-  Container: {
-    width: 300
-  },
-  text: {
-    fontSize: 24,
-    contain: 'width'
-  }
-} as const;
+const container: NodeStyles = {
+  width: 300,
+  height: 80,
+  color: 0x253040ff,
+};
 
-const Counter: Component<CounterProps> = props => {
+const Counter: Component<CounterProps> = (props) => {
   return (
-    <view
-      {...props}
-      style={styles.Container}
-    >
-      <text style={styles.text}>{props.count}</text>
+    <view {...props} style={container}>
+      <text x={20} y={20} fontSize={32}>
+        {String(props.count)}
+      </text>
     </view>
   );
 };
-```
-
-You'll notice we separated our styles from the component to make them reusable and also remove some of the noise on the component. The `style` prop takes an object and spreads the object onto the component. You'll learn more about [styling](/styling.md) later on.
-
-## Using Counter
-
-```jsx
-import Counter from './path/to/Counter';
-
-function App() {
-  return <Counter>4</Counter>;
-}
-```
-
-To learn more about creating components read the [SolidTV documentation](https://docs.solidjs.com/guides/foundations/understanding-components). You'll do the same authoring of components that you learn from the SolidTV docs. For example, lets use a signal to pass into Counter.
-
-```jsx
-import { createSignal } from 'solid-js';
-import Counter from './path/to/Counter';
 
 function App() {
   const [count, setCount] = createSignal(4);
-
-  return <Counter>{count()}</Counter>;
+  return (
+    <Counter
+      autofocus
+      count={count()}
+      onEnter={() => {
+        setCount((value) => value + 1);
+        return true;
+      }}
+    />
+  );
 }
 ```
 
-## use: (Directives) in Solid
+`NodeProps` is the prop type of `<view>`. `TextProps` is the prop type of
+`<text>`. Extend them so callers can pass position, size, focus and key props
+through to your root element.
 
-SolidTV has built in [Directives](https://www.solidjs.com/docs/latest/api#use___) support via `use:` property. These only work on root elements `node` and `text`. It is a callback function which receives a ref to the node.
+Keep style objects outside the component so every instance shares one object.
+See [Styling](/essentials/styling.md).
+
+## Control flow
+
+`For`, `Show`, `Switch`, `Match`, `Index`, `Suspense`, `SuspenseList` and
+`ErrorBoundary` are re-exported from `@solid-multiplatform/platform`. They are
+the Solid components.
+
+```tsx
+import { For } from '@solid-multiplatform/platform';
+
+<For each={names}>{(name) => <text>{name}</text>}</For>;
+```
+
+## Dynamic
+
+`Dynamic` renders a component chosen at run time.
+
+```tsx
+import { Dynamic } from '@solid-multiplatform/platform';
+
+<Dynamic component={props.large ? LargeTile : SmallTile} title="News" />;
+```
+
+## `View` and `Text`
+
+The uppercase `View` and `Text` components are deprecated. Use `<view>` and
+`<text>`.

@@ -1,39 +1,67 @@
-<p>
-  <img src="https://assets.solidjs.com/banner?project=Library&type=solidtv" alt="SolidTV" />
-</p>
+# Solid Multiplatform
 
-`@solidtv/solid` is an integration for the [SolidTV Renderer](https://github.com/solid-tv/renderer) built with [SolidJS](https://www.solidjs.com/) [Universal Renderer](https://github.com/solidjs/solid/releases/tag/v1.2.0). It allows you to declaratively construct WebGL nodes with SolidJS reactive primitives. It includes everything you need to rapidly build performant TV Apps.
+One SolidJS scene on Roku, browser TVs (Tizen, webOS, Vizio), Android and Android TV, iOS and tvOS, desktop and the web.
 
-?> **Coming from `@lightningtv/solid`?** The project moved to `@solidtv/solid`. See the [migration guide](/migrate.md).
+The scene is not DOM. You write `<view>`, `<text>`, `<Row>` and `<Column>` with Solid's reactivity; Solid's universal renderer turns them into nodes of a drawing backend: WebGL, Canvas 2D or Roku SceneGraph. A host supplies the surface, the keys and the device services for each platform.
 
-?> **Commercial support available.** Support plans, performance audits, migrations to SolidTV, Apple TV ports and team training from the creator of SolidTV. [See support & services](https://solidtv.dev/#services).
+```tsx
+import { createSignal } from 'solid-js';
+import { startApp } from '@solid-multiplatform/platform/host';
+import { webHost } from '@solid-multiplatform/platform/host/web';
 
-## Starter Template
+function App() {
+  const [count, setCount] = createSignal(0);
+  return (
+    <view
+      autofocus
+      width={420}
+      height={120}
+      color={0x253040ff}
+      onEnter={() => {
+        setCount(count() + 1);
+        return true;
+      }}
+    >
+      <text x={24} y={36} fontSize={40}>
+        {`Pressed ${count()} times`}
+      </text>
+    </view>
+  );
+}
 
-Clone starter template:
-
-```bash
-> npx degit solid-tv/solid-starter-template my-app
-> cd my-app
-> npm i # or yarn or pnpm
-> npm start # or yarn or pnpm
+startApp(webHost({ root: 'app' }), App, {
+  renderer: { appWidth: 1920, appHeight: 1080 },
+});
 ```
 
-## In Depth Guides
+## The first rule
 
-Read the full [Guide on Medium](https://medium.com/@chiefcll/lightning-3-the-basics-of-solidjs-e6e21d73205e) or watch the video:
+TV performance comes first: zero missed frames, and nothing scheduled while a scene is idle. See [Performance](/performance.md).
 
-[![Watch the video](https://img.youtube.com/vi/9UU7Ntf7Tww/0.jpg)](https://www.youtube.com/watch?v=9UU7Ntf7Tww)
+## Where the project is
 
-## Why Solid
+This is pre-1.0 software and the repository is mid-restructure. The documentation says what is on `main` today.
 
-- [Fastest, full featured frontend framework](https://dev.to/ryansolid/introducing-the-solidjs-ui-library-4mck)
-- Established - SolidTV is widely used in production since 2018 with large community
-  - [Router](https://github.com/solidjs/solid-router)
-  - [Primitive Libraries](https://github.com/solidjs-community/solid-primitives)
-  - [Documentations](https://docs.solidjs.com/)
-  - [Demo App](https://solid-tv.github.io/solid-demo-app/#/)
-  - [Playground](https://playground.solidjs.com/)
-- Familiar and easy to use JSX + React like syntax
-- Typescript
-- [Sample SolidTV UI Library](https://github.com/rdkcentral/solid-ui) of components with Theming
+- On `main`: the monorepo; a typed scene contract with a conformance suite that CI runs on the DOM, WebGL, Canvas and Roku backends; one flex engine; the host contract with `startApp`, implemented by the web and DOM hosts; a service registry with browser providers; the `solid-platform` CLI; release automation.
+- In progress, in open pull requests: Roku verified on a physical TV, a desktop runtime in Rust that embeds Hermes, pointer and accessibility as framework features, native Android service providers.
+- Not verifiable by this project today: physical Apple devices, Tizen, webOS and Vizio hardware, desktop on Windows and macOS, push notifications end to end.
+
+The [feature matrix](/features.md) lists every feature per target with one of four statuses. A cell says `tested` only when it names an automated test that runs that feature on that target.
+
+## Read next
+
+- [Getting started](/getting-started.md): create an app with the CLI and build the web target.
+- [Architecture](/architecture.md): packages, the three contracts, the frame loop.
+- [Layout](/flow/layout.md), [Styling](/essentials/styling.md), [Focus and keys](/essentials/focus.md): writing UI.
+- [Services](/services.md): device features behind one registry.
+- [Add a host](/add-a-host.md) and [Add a renderer backend](/add-a-backend.md): bring up a new platform.
+- [Targets](/targets/README.md): what each target is built from and how it is tested.
+- [Migrating from the old names](/migrate.md): coming from `@lightningtv/solid` or `@solidtv/solid`.
+
+## Packages
+
+- `@solid-multiplatform/platform`: the JSX binding, layout, focus, primitives, services, hosts and the CLI.
+- `@solid-multiplatform/renderer`: the scene contract and the drawing backends.
+- `@solid-multiplatform/video`: optional playback adapters.
+
+Licensed under Apache-2.0.
