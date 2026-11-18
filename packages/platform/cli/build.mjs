@@ -308,7 +308,7 @@ export function mount(host = { target: '${target}' }) {
       dir,
     );
     if (!dev && browserTVs.includes(target))
-      packageTV(dir, target, project(root).name, legacy);
+      packageTV(dir, target, project(root).name, legacy, project(root));
   }
 }
 
