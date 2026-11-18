@@ -387,6 +387,27 @@
         "types": "./dist/src/sdk/certification.d.ts",
         "default": "./dist/src/sdk/certification.js"
       }
+    },
+    "./host": {
+      "@solidtv/source": "./src/host.ts",
+      "import": {
+        "types": "./dist/src/host.d.ts",
+        "default": "./dist/src/host.js"
+      }
+    },
+    "./host/web": {
+      "@solidtv/source": "./src/hosts/web.ts",
+      "import": {
+        "types": "./dist/src/hosts/web.d.ts",
+        "default": "./dist/src/hosts/web.js"
+      }
+    },
+    "./host/dom": {
+      "@solidtv/source": "./src/hosts/dom.ts",
+      "import": {
+        "types": "./dist/src/hosts/dom.d.ts",
+        "default": "./dist/src/hosts/dom.js"
+      }
     }
   },
   "sideEffects": false,

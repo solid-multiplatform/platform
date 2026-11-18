@@ -722,6 +722,9 @@ v.describe('package.json exports', () => {
       './menus',
       './window-state',
       './certification',
+      './host',
+      './host/web',
+      './host/dom',
     ]);
   });
 
