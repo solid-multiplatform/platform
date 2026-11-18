@@ -156,6 +156,20 @@
         "types": "./dist/src/sdk/device.d.ts",
         "default": "./dist/src/sdk/device.js"
       }
+    },
+    "./i18n": {
+      "@solidtv/source": "./src/sdk/i18n.ts",
+      "import": {
+        "types": "./dist/src/sdk/i18n.d.ts",
+        "default": "./dist/src/sdk/i18n.js"
+      }
+    },
+    "./a11y": {
+      "@solidtv/source": "./src/sdk/a11y.ts",
+      "import": {
+        "types": "./dist/src/sdk/a11y.d.ts",
+        "default": "./dist/src/sdk/a11y.js"
+      }
     }
   },
   "sideEffects": false,

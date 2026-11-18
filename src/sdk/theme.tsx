@@ -6,6 +6,10 @@ import {
   type Accessor,
   type JSX,
 } from 'solid-js';
+import {
+  useHighContrast as highContrast,
+  useTextScale as textScale,
+} from './i18n.js';
 
 /** The platform-reported appearance. `system` is resolved by the host. */
 export type ColorScheme = 'light' | 'dark';
@@ -116,8 +120,73 @@ export function bindColorScheme(
   return () => match.removeEventListener?.('change', update);
 }
 
-export function themeFor(scheme: ColorScheme): Theme {
-  return scheme === 'dark' ? darkTheme : lightTheme;
+/** High-contrast light palette (WCAG AAA on body text). */
+export const highContrastLightTheme: Theme = {
+  ...lightTheme,
+  colors: {
+    background: 0xffffffff,
+    surface: 0xffffffff,
+    surfaceRaised: 0xf2f2f2ff,
+    text: 0x000000ff,
+    textMuted: 0x1a1a1aff,
+    primary: 0x0000ccff,
+    onPrimary: 0xffffffff,
+    border: 0x000000ff,
+    focus: 0x0000ccff,
+    danger: 0xa8001aff,
+    success: 0x005a00ff,
+    warning: 0x6b4200ff,
+    overlay: 0x000000cc,
+  },
+};
+
+/** High-contrast dark palette (white/yellow on black). */
+export const highContrastDarkTheme: Theme = {
+  ...darkTheme,
+  colors: {
+    background: 0x000000ff,
+    surface: 0x000000ff,
+    surfaceRaised: 0x141414ff,
+    text: 0xffffffff,
+    textMuted: 0xf0f0f0ff,
+    primary: 0xffff00ff,
+    onPrimary: 0x000000ff,
+    border: 0xffffffff,
+    focus: 0xffff00ff,
+    danger: 0xff9a9aff,
+    success: 0x7dff7dff,
+    warning: 0xffd84dff,
+    overlay: 0x000000e6,
+  },
+};
+
+/**
+ * Resolve the theme for the platform scheme, the host high-contrast preference
+ * and the accessibility font scale. Reading the signals here keeps
+ * `ThemeProvider` and `useTheme` reactive.
+ */
+export function themeFor(
+  scheme: ColorScheme,
+  contrast: boolean = highContrast(),
+): Theme {
+  const base = contrast
+    ? scheme === 'dark'
+      ? highContrastDarkTheme
+      : highContrastLightTheme
+    : scheme === 'dark'
+      ? darkTheme
+      : lightTheme;
+  const scale = textScale();
+  if (scale === 1) return base;
+  return {
+    ...base,
+    typography: {
+      body: Math.round(base.typography.body * scale),
+      label: Math.round(base.typography.label * scale),
+      title: Math.round(base.typography.title * scale),
+      headline: Math.round(base.typography.headline * scale),
+    },
+  };
 }
 
 const ThemeContext = createContext<Accessor<Theme>>();
@@ -133,7 +202,7 @@ export function ThemeProvider(props: {
   const value = createMemo<Theme>(() => {
     const theme = props.theme;
     if (typeof theme === 'function') return theme();
-    return theme ?? themeFor(colorScheme());
+    return theme ?? themeFor(colorScheme(), highContrast());
   });
   return (
     <ThemeContext.Provider value={value}>{props.children}</ThemeContext.Provider>

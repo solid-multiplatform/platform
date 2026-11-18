@@ -161,10 +161,10 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 | Keyboard inset and visibility          | Android IME insets, iOS notifications       | S      | `viewport().keyboardInset`                                       | —     |
 | Safe area and display cutout           | Apple safeAreaInsets, Android displayCutout | S      | `safeArea` per edge                                              | —     |
 | Dark/light/system theme                | RN useColorScheme                           | S      | `ThemeProvider`, `useTheme`, `useColorScheme`                    | —     |
-| Text scaling / accessibility font size | iOS Dynamic Type, Android sp                | M      | No signal                                                        | 8     |
+| Text scaling / accessibility font size | iOS Dynamic Type, Android sp                | S      | `setTextScale` scales theme typography and `scaled()` tokens     | —     |
 | Reduce motion                          | iOS/Android/Web                             | S      | `reducedMotion` in viewport                                      | —     |
-| Locale and i18n                        | i18next, Flutter intl                       | M      | No API                                                           | 8     |
-| RTL layout                             | CSS direction, I18nManager                  | M      | No API                                                           | 8     |
+| Locale and i18n                        | i18next, Flutter intl                       | S      | `setupI18n`/`createI18n` with locale fallback and interpolation  | —     |
+| RTL layout                             | CSS direction, I18nManager                  | S      | `isRTL`, `textDirection`, `dir()` and document `dir`/`lang` sync | —     |
 | Haptics                                | Expo Haptics, Capacitor Haptics             | S      | `impact`/`vibrate` with host port and Vibration API fallback     | —     |
 | Clipboard                              | Expo/Capacitor                              | S      | `readClipboard`/`writeClipboard` with host port and web fallback | —     |
 | Share sheet                            | RN Share, Capacitor Share                   | S      | `share` with host port, Web Share and clipboard fallback         | —     |
@@ -211,41 +211,41 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 9. Accessibility and internationalization
 
-| Feature                         | Established pattern                  | Status | Evidence / gap                                  | Phase |
-| ------------------------------- | ------------------------------------ | ------ | ----------------------------------------------- | ----- |
-| Roles, labels, values, actions  | ARIA, UIAccessibility, TalkBack      | P      | `semantics.ts` roles limited to 6               | 8     |
-| Reading/focus order             | WCAG 2.4.3                           | P      | DOM mirror follows tree; native mapping partial | 8     |
-| Visible focus                   | WCAG 2.4.7                           | S      | `$focus` states                                 | —     |
-| Modal semantics / hide siblings | aria-modal, accessibilityViewIsModal | M      | None                                            | 2     |
-| Live announcements              | aria-live, UIAccessibility.post      | S      | announcer primitives                            | —     |
-| Touch targets ≥44pt/48dp        | Apple HIG, Material                  | P      | Product guidance; no lint                       | 8     |
-| Gesture alternatives            | WCAG 2.5.1                           | P      | Not enforced                                    | 8     |
-| Text scaling                    | Dynamic Type, sp                     | M      | No signal                                       | 8     |
-| High contrast                   | WCAG 1.4.11                          | M      | No signal                                       | 8     |
-| Reduced motion                  | WCAG 2.3.3                           | S      | `reducedMotion`                                 | —     |
-| RTL mirroring                   | CSS direction, I18nManager           | M      | No API                                          | 8     |
-| Translations/pluralization      | i18next, Flutter intl                | M      | No API                                          | 8     |
-| Locale-aware dates/numbers      | Intl                                 | M      | No API                                          | 8     |
+| Feature                         | Established pattern                  | Status | Evidence / gap                                                          | Phase |
+| ------------------------------- | ------------------------------------ | ------ | ----------------------------------------------------------------------- | ----- |
+| Roles, labels, values, actions  | ARIA, UIAccessibility, TalkBack      | S      | `browserSemantics` covers 24 roles, state, value, level and description | —     |
+| Reading/focus order             | WCAG 2.4.3                           | S      | `readingOrder()` sorts rows by direction                                | —     |
+| Visible focus                   | WCAG 2.4.7                           | S      | `$focus` states                                                         | —     |
+| Modal semantics / hide siblings | aria-modal, accessibilityViewIsModal | M      | None                                                                    | 2     |
+| Live announcements              | aria-live, UIAccessibility.post      | S      | announcer primitives                                                    | —     |
+| Touch targets ≥44pt/48dp        | Apple HIG, Material                  | S      | `MIN_TOUCH_TARGET`, `meetsTouchTarget`, `ensureTouchTarget`             | —     |
+| Gesture alternatives            | WCAG 2.5.1                           | P      | Not enforced                                                            | 8     |
+| Text scaling                    | Dynamic Type, sp                     | S      | `setTextScale` + theme typography scaling                               | —     |
+| High contrast                   | WCAG 1.4.11                          | S      | `setHighContrast`, high-contrast light/dark palettes                    | —     |
+| Reduced motion                  | WCAG 2.3.3                           | S      | `reducedMotion`                                                         | —     |
+| RTL mirroring                   | CSS direction, I18nManager           | S      | `dir()` and document direction; `readingOrder` accepts RTL              | —     |
+| Translations/pluralization      | i18next, Flutter intl                | S      | `t()` with `Intl.PluralRules` categories and `{param}` interpolation    | —     |
+| Locale-aware dates/numbers      | Intl                                 | S      | `formatNumber`, `formatDate`, `formatRelativeTime`, `formatList`        | —     |
 
 ## 10. Performance, reliability and quality
 
-| Feature                  | Established pattern        | Status | Evidence / gap                                            | Phase |
-| ------------------------ | -------------------------- | ------ | --------------------------------------------------------- | ----- |
-| Startup measurement      | Roku 15s, Flutter startup  | S      | Android launch time recorded                              | —     |
-| Frame pacing gate        | Android FrameTimeline      | S      | three ten-minute passes, zero misses                      | —     |
-| Idle frame scheduling    | Flutter frame callbacks    | S      | event-driven loop                                         | —     |
-| Image decode budgets     | Flutter image cache        | P      | renderer upload budget exists; no app API                 | 9     |
-| List recycling           | FlatList/ListView.builder  | S      | `Virtual`, `Lazy`                                         | —     |
-| Memory budgets / low-RAM | Android `isLowRamDevice`   | M      | No signal                                                 | 9     |
-| Error boundaries         | React/Solid                | P      | Minimal export only                                       | 4     |
-| Crash reporting hook     | Sentry/Crashlytics         | M      | No port                                                   | 5     |
-| Offline/retry            | React Query                | S      | `createOfflineQueue` with persisted items and retry       | —     |
-| State persistence        | React Navigation persist   | S      | `createPersistentStore` snapshot persistence              | —     |
-| Version/update check     | Tauri updater              | M      | No API                                                    | 5     |
-| Profiling overlay        | RN/Flutter DevTools        | P      | FPSCounter primitive                                      | 10    |
-| Automated a11y audit     | axe, Accessibility Scanner | M      | No gate                                                   | 8     |
-| Visual regression        | screenshot tests           | S      | `tests/visual`, TV pixel audit                            | —     |
-| Device smoke matrices    | CI                         | S      | Android TV, Apple simulator, desktop probe, browser smoke | —     |
+| Feature                  | Established pattern        | Status | Evidence / gap                                                 | Phase |
+| ------------------------ | -------------------------- | ------ | -------------------------------------------------------------- | ----- |
+| Startup measurement      | Roku 15s, Flutter startup  | S      | Android launch time recorded                                   | —     |
+| Frame pacing gate        | Android FrameTimeline      | S      | three ten-minute passes, zero misses                           | —     |
+| Idle frame scheduling    | Flutter frame callbacks    | S      | event-driven loop                                              | —     |
+| Image decode budgets     | Flutter image cache        | P      | renderer upload budget exists; no app API                      | 9     |
+| List recycling           | FlatList/ListView.builder  | S      | `Virtual`, `Lazy`                                              | —     |
+| Memory budgets / low-RAM | Android `isLowRamDevice`   | M      | No signal                                                      | 9     |
+| Error boundaries         | React/Solid                | P      | Minimal export only                                            | 4     |
+| Crash reporting hook     | Sentry/Crashlytics         | M      | No port                                                        | 5     |
+| Offline/retry            | React Query                | S      | `createOfflineQueue` with persisted items and retry            | —     |
+| State persistence        | React Navigation persist   | S      | `createPersistentStore` snapshot persistence                   | —     |
+| Version/update check     | Tauri updater              | M      | No API                                                         | 5     |
+| Profiling overlay        | RN/Flutter DevTools        | P      | FPSCounter primitive                                           | 10    |
+| Automated a11y audit     | axe, Accessibility Scanner | S      | `auditSemantics()` for labels, roles, values and touch targets | —     |
+| Visual regression        | screenshot tests           | S      | `tests/visual`, TV pixel audit                                 | —     |
+| Device smoke matrices    | CI                         | S      | Android TV, Apple simulator, desktop probe, browser smoke      | —     |
 
 ## 11. Platform-specific requirements
 
@@ -322,7 +322,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 12. Implementation phases
 
-Progress: Phase 0 is implemented (theme tokens, colour scheme, capability registry, extended inset contract). Phase 1 is implemented for `useKeyboard`, `KeyboardAvoidingView`, `SafeArea`, `revealAboveKeyboard`, `keyboardAwareBounds`, `createForm` validation/touched/errors/submitting, and the keyboard-aware mobile template. Remaining: a rendered FormField component and automatic wiring of native editors. Desktop scene pointer hover/press/click is implemented (`useMouse` plus SDL pointer/mouse forwarding), along with `dragToScroll`, `wheelToScroll`, and pointer cursor styles (`cursorStyle`, `useCursor`). Phase 2 now has `Modal` with a real focus trap and restore, `Sheet`, `Toast`, `Popover`, `Menu`, `Tooltip` and `Alert`, plus tab navigation, guards, snapshot/restore and browser history. Remaining in Phase 2: drawer, route transitions, focus/scroll restoration on back, and deep-link router integration. Phase 4 data primitives are in place: `createQuery` (cache/retry/invalidation), `createPersistentStore` and `createOfflineQueue`. Device services now cover clipboard, share, haptics, device/battery info, keep-awake, orientation and external opening, and `bindDeepLinks` connects the links port to navigation.
+Progress: Phase 0 is implemented (theme tokens, colour scheme, capability registry, extended inset contract). Phase 1 is implemented for `useKeyboard`, `KeyboardAvoidingView`, `SafeArea`, `revealAboveKeyboard`, `keyboardAwareBounds`, `createForm` validation/touched/errors/submitting, and the keyboard-aware mobile template. Remaining: a rendered FormField component and automatic wiring of native editors. Desktop scene pointer hover/press/click is implemented (`useMouse` plus SDL pointer/mouse forwarding), along with `dragToScroll`, `wheelToScroll`, and pointer cursor styles (`cursorStyle`, `useCursor`). Phase 2 now has `Modal` with a real focus trap and restore, `Sheet`, `Toast`, `Popover`, `Menu`, `Tooltip` and `Alert`, plus tab navigation, guards, snapshot/restore and browser history. Remaining in Phase 2: drawer, route transitions, focus/scroll restoration on back, and deep-link router integration. Phase 4 data primitives are in place: `createQuery` (cache/retry/invalidation), `createPersistentStore` and `createOfflineQueue`. Device services now cover clipboard, share, haptics, device/battery info, keep-awake, orientation and external opening, and `bindDeepLinks` connects the links port to navigation. Internationalization covers translations, plurals, RTL, text scaling, high contrast and locale-aware formatting; `auditSemantics` and reading-order helpers cover the accessibility gate.
 
 ### Phase 0 — Contracts and theme foundation
 
