@@ -38,6 +38,13 @@ jobs:
       - uses: pnpm/action-setup@v4
       - name: System packages
         run: |
+          set -euo pipefail
+          # The package mirror sometimes stops answering in the middle of a
+          # download, and apt waits for it for minutes. For every apt run of
+          # this job (Playwright's too): give up on a silent connection after
+          # twenty seconds and try again.
+          printf 'Acquire::Retries "6";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\n' |
+            sudo tee /etc/apt/apt.conf.d/99-desktop-runtime-timeouts >/dev/null
           sudo apt-get update
           # A compiler and build tools; what SDL's X11, Wayland and D-Bus
           # support is built against; a virtual display, Mesa's software GL
