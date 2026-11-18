@@ -23,6 +23,13 @@ export interface BatteryState {
   charging: boolean;
 }
 
+export interface DeviceMemoryInfo {
+  /** Approximate physical memory in GiB, when the host reports it. */
+  deviceMemoryGb?: number;
+  /** True at or below the low-memory threshold. */
+  lowMemory: boolean;
+}
+
 export interface ShareOptions {
   title?: string;
   text?: string;
@@ -56,6 +63,7 @@ export interface DevicePorts {
   haptics?: HapticsPort;
   deviceInfo?(): Promise<DeviceInfo>;
   battery?(): Promise<BatteryState>;
+  memory?(): DeviceMemoryInfo;
   keepAwake?(active: boolean): Promise<void>;
   openExternal?(url: string): Promise<void>;
   lockOrientation?(orientation: OrientationLock): Promise<void>;
@@ -94,6 +102,7 @@ const navigatorLike = () =>
           level: number;
           charging: boolean;
         }>;
+        deviceMemory?: number;
         wakeLock?: {
           request(type: 'screen'): Promise<{ release(): Promise<void> }>;
         };
@@ -217,6 +226,28 @@ export async function deviceInfo(): Promise<DeviceInfo> {
     model: nav?.userAgent,
     userAgent: nav?.userAgent,
     appVersion,
+  };
+}
+
+/**
+ * Low-RAM signal for image cache/list window budgets. Android hosts can map
+ * `ActivityManager.isLowRamDevice()`; the web uses `navigator.deviceMemory`.
+ */
+export function deviceMemory(thresholdGb = 2): DeviceMemoryInfo {
+  if (ports.memory) {
+    const info = ports.memory();
+    return {
+      deviceMemoryGb: info.deviceMemoryGb,
+      lowMemory:
+        info.lowMemory ||
+        (info.deviceMemoryGb !== undefined &&
+          info.deviceMemoryGb <= thresholdGb),
+    };
+  }
+  const value = navigatorLike()?.deviceMemory;
+  return {
+    deviceMemoryGb: value,
+    lowMemory: value !== undefined && value <= thresholdGb,
   };
 }
 

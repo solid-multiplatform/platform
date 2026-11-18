@@ -41,3 +41,5 @@ export * from './sdk/biometrics.js';
 export * from './sdk/files.js';
 export * from './sdk/update.js';
 export * from './sdk/shortcuts.js';
+export * from './sdk/logging.js';
+export * from './sdk/env.js';

@@ -240,6 +240,20 @@
         "types": "./dist/src/sdk/shortcuts.d.ts",
         "default": "./dist/src/sdk/shortcuts.js"
       }
+    },
+    "./logging": {
+      "@solidtv/source": "./src/sdk/logging.ts",
+      "import": {
+        "types": "./dist/src/sdk/logging.d.ts",
+        "default": "./dist/src/sdk/logging.js"
+      }
+    },
+    "./env": {
+      "@solidtv/source": "./src/sdk/env.ts",
+      "import": {
+        "types": "./dist/src/sdk/env.d.ts",
+        "default": "./dist/src/sdk/env.js"
+      }
     }
   },
   "sideEffects": false,
