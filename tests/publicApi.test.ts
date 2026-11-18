@@ -24,7 +24,7 @@ import * as focusManager from '@solid-multiplatform/platform/focusManager';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 303 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 304 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -201,6 +201,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'mediaCapabilities',
       'meetsTouchTarget',
       'memo',
+      'menuItemsPayload',
       'menusAvailable',
       'mergeProps',
       'mod',

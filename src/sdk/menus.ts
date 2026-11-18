@@ -94,3 +94,30 @@ export function runMenuItem(
   item.onSelect?.();
   return true;
 }
+
+export interface MenuItemPayload {
+  id: string;
+  label?: string;
+  type?: MenuItemType;
+  shortcut?: string;
+  enabled?: boolean;
+  disabled?: boolean;
+  checked?: boolean;
+  submenu?: MenuItemPayload[];
+}
+
+/** Strip callbacks so a menu can cross a process/JSON boundary. */
+export function menuItemsPayload(
+  items: readonly MenuItem[] = [],
+): MenuItemPayload[] {
+  return items.map((item) => ({
+    id: item.id,
+    label: item.label,
+    type: item.type,
+    shortcut: item.shortcut,
+    enabled: item.enabled,
+    disabled: item.disabled,
+    checked: item.checked,
+    submenu: item.submenu ? menuItemsPayload(item.submenu) : undefined,
+  }));
+}

@@ -11,6 +11,8 @@ import { createGraphics } from './graphics.mjs';
 import { channel } from 'node:diagnostics_channel';
 import sharp from 'sharp';
 import { openWindow } from './window.mjs';
+import { createDesktopMenuProvider } from './menus.mjs';
+import { setMenusPort } from '@solid-multiplatform/platform/menus';
 
 setCapabilities('desktop');
 const windowHost = openWindow(
@@ -111,6 +113,7 @@ async function decode(blob, sx, sy, sw, sh, opts) {
 let boot,
   dispose,
   pump,
+  menuProvider,
   closed = false;
 const timers = new Set();
 const frame = (callback) => {
@@ -138,6 +141,8 @@ function shutdown() {
     dispose?.();
   } finally {
     saveWindowState();
+    menuProvider?.dispose();
+    setMenusPort(undefined);
     editors?.dispose();
     semantics?.dispose();
     windowHost.close();
@@ -150,6 +155,16 @@ try {
     process.env.SOLID_APP_TITLE ?? 'Solid Multiplatform',
   );
   windowHost.show();
+  // The tray provider is optional; never delay the first frame for it.
+  createDesktopMenuProvider().then((provider) => {
+    if (!provider) return;
+    if (closed) {
+      provider.dispose();
+      return;
+    }
+    menuProvider = provider;
+    setMenusPort(provider.port);
+  });
   editors = desktopEditors(windowHost);
   const host = {
     editors,
