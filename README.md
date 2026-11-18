@@ -1,6 +1,6 @@
 # Solid Multiplatform
 
-[Download the SDK, starter apps and device evidence for 0.2 preview 5](https://github.com/solid-multiplatform/platform/releases/tag/v0.2.0-preview.5).
+[Download the SDK, starter apps and device evidence for 0.2 preview 6](https://github.com/solid-multiplatform/platform/releases/tag/v0.2.0-preview.6).
 
 Build one Solid JSX scene and let a host supply drawing, input and device lifecycle. This repository owns the universal JSX binding, layout, focus, UI primitives and device startup. The [renderer repository](https://github.com/solid-multiplatform/renderer) owns WebGL, Canvas 2D and Roku SceneGraph.
 
@@ -81,4 +81,4 @@ Desktop accessibility uses AccessKit's native adapters. Linux AT-SPI activation,
 
 The Android TV default matches its drawing buffer to the device's actual surface. The measured release gate is documented in the [physical qualification report](docs/beta/README.md). Apple simulator downloads are development artifacts; distribution to an iPhone or Apple TV uses the application's signing identity.
 
-For a dedicated Android TV graphics surface, pass `{ surface: 'surface-view' }` as the second argument to `runAndroidTV` in the app entry. The default TextureView supports compositing with native video and other views. SurfaceView has separate Android window ordering. Validate any overlapping native UI on the target device.
+For a dedicated Android TV graphics surface, pass `{ surface: 'surface-view' }` as the second argument to `runAndroidTV` in the app entry. The default TextureView supports compositing with native video and other views. The dedicated canvas uses Android’s media-overlay ordering. Solid graphics draw over ordinary video surfaces, and native window controls can draw over both.

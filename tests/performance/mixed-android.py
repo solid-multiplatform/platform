@@ -26,6 +26,11 @@ def main():
         action="store_true",
         help="Use screenshots in a separate, untimed pass",
     )
+    parser.add_argument(
+        "--over-video",
+        action="store_true",
+        help="Place Solid controls and a native caption over the video",
+    )
     args = parser.parse_args()
     if (
         not re.fullmatch(r"[A-Za-z0-9_.]+", args.package)
@@ -91,7 +96,7 @@ def main():
             "gallery": (35, 40, (53, 100, 150)),
             "selected": (250, 40, (53, 100, 150)),
             "modal": (590, 325, (37, 56, 79)),
-            "playing": (70, 300, (37, 56, 79)),
+            "playing": (720 if args.over_video else 70, 300, (37, 56, 79)),
         }
         deadline = time.monotonic() + 4
         while True:
@@ -116,6 +121,15 @@ def main():
                     max(abs(a - b) for a, b in zip(c, rgb)) <= 6 for _, c in colors
                 )
             if video:
+                if args.over_video:
+                    native_caption = im.getpixel((1145 * w // 1920, 350 * h // 1080))
+                    good = (
+                        good
+                        and max(
+                            abs(a - b) for a, b in zip(native_caption, (20, 103, 90))
+                        )
+                        <= 6
+                    )
                 colors = im.crop(
                     (int(0.37 * w), int(0.22 * h), int(0.93 * w), int(0.73 * h))
                 ).resize((80, 45))
@@ -144,6 +158,7 @@ def main():
         "firmware": shell("getprop", "ro.build.fingerprint"),
         "package": app,
         "visual": args.visual,
+        "controlsOverVideo": args.over_video,
         "cycles": [],
     }
     apk = next(
@@ -168,6 +183,11 @@ def main():
 
     try:
         shell("am", "force-stop", app)
+        if args.over_video:
+            private("mkdir", "-p", "files")
+            private("touch", "files/mixed-overlay")
+        else:
+            private("rm", "-f", "files/mixed-overlay")
         private("rm", "-f", "files/workload-ready", "files/mixed-events.json")
         report["activityLaunch"] = launch()
         pid = shell("pidof", app)
@@ -300,6 +320,7 @@ file_write_period_ms: 2000
                 adb("shell", "rm", remote, check=False)
         report["events"] = journal()
         adb("shell", "am", "force-stop", app, check=False)
+        private("rm", "-f", "files/mixed-overlay", check=False)
         (args.out / "interaction.json").write_text(json.dumps(report, indent=2) + "\n")
     print(f"Completed {len(report['cycles'])} full interaction cycles")
 

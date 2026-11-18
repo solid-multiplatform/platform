@@ -1,4 +1,10 @@
-import { Application, File, knownFolders } from '@nativescript/core';
+import {
+  Application,
+  Color,
+  File,
+  Label,
+  knownFolders,
+} from '@nativescript/core';
 import { createSignal } from 'solid-js';
 import { activeElement, type ElementNode } from '@solid-multiplatform/platform';
 import { useFocusManager } from '@solid-multiplatform/platform/focusManager';
@@ -7,6 +13,10 @@ import { createAndroidPlayer } from '@solid-multiplatform/video/android';
 import { mountGallery } from './gallery';
 
 export function mount(_plugins, fontRoot, _input, host) {
+  const overVideo = File.exists(
+    knownFolders.documents().path + '/mixed-overlay',
+  );
+  let caption: Label | undefined;
   const history: object[] = [];
   const journal = File.fromPath(
     knownFolders.documents().path + '/mixed-events.json',
@@ -90,6 +100,19 @@ export function mount(_plugins, fontRoot, _input, host) {
           adoptEngineDuration: true,
         });
         navigation.push({ path: 'player' });
+        if (overVideo) {
+          caption = new Label();
+          caption.text = 'Native caption';
+          caption.color = new Color('#ffffff');
+          caption.backgroundColor = new Color('#14675a');
+          caption.horizontalAlignment = 'left';
+          caption.verticalAlignment = 'top';
+          caption.marginLeft = (size.width * 900) / 1920;
+          caption.marginTop = (size.height * 325) / 1080;
+          caption.width = (size.width * 260) / 1920;
+          caption.height = (size.height * 70) / 1080;
+          host.root.addChild(caption);
+        }
         focus(transport, 'player-focus');
       }
       await player.play();
@@ -144,6 +167,10 @@ export function mount(_plugins, fontRoot, _input, host) {
         ...counters(),
       });
       player = undefined;
+      if (caption) {
+        host.root.removeChild(caption);
+        caption = undefined;
+      }
       void closing
         .dispose()
         .catch((e) => record('error', { message: String(e) }));
@@ -240,7 +267,7 @@ export function mount(_plugins, fontRoot, _input, host) {
           <view
             ref={transport}
             alpha={page() === 'player' ? 1 : 0}
-            x={50}
+            x={overVideo ? 700 : 50}
             y={280}
             width={550}
             height={220}
@@ -267,6 +294,7 @@ export function mount(_plugins, fontRoot, _input, host) {
     Application.off('suspend', suspend);
     Application.off('resume', resume);
     if (player) void player.dispose();
+    if (caption) host.root.removeChild(caption);
     dispose();
   };
 }

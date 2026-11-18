@@ -1,18 +1,21 @@
 // Build a private device fixture from the frozen reference assets at the supplied checkout.
 import path from 'node:path';
+import { parseArgs } from 'node:util';
 import { cpSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { init } from '../../cli/init.mjs';
 import { addVideo } from '../../cli/add-video.mjs';
-const [destination, reference, flag, videoArchive] = process.argv.slice(2);
-if (
-  !destination ||
-  !reference ||
-  (flag && (flag !== '--mixed' || !videoArchive))
-)
+const { positionals, values } = parseArgs({
+  allowPositionals: true,
+  options: { mixed: { type: 'string' }, 'surface-view': { type: 'boolean' } },
+});
+const [destination, reference] = positionals;
+if (positionals.length !== 2) {
   throw new Error(
-    'Usage: node make-tv-app.mjs DEST REFERENCE_CHECKOUT [--mixed VIDEO_ARCHIVE]',
+    'Usage: node make-tv-app.mjs DEST REFERENCE_CHECKOUT [--mixed VIDEO_ARCHIVE] [--surface-view]',
   );
+}
+const videoArchive = values.mixed;
 const root = path.resolve(destination);
 init(root, ['android-tv']);
 if (videoArchive) addVideo(root, path.resolve(videoArchive));
@@ -79,5 +82,17 @@ if (videoArchive) {
   cpSync(
     new URL('../cli/media/clip.mp4', import.meta.url),
     path.join(assets, 'clip.mp4'),
+  );
+}
+
+if (values['surface-view']) {
+  writeFileSync(
+    path.join(root, 'targets/android-tv/app/app.ts'),
+    `import { runAndroidTV } from '@solid-multiplatform/platform/android-tv';
+runAndroidTV(async host => {
+  const app = await import('../work/main');
+  return { mount: () => app.mount(host) };
+}, { surface: 'surface-view' });
+`,
   );
 }
