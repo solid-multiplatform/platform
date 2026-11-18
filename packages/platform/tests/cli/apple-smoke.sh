@@ -8,6 +8,7 @@ case "$target" in
   *) exit 2 ;;
 esac
 phase="${2:-all}"
+probe="$(pwd)/tests/native-device/apple-probe"
 if [[ "$phase" == all ]]; then scratch=$(mktemp -d)
 else scratch="${RUNNER_TEMP:?}/solid-swift-$target"; mkdir -p "$scratch"; fi
 if [[ "$phase" != launch ]]; then
@@ -18,7 +19,10 @@ corepack pnpm install
 corepack pnpm platform plugin new greeting
 archive=$(cd "$framework/../video" && npm pack --silent --pack-destination "$scratch")
 corepack pnpm platform add video "$scratch/$archive"
-cp "$framework/tests/cli/apple-media-fixture.ts" src/app.tsx
+# One build, two launches: the Swift and playback check, then the services probe.
+cp "$framework/tests/cli/apple-media-fixture.ts" src/media-fixture.ts
+cp "$probe/app.ts" src/app.tsx
+cp "$probe/services-probe.ts" src/services-probe.ts
 cp "$framework/tests/cli/media/clip.mp4" "targets/$target/clip.mp4"
 node --input-type=module - "$target" <<'JS'
 import fs from 'node:fs';
@@ -54,7 +58,21 @@ for attempt in {1..90}; do
     result=$(cat "$container/Documents/plugin-result.txt")
     echo "Swift bridge returned: $result"
     test "$result" = "greeting Swift"
-    exit
+    # Second launch of the same build: every device service, through the registry.
+    xcrun simctl terminate "$udid" "$bundle" || true
+    report="$container/Documents/services-probe.json"
+    rm -f "$report"
+    SIMCTL_CHILD_SOLID_SERVICES_PROBE=1 xcrun simctl launch "$udid" "$bundle"
+    for tick in {1..90}; do
+      if grep -q '"done":true' "$report" 2>/dev/null; then
+        node "$probe/check.mjs" "$target" "$report"
+        exit
+      fi
+      sleep 1
+    done
+    echo "Services probe did not finish. Results so far:"
+    cat "$report" || true
+    break
   fi
   sleep 1
 done
