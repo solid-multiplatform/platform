@@ -79,6 +79,8 @@ jobs:
       - run: pnpm -w run build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:webgl
+      - name: Showcase app in Chromium (keyboard, mouse, probe mode, idle frames)
+        run: pnpm -w run test:showcase
       - name: Compare actual Canvas and WebGL pixels
         run: node tests/visual/run.mjs "$RUNNER_TEMP/visual"
       - uses: actions/upload-artifact@v4

@@ -24,6 +24,31 @@ importers:
         specifier: ^3.8.3
         version: 3.8.3
 
+  apps/showcase:
+    dependencies:
+      '@solid-multiplatform/platform':
+        specifier: workspace:*
+        version: link:../../packages/platform
+      '@solid-multiplatform/renderer':
+        specifier: workspace:*
+        version: link:../../packages/renderer
+      solid-js:
+        specifier: 1.9.17
+        version: 1.9.17
+    devDependencies:
+      playwright:
+        specifier: 1.56.1
+        version: 1.56.1
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^8.0.13
+        version: 8.0.13(@types/node@22.14.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.8.4)
+      vite-plugin-solid:
+        specifier: ^2.11.12
+        version: 2.11.12(solid-js@1.9.17)(vite@8.0.13(@types/node@22.14.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.8.4))
+
   packages/platform:
     dependencies:
       '@nativescript/local-notifications':
