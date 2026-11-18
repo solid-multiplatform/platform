@@ -1087,10 +1087,54 @@ export class ElementNode {
       `${this._fontFamily || Config.fontSettings?.fontFamily}${aliased ?? weight}`;
   }
 
+  /** Keep the backend's equal-z paint order aligned with the universal JSX child list.
+   * Text placeholders occupy logical slots but have no native draw node. */
+  private placeRenderedChild(node: ElementNode, nextIndex: number) {
+    type PaintNode = {
+      parent?: PaintNode | null;
+      insertBefore?(child: PaintNode, anchor: PaintNode | null): void;
+      div?: HTMLElement;
+      children?: PaintNode[];
+      sortChildren?(): void;
+    };
+    const parent = this.lng as unknown as PaintNode;
+    const child = node.lng as unknown as PaintNode;
+    let anchor: PaintNode | null = null;
+    for (let i = nextIndex; i < this.children.length; i++) {
+      const sibling = this.children[i]!;
+      if (isElementNode(sibling) && sibling.rendered) {
+        const native = sibling.lng as unknown as PaintNode;
+        if (native.parent === parent) {
+          anchor = native;
+          break;
+        }
+      }
+    }
+    if (parent.insertBefore) {
+      parent.insertBefore(child, anchor);
+      return;
+    }
+    if (parent.div && child.div) {
+      parent.div.insertBefore(child.div, anchor?.div ?? null);
+      return;
+    }
+    // Canvas 1.x exposes its mutable paint list and stable z sort.
+    if (parent.sortChildren && Array.isArray(parent.children)) {
+      const list = parent.children,
+        old = list.indexOf(child);
+      if (old < 0) return;
+      list.splice(old, 1);
+      const index = anchor ? list.indexOf(anchor) : -1;
+      list.splice(index < 0 ? list.length : index, 0, child);
+      parent.sortChildren();
+    }
+  }
+
   insertChild(
     node: ElementNode | ElementText | TextNode,
     beforeNode?: ElementNode | ElementText | TextNode | null,
   ) {
+    const movingHere = node.parent === this;
     // always remove nodes if they have a parent - for back swap of node
     // this will then put the node at the end of the array when re-added
     if (node.parent) {
@@ -1117,13 +1161,19 @@ export class ElementNode {
           children[i] = children[i - 1]!;
         }
         children[index] = node as ElementNode;
-        if (this.rendered && isElementNode(node)) node.render(true);
+        if (this.rendered && isElementNode(node)) {
+          node.render(true);
+          this.placeRenderedChild(node, index + 1);
+        }
         return;
       }
     }
 
     this.children.push(node as ElementNode);
-    if (this.rendered && isElementNode(node)) node.render(true);
+    if (this.rendered && isElementNode(node)) {
+      node.render(true);
+      if (movingHere) this.placeRenderedChild(node, this.children.length);
+    }
   }
 
   removeChild(node: ElementNode | ElementText | TextNode) {

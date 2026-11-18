@@ -34,6 +34,12 @@ writeFileSync(
   JSON.stringify(
     scenes.map((scene) => ({
       offsets: scene.steps.map((s) => s.to),
+      selected: scene.steps.map((s) => s.row),
+      contentHeight: Math.ceil(
+        Math.max(
+          ...scene.nodes.filter((n) => n.row >= 0).map((n) => n.y + n.h),
+        ),
+      ),
       nodes: scene.nodes.map((n) => ({
         ...n,
         src:

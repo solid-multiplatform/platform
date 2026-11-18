@@ -1,5 +1,6 @@
 import { createSignal } from 'solid-js';
 import {
+  For,
   Config,
   createRenderer,
   loadFonts,
@@ -66,6 +67,12 @@ async function run() {
       >
         {moved() ? 'I' : 'Wide label'}
       </text>
+      <For each={moved() ? [2] : [1]}>
+        {() => (
+          <view x={16} y={154} width={66} height={24} color={0x334466ff} />
+        )}
+      </For>
+      <view x={28} y={160} width={30} height={12} color={0x55ddaaff} />
       <view x={width() - 16} y={170} width={8} height={12} color={0x90a8f0ff} />
     </view>
   ));

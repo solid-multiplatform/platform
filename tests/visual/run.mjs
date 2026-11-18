@@ -80,6 +80,12 @@ try {
             const bg = [20, 34, 53],
               red = [248, 101, 77];
             const checks = [
+              [
+                'keyed layer beneath persistent foreground',
+                40,
+                166,
+                [85, 221, 170],
+              ],
               ['outside left clip', 8, 34, bg],
               ['inside clip', 18, 34, [32, 184, 137]],
               ['outside right clip', 82, 34, bg],

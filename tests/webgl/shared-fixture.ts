@@ -16,6 +16,12 @@ export async function verifySharedFixture() {
     await vi.waitFor(() => {
       expect(container.children[1]).toBe(second);
       expect(container.children[2]).toBe(first);
+      const backendChildren = (
+        container.lng as unknown as { children: unknown[] }
+      ).children;
+      expect(backendChildren.indexOf(second.lng)).toBeLessThan(
+        backendChildren.indexOf(first.lng),
+      );
       expect(label.lng.text).toBe('second first');
       expect(activeElement()).toBe(label);
     });

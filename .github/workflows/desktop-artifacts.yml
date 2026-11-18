@@ -57,9 +57,11 @@ jobs:
         run: |
           set -euo pipefail
           root="$PWD"
-          mkdir -p "$RUNNER_TEMP/installed"
-          tar -xzf gallery-app/targets/desktop/dist/*.tar.gz -C "$RUNNER_TEMP/installed"
-          cd "$RUNNER_TEMP/installed"/gallery-app-*
+          install_dir="$RUNNER_TEMP/installed"
+          if [[ "$RUNNER_OS" == Windows ]]; then install_dir=$(cygpath -u "$install_dir"); fi
+          mkdir -p "$install_dir"
+          tar -xzf gallery-app/targets/desktop/dist/*.tar.gz -C "$install_dir"
+          cd "$install_dir"/gallery-app-*
           cp "$root/tests/cli/desktop-frame-probe.mjs" targets/desktop/work/
           if [[ "$RUNNER_OS" == Windows ]]; then
             export SOLID_SDL3_LIBRARY="$(cygpath -w "$PWD/lib/SDL3.dll")"
