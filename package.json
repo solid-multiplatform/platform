@@ -100,7 +100,14 @@
     "./permissions/android": "./hosts/android/permissions.mjs",
     "./editor/roku": "./hosts/roku/editor.ts",
     "./scroll": "./dist/src/sdk/scroll.js",
-    "./network": "./dist/src/sdk/network.js"
+    "./network": "./dist/src/sdk/network.js",
+    "./editor/desktop": {
+      "@solidtv/source": "./src/sdk/desktop-field.tsx",
+      "import": {
+        "types": "./dist/src/sdk/desktop-field.d.ts",
+        "default": "./dist/src/sdk/desktop-field.jsx"
+      }
+    }
   },
   "sideEffects": false,
   "scripts": {

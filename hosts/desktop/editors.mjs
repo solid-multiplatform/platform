@@ -86,6 +86,16 @@ export function desktopEditors(nativeWindow) {
         notify();
       },
       handle(name, e) {
+        if (
+          name === 'pointerdown' &&
+          (e.clientX < rect.x ||
+            e.clientY < rect.y ||
+            e.clientX >= rect.x + rect.width ||
+            e.clientY >= rect.y + rect.height)
+        ) {
+          field.blur();
+          return false;
+        }
         if (name === 'compositionupdate') {
           preedit = e.data;
           notify();

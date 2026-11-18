@@ -14,7 +14,7 @@ export interface InputControl {
   focus?(): void;
   hover?(active: boolean): void;
   pressed?(active: boolean): void;
-  activate?(): void;
+  activate?(point?: Point): void;
   hold?(): void;
   drag?(
     phase: 'start' | 'move' | 'end' | 'cancel',
@@ -107,7 +107,7 @@ export function createInputScope(
     p.control.pressed?.(false);
     if (p.dragged) p.control.drag?.('end', point, p.origin);
     else if (!p.held && inside && !p.control.disabled?.())
-      p.control.activate?.();
+      p.control.activate?.(id === keyboard ? undefined : point);
   }
   function cancelAll() {
     for (const id of presses.keys()) cancel(id);

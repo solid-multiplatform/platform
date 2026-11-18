@@ -447,6 +447,7 @@ v.describe('package.json exports', () => {
       './editor/roku',
       './scroll',
       './network',
+      './editor/desktop',
     ]);
   });
 
@@ -467,7 +468,11 @@ v.describe('package.json exports', () => {
         .replace(/\.tsx?$/, '');
       v.expect(entry['import'], subpath).toEqual({
         types: stem + '.d.ts',
-        default: stem + (subpath === './controls' ? '.jsx' : '.js'),
+        default:
+          stem +
+          (subpath === './controls' || subpath === './editor/desktop'
+            ? '.jsx'
+            : '.js'),
       });
     }
   });

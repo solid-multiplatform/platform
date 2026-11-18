@@ -200,6 +200,12 @@ try {
         }
         if (name === 'focus') semantics.active(true);
         if (editors.handle(name, values)) return;
+        if (
+          name === 'keydown' &&
+          values.key === 'Tab' &&
+          host.input?.key('Tab', true, values.repeat, values.shiftKey)
+        )
+          return;
         messages.dispatchEvent(event(name, values));
         if (name === 'pointerdown' && values.button === 0) pressed = true;
         if (name === 'pointerup' && pressed) {

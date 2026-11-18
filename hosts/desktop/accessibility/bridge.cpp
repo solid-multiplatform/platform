@@ -46,6 +46,9 @@ static accesskit_role role(const std::string &r) {
     return ACCESSKIT_ROLE_STATUS;
   if (r == "group")
     return ACCESSKIT_ROLE_GROUP;
+  if (r=="input") return ACCESSKIT_ROLE_TEXT_INPUT;
+  if (r=="password") return ACCESSKIT_ROLE_PASSWORD_INPUT;
+  if (r=="multiline") return ACCESSKIT_ROLE_MULTILINE_TEXT_INPUT;
   return ACCESSKIT_ROLE_LABEL;
 }
 static accesskit_tree_update *snapshot(void *opaque) {
@@ -69,7 +72,7 @@ static accesskit_tree_update *snapshot(void *opaque) {
     if (item.disabled)
       accesskit_node_set_disabled(node);
     else if (item.role == "button" || item.role == "switch" ||
-             item.role == "slider") {
+             item.role == "slider" || item.role=="input" || item.role=="password" || item.role=="multiline") {
       accesskit_node_add_action(node, ACCESSKIT_ACTION_FOCUS);
       accesskit_node_add_action(node, ACCESSKIT_ACTION_CLICK);
     }

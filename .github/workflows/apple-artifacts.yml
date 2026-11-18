@@ -1,0 +1,52 @@
+name: Apple simulator packages
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix: { target: [ios, apple-tv] }
+    runs-on: macos-15
+    timeout-minutes: 35
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - name: Build the starter UI
+        run: |
+          node cli/main.mjs init "$RUNNER_TEMP/solid-gallery" --targets "${{ matrix.target }}"
+          cd "$RUNNER_TEMP/solid-gallery"
+          corepack pnpm install
+          corepack pnpm platform plugin new library
+          corepack pnpm build "${{ matrix.target }}"
+      - name: Package and capture the simulator app
+        run: |
+          set -euo pipefail
+          target="${{ matrix.target }}"
+          cd "$RUNNER_TEMP/solid-gallery/targets/$target"
+          app=$(find platforms -path '*/Debug-*simulator/*.app' -type d | head -1)
+          mkdir -p "$RUNNER_TEMP/delivery"
+          ditto -c -k --sequesterRsrc --keepParent "$app" "$RUNNER_TEMP/delivery/solid-gallery-$target-simulator.zip"
+          bundle=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$app/Info.plist")
+          if [[ "$target" == ios ]]; then family=iOS; name=iPhone; else family=tvOS; name='Apple TV'; fi
+          udid=$(xcrun simctl list devices available -j | python3 -c '
+          import json,sys
+          devices=json.load(sys.stdin)["devices"]
+          print(next(d["udid"] for runtime in sorted(devices,reverse=True) if "."+sys.argv[1]+"-" in runtime for d in devices[runtime] if d["name"].startswith(sys.argv[2])))
+          ' "$family" "$name")
+          xcrun simctl boot "$udid" || xcrun simctl bootstatus "$udid" -b
+          xcrun simctl bootstatus "$udid" -b
+          xcrun simctl install "$udid" "$app"
+          xcrun simctl launch "$udid" "$bundle"
+          sleep 5
+          xcrun simctl io "$udid" screenshot "$RUNNER_TEMP/delivery/solid-gallery-$target.png"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gallery-${{ matrix.target }}
+          path: ${{ runner.temp }}/delivery
+          if-no-files-found: error

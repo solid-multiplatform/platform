@@ -47,6 +47,7 @@ const size = fn('bool SDL_GetWindowSize(void *, _Out_ int *, _Out_ int *)');
 const pixels = fn(
   'bool SDL_GetWindowSizeInPixels(void *, _Out_ int *, _Out_ int *)',
 );
+const captureMouse = fn('bool SDL_CaptureMouse(bool)');
 const textStart = fn('bool SDL_StartTextInput(void *)'),
   textStop = fn('bool SDL_StopTextInput(void *)');
 const textArea = fn('bool SDL_SetTextInputArea(void *,const int *,int)');
@@ -194,6 +195,8 @@ export function openWindow(title) {
             metaKey: !!(buffer.readUInt16LE(32) & 0xc00),
           });
         } else if (type >= 0x400 && type <= 0x402) {
+          if (type === 0x401) captureMouse(true);
+          else if (type === 0x402) captureMouse(false);
           send(['pointermove', 'pointerdown', 'pointerup'][type - 0x400], {
             pointerId: 1,
             pointerType: 'mouse',
