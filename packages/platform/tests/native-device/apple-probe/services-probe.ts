@@ -249,7 +249,7 @@ export async function runServicesProbe(form: 'phone' | 'tv'): Promise<void> {
         // own method of that name only reads Info.plist.
         const allowed = () =>
           Number(
-            application.delegate.applicationSupportedInterfaceOrientationsForWindow?.(
+            application.delegate?.applicationSupportedInterfaceOrientationsForWindow?.(
               application,
               window!,
             ),
@@ -276,7 +276,9 @@ export async function runServicesProbe(form: 'phone' | 'tv'): Promise<void> {
           UIWindowSceneGeometryPreferencesIOS.alloc().initWithInterfaceOrientations(
             24,
           ),
-          (error) => (refusal = error.localizedDescription),
+          (error) => {
+            refusal = error.localizedDescription;
+          },
         );
         await wait(2500);
         expect(
