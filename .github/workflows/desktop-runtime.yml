@@ -51,9 +51,12 @@ jobs:
             libdbus-1-dev libibus-1.0-dev libudev-dev \
             xvfb xauth xdotool openssl libgl1-mesa-dri libegl1 libgles2
 
+      # The Hermes and SDL builds are saved as soon as they are made, not at
+      # the end of the job: a later step that fails must not cost the next
+      # run twenty minutes of compiling Hermes again.
       - name: Hermes build cache
         id: hermes
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: |
             hermes
@@ -70,10 +73,18 @@ jobs:
           test "$(git -C hermes rev-parse HEAD)" = "$HERMES_SHA"
           cmake -S hermes -B hermes-build -G Ninja -DCMAKE_BUILD_TYPE=Release -DHERMES_ENABLE_INTL=OFF
           ninja -C hermes-build hermesvm hermesNapi
+      - name: Save the Hermes build
+        if: steps.hermes.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            hermes
+            hermes-build
+          key: ${{ steps.hermes.outputs.cache-primary-key }}
 
       - name: SDL build cache
         id: sdl
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: sdl
           key: sdl-${{ runner.os }}-${{ runner.arch }}-${{ env.SDL_VERSION }}
@@ -88,6 +99,12 @@ jobs:
             -DCMAKE_INSTALL_PREFIX="$PWD/sdl" -DSDL_SHARED=ON -DSDL_STATIC=OFF \
             -DSDL_TEST_LIBRARY=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
           ninja -C sdl-build install
+      - name: Save the SDL build
+        if: steps.sdl.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: sdl
+          key: ${{ steps.sdl.outputs.cache-primary-key }}
       - name: Use the built SDL
         run: |
           set -euo pipefail
