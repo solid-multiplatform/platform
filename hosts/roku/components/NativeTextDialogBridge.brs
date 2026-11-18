@@ -30,11 +30,18 @@ sub openDialog()
     m.dialog.title = request.title
     m.dialog.buttons = [request.confirm, "Cancel"]
     if not request.numeric then
-        if request.secret then
-            m.dialog.keyboardDomain = "password"
-        else
-            m.dialog.keyboardDomain = "generic"
+        domain = request.domain
+        if domain = invalid or domain = "" then
+            if request.secret then
+                domain = "password"
+            else
+                domain = "generic"
+            end if
         end if
+        m.dialog.keyboardDomain = domain
+    end if
+    if request.voice = false then
+        m.dialog.textEditBox.voiceEnabled = false
     end if
     m.dialog.textEditBox.maxTextLength = request.maximumLength
     m.dialog.textEditBox.secureMode = request.secret

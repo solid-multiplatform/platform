@@ -86,6 +86,8 @@ export function createNativeTextEntry(
         initial: request.initial,
         numeric: request.numeric,
         secret: request.secret,
+        domain: request.domain,
+        voice: request.voice,
         maximumLength: request.maximumLength,
         confirm: request.confirm,
       });
