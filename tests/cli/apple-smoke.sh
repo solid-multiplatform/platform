@@ -59,5 +59,8 @@ for attempt in {1..90}; do
   sleep 1
 done
 cat "$container/Documents/media-progress.txt" || true
-xcrun simctl spawn "$udid" log show --last 2m --predicate 'process == "SolidMultiplatform"' | tail -80
+xcrun simctl spawn "$udid" log show --last 3m --predicate 'process == "SolidMultiplatform"' > "$scratch/app.log" || true
+# JavaScript console output first: a startup error is otherwise buried under UIKit lifecycle lines.
+grep -iE 'startup failed|error|exception|CONSOLE' "$scratch/app.log" | grep -v 'Event Timing Profile' | tail -40 || true
+tail -40 "$scratch/app.log"
 exit 1

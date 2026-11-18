@@ -5,6 +5,7 @@ dist
 build
 releases
 .tmp
+.env
 .env.local
 .claude
 # This project uses `pnpm` for package management

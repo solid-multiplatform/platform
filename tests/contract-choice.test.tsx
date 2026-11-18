@@ -62,7 +62,6 @@ v.describe('Checkbox', () => {
   });
 
   v.it('ignores activation when disabled', async () => {
-    const label = `Locked-${Math.random()}`;
     let changes = 0;
     const dispose = renderer.render(() => (
       <view width={400} height={300}>

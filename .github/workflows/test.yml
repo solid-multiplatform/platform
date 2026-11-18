@@ -1,14 +1,34 @@
 name: Foundation
 on:
   push:
+    branches: [main]
     paths-ignore: ['.github/workflows/android.yml']
   pull_request:
     paths-ignore: ['.github/workflows/android.yml']
   workflow_dispatch:
 permissions:
   contents: read
+# A newer push to the same branch or pull request supersedes the older run.
+concurrency:
+  group: foundation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
-  framework:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm lint
+      - name: Parse every host, CLI and video module
+        run: |
+          git ls-files 'hosts/**/*.mjs' 'cli/**/*.mjs' 'packages/video/*.mjs' |
+            xargs -n1 node --check
+  unit:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -24,6 +44,16 @@ jobs:
       - working-directory: packages/video
         run: npm ci && npm test
       - run: node --test tests/native/*.test.mjs
+  browser:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:webgl
       - name: Compare actual Canvas and WebGL pixels
@@ -34,9 +64,19 @@ jobs:
           name: renderer-visual-samples
           path: ${{ runner.temp }}/visual/*.png
           if-no-files-found: ignore
+  projects:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
       - working-directory: examples/roku
         run: pnpm install --frozen-lockfile && pnpm build
-      - run: pnpm lint
+      - run: pnpm exec playwright install --with-deps chromium
       - run: bash tests/cli/projects-smoke.sh
   apple:
     strategy:

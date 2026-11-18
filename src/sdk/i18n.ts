@@ -253,7 +253,7 @@ export function createI18n(options: I18nOptions = {}): I18n {
   return i18n;
 }
 
-let active = createI18n();
+let active: I18n | undefined;
 
 /** Install the application's locale and message tables. */
 export function setupI18n(options: I18nOptions): I18n {
@@ -261,41 +261,45 @@ export function setupI18n(options: I18nOptions): I18n {
   return active;
 }
 
+// Created on first use so that importing the SDK never touches the host
+// (locale lookup, document attributes) before the app asks for a translation.
+const current = (): I18n => (active ??= createI18n());
+
 /** The active i18n instance. */
 export function useI18n(): I18n {
-  return active;
+  return current();
 }
 
 // Module-level conveniences so screens can call `t('save')` without threading
 // an instance through props. They read the active instance's signals, so a
 // `setupI18n` call re-renders translated screens.
-export const locale = (): string => active.locale();
-export const dir = (): TextDirection => active.dir();
+export const locale = (): string => current().locale();
+export const dir = (): TextDirection => current().dir();
 export const t = (
   key: string,
   params?: Record<string, string | number>,
-): string => active.t(key, params);
+): string => current().t(key, params);
 export const formatNumber = (
   value: number,
   options?: Intl.NumberFormatOptions,
-): string => active.formatNumber(value, options);
+): string => current().formatNumber(value, options);
 export const formatDate = (
   value: Date | number | string,
   options?: Intl.DateTimeFormatOptions,
-): string => active.formatDate(value, options);
+): string => current().formatDate(value, options);
 export const formatRelativeTime = (
   value: number,
   unit?: Intl.RelativeTimeFormatUnit,
   options?: Intl.RelativeTimeFormatOptions,
-): string => active.formatRelativeTime(value, unit, options);
+): string => current().formatRelativeTime(value, unit, options);
 export const formatList = (
   items: readonly string[],
   options?: Intl.ListFormatOptions,
-): string => active.formatList(items, options);
+): string => current().formatList(items, options);
 export const formatDisplayName = (
   code: string,
   options?: Intl.DisplayNamesOptions,
-): string | undefined => active.formatDisplayName(code, options);
+): string | undefined => current().formatDisplayName(code, options);
 
 /** Scale a design-token font size by the host accessibility scale. */
-export const scaled = (value: number): number => value * active.textScale();
+export const scaled = (value: number): number => value * current().textScale();

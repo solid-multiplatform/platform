@@ -26,7 +26,7 @@ export function runNativeApp(
       canvas.width = '100%';
       canvas.height = '100%';
       canvas.iosOverflowSafeArea = true;
-      canvas.once('ready', async () => {
+      const start = async () => {
         bindCanvas(canvas);
         const platform = await import('@solid-multiplatform/platform');
         platform.Config.preventDefaultOnHandledKeys = true;
@@ -90,6 +90,13 @@ export function runNativeApp(
           cleanup();
           console.error('Native app startup failed', error);
         }
+      };
+      // A failure before the app loader runs (host module evaluation, input
+      // binding) would otherwise disappear with the rejected handler promise.
+      canvas.once('ready', () => {
+        start().catch((error) =>
+          console.error('Native host startup failed', error),
+        );
       });
       root.addChild(canvas);
       return root;
