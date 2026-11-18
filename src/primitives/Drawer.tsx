@@ -1,6 +1,6 @@
 import type { JSX } from 'solid-js';
 import type { ElementNode } from '../core/elementNode.js';
-import { useTheme } from '../sdk/theme.js';
+import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
 import { Modal } from './Modal.jsx';
 
@@ -32,7 +32,7 @@ export function Drawer(props: DrawerProps): JSX.Element {
   return (
     <Modal
       visible={props.visible}
-      onRequestClose={props.onRequestClose}
+      onRequestClose={() => props.onRequestClose?.()}
       label={props.label}
       transparent
       useSafeArea={false}

@@ -1,6 +1,6 @@
 import { For, Show, createEffect, createSignal, type JSX } from 'solid-js';
-import { formatDate, locale } from '../sdk/i18n.js';
-import { useTheme } from '../sdk/theme.js';
+import { formatDate } from '../sdk/i18n.js';
+import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
 import { Modal } from './Modal.jsx';
 
@@ -128,7 +128,7 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
   return (
     <Modal
       visible={visible()}
-      onRequestClose={props.onRequestClose}
+      onRequestClose={() => props.onRequestClose?.()}
       label={props.title ?? 'Select date'}
       transparent
     >

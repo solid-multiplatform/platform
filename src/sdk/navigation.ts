@@ -235,8 +235,12 @@ export function bindBrowserHistory(
   const target = options.window ?? browserWindow();
   if (!target?.history) return () => {};
   const base = options.base ?? '';
-  const toUrl = options.toUrl ?? ((route: Route) => base + route.path);
-  const fromUrl = options.fromUrl ?? defaultFromUrl(base);
+  const toUrl = options.toUrl
+    ? (route: Route) => options.toUrl!(route)
+    : (route: Route) => base + route.path;
+  const fromUrl = options.fromUrl
+    ? (url: URL) => options.fromUrl!(url)
+    : defaultFromUrl(base);
   const read = () => fromUrl(new URL(target.location.href));
 
   const initialPath = navigation.route().path;
@@ -281,7 +285,9 @@ export function createBrowserNavigation(
 ): Navigation & { dispose(): void } {
   const target = options.window ?? browserWindow();
   const base = options.base ?? '';
-  const fromUrl = options.fromUrl ?? defaultFromUrl(base);
+  const fromUrl = options.fromUrl
+    ? (url: URL) => options.fromUrl!(url)
+    : defaultFromUrl(base);
   const start = target?.location
     ? fromUrl(new URL(target.location.href))
     : initial;

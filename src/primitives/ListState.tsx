@@ -1,5 +1,5 @@
 import type { JSX } from 'solid-js';
-import { useTheme } from '../sdk/theme.js';
+import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
 
 export type ListStateStatus = 'loading' | 'empty' | 'error';

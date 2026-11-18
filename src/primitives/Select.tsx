@@ -1,5 +1,5 @@
 import { createSignal, type JSX } from 'solid-js';
-import { useTheme } from '../sdk/theme.js';
+import { useTheme } from '../sdk/theme.jsx';
 import { Menu } from './Menu.jsx';
 
 const valueOf = <T,>(value: T | (() => T)): T =>
