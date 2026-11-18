@@ -68,12 +68,20 @@ function android(root, work, plugins, target) {
     return `include ':plugin-${name}'\nproject(':plugin-${name}').projectDir = new File(settingsDir, '${relative}')`;
   });
   write(path.join(work, 'plugins.settings.gradle'), modules.join('\n') + '\n');
-  const dependencies = plugins
-    .map(({ name }) => `    implementation project(':plugin-${name}')`)
-    .join('\n');
+  const dependencies = plugins.map(
+    ({ name }) => `    implementation project(':plugin-${name}')`,
+  );
+  const host = json(path.join(root, 'targets', target, 'package.json'));
+  if (host.dependencies?.['@solid-multiplatform/video']) {
+    // Match the Media3 engine supplied by the Android canvas-media plugin.
+    dependencies.push(
+      "    implementation 'androidx.media3:media3-exoplayer-hls:1.4.0'",
+      "    implementation 'androidx.media3:media3-exoplayer-dash:1.4.0'",
+    );
+  }
   write(
     path.join(work, 'plugins.app.gradle'),
-    `dependencies {\n${dependencies}\n}\n` +
+    `dependencies {\n${dependencies.join('\n')}\n}\n` +
       (plugins.some((p) => p.androidKind === 'sidecar')
         ? 'android.packaging.jniLibs.useLegacyPackaging = true\n'
         : ''),
