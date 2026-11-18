@@ -205,6 +205,41 @@
         "types": "./dist/src/sdk/sections.d.ts",
         "default": "./dist/src/sdk/sections.js"
       }
+    },
+    "./geolocation": {
+      "@solidtv/source": "./src/sdk/geolocation.ts",
+      "import": {
+        "types": "./dist/src/sdk/geolocation.d.ts",
+        "default": "./dist/src/sdk/geolocation.js"
+      }
+    },
+    "./biometrics": {
+      "@solidtv/source": "./src/sdk/biometrics.ts",
+      "import": {
+        "types": "./dist/src/sdk/biometrics.d.ts",
+        "default": "./dist/src/sdk/biometrics.js"
+      }
+    },
+    "./files": {
+      "@solidtv/source": "./src/sdk/files.ts",
+      "import": {
+        "types": "./dist/src/sdk/files.d.ts",
+        "default": "./dist/src/sdk/files.js"
+      }
+    },
+    "./update": {
+      "@solidtv/source": "./src/sdk/update.ts",
+      "import": {
+        "types": "./dist/src/sdk/update.d.ts",
+        "default": "./dist/src/sdk/update.js"
+      }
+    },
+    "./shortcuts": {
+      "@solidtv/source": "./src/sdk/shortcuts.ts",
+      "import": {
+        "types": "./dist/src/sdk/shortcuts.d.ts",
+        "default": "./dist/src/sdk/shortcuts.js"
+      }
     }
   },
   "sideEffects": false,

@@ -36,3 +36,8 @@ export * from './sdk/crash.js';
 export * from './sdk/responsive.js';
 export * from './sdk/media.js';
 export * from './sdk/sections.js';
+export * from './sdk/geolocation.js';
+export * from './sdk/biometrics.js';
+export * from './sdk/files.js';
+export * from './sdk/update.js';
+export * from './sdk/shortcuts.js';
