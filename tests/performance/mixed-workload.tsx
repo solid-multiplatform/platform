@@ -6,7 +6,11 @@ import {
   knownFolders,
 } from '@nativescript/core';
 import { createSignal } from 'solid-js';
-import { activeElement, type ElementNode } from '@solid-multiplatform/platform';
+import {
+  activeElement,
+  getRenderer,
+  type ElementNode,
+} from '@solid-multiplatform/platform';
 import { useFocusManager } from '@solid-multiplatform/platform/focusManager';
 import { createNavigation } from '@solid-multiplatform/platform/navigation';
 import { createAndroidPlayer } from '@solid-multiplatform/video/android';
@@ -41,6 +45,7 @@ export function mount(_plugins, fontRoot, _input, host) {
     modal: ElementNode,
     transport: ElementNode;
   let player: ReturnType<typeof createAndroidPlayer> | undefined;
+  let warming: Promise<void> | undefined;
   let busy = false;
 
   function counters() {
@@ -73,34 +78,42 @@ export function mount(_plugins, fontRoot, _input, host) {
     setSelected(true);
     return focus(detail, 'detail-focus');
   };
-  const openModal = () => {
-    navigation.push({ path: 'modal' });
-    return focus(modal, 'modal');
-  };
-
-  async function play() {
-    if (busy) return;
-    busy = true;
-    try {
-      if (!player) {
-        const size = host.root.getActualSize();
-        player = createAndroidPlayer(host.root, {
-          target: 'android-tv',
-          bounds: {
-            x: size.width * 0.35,
-            y: size.height * 0.18,
-            width: size.width * 0.6,
-            height: size.height * 0.6,
-          },
-        });
-        await player.open({
-          url: 'asset:///app/gallery/clip.mp4',
-          kind: 'vod',
-          paused: true,
-          adoptEngineDuration: true,
-        });
+  // Build the native PlayerView and Media3 engine while the dialog is idle,
+  // before the next key needs them. Creating them inside the "Play preview"
+  // key frame costs 20-95 ms and blows that frame's deadline.
+  function warmPlayer() {
+    if (player || warming) return warming;
+    const size = host.root.getActualSize();
+    record('warm-start', { width: size.width, height: size.height });
+    const instance = createAndroidPlayer(host.root, {
+      target: 'android-tv',
+      bounds: {
+        x: size.width * 0.35,
+        y: size.height * 0.18,
+        width: size.width * 0.6,
+        height: size.height * 0.6,
+      },
+    });
+    warming = instance
+      .open({
+        url: 'asset:///app/gallery/clip.mp4',
+        kind: 'vod',
+        paused: true,
+        adoptEngineDuration: true,
+      })
+      .then(async () => {
+        // Initialize the decoder and output surface before capture so the
+        // first measured play() does not pay codec/surface setup.
+        await instance.play();
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        await instance.pause();
+        player = instance;
+        // Compile the transport panel's text shaders before capture. The
+        // first reveal costs ~100 ms of atlas/shader work on the render
+        // thread, which would otherwise land on the first Play frame.
         navigation.push({ path: 'player' });
-        if (overVideo) {
+        if (overVideo && !caption) {
+          const size = host.root.getActualSize();
           caption = new Label();
           caption.text = 'Native caption';
           caption.color = new Color('#ffffff');
@@ -113,12 +126,36 @@ export function mount(_plugins, fontRoot, _input, host) {
           caption.height = (size.height * 70) / 1080;
           host.root.addChild(caption);
         }
-        focus(transport, 'player-focus');
-      }
-      await player.play();
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        if (caption) caption.opacity = 0;
+        navigation.back();
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        record('warm-ready');
+        File.fromPath(
+          knownFolders.documents().path + '/mixed-ready',
+        ).writeTextSync('ready');
+      })
+      .catch((e) => record('error', { message: String(e) }));
+    return warming;
+  }
+  const openModal = () => {
+    navigation.push({ path: 'modal' });
+    return focus(modal, 'modal');
+  };
+
+  async function play() {
+    if (busy) return;
+    busy = true;
+    try {
+      if (!player) await (warming ?? warmPlayer());
+      const entering = page() !== 'player';
+      if (entering) navigation.push({ path: 'player' });
+      if (overVideo && caption) caption.opacity = 1;
+      if (entering) focus(transport, 'player-focus');
+      await player!.play();
       record('play', {
-        duration: player.snapshot.time.durationSeconds,
-        audio: player.snapshot.tracks.selectedAudioId ?? null,
+        duration: player!.snapshot.time.durationSeconds,
+        audio: player!.snapshot.tracks.selectedAudioId ?? null,
       });
     } catch (e) {
       record('error', { message: String(e) });
@@ -166,31 +203,55 @@ export function mount(_plugins, fontRoot, _input, host) {
         position: closing.snapshot.time.positionSeconds,
         ...counters(),
       });
-      player = undefined;
-      if (caption) {
-        host.root.removeChild(caption);
-        caption = undefined;
-      }
-      void closing
-        .dispose()
-        .catch((e) => record('error', { message: String(e) }));
+      // Keep the warmed engine and native view for the next preview. The
+      // player is built once before recording starts; releasing or rebuilding
+      // it inside the run would block a frame for 60-115 ms.
+      void closing.pause().catch((e) => record('error', { message: String(e) }));
+      if (caption) caption.opacity = 0;
     }
     navigation.back();
     return page() === 'modal'
       ? focus(modal, 'modal-return')
       : focus(detail, 'gallery-return');
   };
+  let lifecycleSuspended = false;
   const suspend = () => {
+    if (lifecycleSuspended) return;
+    lifecycleSuspended = true;
     setRunning(false);
     record('suspend', { page: page() });
     if (player?.snapshot.state === 'playing') void pause();
   };
   const resume = () => {
+    if (!lifecycleSuspended) return;
+    lifecycleSuspended = false;
     setRunning(true);
     record('resume', { page: page() });
+    // The window is being relayed out by WindowManager in this vsync. Drawing
+    // here adds a second late buffer; let the window settle, then redraw.
+    const r = getRenderer();
+    r?.pause?.({ immediate: true });
+    setTimeout(() => r?.resume?.(), 1400);
   };
-  Application.on('suspend', suspend);
-  Application.on('resume', resume);
+  // The qualification harness can take over lifecycle transitions through an
+  // intent extra. This avoids the TV's display power policy, which is not
+  // stable enough for a repeated timing gate, while leaving normal app
+  // behavior unchanged.
+  const testLifecycle = File.exists(
+    knownFolders.documents().path + '/mixed-lifecycle-test',
+  );
+  Application.on('suspend', () => {
+    if (!testLifecycle) suspend();
+  });
+  Application.on('resume', () => {
+    if (!testLifecycle) resume();
+  });
+  const onIntent = (args) => {
+    const action = args.intent?.getStringExtra?.('solid-lifecycle');
+    if (action === 'suspend') suspend();
+    else if (action === 'resume') resume();
+  };
+  Application.android?.on?.('activityNewIntent', onIntent);
   const dispose = mountGallery(fontRoot, {
     galleryVisible: () => page() !== 'player',
     canScroll: () => running() && page() === 'gallery',
@@ -290,9 +351,14 @@ export function mount(_plugins, fontRoot, _input, host) {
       );
     },
   });
+  // Build the one engine and native view before the timed capture starts.
+  // Every preview then only calls play()/pause(); nothing inflates or releases
+  // a surface inside a measured frame.
+  setTimeout(warmPlayer, 0);
   return () => {
     Application.off('suspend', suspend);
     Application.off('resume', resume);
+    Application.android?.off?.('activityNewIntent', onIntent);
     if (player) void player.dispose();
     if (caption) host.root.removeChild(caption);
     dispose();

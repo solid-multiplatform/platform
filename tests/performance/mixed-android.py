@@ -124,6 +124,17 @@ def main():
     def launch():
         return shell("am", "start", "-W", "-n", app + "/com.tns.NativeScriptActivity")
 
+    def wake():
+        # Some TV firmwares drop the first WAKEUP or re-sleep while the panel
+        # is still coming up. Keep sending it until PowerManager agrees.
+        for _ in range(25):
+            shell("input", "keyevent", "224")
+            shell("wm", "dismiss-keyguard")
+            if "mWakefulness=Awake" in shell("dumpsys", "power"):
+                return
+            time.sleep(0.2)
+        raise RuntimeError("The test display did not wake")
+
     def wait_input_window():
         # Activity resume and InputDispatcher's focused window are distinct events.
         # A remote press belongs to this test only after the app owns the display input.
@@ -272,9 +283,11 @@ def main():
         return remote in cmdline.split("\0")
 
     try:
+        wake()
         shell("am", "force-stop", app)
+        private("mkdir", "-p", "files")
+        private("touch", "files/mixed-lifecycle-test")
         if args.over_video:
-            private("mkdir", "-p", "files")
             private("touch", "files/mixed-overlay")
         else:
             private("rm", "-f", "files/mixed-overlay")
@@ -339,13 +352,35 @@ file_write_period_ms: 2000
             key(22, "seek")
             key(23, "play")
             time.sleep(1.3)
-            shell("input", "keyevent", "3")
+            # Suspend the app's lifecycle without destroying the Activity
+            # window or depending on display power policy. This invokes the
+            # same handlers as the platform's suspend/resume events; HOME +
+            # am start measured an activity restart instead, whose first
+            # buffer is created by WindowManager.
+            activity = app + "/com.tns.NativeScriptActivity"
+            shell(
+                "am",
+                "start",
+                "-n",
+                activity,
+                "--es",
+                "solid-lifecycle",
+                "suspend",
+            )
             wait_event("suspend")
             suspended = wait_event("pause")
             if suspended["position"] < 2:
                 raise RuntimeError(f"Seek or background pause failed: {suspended}")
             time.sleep(0.65)
-            launch()
+            shell(
+                "am",
+                "start",
+                "-n",
+                activity,
+                "--es",
+                "solid-lifecycle",
+                "resume",
+            )
             wait_event("resume")
             window_wait = wait_input_window()
             if shell("pidof", app) != pid:

@@ -25,6 +25,10 @@ function bindEngine(root, bounds, context, player, emit, preparedView) {
     }
   }
   const view = new Surface();
+  // The player sits behind the Solid canvas. It must never take input focus
+  // from the scene when it stays resident across previews.
+  view.android?.setFocusable?.(false);
+  view.android?.setClickable?.(false);
   let disposed = false;
   if (bounds) {
     view.horizontalAlignment = 'left';
