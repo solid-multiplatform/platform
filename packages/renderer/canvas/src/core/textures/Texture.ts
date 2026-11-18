@@ -1,0 +1,566 @@
+import type { CoreTextureManager } from '../CoreTextureManager.js';
+import type { SubTextureProps } from './SubTexture.js';
+import type { Dimensions } from '../../common/CommonTypes.js';
+import { EventEmitter } from '../../common/EventEmitter.js';
+import type { CoreContextTexture } from '../renderers/CoreContextTexture.js';
+import type { Bound } from '../lib/utils.js';
+import type { TextureError } from '../TextureError.js';
+
+/**
+ * Event handler for when a Texture is freed
+ */
+export type TextureFreedEventHandler = (target: any) => void;
+
+/**
+ * Event handler for when a Texture is loading
+ */
+export type TextureLoadingEventHandler = (target: any) => void;
+
+/**
+ * Event handler for when a Texture is loaded
+ */
+export type TextureLoadedEventHandler = (
+  target: any,
+  dimensions: Readonly<Dimensions>,
+) => void;
+
+/**
+ * Represents compressed texture data.
+ */
+export interface CompressedData {
+  /**
+   * GLenum spcifying compression format
+   */
+  glInternalFormat: number;
+
+  /**
+   * All mipmap levels
+   */
+  mipmaps: ArrayBuffer[];
+
+  /**
+   * Supported container types ('pvr' or 'ktx').
+   */
+  type: 'pvr' | 'ktx' | 'astc';
+
+  /**
+   * The width of the compressed texture in pixels. Defaults to 0.
+   *
+   * @default 0
+   */
+  w: number;
+
+  /**
+   * The height of the compressed texture in pixels.
+   **/
+  h: number;
+
+  /**
+   * block info compressed texture format
+   */
+  blockInfo: {
+    width: number;
+    height: number;
+    bytes: number;
+  };
+}
+
+/**
+ * Event handler for when a Texture fails to load
+ */
+export type TextureFailedEventHandler = (
+  target: any,
+  error: TextureError,
+) => void;
+
+/**
+ * TextureData that is used to populate a CoreContextTexture
+ */
+export interface TextureData {
+  /**
+   * The texture data
+   */
+  data:
+    | ImageBitmap
+    | ImageData
+    | SubTextureProps
+    | CompressedData
+    | HTMLImageElement
+    | Uint8Array
+    | null;
+  /**
+   * Premultiply alpha when uploading texture data to the GPU
+   *
+   * @defaultValue `false`
+   */
+  premultiplyAlpha?: boolean | null;
+}
+/**
+ * TextureCoords generally numbers between 0 - 1
+ */
+export type TextureCoords = Bound;
+
+/**
+ * Close an ImageBitmap payload to release its native pixel memory now instead
+ * of at some future GC. Safe to call with any `TextureData['data']` variant —
+ * non-bitmap payloads are ignored. `close()` on an already-closed bitmap is a
+ * spec-level no-op, so double-free across paths is harmless. The `close`
+ * feature check guards embedded browsers that ship ImageBitmap without it.
+ */
+export const closeImageBitmap = (data: unknown): void => {
+  if (
+    typeof ImageBitmap !== 'undefined' &&
+    data instanceof ImageBitmap &&
+    typeof data.close === 'function'
+  ) {
+    data.close();
+  }
+};
+
+export type TextureState =
+  | 'initial' // Before anything is loaded
+  | 'fetched' // Texture source is ready
+  | 'loading' // Uploading to GPU
+  | 'loaded' // Fully loaded and usable
+  | 'failed' // Failed to load
+  | 'freed'; // Released and must be reloaded
+
+export enum TextureType {
+  'generic' = 0,
+  'color' = 1,
+  'image' = 2,
+  'noise' = 3,
+  'subTexture' = 4,
+}
+
+/**
+ * Represents a source of texture data for a CoreContextTexture.
+ *
+ * @remarks
+ * Texture sources are used to populate a CoreContextTexture when that texture
+ * is loaded. Texture data retrieved by the CoreContextTexture by the
+ * `getTextureData` method. It's the responsibility of the concerete `Texture`
+ * subclass to implement this method appropriately.
+ */
+export abstract class Texture extends EventEmitter {
+  /**
+   * The dimensions of the texture
+   *
+   * @remarks
+   * Until the texture data is loaded for the first time the value will be
+   * `null`.
+   */
+  private _dimensions: Dimensions | null = null;
+  private _error: TextureError | null = null;
+
+  // aggregate state
+  public state: TextureState = 'initial';
+
+  readonly renderableOwners: Set<string | number> = new Set();
+
+  readonly renderable: boolean = false;
+
+  public type: TextureType = TextureType.generic;
+
+  public preventCleanup = false;
+
+  public ctxTexture: CoreContextTexture | undefined;
+
+  public textureData: TextureData | null = null;
+
+  /**
+   * Cache key under which this texture is registered in the
+   * {@link CoreTextureManager} keyCache, or `null` if the texture is
+   * not cached. Owned by the texture manager.
+   */
+  public cacheKey: string | null = null;
+
+  public memUsed = 0;
+
+  /**
+   * Memory used by this texture in bytes
+   *
+   * @remarks
+   * This is tracked by the TextureMemoryManager and updated when the texture
+   * is loaded/freed. Set to 0 when texture is not loaded.
+   */
+  public retryCount = 0;
+  public maxRetryCount: number;
+
+  /**
+   * Timestamp when texture was created (for startup grace period)
+   */
+  private createdAt: number = Date.now();
+
+  /**
+   * Flag to track if grace period has expired to avoid repeated Date.now() calls
+   */
+  private gracePeriodExpired: boolean = false;
+
+  /**
+   * Grace period in milliseconds to prevent premature cleanup during app startup
+   * This helps prevent race conditions when bounds calculation is delayed
+   */
+  private static readonly STARTUP_GRACE_PERIOD = 2000; // 2 seconds
+
+  constructor(protected txManager: CoreTextureManager) {
+    super();
+    this.maxRetryCount = this.txManager.maxRetryCount;
+  }
+
+  get dimensions(): Dimensions | null {
+    return this._dimensions;
+  }
+
+  get error(): TextureError | null {
+    return this._error;
+  }
+
+  /**
+   * Checks if the texture is within the startup grace period.
+   * During this period, textures are protected from cleanup to prevent
+   * race conditions during app initialization.
+   */
+  isWithinStartupGracePeriod(): boolean {
+    // If grace period already expired, return false immediately
+    if (this.gracePeriodExpired === true) {
+      return false;
+    }
+
+    // Check if grace period has expired now
+    const hasExpired =
+      Date.now() - this.createdAt >= Texture.STARTUP_GRACE_PERIOD;
+
+    if (hasExpired) {
+      // Cache the result to avoid future Date.now() calls
+      this.gracePeriodExpired = true;
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Checks if the texture can be safely cleaned up.
+   * Considers the renderable state, startup grace period, and renderable owners.
+   */
+  canBeCleanedUp(): boolean {
+    // Never cleanup if explicitly prevented
+    if (this.preventCleanup) {
+      return false;
+    }
+
+    // Don't cleanup if still within startup grace period
+    if (this.isWithinStartupGracePeriod()) {
+      return false;
+    }
+
+    // Don't cleanup a texture that is in the process of loading
+    if (this.state === 'loading') {
+      return false;
+    }
+
+    // Don't cleanup if not renderable
+    if (this.renderable === true) {
+      return false;
+    }
+
+    // Don't cleanup if there are still renderable owners
+    if (this.renderableOwners.size > 0) {
+      return false;
+    }
+
+    // Safe to cleanup
+    return true;
+  }
+
+  /**
+   * Add/remove an owner to/from the Texture based on its renderability.
+   *
+   * @remarks
+   * Any object can own a texture, be it a CoreNode or even the state object
+   * from a Text Renderer.
+   *
+   * When the reference to the texture that an owner object holds is replaced
+   * or cleared it must call this with `renderable=false` to release the owner
+   * association.
+   *
+   * @param owner
+   * @param renderable
+   */
+  setRenderableOwner(owner: string | number, renderable: boolean): void {
+    const owners = this.renderableOwners;
+
+    if (renderable === true) {
+      if (owners.has(owner) === true) {
+        return;
+      }
+
+      owners.add(owner);
+      if (owners.size === 1) {
+        (this.renderable as boolean) = true;
+        this.onChangeIsRenderable?.(true);
+        this.load();
+      }
+    } else {
+      if (owners.delete(owner) === false) {
+        return;
+      }
+
+      if (owners.size === 0) {
+        (this.renderable as boolean) = false;
+        this.onChangeIsRenderable?.(false);
+
+        // note, not doing a cleanup here, cleanup is managed by the Stage/TextureMemoryManager
+        // when it deems appropriate based on memory pressure
+      }
+    }
+  }
+
+  load(): void {
+    if (this.retryCount > this.maxRetryCount) {
+      // We've exceeded the max retry count, do not attempt to load again
+      return;
+    }
+    this.txManager.loadTexture(this);
+  }
+
+  /**
+   * Event called when the Texture becomes renderable or unrenderable.
+   *
+   * @remarks
+   * Used by subclasses like SubTexture propogate then renderability of the
+   * Texture to other referenced Textures.
+   *
+   * @param isRenderable `true` if this Texture has renderable owners.
+   */
+  onChangeIsRenderable?(isRenderable: boolean): void;
+
+  /**
+   * Load the core context texture for this Texture.
+   * The ctxTexture is created by the renderer and lives on the GPU.
+   *
+   * @returns
+   */
+  loadCtxTexture(): CoreContextTexture {
+    if (this.ctxTexture === undefined) {
+      this.ctxTexture = this.txManager.renderer.createCtxTexture(this);
+    }
+
+    return this.ctxTexture;
+  }
+
+  /**
+   * Free the core context texture for this Texture.
+   *
+   * @remarks
+   * The ctxTexture is created by the renderer and lives on the GPU.
+   */
+  free(): void {
+    this.ctxTexture?.free();
+    // Null out the freed ctxTexture so a subsequent reload re-creates it via
+    // getCtxTexture() instead of reusing a stale, already-freed reference.
+    this.ctxTexture = undefined;
+  }
+
+  /**
+   * Release the texture data and core context texture for this Texture without changing state.
+   *
+   * @remarks
+   * The ctxTexture is created by the renderer and lives on the GPU.
+   */
+  release(): void {
+    this.ctxTexture?.release();
+    this.ctxTexture = undefined;
+    this.freeTextureData();
+  }
+
+  /**
+   * Destroy the texture.
+   *
+   * @remarks
+   * This method is called when the texture is no longer needed and should be
+   * cleaned up.
+   */
+  destroy(): void {
+    // Only free GPU resources if we're in a state where they exist
+    if (this.state === 'loaded') {
+      this.free();
+    }
+
+    // Always free texture data regardless of state
+    this.freeTextureData();
+
+    // Drop any remaining subscribers so a texture destroyed while something
+    // still holds a listener does not retain it (and its captures).
+    this.removeAllListeners();
+  }
+
+  /**
+   * Free the source texture data for this Texture.
+   *
+   * @remarks
+   * The texture data is the source data that is used to populate the CoreContextTexture.
+   * e.g. ImageData that is downloaded from a URL.
+   *
+   * An ImageBitmap payload is explicitly `close()`d: its pixels live in
+   * browser-managed native memory, not the JS heap, so dropping the reference
+   * alone leaves reclamation to a GC that may not run for a long time on an
+   * idle TV app. Callers that retain the bitmap beyond `textureData` (the
+   * Canvas2D backend keeps it as its render source) must use
+   * {@link detachTextureData} instead.
+   */
+  freeTextureData(): void {
+    queueMicrotask(this.freeTextureDataTask);
+  }
+
+  /**
+   * Drop the `textureData` reference without closing an ImageBitmap payload.
+   *
+   * @remarks
+   * For callers that have taken ownership of the underlying bitmap and keep
+   * rendering from it (CanvasTexture holds it as `image`). The new owner is
+   * responsible for closing it when it releases it.
+   */
+  detachTextureData(): void {
+    queueMicrotask(this.detachTextureDataTask);
+  }
+
+  public setState(
+    state: TextureState,
+    errorOrDimensions?: TextureError | Dimensions,
+  ): void {
+    if (this.state === state) {
+      return;
+    }
+
+    let payload: TextureError | Dimensions | null = null;
+    if (state === 'loaded') {
+      if (
+        errorOrDimensions !== undefined &&
+        'w' in errorOrDimensions === true &&
+        'h' in errorOrDimensions === true &&
+        errorOrDimensions.w !== undefined &&
+        errorOrDimensions.h !== undefined
+      ) {
+        this._dimensions = errorOrDimensions;
+      }
+
+      payload = this._dimensions;
+    } else if (state === 'failed') {
+      this._error = errorOrDimensions as TextureError;
+      payload = this._error;
+
+      // increment the retry count for the texture
+      // this is used to compare against maxRetryCount, if set
+      // to determine if we should try loading again
+      this.retryCount += 1;
+
+      queueMicrotask(this.releaseTask);
+    } else if (state === 'loading') {
+      this._error = null;
+      this._dimensions = null;
+    } else {
+      this._error = null;
+    }
+
+    // emit the new state
+    this.state = state;
+    this.emit(state, payload);
+  }
+
+  /**
+   * Get the texture data for this texture.
+   *
+   * @remarks
+   * This method is called by the CoreContextTexture when the texture is loaded.
+   * The texture data is then used to populate the CoreContextTexture.
+   *
+   * @returns
+   * The texture data for this texture.
+   */
+  async getTextureData(): Promise<TextureData> {
+    if (this.textureData === null) {
+      this.textureData = await this.getTextureSource();
+    }
+
+    return this.textureData;
+  }
+
+  /**
+   * Task for queueMicrotask to free texture data.
+   *
+   * @remarks
+   * This method is called in a microtask to free the texture data.
+   */
+  private freeTextureDataTask = (): void => {
+    const textureData = this.textureData;
+    if (textureData !== null) {
+      closeImageBitmap(textureData.data);
+    }
+    this.textureData = null;
+  };
+
+  /**
+   * Task for queueMicrotask to detach texture data without closing it.
+   */
+  private detachTextureDataTask = (): void => {
+    this.textureData = null;
+  };
+
+  /**
+   * Task for queueMicrotask to release the texture.
+   *
+   * @remarks
+   * This method is called in a microtask to release the texture.
+   */
+  private releaseTask = (): void => {
+    this.release();
+  };
+
+  /**
+   * Get the texture source for this texture.
+   *
+   * @remarks
+   * This method is called by the CoreContextTexture when the texture is loaded.
+   * The texture source is then used to populate the CoreContextTexture.
+   */
+  abstract getTextureSource(): Promise<TextureData>;
+
+  /**
+   * Make a cache key for this texture.
+   *
+   * @remarks
+   * Each concrete `Texture` subclass must implement this method to provide an
+   * appropriate cache key for the texture type including the texture's
+   * properties that uniquely identify a copy of the texture. If the texture
+   * type does not support caching, then this method should return `false`.
+   *
+   * @param props
+   * @returns
+   * A cache key for this texture or `false` if the texture type does not
+   * support caching.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  static makeCacheKey(props: unknown): string | false {
+    return false;
+  }
+
+  /**
+   * Resolve the default values for the texture's properties.
+   *
+   * @remarks
+   * Each concrete `Texture` subclass must implement this method to provide
+   * default values for the texture's optional properties.
+   *
+   * @param props
+   * @returns
+   * The default values for the texture's properties.
+   */
+  static resolveDefaults(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    props: unknown,
+  ): Record<string, any> {
+    return {};
+  }
+}
