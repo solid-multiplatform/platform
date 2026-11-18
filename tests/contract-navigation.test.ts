@@ -1,9 +1,11 @@
 import * as v from 'vitest';
 import {
   bindBrowserHistory,
+  bindDeepLinks,
   createBrowserNavigation,
   createNavigation,
   createTabNavigation,
+  routeFromUrl,
   type BrowserHistoryTarget,
 } from '../src/sdk/navigation.js';
 
@@ -305,5 +307,65 @@ v.describe('tab navigation', () => {
     v.expect(navigation.select('admin')).toBe(true);
     v.expect(navigation.push({ path: '/admin/users' })).toBe(false);
     v.expect(navigation.route().path).toBe('/admin');
+  });
+});
+
+v.describe('deep links', () => {
+  const createLinks = (initial: string | null) => {
+    const listeners = new Set<(link: string) => void>();
+    return {
+      source: {
+        initial: () => initial,
+        subscribe(listener: (link: string) => void) {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+      },
+      emit(link: string) {
+        for (const listener of listeners) listener(link);
+      },
+      get count() {
+        return listeners.size;
+      },
+    };
+  };
+
+  v.it('applies the launch link and pushes later links', () => {
+    const links = createLinks('https://app.test/items/42?ref=push');
+    const navigation = createNavigation({ path: '/' });
+    const dispose = bindDeepLinks(navigation, links.source, {
+      route: (link) => {
+        const route = routeFromUrl(link);
+        return route.path.startsWith('/items/') ? route : undefined;
+      },
+    });
+    v.expect(navigation.route()).toEqual({
+      path: '/items/42',
+      state: '?ref=push',
+    });
+    v.expect(navigation.canGoBack()).toBe(false);
+
+    links.emit('https://app.test/items/43');
+    v.expect(navigation.route().path).toBe('/items/43');
+    v.expect(navigation.canGoBack()).toBe(true);
+
+    links.emit('https://app.test/unknown');
+    v.expect(navigation.route().path).toBe('/items/43');
+    dispose();
+    v.expect(links.count).toBe(0);
+  });
+
+  v.it('can reset instead of pushing for warm links', () => {
+    const links = createLinks(null);
+    const navigation = createNavigation({ path: '/' });
+    const dispose = bindDeepLinks(navigation, links.source, {
+      mode: 'reset',
+      route: (link) => routeFromUrl(link, '/app'),
+    });
+    navigation.push({ path: '/before' });
+    links.emit('https://app.test/app/inbox');
+    v.expect(navigation.route().path).toBe('/inbox');
+    v.expect(navigation.canGoBack()).toBe(false);
+    dispose();
   });
 });

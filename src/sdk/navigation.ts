@@ -261,6 +261,57 @@ export function createBrowserNavigation(
   });
 }
 
+export interface DeepLinkSource {
+  /** The link that launched the app, or null on a normal start. */
+  initial(): string | null;
+  subscribe(listener: (link: string) => void): () => void;
+}
+
+export interface DeepLinkOptions {
+  /** Map a URL to a route. Return undefined to ignore the link. */
+  route(link: string): Route | undefined;
+  /**
+   * What to do with links received while running. `push` (the default)
+   * preserves Back; `reset` starts a new stack.
+   */
+  mode?: 'push' | 'reset';
+}
+
+/**
+ * Build a route from an absolute or relative URL. The browser history binding
+ * uses the same shape, so restarts and links land on the same path.
+ */
+export function routeFromUrl(link: string, base = ''): Route {
+  const url = new URL(link, 'https://app.local');
+  return {
+    path: stripBase(url.pathname, base) || '/',
+    state: url.search + url.hash || undefined,
+  };
+}
+
+/**
+ * Feed the `links` service (universal links, custom schemes, web popstate)
+ * into a navigation stack. The launch link resets the stack; later links push
+ * so the platform Back gesture returns to where the user was.
+ */
+export function bindDeepLinks(
+  navigation: Navigation,
+  links: DeepLinkSource,
+  options: DeepLinkOptions,
+): () => void {
+  const initial = links.initial();
+  if (initial) {
+    const route = options.route(initial);
+    if (route) navigation.reset(route);
+  }
+  return links.subscribe((link) => {
+    const route = options.route(link);
+    if (!route) return;
+    if ((options.mode ?? 'push') === 'reset') navigation.reset(route);
+    else navigation.push(route);
+  });
+}
+
 export interface TabDefinition {
   name: string;
   /** The initial route for this tab's independent stack. */

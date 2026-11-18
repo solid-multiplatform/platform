@@ -28,3 +28,4 @@ export * from './sdk/keyboard.js';
 export * from './sdk/form.js';
 export * from './sdk/cursor.js';
 export * from './sdk/data.js';
+export * from './sdk/device.js';

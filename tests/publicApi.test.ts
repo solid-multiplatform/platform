@@ -24,7 +24,7 @@ import * as focusManager from '@solid-multiplatform/platform/focusManager';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 127 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 140 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -48,6 +48,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'View',
       'activeElement',
       'assertTruthy',
+      'batteryState',
       'bindColorScheme',
       'clamp',
       'clearTasks',
@@ -74,6 +75,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'defaultShaderRoundedWithShadow',
       'defaultShaderShadow',
       'deg2Rad',
+      'deviceInfo',
       'effect',
       'enqueueDelete',
       'flattenStyles',
@@ -86,6 +88,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'hasKeyboard',
       'hasPointer',
       'hexColor',
+      'impact',
       'insert',
       'insertNode',
       'invalidateQueries',
@@ -103,16 +106,20 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'isObject',
       'isString',
       'isTextNode',
+      'keepAwake',
       'keyExists',
       'keyboardAwareBounds',
       'lightTheme',
       'loadFontToDom',
       'loadFonts',
+      'lockOrientation',
       'log',
       'logRenderTree',
       'memo',
       'mergeProps',
       'mod',
+      'openExternal',
+      'readClipboard',
       'registerDefaultShader',
       'registerDefaultShaderHolePunch',
       'registerDefaultShaderLinearGradient',
@@ -126,19 +133,23 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'renderer',
       'resetCapabilities',
       'resetCursor',
+      'resetDevicePorts',
       'revealAboveKeyboard',
       'rootNode',
       'scheduleTask',
       'setActiveElement',
       'setActiveElementCore',
+      'setAppVersion',
       'setCapabilities',
       'setColorScheme',
       'setCursor',
+      'setDevicePorts',
       'setProp',
       'setQueryData',
       'setRendererFactory',
       'setTasksEnabled',
       'shaderAccessor',
+      'share',
       'spliceItem',
       'spread',
       'startLightningRenderer',
@@ -153,6 +164,8 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'useCursor',
       'useKeyboard',
       'useTheme',
+      'vibrate',
+      'writeClipboard',
     ]);
   });
 
@@ -493,6 +506,7 @@ v.describe('package.json exports', () => {
       './form',
       './cursor',
       './data',
+      './device',
     ]);
   });
 

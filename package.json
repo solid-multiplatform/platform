@@ -149,6 +149,13 @@
         "types": "./dist/src/sdk/data.d.ts",
         "default": "./dist/src/sdk/data.js"
       }
+    },
+    "./device": {
+      "@solidtv/source": "./src/sdk/device.ts",
+      "import": {
+        "types": "./dist/src/sdk/device.d.ts",
+        "default": "./dist/src/sdk/device.js"
+      }
     }
   },
   "sideEffects": false,
