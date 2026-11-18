@@ -23,6 +23,15 @@ corepack pnpm platform add video "$scratch/$archive"
 cp "$framework/tests/cli/apple-media-fixture.ts" src/media-fixture.ts
 cp "$probe/app.ts" src/app.tsx
 cp "$probe/services-probe.ts" src/services-probe.ts
+# The URL scheme the probe's deep link arrives on.
+for plist in "targets/$target"/App_Resources/*/Info.plist; do
+  /usr/libexec/PlistBuddy \
+    -c 'Add :CFBundleURLTypes array' \
+    -c 'Add :CFBundleURLTypes:0 dict' \
+    -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes array' \
+    -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string solidprobe' \
+    -c 'Add :NSLocationWhenInUseUsageDescription string Services probe' "$plist"
+done
 cp "$framework/tests/cli/media/clip.mp4" "targets/$target/clip.mp4"
 node --input-type=module - "$target" <<'JS'
 import fs from 'node:fs';
@@ -62,8 +71,18 @@ for attempt in {1..90}; do
     xcrun simctl terminate "$udid" "$bundle" || true
     report="$container/Documents/services-probe.json"
     rm -f "$report"
+    if [[ "$target" == ios ]]; then
+      # The location prompt cannot be answered here: grant it, and choose the place.
+      xcrun simctl privacy "$udid" grant location "$bundle"
+      xcrun simctl location "$udid" set 48.8584,2.2945
+    fi
     SIMCTL_CHILD_SOLID_SERVICES_PROBE=1 xcrun simctl launch "$udid" "$bundle"
-    for tick in {1..90}; do
+    linked=
+    for tick in {1..120}; do
+      if [[ -z "$linked" ]] && grep -q '"awaitingLink":true' "$report" 2>/dev/null; then
+        linked=1
+        xcrun simctl openurl "$udid" 'solidprobe://services/probe?from=simctl' || true
+      fi
       if grep -q '"done":true' "$report" 2>/dev/null; then
         node "$probe/check.mjs" "$target" "$report"
         exit

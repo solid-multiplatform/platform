@@ -15,13 +15,16 @@ import { appleInfoPlistRequirements } from '../hosts/nativescript/providers/appl
 
 const lazyModules = [
   'battery',
+  'biometrics',
   'clipboard',
   'connectivity',
   'device-info',
   'haptics',
   'keep-awake',
   'lifecycle',
+  'notifications',
   'open-external',
+  'orientation',
   'secure-storage',
   'settings',
   'share',
@@ -56,16 +59,21 @@ describe('Apple service manifest', () => {
     install(map);
     expect(Object.keys(map).sort()).toEqual([
       'battery',
+      'biometrics',
       'clipboard',
       'colorScheme',
       'connectivity',
       'deviceInfo',
+      'fileSystem',
+      'geolocation',
       'haptics',
       'keepAwake',
       'keyEvents',
       'lifecycle',
       'locale',
+      'mediaSession',
       'memory',
+      'notifications',
       'openExternal',
       'secureStorage',
       'settings',
@@ -76,7 +84,12 @@ describe('Apple service manifest', () => {
 
   it('leaves the services tvOS cannot provide out of the TV map', () => {
     const tv = appleServices({ form: 'tv' });
-    const phone = appleServices({ form: 'phone' });
+    const hook = { allow() {} };
+    const phone = appleServices({ form: 'phone', orientation: hook });
+    expect('orientation' in appleServices({ form: 'phone' })).toBe(false);
+    expect(
+      'orientation' in appleServices({ form: 'tv', orientation: hook }),
+    ).toBe(false);
     for (const name of phoneOnlyServices) {
       expect(name in tv).toBe(false);
       expect(name in phone).toBe(true);
@@ -151,18 +164,28 @@ describe('Apple Info.plist requirements', () => {
         'BGTaskSchedulerPermittedIdentifiers',
         'CFBundleURLTypes',
       ],
-      entitlements: [
-        'aps-environment',
-        'com.apple.developer.associated-domains',
-      ],
+      entitlements: ['aps-environment'],
     });
+  });
+
+  it('installs the links port only when the host captured one', () => {
+    const links = { initial: () => null, subscribe: () => () => {} };
+    expect('links' in appleServices({ form: 'tv' })).toBe(false);
+    expect(appleServices({ form: 'tv', links }).links).toBe(links);
   });
 
   it('drops what tvOS has no service for', () => {
     expect(
-      appleInfoPlistRequirements(['biometrics', 'sensors', 'geolocation'], 'tv')
-        .usageDescriptions,
-    ).toEqual(['NSLocationWhenInUseUsageDescription']);
+      appleInfoPlistRequirements(
+        ['biometrics', 'geolocation', 'mediaSession'],
+        'tv',
+      ),
+    ).toEqual({
+      usageDescriptions: [],
+      backgroundModes: ['audio'],
+      infoPlistKeys: [],
+      entitlements: [],
+    });
   });
 });
 

@@ -7,15 +7,27 @@ const results = JSON.parse(readFileSync(file, 'utf8'));
 console.log(JSON.stringify(results, null, 2));
 
 const tv = target === 'apple-tv';
-const phoneOnly = ['battery', 'clipboard', 'haptics', 'share'];
+const phoneOnly = [
+  'battery',
+  'biometrics',
+  'clipboard',
+  'geolocation',
+  'haptics',
+  'notifications',
+  'orientation',
+  'share',
+];
 const everywhere = [
   'colorScheme',
   'connectivity',
   'deviceInfo',
+  'fileSystem',
   'keepAwake',
   'keyEvents',
   'lifecycle',
+  'links',
   'locale',
+  'mediaSession',
   'memory',
   'openExternal',
   'secureStorage',

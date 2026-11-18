@@ -22,15 +22,17 @@ const requirements: Readonly<Record<string, Requirement>> = {
     tv: false,
   },
   contacts: { usageDescriptions: ['NSContactsUsageDescription'], tv: false },
-  geolocation: { usageDescriptions: ['NSLocationWhenInUseUsageDescription'] },
+  geolocation: {
+    usageDescriptions: ['NSLocationWhenInUseUsageDescription'],
+    tv: false,
+  },
   jobs: {
     backgroundModes: ['fetch'],
     infoPlistKeys: ['BGTaskSchedulerPermittedIdentifiers'],
   },
-  links: {
-    infoPlistKeys: ['CFBundleURLTypes'],
-    entitlements: ['com.apple.developer.associated-domains'],
-  },
+  // URL schemes. Universal links are not delivered by the `links` provider,
+  // so it asks for no associated-domains entitlement.
+  links: { infoPlistKeys: ['CFBundleURLTypes'] },
   mediaSession: { backgroundModes: ['audio'] },
   push: {
     backgroundModes: ['remote-notification'],

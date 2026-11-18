@@ -8,7 +8,11 @@ import {
   peekService,
   serviceAvailable,
 } from '@solid-multiplatform/platform/services';
+import type {} from '@solid-multiplatform/platform/biometrics';
 import type {} from '@solid-multiplatform/platform/device';
+import type {} from '@solid-multiplatform/platform/files';
+import type {} from '@solid-multiplatform/platform/geolocation';
+import type {} from '@solid-multiplatform/platform/media';
 import type {} from '@solid-multiplatform/platform/i18n';
 import type {} from '@solid-multiplatform/platform/shortcuts';
 import type {} from '@solid-multiplatform/platform/theme';
@@ -47,7 +51,16 @@ export async function runServicesProbe(form: 'phone' | 'tv'): Promise<void> {
   results.form = form;
   results.installed = installedServices();
   results.unavailable = (
-    ['battery', 'clipboard', 'haptics', 'share'] as const
+    [
+      'battery',
+      'biometrics',
+      'clipboard',
+      'geolocation',
+      'haptics',
+      'notifications',
+      'orientation',
+      'share',
+    ] as const
   ).filter((name) => serviceAvailable(name) === 'unavailable');
   write();
 
@@ -132,13 +145,139 @@ export async function runServicesProbe(form: 'phone' | 'tv'): Promise<void> {
     await check('haptics', async () => {
       await (await loadService('haptics')).impact('light');
     });
+    await check('biometrics', async () => {
+      // A simulator has no enrolled face or finger: the refusal is the result.
+      const result = await (
+        await loadService('biometrics')
+      ).authenticate({ reason: 'Services probe' });
+      expect(result.success === false, 'authenticated without enrolment');
+      expect(
+        result.error === 'not-enrolled' || result.error === 'unavailable',
+        String(result.error),
+      );
+      return String(result.error);
+    });
+    await check('notifications', async () => {
+      // Asking would show the system prompt: only the current permission.
+      const permission = await (
+        await loadService('notifications')
+      ).permission();
+      expect(permission === 'prompt', permission);
+      return permission;
+    });
   }
+  await check('fileSystem', async () => {
+    const port = peekService('fileSystem');
+    expect(port !== undefined, 'not synchronous');
+    const files = port!;
+    expect(!!files.cacheDirectory, 'cacheDirectory');
+    expect(
+      (files.documentDirectory !== undefined) === (form === 'phone'),
+      'documentDirectory ' + files.documentDirectory,
+    );
+    await files.writeText('probe/a.txt', 'héllo');
+    expect((await files.readText('probe/a.txt')) === 'héllo', 'text');
+    const bytes = new Uint8Array([0, 1, 2, 250]);
+    const cached = files.cacheDirectory + '/probe/b.bin';
+    await files.writeBytes(cached, bytes);
+    expect((await files.readBytes(cached)).join() === bytes.join(), 'bytes');
+    const listed = await files.list('probe');
+    expect(
+      listed.some((entry) => entry.name === 'a.txt'),
+      'list',
+    );
+    expect(listed.find((entry) => entry.name === 'a.txt')?.size === 6, 'size');
+    await files.remove('probe/a.txt');
+    await files.remove(cached);
+    expect(!(await files.exists('probe/a.txt')), 'removed');
+    let refused = false;
+    await files.readText('../../etc/hosts').catch(() => (refused = true));
+    expect(refused, 'read outside the app directories');
+    refused = false;
+    await files.exists('/etc/hosts').catch(() => (refused = true));
+    expect(refused, 'absolute path outside the app directories');
+  });
+  await check('mediaSession', () => {
+    const session = peekService('mediaSession');
+    expect(session !== undefined, 'not synchronous');
+    const center = MPNowPlayingInfoCenter.defaultCenter();
+    session!.setMetadata({ title: 'Probe', artist: 'Solid' });
+    session!.setPlaybackState('playing');
+    session!.setPositionState?.({ duration: 60, position: 5 });
+    const info = center.nowPlayingInfo;
+    expect(info?.objectForKey(MPMediaItemPropertyTitle) === 'Probe', 'title');
+    expect(
+      info?.objectForKey(MPMediaItemPropertyPlaybackDuration) === 60,
+      'duration',
+    );
+    const play = MPRemoteCommandCenter.sharedCommandCenter().playCommand;
+    session!.setActionHandler('play', () => {});
+    expect(play.enabled === true, 'play command not enabled');
+    session!.setActionHandler('play', undefined);
+    expect(play.enabled === false, 'play command left enabled');
+    session!.setPlaybackState('none');
+    expect(!center.nowPlayingInfo, 'now playing info left behind');
+  });
   await check('secureStorage', async () => {
     const store = await loadService('secureStorage');
     await store.set('probe', 'secret');
     expect((await store.get('probe')) === 'secret', 'read after write');
     await store.remove('probe');
     expect((await store.get('probe')) === null, 'read after remove');
+  });
+  if (form === 'phone') {
+    await check('geolocation', async () => {
+      // The smoke script granted the permission and set the simulated place.
+      const port = peekService('geolocation');
+      expect(port !== undefined, 'not synchronous');
+      const near = (value: number, wanted: number) =>
+        Math.abs(value - wanted) < 0.01;
+      const once = await port!.getCurrent({ timeout: 20000 });
+      expect(near(once.latitude, 48.8584), 'latitude ' + once.latitude);
+      expect(near(once.longitude, 2.2945), 'longitude ' + once.longitude);
+      let watched: number | undefined;
+      const stop = port!.watch({}, (position) => (watched = position.latitude));
+      for (let n = 0; n < 50 && watched === undefined; n++) await wait(200);
+      stop();
+      expect(watched !== undefined, 'no watched position within 10 s');
+      expect(near(watched!, 48.8584), 'watched latitude ' + watched);
+      return once.latitude + ',' + once.longitude;
+    });
+    await check('orientation', async () => {
+      const port = await loadService('orientation');
+      const scene = UIApplication.sharedApplication.keyWindow?.windowScene;
+      expect(!!scene, 'no window scene');
+      // UIInterfaceOrientation: 1 portrait, 3 and 4 landscape.
+      const turned = async (landscape: boolean) => {
+        for (let n = 0; n < 40; n++) {
+          if (Number(scene!.interfaceOrientation) >= 3 === landscape)
+            return true;
+          await wait(200);
+        }
+        return false;
+      };
+      await port.lock('landscape');
+      expect(await turned(true), 'did not turn to landscape');
+      await port.lock('portrait');
+      expect(await turned(false), 'did not turn back to portrait');
+      await port.lock('any');
+    });
+  }
+  await check('links', async () => {
+    const port = peekService('links');
+    expect(port !== undefined, 'not installed');
+    let opened: string | undefined;
+    const stop = port!.subscribe((link) => (opened = link));
+    // The smoke script opens the URL with `simctl openurl` once it sees this.
+    results.awaitingLink = true;
+    write();
+    for (let n = 0; n < 150 && opened === undefined; n++) await wait(200);
+    stop();
+    expect(
+      opened === 'solidprobe://services/probe?from=simctl',
+      String(opened),
+    );
+    return opened;
   });
   // Last: C interop with Network.framework and SystemConfiguration.
   await check('connectivity', async () => {
