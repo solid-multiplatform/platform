@@ -80,6 +80,12 @@ The device ran Android 14 at 60 Hz. Every window frame matched a SurfaceFlinger 
 
 These traces used the corrected WebGL painter on the default TextureView path. The redrawn paused controls on the dedicated SurfaceView received a separate physical pixel check. Android TV remains in preview.
 
+### Transition accounting and recent pacing work
+
+The first app window buffer at or after each `resume` marker is produced by Android's `relayoutWindow(vis=true)` traversal when the activity window is re-added. It is a window-system transition, not a frame the application can schedule. `analyze-mixed.py` therefore reports the raw `windowLateOrDropped` count and, separately, `windowLateOrDroppedExcludingResumeTransition` together with the `resumeTransition` presentation latencies. Raw counts remain published; the exclusion is analogous to the existing gallery-gap exclusion and is never silent.
+
+Recent source work targets the remaining app-controllable transitions: the video adapter detaches and defers blocking Media3 teardown out of key-handler frames, omits unused buffering/error views from the Media3 layout, and the NativeScript lifecycle defers the first redraw after resume until the window has settled. The mobile viewport binding also republishes on `orientationChanged` and ignores transient zero-sized measurements. None of this promotes a TV profile to beta without three zero-miss ten-minute passes.
+
 An earlier 54-second attempt was excluded when a Select event after activity resume was not acknowledged. The repeated controller waited for Android to assign the display’s input window to the app before sending Select. The local controller for pass 3 was recovered after seven cycles. The app and device recorder continued; the eighth interaction began later within its one-minute slot. The original trace contains all 150 prescribed action markers over 600.151 seconds. [Per-phase measurements](./onn-mixed/summary.json)
 
 The Android video adapter now uses a Media3 layout that omits the disabled transport controller and retains native subtitles. On the same physical TV, regular/custom/custom/regular two-minute diagnostic passes measured first-view inflation at 322/86/90/325 ms and repeat inflation at 107/33/30/104 ms. Late or dropped window frames were 12/12/11/11. View creation time improved in both orders; the TV still fails the zero-miss gate. [Optional media module and diagnostic samples](https://github.com/solid-multiplatform/platform/releases/tag/video-v0.2.0-preview.2)
