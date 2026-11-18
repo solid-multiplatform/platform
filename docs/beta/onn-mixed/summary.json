@@ -1,0 +1,117 @@
+[
+  {
+    "pass": 1,
+    "device": "onn. Streaming Device 4K pro",
+    "firmware": "onn/jarvis/SNA:14/URO4.260304.011.B1/15051976:user/release-keys",
+    "emulator": false,
+    "apkSha256": "9bc68fedf055b0fe5a673fd4e65489c0cb4cb9f620f2be0a601e5a12c9c2c2e7",
+    "traceSha256": "7405ee2c1b7e28f8cb5ee069752fecdf31de9613cb358f42f5700b2e8ba828b3",
+    "controllerRecovery": null,
+    "seconds": 600.017,
+    "displayPeriodNs": 16666666,
+    "cycles": 10,
+    "windowFrames": 16335,
+    "windowLateOrDropped": 167,
+    "windowFramesWithoutDisplayMatch": 0,
+    "windowFramesByPhase": {
+      "gallery": {
+        "frames": 16131,
+        "lateOrDropped": 2
+      },
+      "modal": {
+        "frames": 120,
+        "lateOrDropped": 91
+      },
+      "player": {
+        "frames": 10,
+        "lateOrDropped": 0
+      },
+      "resuming": {
+        "frames": 74,
+        "lateOrDropped": 74
+      }
+    },
+    "galleryIntervals25To100ms": 2757,
+    "videoRendered": 1031,
+    "videoDropped": 6,
+    "videoSkipped": 480
+  },
+  {
+    "pass": 2,
+    "device": "onn. Streaming Device 4K pro",
+    "firmware": "onn/jarvis/SNA:14/URO4.260304.011.B1/15051976:user/release-keys",
+    "emulator": false,
+    "apkSha256": "9bc68fedf055b0fe5a673fd4e65489c0cb4cb9f620f2be0a601e5a12c9c2c2e7",
+    "traceSha256": "2441745b6252dd852333b354aa974c708e4f13b2922641f243aca3a81161007e",
+    "controllerRecovery": null,
+    "seconds": 600.035,
+    "displayPeriodNs": 16666666,
+    "cycles": 10,
+    "windowFrames": 15695,
+    "windowLateOrDropped": 162,
+    "windowFramesWithoutDisplayMatch": 0,
+    "windowFramesByPhase": {
+      "gallery": {
+        "frames": 15480,
+        "lateOrDropped": 1
+      },
+      "modal": {
+        "frames": 133,
+        "lateOrDropped": 91
+      },
+      "player": {
+        "frames": 10,
+        "lateOrDropped": 0
+      },
+      "resuming": {
+        "frames": 72,
+        "lateOrDropped": 70
+      }
+    },
+    "galleryIntervals25To100ms": 3397,
+    "videoRendered": 1038,
+    "videoDropped": 5,
+    "videoSkipped": 481
+  },
+  {
+    "pass": 3,
+    "device": "onn. Streaming Device 4K pro",
+    "firmware": "onn/jarvis/SNA:14/URO4.260304.011.B1/15051976:user/release-keys",
+    "emulator": false,
+    "apkSha256": "9bc68fedf055b0fe5a673fd4e65489c0cb4cb9f620f2be0a601e5a12c9c2c2e7",
+    "traceSha256": "cd5df532f219f4e46dbd5a235caa663a5a4a1ac615278a7b1034ffe1e4f38d2d",
+    "controllerRecovery": {
+      "completedCyclesBeforeRecovery": 7,
+      "deviceRecorderElapsedSeconds": 468.7399999999907,
+      "note": "Prior events recovered from the live probe journal and checked against the original uninterrupted device trace."
+    },
+    "seconds": 600.151,
+    "displayPeriodNs": 16666666,
+    "cycles": 10,
+    "windowFrames": 15596,
+    "windowLateOrDropped": 166,
+    "windowFramesWithoutDisplayMatch": 0,
+    "windowFramesByPhase": {
+      "gallery": {
+        "frames": 15342,
+        "lateOrDropped": 1
+      },
+      "modal": {
+        "frames": 174,
+        "lateOrDropped": 96
+      },
+      "player": {
+        "frames": 10,
+        "lateOrDropped": 0
+      },
+      "resuming": {
+        "frames": 70,
+        "lateOrDropped": 69
+      }
+    },
+    "galleryIntervals25To100ms": 3571,
+    "videoRendered": 1035,
+    "videoDropped": 5,
+    "videoSkipped": 480
+  }
+]

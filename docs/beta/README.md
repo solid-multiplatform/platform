@@ -63,3 +63,19 @@ The mixed Android TV probe keeps the artwork scene mounted while remote input op
 Build an isolated probe with `node tests/performance/make-tv-app.mjs DEST REFERENCE_CHECKOUT --mixed VIDEO_ARCHIVE`. Install its APK and run `mixed-android.py --visual` with its serial, package ID and a new output directory. For each timed pass, run the same controller with `--seconds 600 --pass-number N` and a fresh output directory. The controller waits for the 64-step visibility preflight, then drives ten full remote-input cycles. Each pass records activity launch time separately. `analyze-mixed.py` checks the capture digest and action sequence and reports window-frame timing by phase alongside native decoder output, drop and skip counts. Media3 skips and drops are counted separately, including around seeks. Screenshots are collected in the separate visual pass.
 
 Generate the probe with `--surface-view` to use the dedicated Android surface. The visual controller accepts `--over-video` to place a Solid transport panel over the video and a native Android caption over that panel. The test checks all three layers in the composited screen.
+
+A second SurfaceView visual test suspended the app during playback, resumed it paused and checked the composited picture before sending another key. The native video and native caption returned, but an idle Solid scene could leave its new graphics buffer empty. The Android host now requests a frame on resume and when NativeScript finishes replacing a lost surface. The physical TV displayed the Solid panel, the native caption and the matching paused clip frame after resume. Visual mode uses FFmpeg and Pillow to compare the unobscured part of the video with the bundled reference clip.
+
+### Ten-minute mixed passes on the onn. 4K Pro
+
+| Pass | Input-to-playback cycles | Window frames | Late or dropped window frames | Media3 dropped buffers |
+| ---- | -----------------------: | ------------: | ----------------------------: | ---------------------: |
+| 1    |                       10 |        16,335 |                           167 |                      6 |
+| 2    |                       10 |        15,695 |                           162 |                      5 |
+| 3    |                       10 |        15,596 |                           166 |                      5 |
+
+The device ran Android 14 at 60 Hz. Every window frame matched a SurfaceFlinger display frame. Of the 495 late or dropped window frames, 278 occurred in the modal phase (including opening the player), 213 while resuming and four in the gallery. Media3 reported 16 dropped output buffers across the 30 playback sessions. The window and decoder measurements describe different surfaces; their counts must be interpreted separately.
+
+These traces used the corrected WebGL painter on the default TextureView path. The redrawn paused controls on the dedicated SurfaceView received a separate physical pixel check. Android TV remains in preview.
+
+An earlier 54-second attempt was excluded when a Select event after activity resume was not acknowledged. The repeated controller waited for Android to assign the display’s input window to the app before sending Select. The local controller for pass 3 was recovered after seven cycles. The app and device recorder continued; the eighth interaction began later within its one-minute slot. The original trace contains all 150 prescribed action markers over 600.151 seconds. [Per-phase measurements](./onn-mixed/summary.json)

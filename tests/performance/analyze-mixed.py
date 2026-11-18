@@ -133,6 +133,7 @@ def analyze(directory, processor):
         "emulator": run.get("emulator"),
         "apkSha256": run.get("apkSha256"),
         "traceSha256": meta["sha256"],
+        "controllerRecovery": run.get("controllerRecovery"),
         "seconds": round(float(span["seconds"]), 3),
         "displayPeriodNs": run.get("displayPeriodNs"),
         "cycles": len(counts),

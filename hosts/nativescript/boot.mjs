@@ -37,6 +37,25 @@ export function runNativeApp(
           bridge,
           Application,
         );
+        const android = target === 'android' || target === 'android-tv';
+        let surfaceLost = false;
+        const redraw = () => platform.getRenderer()?.requestRender?.();
+        const lost = () => {
+          surfaceLost = true;
+        };
+        const restored = () => {
+          // NativeScript sends surfaceResize after reattaching EGL to the holder.
+          // The logical scene can be idle while the new buffer is still empty.
+          if (surfaceLost) {
+            surfaceLost = false;
+            redraw();
+          }
+        };
+        if (android) {
+          canvas.on('surfaceDestroyed', lost);
+          canvas.on('surfaceResize', restored);
+          Application.on('resume', redraw);
+        }
         let dispose;
         let active = true;
         const cleanup = () => {
@@ -47,6 +66,11 @@ export function runNativeApp(
             if (typeof binding === 'function') binding();
             else binding.dispose();
             lifecycle.unbind();
+            if (android) {
+              canvas.off('surfaceDestroyed', lost);
+              canvas.off('surfaceResize', restored);
+              Application.off('resume', redraw);
+            }
             Application.off('exit', cleanup);
           }
         };

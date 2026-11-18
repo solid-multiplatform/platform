@@ -1,6 +1,7 @@
 """Exercise one isolated gallery app through remote input, media and suspension on a physical TV."""
 
 import argparse
+import functools
 import hashlib
 import io
 import json
@@ -11,7 +12,68 @@ import subprocess
 import time
 import uuid
 
-from PIL import Image
+from PIL import Image, ImageChops, ImageStat
+
+
+@functools.cache
+def clip_samples():
+    # The bundled qualification clip is 192x108 H.264 at 24 fps. The lower
+    # portion of the picture stays clear of both transport and native caption.
+    clip = pathlib.Path(__file__).resolve().parents[1] / "cli/media/clip.mp4"
+    raw = subprocess.run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-i",
+            str(clip),
+            "-map",
+            "0:v:0",
+            "-pix_fmt",
+            "rgb24",
+            "-f",
+            "rawvideo",
+            "pipe:1",
+        ],
+        check=True,
+        capture_output=True,
+    ).stdout
+    width, height = 192, 108
+    size = width * height * 3
+    if len(raw) != 192 * size:
+        raise ValueError("Unexpected qualification clip frame count or dimensions")
+    frames = []
+    for offset in range(0, len(raw), size):
+        frame = Image.frombytes("RGB", (width, height), raw[offset : offset + size])
+        frames.append(
+            frame.resize(
+                (36, 12),
+                Image.Resampling.BOX,
+                box=(width * 0.04, height * 0.56, width * 0.96, height * 0.95),
+            )
+        )
+    return frames
+
+
+def compare_video(image, position):
+    width, height = image.size
+    box = (
+        width * (0.35 + 0.6 * 0.04),
+        height * (0.18 + 0.6 * 0.56),
+        width * (0.35 + 0.6 * 0.96),
+        height * (0.18 + 0.6 * 0.95),
+    )
+    picture = image.resize((36, 12), Image.Resampling.BOX, box=box)
+    # The adapter publishes position once per second. Limit a paused still
+    # to that observation window so a stale first frame cannot pass on resume.
+    return min(
+        (
+            sum(ImageStat.Stat(ImageChops.difference(picture, frame)).mean) / 3,
+            index / 24,
+        )
+        for index, frame in enumerate(clip_samples())
+        if position is None or abs(index / 24 - position) <= 1.05
+    )
 
 
 def main():
@@ -62,6 +124,23 @@ def main():
     def launch():
         return shell("am", "start", "-W", "-n", app + "/com.tns.NativeScriptActivity")
 
+    def wait_input_window():
+        # Activity resume and InputDispatcher's focused window are distinct events.
+        # A remote press belongs to this test only after the app owns the display input.
+        start = time.monotonic()
+        while time.monotonic() - start < 8:
+            dump = shell("dumpsys", "input")
+            windows = re.search(
+                r"(?m)^\s*FocusedWindows:\s*\n((?:[ \t]+displayId=[^\n]+\n?)+)", dump
+            )
+            if windows and any(
+                line.strip().startswith("displayId=0,") and (" " + app + "/") in line
+                for line in windows.group(1).splitlines()
+            ):
+                return round((time.monotonic() - start) * 1000)
+            time.sleep(0.08)
+        raise RuntimeError("The probe did not regain input focus on the test display")
+
     def journal():
         try:
             return json.loads(private("cat", "files/mixed-events.json", check=False))
@@ -89,7 +168,7 @@ def main():
         shell("input", "keyevent", str(code))
         return wait_event(event)
 
-    def visual(name, marker=None, video=False):
+    def visual(name, marker=None, video=False, position=None):
         if not args.visual:
             return
         expected = {
@@ -133,20 +212,21 @@ def main():
                 colors = im.crop(
                     (int(0.37 * w), int(0.22 * h), int(0.93 * w), int(0.73 * h))
                 ).resize((80, 45))
-                # The local test clip contains RGB bars. Require substantial red, green and blue regions.
-                counts = [
-                    sum(
-                        n
-                        for n, c in colors.getcolors(colors.width * colors.height)
-                        if c[i] > 160 and all(c[j] < 105 for j in range(3) if i != j)
-                    )
-                    for i in range(3)
-                ]
-                good = good and min(counts) > 30
+                error, frame_seconds = compare_video(im, position)
+                good = good and error <= 12
             if good or time.monotonic() >= deadline:
                 (args.out / (name + ".png")).write_bytes(png)
                 if not good:
                     raise RuntimeError(f"Composited pixels failed for {name}: {pixel}")
+                if video:
+                    report.setdefault("pictureChecks", []).append(
+                        {
+                            "checkpoint": name,
+                            "meanRgbError": round(error, 2),
+                            "matchedClipSeconds": frame_seconds,
+                            "sampledPositionSeconds": position,
+                        }
+                    )
                 return
             time.sleep(0.15)
 
@@ -174,6 +254,16 @@ def main():
     )
     recorder_pid = None
     pulled = False
+
+    def checkpoint():
+        data = {
+            **report,
+            "recorderPid": recorder_pid,
+            "deviceTrace": remote if recorder_pid else None,
+        }
+        temp = args.out / "capture-progress.tmp"
+        temp.write_text(json.dumps(data, indent=2) + "\n")
+        temp.replace(args.out / "capture-progress.json")
 
     def recording():
         if recorder_pid is None:
@@ -203,6 +293,7 @@ def main():
         ):
             raise RuntimeError("Visible artwork preflight failed")
         visual("gallery")
+        report["initialInputWindowWaitMs"] = wait_input_window()
         if not args.visual:
             config = f'''buffers {{ size_kb: 32768 fill_policy: RING_BUFFER }}
 data_sources {{ config {{ name: "android.surfaceflinger.frametimeline" }} }}
@@ -225,6 +316,7 @@ file_write_period_ms: 2000
                 ).strip()
             )
         started = time.monotonic()
+        checkpoint()
         cycles = 1 if args.visual else args.seconds // 60
         for cycle in range(cycles):
             if not args.visual:
@@ -255,8 +347,12 @@ file_write_period_ms: 2000
             time.sleep(0.65)
             launch()
             wait_event("resume")
+            window_wait = wait_input_window()
             if shell("pidof", app) != pid:
                 raise RuntimeError("Activity process restarted on resume")
+            visual(
+                "resumed-paused", "playing", video=True, position=suspended["position"]
+            )
             key(23, "play")
             time.sleep(0.8)
             shell("input", "keyevent", "4")
@@ -269,6 +365,7 @@ file_write_period_ms: 2000
             report["cycles"].append(
                 {
                     "number": cycle + 1,
+                    "resumeInputWindowWaitMs": window_wait,
                     "opened": opened,
                     "paused": paused,
                     "suspended": suspended,
@@ -277,6 +374,7 @@ file_write_period_ms: 2000
             )
             if not args.visual and time.monotonic() - started > (cycle + 1) * 60:
                 raise RuntimeError("Interaction overran the scheduled cycle")
+            checkpoint()
         if not args.visual:
             time.sleep(max(0, started + args.seconds + 2 - time.monotonic()))
             deadline = time.monotonic() + 15
@@ -303,6 +401,9 @@ file_write_period_ms: 2000
             )
         report["events"] = journal()
         report["completed"] = True
+    except Exception as error:
+        report["failure"] = str(error).replace(args.serial, "<test device>")
+        raise
     finally:
         if recorder_pid is not None:
             if recording():
