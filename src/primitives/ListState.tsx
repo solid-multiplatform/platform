@@ -94,7 +94,6 @@ export function ListState(props: ListStateProps): JSX.Element {
             width={200}
             textAlign="center"
             contain="width"
-        contain="width"
             fontSize={theme().typography.label}
             color={theme().colors.onPrimary}
           >
