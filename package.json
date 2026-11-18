@@ -184,6 +184,13 @@
         "types": "./dist/src/sdk/crash.d.ts",
         "default": "./dist/src/sdk/crash.js"
       }
+    },
+    "./responsive": {
+      "@solidtv/source": "./src/sdk/responsive.ts",
+      "import": {
+        "types": "./dist/src/sdk/responsive.d.ts",
+        "default": "./dist/src/sdk/responsive.js"
+      }
     }
   },
   "sideEffects": false,

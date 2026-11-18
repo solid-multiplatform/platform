@@ -35,32 +35,32 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 2. Layout, rendering and visual system
 
-| Feature                                     | Established pattern                             | Status | Evidence / gap                                                     | Phase |
-| ------------------------------------------- | ----------------------------------------------- | ------ | ------------------------------------------------------------------ | ----- |
-| Flex row/column                             | Yoga/Flexbox, Flutter Row/Column                | S      | `src/core/flex*`, contract tests                                   | —     |
-| Grid                                        | CSS grid, Flutter GridView                      | S      | `Grid`, `VirtualGrid`                                              | —     |
-| Absolute positioning and z-order            | CSS position/z-index                            | S      | `x/y/zIndex`, paint-order tests                                    | —     |
-| Min/max sizing, aspect ratio                | CSS min/max/aspect-ratio                        | P      | Check coverage in `contract-flex`; aspect ratio not first-class    | 1     |
-| Padding/margin/borders                      | CSS box model                                   | S      | `borderBox`, contract tests                                        | —     |
-| Border radius                               | CSS radius, Flutter BorderRadius                | P      | Verify per backend; document limits                                | 1     |
-| Clipping and overflow                       | CSS overflow, Flutter clipBehavior              | S      | Flex clipping/culling                                              | —     |
-| Safe-area-aware layout                      | iOS safe area, Android insets, Flutter SafeArea | S      | `viewport().insets` + `SafeArea` primitive                         | —     |
-| RTL and writing direction                   | CSS direction, I18nManager                      | M      | No direction contract                                              | 8     |
-| Responsive breakpoints                      | CSS media queries, Flutter LayoutBuilder        | P      | Viewport signals exist; no breakpoint helper                       | 1     |
-| Text wrapping, ellipsis, truncation         | CSS text-overflow, Flutter Text                 | P      | Text layout exists; verify ellipsis/maxLines                       | 1     |
-| Rich text / inline spans                    | RN Text nesting, Flutter TextSpan               | P      | Text nodes exist; no documented span API                           | 1     |
-| Custom fonts and fallbacks                  | CSS @font-face, Flutter FontLoader              | S      | MSDF font loading, font tests                                      | —     |
-| Image fit/placeholder/lazy decode           | RN Image, Flutter Image                         | P      | `Image` placeholder/load; no visibility-driven deferral            | 3     |
-| SVG and icons                               | react-native-svg, Flutter vector                | M      | No SVG primitive                                                   | 9     |
-| Gradients, shaders, blur                    | CSS gradients/filters, Skia                     | P      | Shaders and blurred-image helper exist; no high-level API          | 9     |
-| Opacity and alpha blending                  | CSS opacity/blend                               | S      | Contract and visual tests                                          | —     |
-| Shadows and elevation                       | CSS box-shadow, Material elevation              | M      | No shadow primitive                                                | 9     |
-| Transforms                                  | CSS transform                                   | P      | `scale` exists; rotation/translation coverage to document          | 1     |
-| Theme tokens (color, type, spacing, motion) | Material Theme, Tailwind, SwiftUI Environment   | S      | `ThemeProvider`, `useTheme`, light/dark palettes                   | —     |
-| Light/dark/system color scheme              | RN `useColorScheme`, Flutter ThemeMode          | P      | `useColorScheme`; web/Android/iOS hosts; desktop defaults to light | 0     |
-| Idle frame scheduling                       | Flutter/RN frame callbacks                      | S      | Renderer sleeps when idle; fast harness uses it                    | —     |
-| Frame pacing and trace markers              | Android FrameTimeline                           | S      | Three-pass gate and `quick-android.py`                             | —     |
-| Virtualization and culling                  | FlatList, Flutter ListView.builder              | S      | `Virtual`, `VirtualGrid`, `Lazy`                                   | —     |
+| Feature                                     | Established pattern                             | Status | Evidence / gap                                                             | Phase |
+| ------------------------------------------- | ----------------------------------------------- | ------ | -------------------------------------------------------------------------- | ----- |
+| Flex row/column                             | Yoga/Flexbox, Flutter Row/Column                | S      | `src/core/flex*`, contract tests                                           | —     |
+| Grid                                        | CSS grid, Flutter GridView                      | S      | `Grid`, `VirtualGrid`                                                      | —     |
+| Absolute positioning and z-order            | CSS position/z-index                            | S      | `x/y/zIndex`, paint-order tests                                            | —     |
+| Min/max sizing, aspect ratio                | CSS min/max/aspect-ratio                        | P      | Check coverage in `contract-flex`; aspect ratio not first-class            | 1     |
+| Padding/margin/borders                      | CSS box model                                   | S      | `borderBox`, contract tests                                                | —     |
+| Border radius                               | CSS radius, Flutter BorderRadius                | S      | `borderRadius` prop backed by rounded shaders; shader tests                | —     |
+| Clipping and overflow                       | CSS overflow, Flutter clipBehavior              | S      | Flex clipping/culling                                                      | —     |
+| Safe-area-aware layout                      | iOS safe area, Android insets, Flutter SafeArea | S      | `viewport().insets` + `SafeArea` primitive                                 | —     |
+| RTL and writing direction                   | CSS direction, I18nManager                      | S      | `isRTL`/`dir()` and document direction from i18n                           | —     |
+| Responsive breakpoints                      | CSS media queries, Flutter LayoutBuilder        | S      | `breakpoint`/`useBreakpoint`, `resolveResponsive`, Material window classes | —     |
+| Text wrapping, ellipsis, truncation         | CSS text-overflow, Flutter Text                 | S      | `contain`, `maxLines`, line-clamp in the DOM renderer                      | —     |
+| Rich text / inline spans                    | RN Text nesting, Flutter TextSpan               | P      | Text nodes exist; no documented span API                                   | 1     |
+| Custom fonts and fallbacks                  | CSS @font-face, Flutter FontLoader              | S      | MSDF font loading, font tests                                              | —     |
+| Image fit/placeholder/lazy decode           | RN Image, Flutter Image                         | P      | `Image` placeholder/load; no visibility-driven deferral                    | 3     |
+| SVG and icons                               | react-native-svg, Flutter vector                | M      | No SVG primitive                                                           | 9     |
+| Gradients, shaders, blur                    | CSS gradients/filters, Skia                     | P      | Shaders and blurred-image helper exist; no high-level API                  | 9     |
+| Opacity and alpha blending                  | CSS opacity/blend                               | S      | Contract and visual tests                                                  | —     |
+| Shadows and elevation                       | CSS box-shadow, Material elevation              | S      | `shadow` prop backed by shadow shaders; shader tests                       | —     |
+| Transforms                                  | CSS transform                                   | S      | `scale` and `rotation` props; layout/style tests                           | —     |
+| Theme tokens (color, type, spacing, motion) | Material Theme, Tailwind, SwiftUI Environment   | S      | `ThemeProvider`, `useTheme`, light/dark palettes                           | —     |
+| Light/dark/system color scheme              | RN `useColorScheme`, Flutter ThemeMode          | S      | `useColorScheme` with light/dark palettes and host bindings                | —     |
+| Idle frame scheduling                       | Flutter/RN frame callbacks                      | S      | Renderer sleeps when idle; fast harness uses it                            | —     |
+| Frame pacing and trace markers              | Android FrameTimeline                           | S      | Three-pass gate and `quick-android.py`                                     | —     |
+| Virtualization and culling                  | FlatList, Flutter ListView.builder              | S      | `Virtual`, `VirtualGrid`, `Lazy`                                           | —     |
 
 ## 3. Input, gestures and focus
 

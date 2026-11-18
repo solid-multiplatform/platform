@@ -24,7 +24,7 @@ import * as focusManager from '@solid-multiplatform/platform/focusManager';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 172 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 177 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -52,6 +52,8 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'auditSemantics',
       'batteryState',
       'bindColorScheme',
+      'breakpoint',
+      'breakpointFor',
       'clamp',
       'clearTasks',
       'combineStyles',
@@ -72,6 +74,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'createTextNode',
       'cursorForElement',
       'darkTheme',
+      'defaultBreakpoints',
       'defaultShaderHolePunch',
       'defaultShaderLinearGradient',
       'defaultShaderRadialGradient',
@@ -155,6 +158,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'resetCrashReporter',
       'resetCursor',
       'resetDevicePorts',
+      'resolveResponsive',
       'revealAboveKeyboard',
       'rootNode',
       'scaled',
@@ -188,6 +192,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'themeFor',
       'touchTargetSize',
       'use',
+      'useBreakpoint',
       'useCapabilities',
       'useColorScheme',
       'useCursor',
@@ -546,6 +551,7 @@ v.describe('package.json exports', () => {
       './a11y',
       './list',
       './crash',
+      './responsive',
     ]);
   });
 
