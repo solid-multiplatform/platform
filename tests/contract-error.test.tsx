@@ -75,7 +75,10 @@ v.describe('AppErrorBoundary', () => {
           onMouseClick?: lng.ElementNode['onMouseClick'];
           children?: readonly unknown[];
         };
-        if (typeof current.onMouseClick === 'function') {
+        if (
+          typeof current.onMouseClick === 'function' &&
+          texts(node).includes('Try again')
+        ) {
           return node as lng.ElementNode;
         }
         for (const child of current.children ?? []) {

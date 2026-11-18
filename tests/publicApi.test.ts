@@ -24,7 +24,7 @@ import * as focusManager from '@solid-multiplatform/platform/focusManager';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 186 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 193 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -73,7 +73,9 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'createQuery',
       'createRawShaderAccessor',
       'createRenderer',
+      'createReorder',
       'createSelection',
+      'createSwipeActions',
       'createTextNode',
       'cursorForElement',
       'darkTheme',
@@ -95,6 +97,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'enterFullscreen',
       'enterPictureInPicture',
       'exitFullscreen',
+      'flattenSections',
       'flattenStyles',
       'formatDate',
       'formatDisplayName',
@@ -145,6 +148,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'memo',
       'mergeProps',
       'mod',
+      'moveItem',
       'openExternal',
       'readClipboard',
       'readingOrder',
@@ -169,6 +173,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'rootNode',
       'scaled',
       'scheduleTask',
+      'sectionListHeight',
       'setActiveElement',
       'setActiveElementCore',
       'setAppVersion',
@@ -192,6 +197,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'spliceItem',
       'spread',
       'startLightningRenderer',
+      'stickyHeaderAt',
       'supports',
       'supportsOnlyWebGL2',
       'supportsWebGL',
@@ -211,6 +217,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'useTextScale',
       'useTheme',
       'vibrate',
+      'visibleSectionRows',
       'writeClipboard',
     ]);
   });
@@ -565,6 +572,7 @@ v.describe('package.json exports', () => {
       './crash',
       './responsive',
       './media',
+      './sections',
     ]);
   });
 

@@ -182,6 +182,19 @@ v.describe('ListState', () => {
     return (current.children ?? []).flatMap((child) => texts(child));
   };
 
+  const find = (
+    node: unknown,
+    predicate: (node: lng.ElementNode) => boolean,
+  ): lng.ElementNode | undefined => {
+    if (!lng.isINode(node)) return undefined;
+    if (lng.isElementNode(node) && predicate(node)) return node;
+    for (const child of node.children) {
+      const found = find(child, predicate);
+      if (found) return found;
+    }
+    return undefined;
+  };
+
   v.it('renders the default copy and an action', async () => {
     let action = 0;
     const dispose = renderer.render(() => (
@@ -201,10 +214,12 @@ v.describe('ListState', () => {
     v.expect(rendered).toContain('Items you add will show up here.');
     v.expect(rendered).toContain('Add item');
 
-    const state = renderer.rootNode.children[0]!.children[0] as lng.ElementNode;
-    const button = state.children.find(
-      (child) => lng.isElementNode(child) && child.onMouseClick,
-    ) as lng.ElementNode;
+    const button = find(
+      renderer.rootNode,
+      (node) =>
+        typeof node.onMouseClick === 'function' &&
+        texts(node).includes('Add item'),
+    )!;
     button.onMouseClick?.(new MouseEvent('click'), button);
     v.expect(action).toBe(1);
     dispose();

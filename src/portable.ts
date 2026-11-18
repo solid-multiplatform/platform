@@ -35,3 +35,4 @@ export * from './sdk/list.js';
 export * from './sdk/crash.js';
 export * from './sdk/responsive.js';
 export * from './sdk/media.js';
+export * from './sdk/sections.js';

@@ -198,6 +198,13 @@
         "types": "./dist/src/sdk/media.d.ts",
         "default": "./dist/src/sdk/media.js"
       }
+    },
+    "./sections": {
+      "@solidtv/source": "./src/sdk/sections.ts",
+      "import": {
+        "types": "./dist/src/sdk/sections.d.ts",
+        "default": "./dist/src/sdk/sections.js"
+      }
     }
   },
   "sideEffects": false,
