@@ -111,24 +111,24 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 5. Navigation and presentation
 
-| Feature                          | Established pattern                           | Status | Evidence / gap                                                                     | Phase |
-| -------------------------------- | --------------------------------------------- | ------ | ---------------------------------------------------------------------------------- | ----- |
-| Stack navigation                 | React Navigation, Flutter Navigator           | P      | `createNavigation` push/replace/back only                                          | 2     |
-| Tabs                             | React Navigation tabs, Flutter TabBar         | M      | No primitive                                                                       | 2     |
-| Drawer                           | Flutter Drawer                                | M      | No primitive                                                                       | 2     |
-| URL/history integration (web)    | History API                                   | M      | Navigation does not sync URL                                                       | 2     |
-| Deep links / universal links     | Tauri deep-link, Expo Linking                 | P      | `links` service port exists; no router integration                                 | 5     |
-| Route guards/auth gating         | React Navigation guards                       | M      | No API                                                                             | 2     |
-| State restoration                | React Navigation state persistence            | M      | No API                                                                             | 2     |
-| Modal/dialog                     | RN Modal, Flutter showDialog                  | S      | `Modal`: portal, barrier, Back/Escape, safe area, focus trap and restore           | —     |
-| Bottom sheet                     | Flutter showModalBottomSheet                  | S      | `Sheet` built on `Modal` (barrier, safe area, keyboard avoidance, focus restore)   | —     |
-| Popover/menu/context menu        | Radix, Flutter MenuAnchor                     | S      | `Popover` and `Menu` with anchored placement, safe-area flip and barrier dismissal | —     |
-| Toast/snackbar                   | RN ToastAndroid, Flutter SnackBar             | S      | `Toast` with duration, action and safe-area/keyboard anchoring                     | —     |
-| Tooltip                          | Flutter Tooltip                               | S      | `Tooltip` anchored, non-modal, safe-area aware                                     | —     |
-| Alert/confirm                    | RN Alert, native dialogs                      | S      | `Alert` with title, message, cancel/confirm on the shared Modal                    | —     |
-| Back/escape/barrier dismiss      | RN onRequestClose, Flutter barrierDismissible | M      | None                                                                               | 2     |
-| Transition animations            | Flutter page transitions                      | P      | Animation primitives exist; no route transitions                                   | 2     |
-| Focus/scroll restoration on back | React Navigation                              | M      | None                                                                               | 2     |
+| Feature                          | Established pattern                           | Status | Evidence / gap                                                                                | Phase |
+| -------------------------------- | --------------------------------------------- | ------ | --------------------------------------------------------------------------------------------- | ----- |
+| Stack navigation                 | React Navigation, Flutter Navigator           | S      | `createNavigation` push/replace/back/reset with `subscribe`                                   | —     |
+| Tabs                             | React Navigation tabs, Flutter TabBar         | S      | `createTabNavigation` with independent per-tab stacks and snapshots                           | —     |
+| Drawer                           | Flutter Drawer                                | M      | No primitive                                                                                  | 2     |
+| URL/history integration (web)    | History API                                   | S      | `createBrowserNavigation`/`bindBrowserHistory`: pushState, replaceState, popstate, base paths | —     |
+| Deep links / universal links     | Tauri deep-link, Expo Linking                 | P      | `links` service port exists; no router integration                                            | 5     |
+| Route guards/auth gating         | React Navigation guards                       | S      | `beforeEach` and `beforeBack` guards cancel stack changes                                     | —     |
+| State restoration                | React Navigation state persistence            | S      | `snapshot()`/`restore()` for a stack and for every tab                                        | —     |
+| Modal/dialog                     | RN Modal, Flutter showDialog                  | S      | `Modal`: portal, barrier, Back/Escape, safe area, focus trap and restore                      | —     |
+| Bottom sheet                     | Flutter showModalBottomSheet                  | S      | `Sheet` built on `Modal` (barrier, safe area, keyboard avoidance, focus restore)              | —     |
+| Popover/menu/context menu        | Radix, Flutter MenuAnchor                     | S      | `Popover` and `Menu` with anchored placement, safe-area flip and barrier dismissal            | —     |
+| Toast/snackbar                   | RN ToastAndroid, Flutter SnackBar             | S      | `Toast` with duration, action and safe-area/keyboard anchoring                                | —     |
+| Tooltip                          | Flutter Tooltip                               | S      | `Tooltip` anchored, non-modal, safe-area aware                                                | —     |
+| Alert/confirm                    | RN Alert, native dialogs                      | S      | `Alert` with title, message, cancel/confirm on the shared Modal                               | —     |
+| Back/escape/barrier dismiss      | RN onRequestClose, Flutter barrierDismissible | S      | Shared by `Modal`, `Sheet`, `Alert`, `Popover` and `Menu`                                     | —     |
+| Transition animations            | Flutter page transitions                      | P      | Animation primitives exist; no route transitions                                              | 2     |
+| Focus/scroll restoration on back | React Navigation                              | M      | None                                                                                          | 2     |
 
 ## 6. Lists, data and async UI
 
@@ -255,7 +255,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 | ----------------------------- | ------ | ------------------------------------------- |
 | Pointer/touch/keyboard        | S      | —                                           |
 | Responsive resize             | S      | —                                           |
-| History/routing               | M      | Navigation does not sync URL                |
+| History/routing               | S      | `createBrowserNavigation` (History API)     |
 | PWA/offline                   | M      | No service-worker/offline contract          |
 | Clipboard/share/notifications | P      | Browser services partially exposed          |
 | File input/download           | M      | No API                                      |
@@ -322,7 +322,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 12. Implementation phases
 
-Progress: Phase 0 is implemented (theme tokens, colour scheme, capability registry, extended inset contract). Phase 1 is implemented for `useKeyboard`, `KeyboardAvoidingView`, `SafeArea`, `revealAboveKeyboard`, `keyboardAwareBounds`, `createForm` validation/touched/errors/submitting, and the keyboard-aware mobile template. Remaining: a rendered FormField component and automatic wiring of native editors. Desktop scene pointer hover/press/click is implemented (`useMouse` plus SDL pointer/mouse forwarding); drag and cursor styles remain in Phase 3. Phase 2 now has `Modal` with a real focus trap and restore, `Sheet`, `Toast`, `Popover`, `Menu`, `Tooltip` and `Alert`. Router tabs/drawer/URL/deep links/guards and navigation state restoration remain.
+Progress: Phase 0 is implemented (theme tokens, colour scheme, capability registry, extended inset contract). Phase 1 is implemented for `useKeyboard`, `KeyboardAvoidingView`, `SafeArea`, `revealAboveKeyboard`, `keyboardAwareBounds`, `createForm` validation/touched/errors/submitting, and the keyboard-aware mobile template. Remaining: a rendered FormField component and automatic wiring of native editors. Desktop scene pointer hover/press/click is implemented (`useMouse` plus SDL pointer/mouse forwarding); drag and cursor styles remain in Phase 3. Phase 2 now has `Modal` with a real focus trap and restore, `Sheet`, `Toast`, `Popover`, `Menu`, `Tooltip` and `Alert`, plus tab navigation, guards, snapshot/restore and browser history. Remaining in Phase 2: drawer, route transitions, focus/scroll restoration on back, and deep-link router integration.
 
 ### Phase 0 — Contracts and theme foundation
 
