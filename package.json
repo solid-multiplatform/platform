@@ -450,6 +450,7 @@
       "prettier --write",
       "oxlint --fix"
     ],
+    "*.{tsx,mjs}": "oxlint --fix",
     "*.{js,cjs,md}": "prettier --write"
   },
   "peerDependencies": {

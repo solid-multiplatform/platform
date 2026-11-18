@@ -55,7 +55,7 @@ v.describe('desktop updater', () => {
     const appData = mkdtempSync(path.join(tmpdir(), 'solid-update-'));
     const installed = [];
     const relaunched = [];
-    const updater = createDesktopUpdater({
+    createDesktopUpdater({
       appData,
       feedUrl: `http://127.0.0.1:${port}/feed.json`,
       currentVersion: '1.0.0',
@@ -74,7 +74,6 @@ v.describe('desktop updater', () => {
     v.expect(await checkForUpdate('3.0.0')).toBeNull();
 
     const delivery = createUpdateDelivery();
-    const progress = [];
     v.expect(
       await delivery.apply({
         version: '2.0.0',

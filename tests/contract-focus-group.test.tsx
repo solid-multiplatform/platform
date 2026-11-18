@@ -61,7 +61,7 @@ v.describe('FocusGroup', () => {
   });
 
   v.it('does not wrap when wrap is false', async () => {
-    const { target, dispose, a, b, c } = await setup(false);
+    const { target, dispose, a, c } = await setup(false);
     c.setFocus();
     await flush();
     const event = target.down('Tab');
