@@ -27,6 +27,8 @@ jobs:
         working-directory: packages/platform/examples/roku
         run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      - name: The feature matrix is generated and its evidence exists
+        run: pnpm docs:check && node --test scripts/*.test.mjs
       - name: Parse every host, CLI and video module
         run: |
           git ls-files 'packages/platform/hosts/**/*.mjs' 'packages/platform/cli/**/*.mjs' 'packages/video/*.mjs' |

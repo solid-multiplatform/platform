@@ -1,84 +1,120 @@
-# Displaying Text
+# Text
 
-We've already seen the `<text>` Tag in action, but here it is again.
+All text goes in a `<text>` element.
 
-```jsx
-<text>Hello There</text>
+```tsx
+<text>Hello there</text>
 ```
 
-Anytime you want to display text in the Application you need to wrap it in a `<text>` tag. You can specify all the normal node props like x, y, width, height, etc as well as text specific properties:
+A `<text>` takes the usual node props (`x`, `y`, `color`, `alpha`, states,
+transitions) and the text props below.
 
-### Available attributes on the text tag
+## Text props
 
-The `<text>` tag accepts the following attributes:
+- `fontFamily`: the name you loaded the font under.
+- `fontSize`: size in pixels.
+- `fontWeight`: a number or a name. It is appended to the family name:
+  `fontFamily="Roboto"` with `fontWeight={700}` uses the font you loaded as
+  `Roboto700`. `Config.fontWeightAlias` maps names to that suffix: `bold` is
+  `700`, `regular` adds nothing.
+- `fontStyle`, `fontStretch`: accepted. An SDF font has no style axis, so the
+  WebGL backend ignores `fontStyle`.
+- `lineHeight`: a multiplier of the font's line height when 3 or less,
+  otherwise pixels.
+- `letterSpacing`: extra space between letters in pixels. Default `0`.
+- `textAlign`: `'left'`, `'center'` or `'right'`. Centering and right
+  alignment need a width to align in, so set `contain`.
+- `verticalAlign`: `'top'`, `'middle'` or `'bottom'`.
+- `contain`: `'none'` (default), `'width'` or `'both'`. It decides whether
+  `maxWidth` and `maxHeight` bound the text.
+- `maxWidth`, `maxHeight`: the bounds. With `contain` set and no `maxWidth`, the
+  node's `width` is used, then the parent's remaining width.
+- `maxLines`: the most lines to draw.
+- `overflowSuffix`: appended when text is cut. Default `'...'`.
+- `wordBreak`: how long words wrap. Default `'break-word'`.
 
-- `color` - the color to display for the text, defaults to `white` and can be any of the supported Blits color formats (HTML, hexadecimal or rgb(a))
-- `contain` - the strategy for containing text within the bounds, can be `none` (default), `width`, or `both`.
-- `fontFamily` - the font family, defaults to `Ubuntu`
-- `fontSize` - the font size, defaults to `16`
-- `fontStretch` - the font stretch, defaults to `normal`
-- `fontStyle` - the font style, defaults to `normal` - `italic` | `oblique`
-- `fontWeight` - the font weight, defaults to `normal` - specify a number (400 / 700)
-- `letterSpacing` - letterspacing in pixels, defaults to `0`
-- `lineHeight` - the spacing between lines in pixels
-- `maxLines` - maximum number of lines that will be displayed
-- `overflowSuffix` - the suffix to be added when text is cropped due to bounds limits, defaults to `...`
-- `textAlign` - the alignment of the text, can be `left`, `right`, or `center`, defaults to `left`. Centering text and aligning text to the right requires the `contain` attribute to be set to `width` or `both`.
-- `verticalAlign` - defaults to `middle` - `top` | `middle` | `bottom`
-
-Tags for Canvas Text Rendering (Not Recommended)
-
-- `wordWrap` - the max length of a line of text in pixels, words surpassing this length will be broken and wrapped onto the next line.
-- `maxHeight` - maximum height of a text block, lines that don't fit within this height will not be displayed
-
-## Default Text Config
-
-You can set the default options for all `<text>` nodes before Rendering the App in your index:
-
-```jsx
-import { Config } from '@solidtv/solid';
-// Set defaults for all <text>
-Config.fontSettings.fontFamily = 'Ubuntu';
-Config.fontSettings.color = 0xffffffff;
-Config.fontSettings.fontSize = 30;
+```tsx
+<text
+  width={600}
+  contain="width"
+  maxLines={2}
+  fontSize={32}
+  lineHeight={40}
+  textAlign="center"
+>
+  A long title that wraps onto a second line and is then cut off
+</text>
 ```
 
-### SDF and Canvas2d
+Inside a flex container a `<text>` reports its size once it has loaded, and the
+container lays out again.
 
-Compared to SolidTV 2, texts have improved a lot in SolidTV, thanks to the SDF (Signed Distance Field) Text renderer. With the SDF text renderer, texts appear a lot _sharper_ on screen. The SDF technique also allows for better scaling of texts, without them becoming blurry. In general, it's recommended to use the SDF text renderer, but SolidTV still has a Canvas2d text renderer as a backup, and you can use both text renderers within the same App.
+## Defaults for all text
 
-### Using Custom Fonts
+`Config.fontSettings` holds the defaults for every `<text>`. Set it once at
+start-up, before anything renders. The built-in default is
+`{ fontFamily: 'Ubuntu', fontSize: 100 }`, so you will want your own.
 
-You can also use any custom font that you want, to give your App the unique look and feel that fits with the design. First, you'll need your `.ttf` font and use [MSDF Tool](https://github.com/lightning-js/msdf-generator) to convert your font to SDF.
+```ts
+import { Config } from '@solid-multiplatform/platform';
 
-Then you'll need to register the custom font in the AppCoreExtensions file:
+Config.fontSettings = {
+  fontFamily: 'Lato',
+  fontSize: 32,
+  color: 0xffffffff,
+};
+```
 
-```js
-  import { loadFonts } from "@solidtv/solid";
-  const fonts = [
-{ type: 'msdf',
-  fontFamily: 'Roboto',
-  descriptors: {
-    weight: 700,
+## Loading fonts
+
+The WebGL backend draws SDF text. A font is an atlas image plus a JSON file of
+glyph data. Convert a `.ttf` with an MSDF generator and ship both files with
+your app. An app made by `solid-platform init` has `Lato` in `assets/fonts`.
+
+With `startApp`, pass the fonts in the options:
+
+```tsx
+import { startApp } from '@solid-multiplatform/platform/host';
+import { webHost } from '@solid-multiplatform/platform/host/web';
+
+startApp(webHost(), App, {
+  fonts: [
+    {
+      type: 'msdf',
+      fontFamily: 'Lato',
+      atlasUrl: './fonts/Lato-Regular.msdf.png',
+      atlasDataUrl: './fonts/Lato-Regular.msdf.json',
+    },
+  ],
+});
+```
+
+Without `startApp`, call `loadFonts` yourself:
+
+```ts
+import { createRenderer, loadFonts } from '@solid-multiplatform/platform';
+
+const fonts = loadFonts([
+  {
+    type: 'msdf',
+    fontFamily: 'Lato',
+    atlasUrl: './fonts/Lato-Regular.msdf.png',
+    atlasDataUrl: './fonts/Lato-Regular.msdf.json',
   },
-  atlasDataUrl: basePath + 'fonts/Roboto-Bold.msdf.json',
-  atlasUrl: basePath + 'fonts/Roboto-Bold.msdf.png',
-} as const,
-{ type:    'msdf',
-  fontFamily: 'Roboto',
-  descriptors: {
-    weight: 400,
-  },
-  atlasDataUrl: basePath + 'fonts/Roboto-Regular.msdf.json',
-  atlasUrl: basePath + 'fonts/Roboto-Regular.msdf.png',
-} as const];
-
-// must be called after createRenderer but before render
-await loadFonts(fonts);
+]);
+const { render } = createRenderer();
+void fonts.catch((error) => console.error('Font load failed', error));
 ```
 
-From this moment on you'll be able to use the font `ComicSans` anywhere in your App:
+Call `loadFonts` before `createRenderer` so the download overlaps renderer
+start-up. Its promise settles only after the renderer exists, so do not `await`
+it first.
 
-```xml
-<text fontFamily="ComicSans">I'm Comic Sans font!</text>
+Then use the family name:
+
+```tsx
+<text fontFamily="Lato">Set in Lato</text>
 ```
+
+The DOM backend used by unit tests takes web fonts instead:
+`{ fontFamily, fontUrl }`.

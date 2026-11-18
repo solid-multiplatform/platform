@@ -1,7 +1,9 @@
 # Performance measurement: methodology
 
-How `npm run bench` measures the CPU cost of SolidTV on its two benchmark
-arms, and what each number means.
+How `npm run bench` measures the CPU cost of Solid Multiplatform on its two
+benchmark arms, and what each number means. Run the commands from
+`packages/platform`. For the project's performance rule and the device
+procedures, see [Performance](/performance.md).
 
 ## Running it
 
@@ -24,7 +26,7 @@ node bench/harness/inclusive.mjs docs/perf/results/<date> # inclusive time (need
 | `--skip-build`       | off                        | Use the existing `bench/dist`. Count mode reads `dist/<arm>-count`, which only a count-mode run builds: after a source change, run count without `--skip-build` once |
 | `--out`              | `docs/perf/results/<date>` | Result directory                                                                                                                                                     |
 | `--gpu`              | `metal` on macOS           | `metal`, `swiftshader` or `default` (ANGLE's choice)                                                                                                                 |
-| `--flex`             | `new`                      | `new`: `src/core/flexLayout.ts`, as the demo app; `old`: `src/core/flex.ts` (labelled `-flexold`)                                                                    |
+| `--flex`             | `new`                      | `new`: `src/core/flexLayout.ts`, the only flex engine on `main`. `old` names `src/core/flex.ts`, which is gone                                                       |
 | `--no-chunks`        | off                        | Single-chunk build (labelled `-nochunks`): to check that chunking does not move timings                                                                              |
 | `--alloc-interval`   | 1                          | Heap sampling interval in bytes (1: every allocation)                                                                                                                |
 | `--profile-interval` | 50                         | CPU profiler sampling interval in µs                                                                                                                                 |
@@ -49,47 +51,46 @@ Run the measured series on a quiet machine: the summary records the
 
 ## Arms and builds
 
-| Arm | Solid                      | Renderer                                                       |
-| --- | -------------------------- | -------------------------------------------------------------- |
-| A   | 1.6.4 (`71c170f`)          | npm 1.9.3                                                      |
-| C   | this working tree (`src/`) | the installed `@solidtv/renderer` (`node_modules`), its `dist` |
+| Arm | Solid                                      | Renderer                                                  |
+| --- | ------------------------------------------ | --------------------------------------------------------- |
+| A   | the pinned pre-beta commit (`PINS.solidA`) | the `0.1.0` renderer archive vendored in that commit      |
+| C   | this working tree (`src/`)                 | the installed `@solid-multiplatform/renderer`, its `dist` |
 
 `bench/prepare-arms.mjs` prepares arm A under `bench/.arms` (a `git archive`
-of the pinned commit, and `npm pack` of the pinned renderer); arm C is the
-working tree and whatever `node_modules/@solidtv/renderer` resolves to (its
-version is read from its `package.json` and recorded in each result).
+of the pinned commit, and the renderer archive vendored in it); arm C is the
+working tree and whatever `node_modules/@solid-multiplatform/renderer`
+resolves to (its version is read from its `package.json` and recorded in each
+result).
 `bench/vite.config.ts` builds one arm (`BENCH_ARM=A|C`): Solid compiled from
 the arm's source, the renderer from its `dist`, terser without mangling,
 `chrome64` target, as the demo app's modern bundle. The renderer bootstrap
-(engines, shader registration) is `bench/src/arm-v1.ts`, picked by the
-renderer's major version. The build uses the arms' real paths: the bundler's
+(engines, shader registration) is `bench/src/arm-v<major>.ts`, picked by the
+renderer's major version (2 for both arms today). The build uses the arms' real paths: the bundler's
 module ids are real paths, so through a symlinked `bench/.arms` nothing would
 match a chunk or the flex hook. The runner rebuilds every arm it runs unless
 `--skip-build`, and records each arm's source (`source` in each JSON; C is
 marked `+dirty` when `src/` has uncommitted changes).
 
-While `src/` is unchanged from 1.6.4, **A and C run the same Solid code**, so
-A/C (the ratios in the summary) is the in-session noise floor, plus whatever
-differs between the two renderer versions (the summary lists each arm's
-Solid and renderer; today's lockfile installs 1.9.0). After a change to `src/`,
-A/C is the change's effect (above 1: C is faster or allocates less).
+A is the last release before the beta work and C is the checkout, so A/C (the
+ratios in the summary) is the effect of everything that changed since, on top
+of the in-session noise (above 1: C is faster or allocates less). The summary
+lists each arm's Solid and renderer.
 
-**Flex.** solid-demo-app sets `VITE_USE_NEW_FLEX=true`, so apps run
-`src/core/flexLayout.ts`. Every arm is built that way by default (the define
-`import.meta.env.VITE_USE_NEW_FLEX = 'true'` folds the choice at build time;
-the bundle contains only `flexLayout`'s code). `--flex old` builds `flex.ts`
-into `dist/<arm>-flexold`. Each result records `flex`, and the page reports
-the flex it was built with; the runner refuses a mismatch.
+**Flex.** There is one flex engine on `main`, `src/core/flexLayout.ts`. The
+runner still accepts `--flex old` and `bench/vite.config.ts` still describes
+`src/core/flex.ts`, but that file is not in the working tree: do not use
+`--flex old` for arm C. Each result records `flex`, and the page reports the
+flex it was built with; the runner refuses a mismatch.
 
 **Chunks.** The bundle is split into four fixed-name chunks, so that a
 profiler sample or an allocation is charged to its owner by script URL:
 
-| Chunk           | Contents                                                      |
-| --------------- | ------------------------------------------------------------- |
-| `framework.js`  | the arm's `@solidtv/solid` source and its `@solid-primitives` |
-| `reactivity.js` | `solid-js`                                                    |
-| `renderer.js`   | the arm's `@solidtv/renderer`                                 |
-| `user.js`       | the entry: `bench/src` (main, arm bootstrap, scenarios)       |
+| Chunk           | Contents                                                                     |
+| --------------- | ---------------------------------------------------------------------------- |
+| `framework.js`  | the arm's `@solid-multiplatform/platform` source and its `@solid-primitives` |
+| `reactivity.js` | `solid-js`                                                                   |
+| `renderer.js`   | the arm's `@solid-multiplatform/renderer`                                    |
+| `user.js`       | the entry: `bench/src` (main, arm bootstrap, scenarios)                      |
 
 The harness's own in-page code is injected as `bench-probe.js` and is
 reported as `harness`, never as app cost. Cross-chunk calls go through ES
@@ -164,7 +165,7 @@ warmup and after the measured ops; the summary flags a run whose last two
 snapshots differ, and a scenario whose final state differs between arms) and
 `opKind(i)` (a label per op; the summary adds one row per kind, so an
 alternating create/destroy workload is not reported as one bimodal number).
-Scenarios use only the public `@solidtv/solid` API both arms share, never the
+Scenarios use only the public `@solid-multiplatform/platform` API both arms share, never the
 renderer directly.
 
 The scenarios (`bench/src/scenarios`): `nav` (Row/Column presses with every
@@ -297,7 +298,7 @@ time) and the page reports what it found (`hooks` in the count JSON):
 | `cacheHook`                             | layout cache hit rate                            | `renderText` layout identity                 |
 | `loopHook`                              | (errors only, below)                             | `stage.options.handleLoopError`              |
 
-The probe also carries the hooks for `@solidtv/renderer` 2.x (`ScenePass.run`,
+The probe also carries the hooks for `@solid-multiplatform/renderer` 2.x (`ScenePass.run`,
 `TextNodes.lay`, `LayoutCache.get`, `insertBefore`, `settings.handleLoopError`),
 each labelled "v2" in `probe.mjs`: they install only when the renderer has
 those names, so on 1.x they never run.

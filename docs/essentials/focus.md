@@ -1,100 +1,164 @@
-# Focus / Key Handling (or Remotes)
+# Focus and keys
 
-Focus happens very differently than you're used to with HTML / CSS. Since everything happens in a Canvas tag - we mimic focus with a bit of Javascript logic, starting with the `activeElement`
+Nothing here is a DOM element, so the platform keeps focus itself. One element
+has focus at a time. Keys go to that element and bubble up through its parents.
 
 ## `activeElement`
 
-At any time, only one element can have focus: the `activeElement`. `activeElement` is a global SolidTV signal that points to the element with focus. You can set focus on any element by adding an `autofocus` attribute or imperatively with `elm.setFocus()` method. However, calling setFocus on each element would be painful, so you'd want to use components like Row and Column from [solid-ui](https://github.com/rdkcentral/solid-ui).
+`activeElement` is a Solid signal that holds the focused `ElementNode`. Give an
+element focus with the `autofocus` prop or by calling `setFocus()` on it.
 
-## Keyhandling with useFocusManager
-
-Keyhandling is added with [useFocusManager](/primitives/useFocusManager.md). It's important to note that keyhandling simply add onKey handling. The real magic is from Row & Column components having built in onRight / onLeft & onUp / onDown key handlers respectively, which simply changes the `activeElement` of it's children.
-
-## `autofocus`
-
-The `autofocus` attribute can be added to any element to give it focus when created. Ideally, you'd have one element you'd want to receive focus when page changes occur, or new elements are added. The `autofocus` attribute can also take a signal which will cause the element to refocus when the signal changes. This is useful for dynamic data loading and needing to reset focus on a Row or Column component.
-
-```jsx
-<Column
-  id="BrowseColumn"
-  plinko
-  announce="All Trending - Week"
-  y={columnY()}
-  scroll="none"
-  autofocus={provider()}
-  style={styles.Column}
->
-  <For each={provider().pages()}>
-    {(items) => (
-      <TileRow
-        items={items}
-        width={1620}
-        onFocus={onRowFocus}
-        onEnter={onEnter}
-      />
-    )}
-  </For>
-</Column>
-```
-
-## `skipFocus`
-
-Adding `skipFocus` to any element will prevent it from receiving focus. This is primarily used by Row & Column components to have children which should be skipped on key presses and useMouse.
-
-### Example
-
-```jsx
+```tsx
 import { createEffect, on, onMount } from 'solid-js';
-import { activeElement } from '@solidtv/solid';
+import { activeElement, type ElementNode } from '@solid-multiplatform/platform';
 
-// Get notified whenever the activeElement changes
+let ring!: ElementNode;
+let sports!: ElementNode;
+
+// Runs whenever focus moves.
 createEffect(
   on(
     activeElement,
-    (elm) => {
-      focusRingRef.x = elm.x;
+    (element) => {
+      if (element) ring.x = element.x;
     },
     { defer: true },
   ),
 );
 
-// The autofocus attribute will setActiveElement on this element when initially created
-<Button autofocus>TV Shows</Button>;
+onMount(() => sports.setFocus());
 
-let myButton;
-onMount(() => {
-  myButton.setFocus();
+<>
+  <view ref={ring} width={312} height={8} color={0x31609bff} />
+  <view autofocus width={312} height={132} color={0x253040ff} />
+  <view ref={sports} x={336} width={312} height={132} color={0x253040ff} />
+</>;
+```
+
+The focused element gets the `$focus` state, so `$focus` styles apply to it.
+See [States](/essentials/states.md).
+
+## Turning key handling on
+
+`useFocusManager` listens for keys and runs your handlers. `startApp` calls it
+for you. If you start the app with `createRenderer`, call it once inside
+`render`:
+
+```tsx
+import { useFocusManager } from '@solid-multiplatform/platform/focusManager';
+
+render(() => {
+  useFocusManager();
+  return <App />;
 });
-<Button ref={myButton}>Sports</Button>;
+```
+
+It takes an optional key map and an optional key event target. Without a
+target it listens on `document`.
+
+## Key handlers
+
+The default key map names these keys: `Left`, `Right`, `Up`, `Down`, `Enter`,
+`Last`, `Space`, `Back` and `Escape`. Each name gives you three props:
+`on<Name>`, `on<Name>Release` and `onCapture<Name>`.
+
+```tsx
+<view
+  autofocus
+  width={312}
+  height={132}
+  onEnter={() => {
+    play();
+    return true;
+  }}
+  onLeft={() => previous()}
+  onRight={() => next()}
+/>
+```
+
+A handler is called as `handler(event, handlerElement, focusedElement)`, with
+`this` set to the element the handler is on. Return `true` to mark the key as
+handled. Otherwise the key bubbles to the parent.
+
+- `onKeyPress(event, mappedName, handlerElement, focusedElement)` hears every
+  key press that no named handler on that element handled.
+- `onCapture<Name>` and `onCaptureKey` run first, from the root down to the
+  focused element. Return `true` to claim the key before it bubbles.
+
+Add your own key names with a key map. With `startApp`, pass `keyMap` in the
+options.
+
+```tsx
+useFocusManager({
+  Menu: ['m', 'ContextMenu'],
+  Play: 'MediaPlay',
+});
+
+<view autofocus onMenu={() => openMenu()} onPlay={() => play()} />;
+```
+
+## `onFocus`, `onBlur` and `onFocusChanged`
+
+```tsx
+<view
+  autofocus
+  width={312}
+  height={132}
+  onFocus={(current, previous) => console.log('focus', current.id)}
+  onBlur={(current, previous) => console.log('blur', previous.id)}
+  onFocusChanged={(hasFocus) => console.log(hasFocus)}
+/>
+```
+
+These fire for every element on the focus path, not only the focused leaf. A
+parent hears `onFocus` when focus enters any of its descendants.
+
+## `autofocus`
+
+`autofocus` gives an element focus when it is created. Have one element with
+`autofocus` on each screen. It also accepts a signal's value: the element takes
+focus again when the value changes to something truthy. That is useful when
+data arrives later and a `Row` or `Column` must reset its focus.
+
+```tsx
+<Column autofocus={items()}>
+  <For each={items()}>{(item) => <Tile item={item} />}</For>
+</Column>
 ```
 
 ## `forwardFocus`
 
-Sometimes an element is focused via `setFocus`, but you want a child element to receive the focus instead. In such cases, `forwardFocus={childIndexNumber}` will skip setting `activeElement` on this element and instead set focus on `this.children[childIndexNumber]`. For more complex needs, `forwardFocus` can also take a function that allows you to set focus on any element you want, or you can return `false` from the function to have the element receive focus.
+`forwardFocus` passes focus on to a child when the element itself is focused.
 
-### Example
-
-```jsx
-// Focus on the column but then focus on the first child
-<Column autofocus forwardFocus={0}>
-  // ... child elements here will receive focus
-</Column>
+```tsx
+// Focus lands on the first child.
+<view autofocus forwardFocus={0}>
+  <view width={312} height={132} />
+  <view x={336} width={312} height={132} />
+</view>
 ```
 
-The Child element can also have a `forwardFocus` attribute to keep passing focus along.
+- A number is the index of the child that receives focus.
+- A function receives the element. Focus whatever you like inside it. Return
+  `false` to let the element keep focus itself.
 
-## Add Keyhandling
+A child may have `forwardFocus` too.
 
-Keyhandling is added with [useFocusManager](/primitives/useFocusManager.md). It's important to note that keyhandling simple changes the `activeElement`.
+## `skipFocus`
 
-## Debugging Focus
+`Row`, `Column` and the other navigation primitives skip children that have
+`skipFocus` set. See [Row and Column](/primitives/row_column.md).
 
-You can set
+## Throttling
 
-```js
-import { Inspector } from '@solidtv/renderer/inspector';
-Config.focusDebug = true;
-Config.rendererOptions.inspector = Inspector;
+`throttleInput` on an element, or `Config.throttleInput` for the whole app,
+sets the minimum time in ms between handled key presses.
+
+## Debugging focus
+
+```ts
+import { Config } from '@solid-multiplatform/platform';
+
+Config.focusDebug = true; // marks the focus path
+Config.keyDebug = true; // logs key events
 ```
-
-To enable focus debugging. This will add a border around the activeElement and additional borders up the focusPath. You'll also need to be using the useFocusManager.

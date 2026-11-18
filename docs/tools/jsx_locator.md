@@ -1,70 +1,66 @@
-# JSX Locator Plugin
+# JSX locator
 
-The JSX Locator is a Babel plugin included in `@solidtv/solid` that automatically injects `componentName` and `componentSource` attributes into every JSX component at build time, making it easier for you to debug your SolidTV applications.
+The JSX locator is a Babel plugin in `@solid-multiplatform/platform`. At build
+time it adds two props to every component element in your JSX:
 
-## How It Works
+- `componentName`: the tag name, for example `"MyButton"`.
+- `componentLocation`: `relativePath:line:column`, for example
+  `"src/components/MyButton.tsx:12:4"`.
 
-Because the SolidJS JSX transform converts JSX into plain function calls before most Babel visitors run, a standard `JSXOpeningElement` visitor never fires. The plugin works around this by running a manual traversal inside `Program.enter`, which executes **before** the SolidJS plugin processes the file. This ensures the attributes are injected while the JSX AST is still intact.
+Only capitalized tags are changed. `<view>` and `<text>` are left alone. A prop
+you set yourself is not overwritten.
 
-For each capitalized JSX element (i.e. a component, not a native tag like `<view>`), the plugin adds:
+`ElementNode` stores both props. Development tools use them:
 
-| Attribute         | Value                        | Example                              |
-| ----------------- | ---------------------------- | ------------------------------------ |
-| `componentName`   | The JSX tag name as a string | `"MyButton"`                         |
-| `componentSource` | `relativePath:line:column`   | `"src/components/MyButton.tsx:12:4"` |
+- Focus history (see [useFocusManager](/primitives/useFocusManager.md)) labels
+  an element by its `id`, or else its `componentName`.
+- The Alt+click inspector in development builds prints the name and location
+  of the node you click.
 
 ## Setup
 
-### 1. Add the Plugin to Your Vite Config
+Add the plugin to the Babel options of `vite-plugin-solid`. Use it in
+development only.
 
-The plugin ships as a plain Babel plugin file. Reference it directly in your Vite configuration using the `babel` option of `vite-plugin-solid`:
-
-```ts
-// vite.config.ts
-import solidPlugin from 'vite-plugin-solid';
+```js
+// vite.config.mjs
 import { defineConfig } from 'vite';
+import solid from 'vite-plugin-solid';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
-    solidPlugin({
+    solid({
       babel: {
-        plugins: ['@solidtv/solid/src/devtools/jsx-locator.js'],
+        plugins:
+          mode === 'development'
+            ? ['@solid-multiplatform/platform/devtools/jsx-locator']
+            : [],
       },
       solid: {
-        moduleName: '@solidtv/solid',
+        moduleName: '@solid-multiplatform/platform',
         generate: 'universal',
       },
     }),
   ],
-});
+}));
 ```
 
-> **Note:** The plugin is only useful during development. You may conditionally include it based on `process.env.NODE_ENV`:
->
-> ```ts
-> babel: {
->   plugins: [
->     ...(process.env.NODE_ENV === 'development'
->       ? ['@solidtv/solid/src/devtools/jsx-locator.js']
->       : []),
->   ],
-> },
-> ```
+Keep the other options that your target's `vite.config.mjs` already has. An
+app created by `solid-platform init` has one in `targets/web`.
 
-### 2. Verify Attribute Injection
-
-After adding the plugin, build or start your dev server and inspect the output. Any component JSX element will have the extra props passed through:
+## What the transform does
 
 ```tsx
 // Source
-<MyButton label="Click me" />;
+<MyButton label="Play" />;
 
-// After transform (conceptually)
-createComponent(MyButton, {
-  label: 'Click me',
+// What the component receives
+MyButton({
+  label: 'Play',
   componentName: 'MyButton',
-  componentSource: 'src/components/App.tsx:8:4',
+  componentLocation: 'src/components/App.tsx:8:4',
 });
 ```
 
-The `ElementNode` class in `@solidtv/solid` accepts and stores these props, making them available to the devtools inspector.
+The plugin runs in `Program.enter`, before Solid's JSX transform removes the
+JSX nodes.

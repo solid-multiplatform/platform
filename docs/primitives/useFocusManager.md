@@ -1,302 +1,34 @@
-# useFocusManager for Key Handling
+# useFocusManager
 
-The `useFocusManager` primitive is designed to handle user input, manage focus paths, and trigger focus and blur events on components. This primitive is set up once during app initialization and provides key handling capabilities.
+`useFocusManager` listens for key events, maps them to names such as `Left`
+and `Enter`, and sends them along the focus path. Call it once, at the top of
+your app. `startApp` already calls it for you with `options.keyMap`; call it
+yourself only when you render with `createRenderer` directly.
 
-## Usage
-
-### Import and Setup
-
-Import the `useFocusManager` and configure it with your custom key mappings:
-
-```jsx
-import { useFocusManager } from '@solidtv/solid/primitives';
+```tsx
+import { useFocusManager } from '@solid-multiplatform/platform/focusManager';
 
 const App = () => {
-  // The defaults are already applied, so you can just call useFocusManager().
-  // Anything you pass is merged over them.
+  // Defaults apply. What you pass is merged over them.
   useFocusManager({
-    Left: ['ArrowLeft', 37],
-    Right: ['ArrowRight', 39],
-    Up: ['ArrowUp', 38],
-    Down: ['ArrowDown', 40],
-    Enter: 'Enter',
-    Last: 'l',
+    Back: [461, 'GoBack', 'Backspace'],
+    Enter: ['Enter', 13],
   });
 
-  // Additional application logic...
+  return <view autofocus />;
 };
 ```
 
-### Event Target
+The same functions are exported from
+`@solid-multiplatform/platform/primitives`.
 
-`useFocusManager` binds `keydown` and `keyup` on `document`. A host without a
-document, such as a native runtime that reports remote presses through its own
-bridge, passes the object to listen on as the second argument. It needs only
-`addEventListener` and `removeEventListener` for those two event types (the
-`KeyEventTarget` type), and the events it delivers need only the fields the
-focus manager reads: `key`, `keyCode` and `repeat` (`KeyEventLike`). Key
-handlers then receive the host's event object in place of a `KeyboardEvent`.
+## Key map
 
-```jsx
-useFocusManager(undefined, keyBridge);
-```
-
-Browser apps are unaffected: leave the argument out and `document` is used.
-Anything passed there that cannot listen is ignored in favour of `document`
-too, so an app still passing the removed hold options object (see below)
-keeps working.
-
-### Focus Path Tracking
-
-`focusPath` is a signal holding the array of elements that currently have focus, from the focused leaf up to the root. It is imported separately — `useFocusManager` itself returns nothing:
-
-```jsx
-import { useFocusManager, focusPath } from '@solidtv/solid/primitives';
-```
-
-When the `activeElement` changes, the focus path is recalculated. During this process:
-
-- All elements in focus will have a `focus` state added, and `onFocus(currentFocusedElm, prevFocusedElm, nodeWithCallback)` event is called.
-- Elements losing focus will have the `focus` state removed, and `onBlur(currentFocusedElm, prevFocusedElm, nodeWithCallback)` event is called.
-
-There is also an `onFocusChanged(hasFocus, currentFocusedElm, prevFocusedElm, nodeWithCallback)` callback which is useful for setting a focusSignal to use for more complicated scenarios.
-
-```jsx
-const [hasFocus, setHasFocus] = createSignal(false);
-return <view onFocusChanged={setHasFocus}>{/* use hasFocus() */}</view>;
-```
-
-### Key Handling
-
-When a key is pressed:
-
-1. The `keyMap` resolves the event's `key` (falling back to its `keyCode`) to a mapped event name, e.g. `ArrowLeft` → `Left`. A key with no mapping still propagates, but only to the generic handlers.
-2. **Capture phase**, root → focused leaf: on each element it looks for `onCapture${key}`, then `onCaptureKey`. If the mapping failed, the raw `e.key` is used in place of `${key}`.
-3. **Bubble phase**, focused leaf → root: on each element it looks for `on${key}`, then falls back to `onKeyPress` on that _same_ element before moving to its parent.
-
-Note that step 3 is a single interleaved walk — `onKeyPress` on an element is tried before its parent's `on${key}`, not as a separate pass after the whole tree.
-
-The key handler signature is:
-
-```ts
-type KeyHandler = (
-  this: ElementNode,
-  e: KeyboardEvent,
-  target: ElementNode, // the element whose handler is running
-  handlerElm: ElementNode, // the focused leaf element
-  mappedEvent?: string, // capture-phase handlers only
-) => boolean | void;
-```
-
-`onKeyPress` takes the mapped event name as its second argument instead:
-`(e, mappedKeyEvent, handlerElm, currentFocusedElm)`.
-
-To stop the propagation of a key press, the handler must return `true`. Any other return value or no return value will continue to propagate the key press through the focus path, looking for additional handlers.
-
-### Input Throttling (`Available Core 2.12+`)
-
-You can now control input speed in two powerful ways . This feature helps prevent unwanted behavior from rapid key presses, leading to a smoother, more predictable user experience and giving you, the developer, precise control over input handling.
-
-#### Global Throttling (`Config.throttleInput`)
-
-For a quick, app-wide solution, you can set a global throttle on all key inputs directly in your configuration. This is perfect for setting a baseline input speed for your entire application.
-
-```javascript
-import { Config } from '@solidtv/solid';
-
-// Allow one keypress every 200ms across the entire app
-Config.throttleInput = 200;
-```
-
-#### Per-Element Throttling (`throttleInput` property)
-
-For more granular control, you can add a `throttleInput` property directly to any ElementNode. This allows you specific components that might need a different throttle rate, like a fast-scrolling list or a sensitive menu item.
-
-```jsx
-// This Row will only accept a keypress every 500ms
-<Row throttleInput={500}>...</Row>
-```
-
-### Consumed Keys (`Config.preventDefaultOnHandledKeys`)
-
-A host with no browser between the remote and the app decides for itself what
-an unhandled press does: on tvOS, a Menu press nothing handled returns to the
-Home screen. Such a host needs to know which presses the app consumed. Set
-`Config.preventDefaultOnHandledKeys` and the focus manager calls
-`preventDefault()` on every key event the app consumed: a handler returned
-`true`, or the focus manager dropped the press itself (a throttled press, a
-repeat suppressed by `useHold`). An event without a `preventDefault` method is
-left alone.
-
-```javascript
-import { Config } from '@solidtv/solid';
-
-Config.preventDefaultOnHandledKeys = true;
-```
-
-It is off by default, since in a browser it changes what handled keys do: a
-handled arrow no longer scrolls the page, say.
-
-### Inferred Repeats (`Config.inferKeyRepeat`)
-
-Some devices never set `KeyboardEvent.repeat`. Holding a key sends a stream of
-key-downs that all report `repeat: false`, followed by one key-up on release.
-Anything that relies on `repeat` breaks: [useHold](./useHold.md) sees each
-key-down as a new press, and a key latched by a hold is released by what looks
-like a fresh press.
-
-Set `Config.inferKeyRepeat` to a window in milliseconds and the focus manager
-marks a key-down as a repeat when the same key sent a key-down less than that
-long ago with no key-up in between. Handlers then read `e.repeat` as `true`.
-
-```javascript
-import { Config } from '@solidtv/solid';
-
-Config.inferKeyRepeat = 700;
-```
-
-The window is measured from the key's previous key-down, so it only has to
-cover the device's initial auto-repeat delay. A key-up that never arrives stops
-mattering once the window passes, so a lost key-up cannot leave the key stuck.
-
-It is off by default; enable it only on the devices that need it. On a key
-that never sends a key-up (webOS OK), a second tap inside the window would be
-read as a repeat.
-
-### Focus History Logging
-
-Focus history logging records each focus change — whether triggered by a key press or programmatically — into a ring buffer of up to 50 entries. This is a **dev-only** feature: recording and printing are both gated behind the `isDev` flag and do nothing in production builds.
-
-#### Enabling (`Config.focusHistoryDebug`)
-
-Set `Config.focusHistoryDebug` to a positive integer to enable recording and automatically `console.table` the last N entries after every focus change. Set it to `0` (the default) to disable the feature entirely.
-
-```javascript
-import { Config } from '@solidtv/solid';
-
-// Record history and print the last 5 entries after each focus change
-Config.focusHistoryDebug = 5;
-```
-
-When running in dev mode, a startup message is printed to the console reminding you of the `$f` shortcut and how to enable the flag.
-
-#### `console.table` output
-
-Each print shows the following columns:
-
-| Column    | Description                                                                                                                     |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `prev`    | Label of the element that lost focus (`id ?? componentName ?? 'Unknown'`)                                                       |
-| `key`     | The key that triggered the change — `mappedKey` if available, otherwise raw `keyPressed`, or `—` for programmatic focus changes |
-| `next`    | Label of the element that gained focus                                                                                          |
-| `nextElm` | The `ElementNode` object itself — expandable in DevTools                                                                        |
-| `nextDiv` | The underlying `HTMLDivElement` from the renderer — click to jump to it in the Elements panel                                   |
-
-Example output:
-
-```
-┌───────┬─────────────────┬──────────┬─────────────────────┬──────────┬─────────────────────┐
-│ (idx) │ prev            │ key      │ next                │ nextElm  │ nextDiv             │
-├───────┼─────────────────┼──────────┼─────────────────────┼──────────┼─────────────────────┤
-│     0 │ 'hero-card-0'   │ 'Right'  │ 'hero-card-1'       │ {…}      │ <div>               │
-│     1 │ 'hero-card-1'   │ 'Down'   │ 'rail-item-0'       │ {…}      │ <div>               │
-│     2 │ 'rail-item-0'   │ '—'      │ 'modal-close-btn'   │ {…}      │ <div>               │
-└───────┴─────────────────┴──────────┴─────────────────────┴──────────┴─────────────────────┘
-```
-
-A `key` of `—` means focus was moved programmatically (e.g. via `elm.setFocus()` on mount) rather than by a key press.
-
-#### `$f` — quick DevTools inspection
-
-After every `printFocusHistory` call, `window.$f` is set to the DOM div of the most recently focused element. You can then call `inspect($f)` in the browser console to jump directly to that node in the Elements panel.
-
-#### Manual printing (`printFocusHistory`)
-
-`printFocusHistory(n)` prints the last N entries at any time. `n` is required.
-
-```javascript
-import { printFocusHistory } from '@solidtv/solid/primitives';
-
-printFocusHistory(20);
-```
-
-It is not attached to `window`, so it is not callable from the DevTools console on its own. If you want it there, assign it yourself during dev setup:
-
-```javascript
-if (import.meta.env.DEV) window.printFocusHistory = printFocusHistory;
-```
-
-#### Inspecting the buffer programmatically (`getFocusHistory`)
-
-`getFocusHistory()` returns the full ring buffer as a read-only array of `FocusHistoryEntry` objects. This is useful for custom devtools panels, automated tests, or sending focus traces to a logging service.
-
-```typescript
-import {
-  getFocusHistory,
-  type FocusHistoryEntry,
-} from '@solidtv/solid/primitives';
-
-const history: Readonly<FocusHistoryEntry[]> = getFocusHistory();
-```
-
-Each entry has the following shape:
-
-| Field        | Type                            | Description                                                              |
-| ------------ | ------------------------------- | ------------------------------------------------------------------------ |
-| `timestamp`  | `number`                        | `performance.now()` at the moment focus changed                          |
-| `keyPressed` | `string \| number \| undefined` | Raw key value (e.g. `"ArrowLeft"`, `37`). `undefined` if programmatic.   |
-| `mappedKey`  | `string \| undefined`           | Mapped event name (e.g. `"Left"`). `undefined` if programmatic.          |
-| `prev`       | `ElementNode \| undefined`      | The element that lost focus. `undefined` on the very first focus change. |
-| `next`       | `ElementNode`                   | The element that gained focus.                                           |
-
-Note that `prev` and `next` are live `ElementNode` references. Labels (`id ?? componentName ?? 'Unknown'`) are resolved at print time by `printFocusHistory`, not at record time.
-
-#### Memory safety
-
-Per-element metadata (focus count, last focused timestamp) is stored in a `WeakMap` keyed by `ElementNode`. This means the data is automatically released when an element is garbage collected — there is no need to manually clean up history entries when components unmount.
-
-### Key Release
-
-On release of a key:
-
-1. The `keyMap` resolves the key to a mapped event name, as for a key press.
-2. **Capture phase**, root → leaf: `onCapture${key}Release`, then `onCaptureKeyRelease`.
-3. **Bubble phase**, leaf → root: `on${key}Release`.
-
-Note: there is no generic `onKeyRelease` in the bubble phase — `onKeyPress` is not called for key-ups. `onCaptureKeyRelease` is the only catch-all for a release.
-
-### Hold Key Handling
-
-Hold gestures are handled by the [useHold](./useHold.md) primitive, which is
-scoped to the elements that need it rather than delaying key-press events
-globally.
-
-The global `keyHoldOptions` / `userKeyHoldMap` second parameter has been removed,
-along with the `onKeyHold` and `on${Key}Hold` handlers it dispatched. Move a
-`userKeyHoldMap` entry to `useHold` on the element that owns the gesture:
-
-```tsx
-// Before: useFocusManager(keyMap, { userKeyHoldMap: { EnterHold: 'Enter' }, holdThreshold: 1000 })
-//         <view onEnterHold={openMenu} onEnter={openTile} />
-
-// After:
-const [holdEnter, releaseEnter] = useHold({
-  onHold: openMenu,
-  onEnter: openTile,
-  holdThreshold: 1000,
-});
-
-<view onEnter={holdEnter} onEnterRelease={releaseEnter} />;
-```
-
-### Custom Key Mappings
-
-You can pass in an array of keys for a single event. What you pass is written over the default mapping, so you only need to declare what differs.
-
-Note the direction: the map you pass is `{ EventName: key(s) }`, while the table it merges into is keyed the other way, `{ key: EventName }`. These are the defaults:
+You pass `{ EventName: key or keys }`. A key is a `KeyboardEvent.key` string or
+a numeric `keyCode`. These are the defaults:
 
 ```js
-{
+const defaults = {
   ArrowLeft: 'Left',
   ArrowRight: 'Right',
   ArrowUp: 'Up',
@@ -306,64 +38,125 @@ Note the direction: the map you pass is `{ EventName: key(s) }`, while the table
   ' ': 'Space',
   Backspace: 'Back',
   Escape: 'Escape',
-}
+};
 ```
 
-**No numeric keyCodes are mapped by default.** Devices that report keys by keyCode — or that report a different `key` on key-down and key-up, as LG does for Back — need those added explicitly:
-
-```js
-useFocusManager({
-  Back: [461, 'GoBack', 'Backspace'],
-  Enter: ['Enter', 13],
-});
-```
-
-#### Typing of custom handlers
+No numeric key codes are mapped by default. A device that reports keys by
+code, or reports a different `key` on key-down and key-up, needs them added.
 
 Only `Left`, `Right`, `Up`, `Down`, `Enter` and `Last` have typed handler props
-(`onLeft`, `onLeftRelease`, `onCaptureLeft`, …). Handlers for any other mapping —
-including the built-in `Back`, `Space` and `Escape`, and anything you add
-yourself — dispatch correctly at runtime, but are only accepted by the compiler
-through `ElementNode`'s `[key: string]: unknown` index signature. You get no
-autocompletion and no argument checking on them, so annotate the handler itself:
+(`onLeft`, `onLeftRelease`, `onCaptureLeft`, …). Handlers for any other name,
+including `Back`, `Space` and `Escape`, work at runtime but are not checked by
+the compiler. Annotate the handler yourself:
 
 ```tsx
-const onBack: KeyHandler = (e, target, focused) => { ... };
+import type { KeyHandler } from '@solid-multiplatform/platform';
 
-<view onBack={onBack} />;
-```
-
-### Example
-
-Here's a complete example of how to use `useFocusManager`:
-
-```jsx
-import { createSignal } from 'solid-js';
-import { useFocusManager } from '@solidtv/solid/primitives';
-import { Button } from '@solidtv/solid-ui';
-
-const App = () => {
-  useFocusManager({
-    Announcer: ["a"],
-    Menu: ["m"],
-    Escape: ["Escape", 27],
-    Backspace: ["Backspace", 8],
-    Left: ["ArrowLeft", 37],
-    Right: ["ArrowRight", 39],
-    Up: ["ArrowUp", 38],
-    Down: ["ArrowDown", 40],
-    Enter: ["Enter", 13],
-  } as unknown as KeyMap);
-
-  return (
-    <view>
-      <Button onEnter={() => console.log('Enter pressed')}>Button 1</Button>
-      {/* More components... */}
-    </view>
-  );
+const onBack: KeyHandler = () => {
+  console.log('back');
+  return true;
 };
 
-export default App;
+export const Page = () => <view onBack={onBack} autofocus />;
 ```
 
-In this example, buttons will handle the `Enter` key press and log a message to the console. Adjust the key mappings and handlers as needed for your application.
+## Event target
+
+By default the focus manager listens on `document`. A host without a document
+passes its own target as the second argument. The target needs
+`addEventListener` and `removeEventListener` for `keydown` and `keyup`
+(`KeyEventTarget`). Its events need `key`, `keyCode` and `repeat`
+(`KeyEventLike`).
+
+```ts
+import {
+  useFocusManager,
+  type KeyEventTarget,
+} from '@solid-multiplatform/platform/focusManager';
+
+declare const keyBridge: KeyEventTarget;
+
+useFocusManager(undefined, keyBridge);
+```
+
+## Focus path
+
+`focusPath` is a signal with the elements that have focus, from the focused
+leaf up to the root. When the active element changes:
+
+- Elements entering the path get the `$focus` state and `onFocus` is called.
+- Elements leaving the path lose the state and `onBlur` is called.
+- `onFocusChanged(hasFocus, …)` is called on both.
+
+```tsx
+import { createSignal } from 'solid-js';
+
+export const Card = () => {
+  const [focused, setFocused] = createSignal(false);
+  return <view onFocusChanged={setFocused} alpha={focused() ? 1 : 0.6} />;
+};
+```
+
+## How a key press travels
+
+1. The key map turns the event's `key`, or else its `keyCode`, into an event
+   name. `ArrowLeft` becomes `Left`.
+2. Capture phase, root to focused leaf: each element is checked for
+   `onCapture<Name>`, then `onCaptureKey`.
+3. Bubble phase, focused leaf to root: each element is checked for
+   `on<Name>`, then `onKeyPress`, before moving to its parent.
+
+A handler stops the press by returning `true`. Any other return value lets it
+continue.
+
+```ts
+type KeyHandler = (
+  this: ElementNode,
+  e: KeyboardEvent,
+  target: ElementNode,
+  handlerElm: ElementNode,
+  mappedEvent?: string,
+) => boolean | void;
+```
+
+A key with no mapping still travels, but only `onCaptureKey` and `onKeyPress`
+hear it.
+
+## Key release
+
+On key-up the same walk runs with `onCapture<Name>Release`, then
+`onCaptureKeyRelease`, then `on<Name>Release`. `onKeyPress` is not called for a
+release.
+
+For press-and-hold, see [useHold](/primitives/useHold.md).
+
+## Throttling
+
+`Config.throttleInput` sets the minimum time in milliseconds between two key
+presses for the whole app. The `throttleInput` prop does the same for one
+element. Releases are never dropped.
+
+```tsx
+import { Config } from '@solid-multiplatform/platform';
+import { Row } from '@solid-multiplatform/platform/primitives';
+
+Config.throttleInput = 200;
+
+export const Rail = () => <Row throttleInput={500} />;
+```
+
+## Options on Config
+
+- `Config.preventDefaultOnHandledKeys` (default `false`): call
+  `preventDefault()` on every key event the app consumed. A host uses this to
+  learn which presses the app handled.
+- `Config.inferKeyRepeat` (milliseconds, off by default): mark a key-down as a
+  repeat when the same key sent a key-down less than this long ago with no
+  key-up in between. Use it on devices that never set `repeat`.
+- `Config.keyDebug` (default `false`): log key handling in development builds.
+- `Config.focusHistoryDebug` (default `0`): in development builds, record
+  focus changes and print the last _n_ with `console.table` after each change.
+
+`printFocusHistory(n)` prints the last _n_ recorded focus changes.
+`getFocusHistory()` returns the recorded entries, at most 50. Both do nothing
+useful in production builds, where nothing is recorded.
