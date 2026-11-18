@@ -20,11 +20,13 @@ import * as devtools from '@solid-multiplatform/platform/devtools';
 import jsxLocator from '@solid-multiplatform/platform/devtools/jsx-locator';
 import * as shaders from '@solid-multiplatform/platform/shaders';
 import * as focusManager from '@solid-multiplatform/platform/focusManager';
+import * as services from '@solid-multiplatform/platform/services';
+import * as webServices from '@solid-multiplatform/platform/services/web';
 
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 309 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 288 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -248,7 +250,6 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'resetCapabilities',
       'resetCrashReporter',
       'resetCursor',
-      'resetDevicePorts',
       'resetEnvironment',
       'resolveResponsive',
       'revealAboveKeyboard',
@@ -263,38 +264,18 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'setActiveElementCore',
       'setAppVersion',
       'setApplicationMenu',
-      'setAudioPort',
-      'setBiometricsPort',
-      'setCalendarPort',
-      'setCameraPort',
       'setCapabilities',
       'setColorScheme',
-      'setContactsPort',
       'setCrashReporter',
       'setCursor',
-      'setDevicePorts',
-      'setDownloadPort',
       'setEnvironment',
-      'setFilePickerPort',
-      'setFileSystemPort',
-      'setFullscreenPort',
-      'setGeolocationPort',
       'setHighContrast',
-      'setMapsPort',
-      'setMediaCapabilitiesPort',
-      'setMediaSessionPort',
-      'setMenusPort',
-      'setMicrophonePort',
       'setProp',
       'setQueryData',
       'setRendererFactory',
-      'setSensorsPort',
       'setTasksEnabled',
       'setTextScale',
-      'setThumbnailPort',
       'setTray',
-      'setUpdateDeliveryPort',
-      'setUpdateSource',
       'setupI18n',
       'shaderAccessor',
       'share',
@@ -463,6 +444,32 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'elementInterface',
         'hexColorTransform',
       ]);
+    },
+  );
+
+  // The service registry is how hosts provide device features and how apps
+  // reach the ones without a function of their own (settings, lifecycle, …).
+  v.test(
+    '@solid-multiplatform/platform/services (src/sdk/services.ts): 9 names',
+    () => {
+      v.expect(names(services)).toEqual([
+        'CapabilityError',
+        'installServices',
+        'installedServices',
+        'loadService',
+        'peekService',
+        'resetServices',
+        'serviceAvailable',
+        'subscribeEvent',
+        'useService',
+      ]);
+    },
+  );
+
+  v.test(
+    '@solid-multiplatform/platform/services/web (src/hosts/web-services/index.ts): 2 names',
+    () => {
+      v.expect(names(webServices)).toEqual(['webAppServices', 'webServices']);
     },
   );
 

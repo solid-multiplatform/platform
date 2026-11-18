@@ -1,4 +1,4 @@
-import { CapabilityError } from './services.js';
+import { CapabilityError, peekService, serviceAvailable } from './registry.js';
 
 export type SensorType =
   | 'accelerometer'
@@ -29,62 +29,34 @@ export interface SensorsPort {
   ): () => void;
 }
 
-let port: SensorsPort | undefined;
-
-export function setSensorsPort(next: SensorsPort | undefined): void {
-  port = next;
+declare module './registry.js' {
+  interface ServiceProviders {
+    sensors: SensorsPort;
+  }
 }
 
+/** Whether the host has a sensors service at all. */
 export function sensorsAvailable(): boolean {
-  return port !== undefined;
+  return serviceAvailable('sensors') === 'available';
 }
 
-const deviceMotion = (): boolean =>
-  typeof window !== 'undefined' && typeof DeviceMotionEvent !== 'undefined';
-
+/** Whether this device has the sensor. */
 export function sensorAvailable(type: SensorType): boolean {
-  if (port) return port.available(type);
-  return (type === 'accelerometer' || type === 'gyroscope') && deviceMotion();
+  return peekService('sensors')?.available(type) ?? false;
 }
 
 /**
- * Watch a sensor. Native hosts provide `SensorsPort` (SensorManager /
- * CoreMotion); the web fallback maps `devicemotion` for accelerometer and
- * gyroscope. Returns a disposer that stops the provider.
+ * Watch a sensor through the host's `sensors` service (SensorManager /
+ * CoreMotion on native hosts; `devicemotion` for accelerometer and gyroscope
+ * on the web). Returns a disposer that stops the provider.
  */
 export function watchSensor(
   type: SensorType,
   listener: (reading: SensorReading) => void,
 ): () => void {
-  if (port) return port.watch(type, listener);
-  if (!sensorAvailable(type) || typeof window === 'undefined') {
-    throw new CapabilityError(`sensor.${type}`);
-  }
-  const handler = (event: DeviceMotionEvent) => {
-    if (type === 'accelerometer') {
-      const source = event.accelerationIncludingGravity;
-      if (!source) return;
-      listener({
-        sensor: type,
-        x: source.x ?? undefined,
-        y: source.y ?? undefined,
-        z: source.z ?? undefined,
-        timestamp: Date.now(),
-      });
-      return;
-    }
-    const source = event.rotationRate;
-    if (!source) return;
-    listener({
-      sensor: type,
-      x: source.alpha ?? undefined,
-      y: source.beta ?? undefined,
-      z: source.gamma ?? undefined,
-      timestamp: Date.now(),
-    });
-  };
-  window.addEventListener('devicemotion', handler);
-  return () => window.removeEventListener('devicemotion', handler);
+  const port = peekService('sensors');
+  if (!port) throw new CapabilityError(`sensor.${type}`);
+  return port.watch(type, listener);
 }
 
 /** Resolve with the first reading from a sensor. */

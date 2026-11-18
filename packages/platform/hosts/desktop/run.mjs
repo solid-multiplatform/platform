@@ -16,7 +16,7 @@ import { channel } from 'node:diagnostics_channel';
 import sharp from 'sharp';
 import { openWindow } from './window.mjs';
 import { createDesktopMenuProvider } from './menus.mjs';
-import { setMenusPort } from '@solid-multiplatform/platform/menus';
+import { installServices } from '@solid-multiplatform/platform/services';
 
 setCapabilities('desktop');
 const title = process.env.SOLID_APP_TITLE ?? 'Solid Multiplatform';
@@ -121,6 +121,7 @@ let boot,
   dispose,
   pump,
   menuProvider,
+  removeMenus,
   closed = false;
 const timers = new Set();
 const frame = (callback) => {
@@ -149,7 +150,7 @@ function shutdown() {
   } finally {
     saveWindowState();
     menuProvider?.dispose();
-    setMenusPort(undefined);
+    removeMenus?.();
     instance.dispose();
     editors?.dispose();
     semantics?.dispose();
@@ -179,7 +180,8 @@ try {
       return;
     }
     menuProvider = provider;
-    setMenusPort(provider.port);
+    // NOTE: scene.mjs bundles its own copy of the SDK, so this registers in a registry the app never reads.
+    removeMenus = installServices({ menus: provider.port });
   });
   editors = desktopEditors(windowHost);
   const host = {

@@ -3,30 +3,23 @@ import {
   contactsAvailable,
   getContacts,
   pickContact,
-  setContactsPort,
 } from '../src/sdk/contacts.js';
 import {
   calendarAvailable,
   createCalendarEvent,
   getCalendarEvents,
-  setCalendarPort,
 } from '../src/sdk/calendar.js';
 import {
   readSensor,
   sensorAvailable,
   sensorsAvailable,
-  setSensorsPort,
   watchSensor,
 } from '../src/sdk/sensors.js';
+import { mapsAvailable, openDirections, openMap } from '../src/sdk/maps.js';
 import {
-  mapsAvailable,
-  openDirections,
-  openMap,
-  setMapsPort,
-} from '../src/sdk/maps.js';
-import {
+  checkForUpdate,
   createUpdateDelivery,
-  setUpdateDeliveryPort,
+  updateSource,
   type UpdateInfo,
 } from '../src/sdk/update.js';
 import {
@@ -34,10 +27,17 @@ import {
   requireSigningIdentity,
   type ReleaseContext,
 } from '../src/sdk/release.js';
-import { resetDevicePorts, setDevicePorts } from '../src/sdk/device.js';
+import { CapabilityError } from '../src/sdk/registry.js';
+import {
+  expectIdleWebProviders,
+  provide,
+  useWebServices,
+  withoutServices,
+} from './services-helpers.js';
+import { webServices } from '../src/hosts/web-services/index.js';
 
 v.describe('contacts', () => {
-  v.afterEach(() => setContactsPort(undefined));
+  useWebServices();
 
   v.it('lists, searches and picks contacts through the host', async () => {
     const querySeen: unknown[] = [];
@@ -46,13 +46,15 @@ v.describe('contacts', () => {
       displayName: 'Ada Lovelace',
       phones: [{ label: 'mobile', number: '+1555' }],
     };
-    setContactsPort({
-      async list(query) {
-        querySeen.push(query);
-        return [contact];
-      },
-      async pick() {
-        return contact;
+    provide({
+      contacts: {
+        async list(query) {
+          querySeen.push(query);
+          return [contact];
+        },
+        async pick() {
+          return contact;
+        },
       },
     });
     v.expect(contactsAvailable()).toBe(true);
@@ -62,36 +64,46 @@ v.describe('contacts', () => {
   });
 
   v.it('returns undefined when the host has no picker', async () => {
-    setContactsPort({ list: async () => [] });
+    provide({ contacts: { list: async () => [] } });
     v.expect(await pickContact()).toBeUndefined();
   });
 
-  v.it('throws a capability error without a contacts port', async () => {
-    v.expect(contactsAvailable()).toBe(false);
-    await v.expect(getContacts()).rejects.toThrowError(/contacts/);
-    await v.expect(pickContact()).rejects.toThrowError(/contacts/);
+  v.it('throws a capability error without a contacts service', async () => {
+    const check = async () => {
+      v.expect(contactsAvailable()).toBe(false);
+      await v.expect(getContacts()).rejects.toThrowError(CapabilityError);
+      await v.expect(getContacts()).rejects.toThrowError(/contacts/);
+      await v.expect(pickContact()).rejects.toThrowError(/contacts/);
+    };
+    // The browser has no contacts provider, so the web host is no different
+    // from a host that installed nothing.
+    v.expect(webServices.contacts).toBeUndefined();
+    await check();
+    await withoutServices(check);
   });
 });
 
 v.describe('calendar', () => {
-  v.afterEach(() => setCalendarPort(undefined));
+  useWebServices();
 
   v.it('lists events by range and creates events', async () => {
     const drafted: unknown[] = [];
-    setCalendarPort({
-      async list(query) {
-        return [
-          {
-            id: 'e1',
-            title: 'Standup',
-            start: query.start,
-            end: query.start + 900_000,
-          },
-        ];
-      },
-      async create(event) {
-        drafted.push(event);
-        return { ...event, id: 'e2' };
+    provide({
+      calendar: {
+        async list(query) {
+          return [
+            {
+              id: 'e1',
+              title: 'Standup',
+              start: query.start,
+              end: query.start + 900_000,
+            },
+          ];
+        },
+        async create(event) {
+          drafted.push(event);
+          return { ...event, id: 'e2' };
+        },
       },
     });
     v.expect(calendarAvailable()).toBe(true);
@@ -112,7 +124,7 @@ v.describe('calendar', () => {
   });
 
   v.it('validates range order and missing write support', async () => {
-    setCalendarPort({ list: async () => [] });
+    provide({ calendar: { list: async () => [] } });
     await v
       .expect(getCalendarEvents({ start: 10, end: 5 }))
       .rejects.toThrowError(/after start/);
@@ -121,24 +133,34 @@ v.describe('calendar', () => {
       .rejects.toThrowError(/calendar.create/);
   });
 
-  v.it('throws a capability error without a calendar port', async () => {
-    v.expect(calendarAvailable()).toBe(false);
-    await v
-      .expect(getCalendarEvents({ start: 0, end: 1 }))
-      .rejects.toThrowError(/calendar/);
+  v.it('throws a capability error without a calendar service', async () => {
+    const check = async () => {
+      v.expect(calendarAvailable()).toBe(false);
+      await v
+        .expect(getCalendarEvents({ start: 0, end: 1 }))
+        .rejects.toThrowError(CapabilityError);
+      await v
+        .expect(createCalendarEvent({ title: 'x', start: 1, end: 2 }))
+        .rejects.toMatchObject({ capability: 'calendar' });
+    };
+    v.expect(webServices.calendar).toBeUndefined();
+    await check();
+    await withoutServices(check);
   });
 });
 
 v.describe('sensors', () => {
-  v.afterEach(() => setSensorsPort(undefined));
+  useWebServices();
 
   v.it('watches and reads a host sensor', async () => {
     let unsubscribed = 0;
-    setSensorsPort({
-      available: (type) => type === 'accelerometer',
-      watch(type, listener) {
-        listener({ sensor: type, x: 1, y: 2, z: 3, timestamp: 10 });
-        return () => unsubscribed++;
+    provide({
+      sensors: {
+        available: (type) => type === 'accelerometer',
+        watch(type, listener) {
+          listener({ sensor: type, x: 1, y: 2, z: 3, timestamp: 10 });
+          return () => unsubscribed++;
+        },
       },
     });
     v.expect(sensorsAvailable()).toBe(true);
@@ -159,28 +181,114 @@ v.describe('sensors', () => {
     v.expect(first.x).toBe(1);
   });
 
-  v.it('throws a capability error for unsupported sensors', () => {
-    v.expect(sensorsAvailable()).toBe(false);
-    v.expect(() => watchSensor('barometer', () => {})).toThrowError(
-      /sensor.barometer/,
+  v.it('the web provider offers device motion and nothing else', () => {
+    const original = Object.getOwnPropertyDescriptor(
+      globalThis,
+      'DeviceMotionEvent',
     );
+    const listen = v.vi.spyOn(window, 'addEventListener');
+    const unlisten = v.vi.spyOn(window, 'removeEventListener');
+    try {
+      Object.defineProperty(globalThis, 'DeviceMotionEvent', {
+        configurable: true,
+        value: undefined,
+      });
+      v.expect(sensorsAvailable()).toBe(true);
+      v.expect(sensorAvailable('accelerometer')).toBe(false);
+      v.expect(() => watchSensor('accelerometer', () => {})).toThrowError(
+        /sensor.accelerometer/,
+      );
+
+      Object.defineProperty(globalThis, 'DeviceMotionEvent', {
+        configurable: true,
+        value: class extends Event {},
+      });
+      v.expect(sensorAvailable('accelerometer')).toBe(true);
+      v.expect(sensorAvailable('gyroscope')).toBe(true);
+      v.expect(sensorAvailable('barometer')).toBe(false);
+      v.expect(() => watchSensor('barometer', () => {})).toThrowError(
+        /sensor.barometer/,
+      );
+      v.expect(listen).not.toHaveBeenCalled();
+
+      const readings: unknown[] = [];
+      const stop = watchSensor('accelerometer', (reading) =>
+        readings.push([reading.sensor, reading.x, reading.y, reading.z]),
+      );
+      const stopGyro = watchSensor('gyroscope', (reading) =>
+        readings.push([reading.sensor, reading.x, reading.y, reading.z]),
+      );
+      const motion = Object.assign(new Event('devicemotion'), {
+        accelerationIncludingGravity: { x: 1, y: 2, z: null },
+        rotationRate: { alpha: 4, beta: 5, gamma: 6 },
+      });
+      window.dispatchEvent(motion);
+      v.expect(readings).toEqual([
+        ['accelerometer', 1, 2, undefined],
+        ['gyroscope', 4, 5, 6],
+      ]);
+      stop();
+      stopGyro();
+      v.expect(unlisten.mock.calls.map((call) => call[0])).toEqual([
+        'devicemotion',
+        'devicemotion',
+      ]);
+      window.dispatchEvent(motion);
+      v.expect(readings).toHaveLength(2);
+    } finally {
+      listen.mockRestore();
+      unlisten.mockRestore();
+      if (original)
+        Object.defineProperty(globalThis, 'DeviceMotionEvent', original);
+      else
+        delete (globalThis as { DeviceMotionEvent?: unknown })
+          .DeviceMotionEvent;
+    }
   });
+
+  v.it(
+    'a host without a sensors service has no sensors and adds no listener',
+    async () => {
+      const listen = v.vi.spyOn(window, 'addEventListener');
+      try {
+        await withoutServices(() => {
+          v.expect(sensorsAvailable()).toBe(false);
+          v.expect(sensorAvailable('accelerometer')).toBe(false);
+          v.expect(() => watchSensor('accelerometer', () => {})).toThrowError(
+            CapabilityError,
+          );
+          v.expect(() => watchSensor('barometer', () => {})).toThrowError(
+            /sensor.barometer/,
+          );
+        });
+        v.expect(listen).not.toHaveBeenCalled();
+      } finally {
+        listen.mockRestore();
+      }
+    },
+  );
+
+  v.it(
+    'the web provider is a plain object the registry reads synchronously',
+    () => {
+      expectIdleWebProviders({ eager: ['sensors'] });
+    },
+  );
 });
 
 v.describe('maps', () => {
-  v.afterEach(() => {
-    setMapsPort(undefined);
-    resetDevicePorts();
-  });
+  useWebServices();
 
   v.it('uses the host map provider and directions', async () => {
     const calls: unknown[] = [];
-    setMapsPort({
-      async open(options) {
-        calls.push(['open', options]);
-      },
-      async directions(options) {
-        calls.push(['directions', options]);
+    provide({
+      maps: {
+        async open(options) {
+          calls.push(['open', options]);
+        },
+        async directions(options) {
+          calls.push(['directions', options]);
+        },
       },
     });
     v.expect(mapsAvailable()).toBe(true);
@@ -208,9 +316,14 @@ v.describe('maps', () => {
 
   v.it('falls back to Google Maps through the external opener', async () => {
     const opened: string[] = [];
-    setDevicePorts({
-      openExternal: async (url) => {
-        opened.push(url);
+    // The browser has no maps provider either: it opens the link.
+    v.expect(webServices.maps).toBeUndefined();
+    v.expect(mapsAvailable()).toBe(false);
+    provide({
+      openExternal: {
+        open: async (url) => {
+          opened.push(url);
+        },
       },
     });
     await openMap({
@@ -228,13 +341,31 @@ v.describe('maps', () => {
     v.expect(opened[1]).toContain('destination=3%2C4');
     v.expect(opened[1]).toContain('travelmode=transit');
   });
+
+  v.it(
+    'a host with neither maps nor an external opener cannot open a map',
+    async () => {
+      const open = v.vi.spyOn(window, 'open');
+      try {
+        await withoutServices(async () => {
+          v.expect(mapsAvailable()).toBe(false);
+          await v
+            .expect(openMap({ center: { latitude: 1, longitude: 2 } }))
+            .rejects.toMatchObject({ capability: 'openExternal' });
+          await v
+            .expect(openDirections({ destination: 'home' }))
+            .rejects.toThrowError(CapabilityError);
+        });
+        v.expect(open).not.toHaveBeenCalled();
+      } finally {
+        open.mockRestore();
+      }
+    },
+  );
 });
 
 v.describe('update delivery', () => {
-  v.afterEach(() => {
-    setUpdateDeliveryPort(undefined);
-    resetDevicePorts();
-  });
+  useWebServices();
 
   const update: UpdateInfo = {
     version: '2.0.0',
@@ -243,17 +374,19 @@ v.describe('update delivery', () => {
 
   v.it('downloads, installs and relaunches through the host', async () => {
     const calls: string[] = [];
-    setUpdateDeliveryPort({
-      async download(_update, onProgress) {
-        calls.push('download');
-        onProgress?.(0.25);
-        onProgress?.(0.75);
-      },
-      async install() {
-        calls.push('install');
-      },
-      async relaunch() {
-        calls.push('relaunch');
+    provide({
+      updateDelivery: {
+        async download(_update, onProgress) {
+          calls.push('download');
+          onProgress?.(0.25);
+          onProgress?.(0.75);
+        },
+        async install() {
+          calls.push('install');
+        },
+        async relaunch() {
+          calls.push('relaunch');
+        },
       },
     });
     const delivery = createUpdateDelivery();
@@ -273,11 +406,14 @@ v.describe('update delivery', () => {
     v.expect(next.progress()).toBe(0.5);
   });
 
-  v.it('opens the store URL without a delivery port', async () => {
+  v.it('opens the store URL without a delivery service', async () => {
     const opened: string[] = [];
-    setDevicePorts({
-      openExternal: async (url) => {
-        opened.push(url);
+    v.expect(webServices.updateDelivery).toBeUndefined();
+    provide({
+      openExternal: {
+        open: async (url) => {
+          opened.push(url);
+        },
       },
     });
     const delivery = createUpdateDelivery();
@@ -287,6 +423,42 @@ v.describe('update delivery', () => {
       .expect(delivery.apply({ version: '2.0.0' }))
       .rejects.toThrowError(/updateDelivery/);
   });
+
+  v.it(
+    'a host with neither delivery nor an external opener cannot apply an update',
+    async () => {
+      const open = v.vi.spyOn(window, 'open');
+      try {
+        await withoutServices(async () => {
+          const delivery = createUpdateDelivery();
+          await v
+            .expect(delivery.apply(update))
+            .rejects.toMatchObject({ capability: 'openExternal' });
+          await v
+            .expect(delivery.apply({ version: '2.0.0' }))
+            .rejects.toMatchObject({ capability: 'updateDelivery' });
+          await v
+            .expect(checkForUpdate('1.0.0'))
+            .rejects.toMatchObject({ capability: 'updateSource' });
+          v.expect(updateSource()).toBeUndefined();
+        });
+        v.expect(open).not.toHaveBeenCalled();
+      } finally {
+        open.mockRestore();
+      }
+    },
+  );
+
+  v.it(
+    'checks the host update feed and offers only newer versions',
+    async () => {
+      const source = { check: async () => ({ version: '2.0.0' }) };
+      provide({ updateSource: source });
+      v.expect(updateSource()).toBe(source);
+      v.expect(await checkForUpdate('1.0.0')).toEqual({ version: '2.0.0' });
+      v.expect(await checkForUpdate('2.0.0')).toBeNull();
+    },
+  );
 });
 
 v.describe('release pipeline', () => {

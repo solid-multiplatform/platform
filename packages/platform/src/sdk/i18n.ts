@@ -1,4 +1,5 @@
 import { createSignal, type Accessor } from 'solid-js';
+import { peekService } from './registry.js';
 
 export type TextDirection = 'ltr' | 'rtl';
 export type Messages = Record<string, string>;
@@ -41,8 +42,28 @@ export const useTextScale: Accessor<number> = textScale;
 /** Whether the host requests a high-contrast palette. */
 export const useHighContrast: Accessor<boolean> = highContrast;
 
-const documentRoot = (): HTMLElement | undefined =>
-  typeof document === 'undefined' ? undefined : document.documentElement;
+/**
+ * What the host knows about the user's language, and where it shows the app's
+ * choices outside the scene (the page's `lang`/`dir` on the web, for example).
+ * Every `apply` method is optional: a host with nothing to update leaves it
+ * out.
+ */
+export interface LocalePort {
+  /** The user's preferred locale, as a BCP 47 tag. */
+  current(): string;
+  /** The app switched locale. */
+  apply?(locale: string, direction: TextDirection): void;
+  /** The app changed the text scale. */
+  applyTextScale?(scale: number): void;
+  /** The app turned the high-contrast palette on or off. */
+  applyHighContrast?(enabled: boolean): void;
+}
+
+declare module './registry.js' {
+  interface ServiceProviders {
+    locale: LocalePort;
+  }
+}
 
 /**
  * Scale every design-token font size. Clamped to 0.5–3 so a corrupt host value
@@ -53,15 +74,13 @@ export function setTextScale(scale: number): void {
   if (!Number.isFinite(scale)) return;
   const next = Math.min(3, Math.max(0.5, scale));
   setTextScaleSignal(next);
-  const root = documentRoot();
-  if (root) root.style.setProperty('--text-scale', String(next));
+  peekService('locale')?.applyTextScale?.(next);
 }
 
 /** Toggle the high-contrast palette and the matching host hooks. */
 export function setHighContrast(enabled: boolean): void {
   setHighContrastSignal(enabled);
-  const root = documentRoot();
-  if (root) root.classList.toggle('high-contrast', enabled);
+  peekService('locale')?.applyHighContrast?.(enabled);
 }
 
 export interface I18nOptions {
@@ -109,17 +128,11 @@ export interface I18n {
   ): string | undefined;
 }
 
-const defaultLocale = () =>
-  typeof navigator !== 'undefined' && navigator.language
-    ? navigator.language
-    : 'en';
+// English, and nothing to update, on a host without a locale service.
+const defaultLocale = () => peekService('locale')?.current() || 'en';
 
-const syncDocumentLocale = (locale: string) => {
-  const root = documentRoot();
-  if (!root) return;
-  root.lang = locale;
-  root.dir = textDirection(locale);
-};
+const applyLocale = (locale: string) =>
+  peekService('locale')?.apply?.(locale, textDirection(locale));
 
 const interpolate = (
   template: string,
@@ -181,7 +194,7 @@ export function createI18n(options: I18nOptions = {}): I18n {
     setLocale(next) {
       if (!next) return;
       setLocaleSignal(next);
-      syncDocumentLocale(next);
+      applyLocale(next);
     },
     setMessages(nextLocale, next) {
       setMessagesSignal((current) => ({
@@ -249,7 +262,7 @@ export function createI18n(options: I18nOptions = {}): I18n {
     },
   };
 
-  syncDocumentLocale(i18n.locale());
+  applyLocale(i18n.locale());
   return i18n;
 }
 
@@ -262,7 +275,7 @@ export function setupI18n(options: I18nOptions): I18n {
 }
 
 // Created on first use so that importing the SDK never touches the host
-// (locale lookup, document attributes) before the app asks for a translation.
+// (its locale service) before the app asks for a translation.
 const current = (): I18n => (active ??= createI18n());
 
 /** The active i18n instance. */

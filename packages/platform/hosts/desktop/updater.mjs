@@ -2,11 +2,8 @@ import { createHash } from 'node:crypto';
 import { createWriteStream, mkdirSync, existsSync } from 'node:fs';
 import { rename } from 'node:fs/promises';
 import path from 'node:path';
-import {
-  compareVersions,
-  setUpdateDeliveryPort,
-  setUpdateSource,
-} from '@solid-multiplatform/platform/update';
+import { installServices } from '@solid-multiplatform/platform/services';
+import { compareVersions } from '@solid-multiplatform/platform/update';
 
 const safeName = (url) => {
   try {
@@ -117,14 +114,23 @@ export function createDesktopUpdater({
     },
   };
 
+  let unwire;
   return {
     source,
     delivery,
-    /** Register the provider with the portable update helpers. */
+    /** Install the feed and the delivery as the update services. */
     wire() {
-      if (source) setUpdateSource(source);
-      setUpdateDeliveryPort(delivery);
+      unwire?.();
+      unwire = installServices({
+        updateDelivery: delivery,
+        ...(source ? { updateSource: source } : {}),
+      });
       return this;
+    },
+    /** Remove what `wire` installed. */
+    unwire() {
+      unwire?.();
+      unwire = undefined;
     },
   };
 }

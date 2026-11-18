@@ -19,12 +19,17 @@ import type { PlatformTarget } from '../sdk/capabilities.js';
 import { browserEditorHost } from '../sdk/editor.js';
 import { bindPointerEvents, createInputScope } from '../sdk/input.js';
 import { installServices } from '../sdk/registry.js';
-import { webServices } from './web-services/index.js';
+import { webAppServices, webServices } from './web-services/index.js';
 
 export interface WebHostOptions {
   /** The element to draw in, or its id. Defaults to `app`. */
   root?: string | HTMLElement;
   target?: Extract<PlatformTarget, 'web' | 'tizen' | 'webos' | 'vizio'>;
+  /**
+   * Keeps this app's settings apart from other apps on the same origin.
+   * Defaults to `app`.
+   */
+  namespace?: string;
 }
 
 /** The page element a web host draws in. */
@@ -52,7 +57,11 @@ export function createWebHost(
     target,
     launch(run) {
       const surface = webSurface(options.root);
-      const removeServices = installServices(webServices);
+      // First: binding the viewport reads the colour scheme service.
+      const removeServices = installServices({
+        ...webServices,
+        ...webAppServices(options.namespace ?? 'app'),
+      });
       const stopViewport = bindBrowserViewport(surface);
       const pointer = createInputScope();
       const stopPointer = bindPointerEvents(surface, pointer, (x, y) => {

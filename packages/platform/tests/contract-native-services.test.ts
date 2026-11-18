@@ -1,15 +1,10 @@
 import * as v from 'vitest';
 import {
   getCurrentPosition,
-  setGeolocationPort,
   watchPosition,
   type GeoPosition,
 } from '../src/sdk/geolocation.js';
-import {
-  authenticate,
-  biometricsAvailable,
-  setBiometricsPort,
-} from '../src/sdk/biometrics.js';
+import { authenticate, biometricsAvailable } from '../src/sdk/biometrics.js';
 import {
   fileDirectories,
   fileExists,
@@ -18,10 +13,9 @@ import {
   readFileBytes,
   readFileText,
   removeFile,
-  setFilePickerPort,
-  setFileSystemPort,
   writeFileBytes,
   writeFileText,
+  type FileSystemPort,
 } from '../src/sdk/files.js';
 import {
   compareVersions,
@@ -35,9 +29,19 @@ import {
   matchesCombo,
   parseCombo,
 } from '../src/sdk/shortcuts.js';
+import { CapabilityError } from '../src/sdk/registry.js';
+import { webServices } from '../src/hosts/web-services/index.js';
+import {
+  expectIdleWebProviders,
+  expectSameTurn,
+  forbid,
+  provide,
+  useWebServices,
+  withoutServices,
+} from './services-helpers.js';
 
 v.describe('geolocation', () => {
-  v.afterEach(() => setGeolocationPort(undefined));
+  useWebServices();
 
   v.it('reads and watches through the host port', async () => {
     const position: GeoPosition = {
@@ -48,16 +52,18 @@ v.describe('geolocation', () => {
     };
     const optionsSeen: unknown[] = [];
     let stop: (() => void) | undefined;
-    setGeolocationPort({
-      async getCurrent(options) {
-        optionsSeen.push(options);
-        return position;
-      },
-      watch(options, listener) {
-        optionsSeen.push(options);
-        listener(position);
-        stop = () => optionsSeen.push('stopped');
-        return stop;
+    provide({
+      geolocation: {
+        async getCurrent(options) {
+          optionsSeen.push(options);
+          return position;
+        },
+        watch(options, listener) {
+          optionsSeen.push(options);
+          listener(position);
+          stop = () => optionsSeen.push('stopped');
+          return stop;
+        },
       },
     });
     v.expect(await getCurrentPosition({ timeout: 100 })).toEqual(position);
@@ -69,10 +75,111 @@ v.describe('geolocation', () => {
     dispose();
     v.expect(optionsSeen).toContain('stopped');
   });
+
+  v.it('the web provider uses navigator.geolocation', async () => {
+    const original = Object.getOwnPropertyDescriptor(navigator, 'geolocation');
+    const calls: unknown[] = [];
+    const fix = {
+      coords: {
+        latitude: 1,
+        longitude: 2,
+        accuracy: 3,
+        altitude: null,
+        heading: null,
+        speed: 4,
+      },
+      timestamp: 5,
+    };
+    try {
+      Object.defineProperty(navigator, 'geolocation', {
+        configurable: true,
+        value: undefined,
+      });
+      await v
+        .expect(getCurrentPosition())
+        .rejects.toMatchObject({ capability: 'geolocation' });
+      v.expect(() => watchPosition({}, () => {})).toThrowError(CapabilityError);
+
+      Object.defineProperty(navigator, 'geolocation', {
+        configurable: true,
+        value: {
+          getCurrentPosition(
+            done: (value: unknown) => void,
+            _fail: unknown,
+            options: unknown,
+          ) {
+            calls.push(['current', options]);
+            done(fix);
+          },
+          watchPosition(
+            next: (value: unknown) => void,
+            _fail: unknown,
+            options: unknown,
+          ) {
+            calls.push(['watch', options]);
+            next(fix);
+            return 7;
+          },
+          clearWatch(id: number) {
+            calls.push(['clear', id]);
+          },
+        },
+      });
+      const expected = {
+        latitude: 1,
+        longitude: 2,
+        accuracy: 3,
+        altitude: undefined,
+        heading: undefined,
+        speed: 4,
+        timestamp: 5,
+      };
+      v.expect(await getCurrentPosition({ timeout: 10 })).toEqual(expected);
+      const seen: GeoPosition[] = [];
+      const stop = watchPosition({ maximumAge: 1 }, (next) => seen.push(next));
+      v.expect(seen).toEqual([expected]);
+      stop();
+      v.expect(calls).toEqual([
+        ['current', { timeout: 10 }],
+        ['watch', { maximumAge: 1 }],
+        ['clear', 7],
+      ]);
+    } finally {
+      if (original) Object.defineProperty(navigator, 'geolocation', original);
+      else delete (navigator as { geolocation?: unknown }).geolocation;
+    }
+  });
+
+  v.it(
+    'a host without a geolocation service never asks the browser',
+    async () => {
+      const restore = forbid(navigator, 'geolocation');
+      try {
+        await withoutServices(async () => {
+          await v.expect(getCurrentPosition()).rejects.toMatchObject({
+            name: 'CapabilityError',
+            capability: 'geolocation',
+          });
+          v.expect(() => watchPosition({}, () => {})).toThrowError(
+            CapabilityError,
+          );
+        });
+      } finally {
+        restore();
+      }
+    },
+  );
+
+  v.it(
+    'the web provider is a plain object the registry reads synchronously',
+    () => {
+      expectIdleWebProviders({ eager: ['geolocation'] });
+    },
+  );
 });
 
 v.describe('biometrics', () => {
-  v.afterEach(() => setBiometricsPort(undefined));
+  useWebServices();
 
   v.it('reports availability and returns host results', async () => {
     v.expect(biometricsAvailable()).toBe(false);
@@ -81,11 +188,13 @@ v.describe('biometrics', () => {
       error: 'unavailable',
     });
 
-    setBiometricsPort({
-      authenticate: async ({ reason }) => ({
-        success: reason === 'Unlock',
-        error: reason === 'Unlock' ? undefined : 'cancelled',
-      }),
+    provide({
+      biometrics: {
+        authenticate: async ({ reason }) => ({
+          success: reason === 'Unlock',
+          error: reason === 'Unlock' ? undefined : 'cancelled',
+        }),
+      },
     });
     v.expect(biometricsAvailable()).toBe(true);
     v.expect(await authenticate({ reason: 'Unlock' })).toEqual({
@@ -96,17 +205,33 @@ v.describe('biometrics', () => {
       error: 'cancelled',
     });
   });
+
+  v.it(
+    'is unavailable in the browser and on a host that installed nothing',
+    async () => {
+      const credentials = forbid(navigator, 'credentials');
+      try {
+        v.expect(webServices.biometrics).toBeUndefined();
+        await withoutServices(async () => {
+          v.expect(biometricsAvailable()).toBe(false);
+          v.expect(await authenticate({ reason: 'Unlock' })).toEqual({
+            success: false,
+            error: 'unavailable',
+          });
+        });
+      } finally {
+        credentials();
+      }
+    },
+  );
 });
 
 v.describe('files', () => {
-  v.afterEach(() => {
-    setFileSystemPort(undefined);
-    setFilePickerPort(undefined);
-  });
+  useWebServices();
 
   v.it('forwards file operations to the host port', async () => {
     const writes: string[] = [];
-    setFileSystemPort({
+    const fileSystem: FileSystemPort = {
       documentDirectory: '/docs',
       cacheDirectory: '/cache',
       async readText(path) {
@@ -130,7 +255,8 @@ v.describe('files', () => {
       async list() {
         return [{ name: 'a.txt', path: '/docs/a.txt', size: 3 }];
       },
-    });
+    };
+    provide({ fileSystem });
     v.expect(await readFileText('a.txt')).toBe('text:a.txt');
     await writeFileText('a.txt', 'hello');
     v.expect(Array.from(await readFileBytes('a.bin'))).toEqual([1, 2]);
@@ -149,30 +275,113 @@ v.describe('files', () => {
     ]);
   });
 
-  v.it('throws a capability error without a file port', () => {
-    v.expect(() => readFileText('x')).toThrowError(/files/);
-    v.expect(() => listFiles('/')).toThrowError(/files/);
+  v.it('throws a capability error without a file system service', async () => {
+    const check = async () => {
+      v.expect(fileDirectories()).toEqual({
+        documents: undefined,
+        cache: undefined,
+      });
+      await v.expect(readFileText('x')).rejects.toMatchObject({
+        name: 'CapabilityError',
+        capability: 'fileSystem',
+      });
+      await v.expect(listFiles('/')).rejects.toThrowError(CapabilityError);
+      await v.expect(fileExists('x')).rejects.toThrowError(CapabilityError);
+    };
+    // A page has no app-owned directories: no browser provider.
+    v.expect(webServices.fileSystem).toBeUndefined();
+    await check();
+    await withoutServices(check);
   });
 
   v.it('uses the host file picker', async () => {
-    setFilePickerPort({
-      async pick(options) {
-        v.expect(options).toEqual({ accept: 'image/*', multiple: true });
-        return [
-          {
-            name: 'photo.png',
-            type: 'image/png',
-            size: 4,
-            text: async () => 'data',
-            bytes: async () => new Uint8Array([1, 2, 3, 4]),
-          },
-        ];
+    provide({
+      filePicker: {
+        async pick(options) {
+          v.expect(options).toEqual({ accept: 'image/*', multiple: true });
+          return [
+            {
+              name: 'photo.png',
+              type: 'image/png',
+              size: 4,
+              text: async () => 'data',
+              bytes: async () => new Uint8Array([1, 2, 3, 4]),
+            },
+          ];
+        },
       },
     });
     const files = await pickFiles({ accept: 'image/*', multiple: true });
     v.expect(files[0]!.name).toBe('photo.png');
     v.expect(await files[0]!.text()).toBe('data');
     v.expect(Array.from(await files[0]!.bytes())).toEqual([1, 2, 3, 4]);
+  });
+
+  v.it(
+    'the web picker is a hidden file input, removed after the choice',
+    async () => {
+      const click = v.vi
+        .spyOn(HTMLInputElement.prototype, 'click')
+        .mockImplementation(function (this: HTMLInputElement) {
+          v.expect(this.isConnected).toBe(true);
+          v.expect([this.type, this.accept, this.multiple]).toEqual([
+            'file',
+            '.txt',
+            true,
+          ]);
+          Object.defineProperty(this, 'files', {
+            value: [new File(['hello'], 'a.txt', { type: 'text/plain' })],
+          });
+          this.dispatchEvent(new Event('change'));
+        });
+      try {
+        const picked = await pickFiles({ accept: '.txt', multiple: true });
+        v.expect(
+          picked.map((file) => [file.name, file.type, file.size]),
+        ).toEqual([['a.txt', 'text/plain', 5]]);
+        v.expect(document.querySelector('input[type="file"]')).toBeNull();
+
+        click.mockImplementation(function (this: HTMLInputElement) {
+          this.dispatchEvent(new Event('cancel'));
+        });
+        v.expect(await pickFiles()).toEqual([]);
+        v.expect(document.querySelector('input[type="file"]')).toBeNull();
+      } finally {
+        click.mockRestore();
+      }
+    },
+  );
+
+  v.it('a host without a file picker adds nothing to the page', async () => {
+    const create = v.vi.spyOn(document, 'createElement');
+    try {
+      await withoutServices(async () => {
+        await v.expect(pickFiles()).rejects.toMatchObject({
+          name: 'CapabilityError',
+          capability: 'filePicker',
+        });
+      });
+      v.expect(create).not.toHaveBeenCalled();
+    } finally {
+      create.mockRestore();
+    }
+  });
+
+  v.it('the web picker opens in the same turn as the call', async () => {
+    const click = v.vi
+      .spyOn(HTMLInputElement.prototype, 'click')
+      .mockImplementation(function (this: HTMLInputElement) {
+        queueMicrotask(() => this.dispatchEvent(new Event('cancel')));
+      });
+    try {
+      await expectSameTurn(click, () => pickFiles());
+    } finally {
+      click.mockRestore();
+    }
+  });
+
+  v.it('the web file picker is installed without doing any work', () => {
+    expectIdleWebProviders({ eager: ['filePicker'] });
   });
 });
 
@@ -217,6 +426,8 @@ v.describe('update checker', () => {
 });
 
 v.describe('keyboard shortcuts', () => {
+  useWebServices();
+
   v.it('parses combos', () => {
     v.expect(parseCombo('Mod+K')).toMatchObject({
       key: 'k',
@@ -295,6 +506,105 @@ v.describe('keyboard shortcuts', () => {
     );
     layer.dispose();
   });
+
+  const combo = (init: KeyboardEventInit) =>
+    new KeyboardEvent('keydown', { key: 'k', cancelable: true, ...init });
+
+  v.it(
+    'listens where the host delivers keys, and takes Mod from the host',
+    () => {
+      const keys = new EventTarget();
+      const calls: string[] = [];
+      let modifier: 'meta' | 'ctrl' = 'ctrl';
+      provide({
+        keyEvents: { target: () => keys, primaryModifier: () => modifier },
+      });
+      const layer = createShortcuts([
+        { combo: 'Mod+K', handler: () => void calls.push('palette') },
+      ]);
+      keys.dispatchEvent(combo({ ctrlKey: true }));
+      keys.dispatchEvent(combo({ metaKey: true }));
+      v.expect(calls).toEqual(['palette']);
+      // An Apple keyboard: Command is the shortcut key.
+      modifier = 'meta';
+      keys.dispatchEvent(combo({ ctrlKey: true }));
+      keys.dispatchEvent(combo({ metaKey: true }));
+      v.expect(calls).toEqual(['palette', 'palette']);
+      v.expect(
+        matchesCombo(combo({ metaKey: true }), parseCombo('Mod+K')),
+      ).toBe(true);
+      // The window is not this host's key target.
+      window.dispatchEvent(combo({ metaKey: true }));
+      v.expect(calls).toHaveLength(2);
+      layer.dispose();
+      keys.dispatchEvent(combo({ metaKey: true }));
+      v.expect(calls).toHaveLength(2);
+    },
+  );
+
+  v.it('the web provider listens on the window and reads the platform', () => {
+    const original = Object.getOwnPropertyDescriptor(navigator, 'platform');
+    const calls: string[] = [];
+    try {
+      Object.defineProperty(navigator, 'platform', {
+        configurable: true,
+        value: 'MacIntel',
+      });
+      const layer = createShortcuts([
+        { combo: 'Mod+K', handler: () => void calls.push('palette') },
+      ]);
+      window.dispatchEvent(combo({ ctrlKey: true }));
+      window.dispatchEvent(combo({ metaKey: true }));
+      v.expect(calls).toEqual(['palette']);
+      Object.defineProperty(navigator, 'platform', {
+        configurable: true,
+        value: 'Linux x86_64',
+      });
+      window.dispatchEvent(combo({ ctrlKey: true }));
+      v.expect(calls).toEqual(['palette', 'palette']);
+      layer.dispose();
+      window.dispatchEvent(combo({ ctrlKey: true }));
+      v.expect(calls).toHaveLength(2);
+    } finally {
+      if (original) Object.defineProperty(navigator, 'platform', original);
+      else delete (navigator as { platform?: unknown }).platform;
+    }
+  });
+
+  v.it(
+    'without a key events service: no listener, Mod is Control, and no browser API is read',
+    async () => {
+      const restore = forbid(navigator, 'platform');
+      const listen = v.vi.spyOn(window, 'addEventListener');
+      const calls: string[] = [];
+      try {
+        await withoutServices(() => {
+          const layer = createShortcuts([
+            { combo: 'Mod+K', handler: () => void calls.push('palette') },
+          ]);
+          window.dispatchEvent(combo({ ctrlKey: true }));
+          v.expect(calls).toEqual([]);
+          // Events the app feeds in itself still match.
+          layer.handle(combo({ ctrlKey: true }));
+          v.expect(calls).toEqual(['palette']);
+          layer.handle(combo({ metaKey: true }));
+          v.expect(calls).toEqual(['palette']);
+          layer.dispose();
+        });
+        v.expect(listen).not.toHaveBeenCalled();
+      } finally {
+        listen.mockRestore();
+        restore();
+      }
+    },
+  );
+
+  v.it(
+    'the web provider is a plain object the registry reads synchronously',
+    () => {
+      expectIdleWebProviders({ eager: ['keyEvents'] });
+    },
+  );
 });
 
 v.describe('back dispatcher', () => {

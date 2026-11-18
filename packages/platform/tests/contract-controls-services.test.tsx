@@ -6,17 +6,19 @@ import { renderer, waitForUpdate } from './setup.js';
 import {
   capturePhoto,
   openMicrophone,
-  setCameraPort,
-  setMicrophonePort,
   stopMicrophone,
 } from '../src/sdk/capture.js';
-import {
-  applySystemBarStyle,
-  requestAppReview,
-  resetDevicePorts,
-  setDevicePorts,
-} from '../src/sdk/device.js';
+import { applySystemBarStyle, requestAppReview } from '../src/sdk/device.js';
 import { bindMediaKeys } from '../src/sdk/media.js';
+import { CapabilityError, serviceAvailable } from '../src/sdk/registry.js';
+import {
+  expectIdleWebProviders,
+  expectSameTurn,
+  forbid,
+  provide,
+  useWebServices,
+  withoutServices,
+} from './services-helpers.js';
 
 const texts = (node: unknown): string[] => {
   const current = node as { text?: string; children?: readonly unknown[] };
@@ -100,17 +102,20 @@ v.describe('Select', () => {
 });
 
 v.describe('camera and microphone', () => {
-  v.afterEach(() => {
-    setCameraPort(undefined);
-    setMicrophonePort(undefined);
-  });
+  useWebServices();
 
   v.it('captures photos and streams through host ports', async () => {
     const calls: string[] = [];
-    setCameraPort({
-      async capture(options) {
-        calls.push(`capture:${options.facingMode}`);
-        return { dataUrl: 'data:image/jpeg;base64,x', width: 640, height: 480 };
+    provide({
+      camera: {
+        async capture(options) {
+          calls.push(`capture:${options.facingMode}`);
+          return {
+            dataUrl: 'data:image/jpeg;base64,x',
+            width: 640,
+            height: 480,
+          };
+        },
       },
     });
     v.expect(await capturePhoto({ facingMode: 'environment' })).toEqual({
@@ -121,29 +126,124 @@ v.describe('camera and microphone', () => {
     v.expect(calls).toEqual(['capture:environment']);
 
     const stream = { getTracks: () => [] } as unknown as MediaStream;
-    setMicrophonePort({
-      start: async () => {
-        calls.push('start');
-        return stream;
+    provide({
+      microphone: {
+        start: async () => {
+          calls.push('start');
+          return stream;
+        },
+        stop: () => calls.push('stop'),
       },
-      stop: () => calls.push('stop'),
     });
     v.expect(await openMicrophone()).toBe(stream);
     stopMicrophone(stream);
     v.expect(calls).toEqual(['capture:environment', 'start', 'stop']);
   });
 
-  v.it('throws a capability error without a camera port', async () => {
-    await v.expect(capturePhoto()).rejects.toThrowError(/camera/);
+  v.it('the web providers need navigator.mediaDevices', async () => {
+    const original = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
+    const stopped: string[] = [];
+    const stream = {
+      getTracks: () => [{ stop: () => stopped.push('audio') }],
+    } as unknown as MediaStream;
+    try {
+      Object.defineProperty(navigator, 'mediaDevices', {
+        configurable: true,
+        value: undefined,
+      });
+      await v.expect(capturePhoto()).rejects.toThrowError(/camera/);
+      await v.expect(openMicrophone()).rejects.toThrowError(/microphone/);
+
+      const constraints: unknown[] = [];
+      Object.defineProperty(navigator, 'mediaDevices', {
+        configurable: true,
+        value: {
+          getUserMedia: async (value: unknown) => {
+            constraints.push(value);
+            return stream;
+          },
+        },
+      });
+      v.expect(await openMicrophone()).toBe(stream);
+      v.expect(constraints).toEqual([{ audio: true }]);
+      stopMicrophone(stream);
+      v.expect(stopped).toEqual(['audio']);
+    } finally {
+      if (original) Object.defineProperty(navigator, 'mediaDevices', original);
+      else delete (navigator as { mediaDevices?: unknown }).mediaDevices;
+    }
+  });
+
+  v.it(
+    'without camera and microphone services nothing asks the browser',
+    async () => {
+      const restore = forbid(navigator, 'mediaDevices');
+      const create = v.vi.spyOn(document, 'createElement');
+      const stopped: string[] = [];
+      try {
+        await withoutServices(async () => {
+          await v.expect(capturePhoto()).rejects.toMatchObject({
+            name: 'CapabilityError',
+            capability: 'camera',
+          });
+          await v.expect(openMicrophone()).rejects.toMatchObject({
+            name: 'CapabilityError',
+            capability: 'microphone',
+          });
+          // A stream the app got elsewhere is still stopped.
+          stopMicrophone({
+            getTracks: () => [{ stop: () => stopped.push('track') }],
+          } as unknown as MediaStream);
+        });
+        v.expect(stopped).toEqual(['track']);
+        v.expect(create).not.toHaveBeenCalled();
+      } finally {
+        create.mockRestore();
+        restore();
+      }
+    },
+  );
+
+  v.it(
+    'the permission prompts are asked for in the same turn as the call',
+    async () => {
+      const original = Object.getOwnPropertyDescriptor(
+        navigator,
+        'mediaDevices',
+      );
+      const getUserMedia = v.vi.fn(async () => {
+        throw new DOMException('denied', 'NotAllowedError');
+      });
+      Object.defineProperty(navigator, 'mediaDevices', {
+        configurable: true,
+        value: { getUserMedia },
+      });
+      try {
+        await expectSameTurn(getUserMedia, () => capturePhoto());
+        await expectSameTurn(getUserMedia, () => openMicrophone());
+        v.expect(getUserMedia.mock.calls).toEqual([
+          [{ video: true }],
+          [{ audio: true }],
+        ]);
+      } finally {
+        if (original)
+          Object.defineProperty(navigator, 'mediaDevices', original);
+        else delete (navigator as { mediaDevices?: unknown }).mediaDevices;
+      }
+    },
+  );
+
+  v.it('the web providers are installed without doing any work', () => {
+    expectIdleWebProviders({ eager: ['camera', 'microphone'] });
   });
 });
 
 v.describe('system bars and app review', () => {
-  v.afterEach(() => resetDevicePorts());
+  useWebServices();
 
   v.it('applies a host system-bar style and restores it', () => {
     const calls: string[] = [];
-    setDevicePorts({
+    provide({
       systemBars: {
         apply(style) {
           calls.push(`${style.statusBarColor}:${style.lightStatusIcons}`);
@@ -160,8 +260,7 @@ v.describe('system bars and app review', () => {
     v.expect(calls).toEqual(['287454207:false', 'restored']);
   });
 
-  v.it('uses the theme-color meta tag on the web', () => {
-    resetDevicePorts();
+  v.it('the web provider uses the theme-color meta tag', () => {
     const existing = document.querySelector('meta[name="theme-color"]');
     existing?.remove();
     const restore = applySystemBarStyle({ statusBarColor: 0x112233ff });
@@ -173,12 +272,43 @@ v.describe('system bars and app review', () => {
 
   v.it('requests an app review when the host supports it', async () => {
     v.expect(await requestAppReview()).toBe(false);
-    setDevicePorts({ appReview: { request: async () => true } });
+    provide({ appReview: { request: async () => true } });
     v.expect(await requestAppReview()).toBe(true);
   });
+
+  v.it(
+    'without a system-bars service nothing is styled and the page is not touched',
+    async () => {
+      const query = v.vi.spyOn(document, 'querySelector');
+      const create = v.vi.spyOn(document, 'createElement');
+      try {
+        await withoutServices(async () => {
+          v.expect(() =>
+            applySystemBarStyle({ statusBarColor: 0x112233ff }),
+          ).toThrowError(CapabilityError);
+          v.expect(await requestAppReview()).toBe(false);
+        });
+        v.expect(query).not.toHaveBeenCalled();
+        v.expect(create).not.toHaveBeenCalled();
+      } finally {
+        query.mockRestore();
+        create.mockRestore();
+      }
+    },
+  );
+
+  v.it(
+    'the web system bars are a plain object; the browser has no app review',
+    () => {
+      expectIdleWebProviders({ eager: ['systemBars'] });
+      v.expect(serviceAvailable('appReview')).toBe('unavailable');
+    },
+  );
 });
 
 v.describe('media keys', () => {
+  useWebServices();
+
   v.it('maps hardware transport keys to actions', () => {
     const target = new EventTarget();
     const calls: string[] = [];
@@ -202,5 +332,51 @@ v.describe('media keys', () => {
     }
     v.expect(calls).toEqual(['playpause', 'next', 'previous']);
     dispose();
+  });
+
+  const press = (target: EventTarget, key: string) =>
+    target.dispatchEvent(
+      new KeyboardEvent('keydown', { key, cancelable: true }),
+    );
+
+  v.it('listens where the host delivers keys: the window on the web', () => {
+    const calls: string[] = [];
+    const dispose = bindMediaKeys({ play: () => calls.push('play') });
+    press(window, 'MediaPlay');
+    v.expect(calls).toEqual(['play']);
+    dispose();
+    press(window, 'MediaPlay');
+    v.expect(calls).toEqual(['play']);
+
+    const keys = new EventTarget();
+    provide({ keyEvents: { target: () => keys } });
+    const disposeHost = bindMediaKeys({ stop: () => calls.push('stop') });
+    press(window, 'MediaStop');
+    press(keys, 'MediaStop');
+    v.expect(calls).toEqual(['play', 'stop']);
+    disposeHost();
+  });
+
+  v.it(
+    'binds nothing, and adds no window listener, on a host without key events',
+    async () => {
+      const listen = v.vi.spyOn(window, 'addEventListener');
+      const calls: string[] = [];
+      try {
+        await withoutServices(() => {
+          const dispose = bindMediaKeys({ play: () => calls.push('play') });
+          press(window, 'MediaPlay');
+          dispose();
+        });
+        v.expect(calls).toEqual([]);
+        v.expect(listen).not.toHaveBeenCalled();
+      } finally {
+        listen.mockRestore();
+      }
+    },
+  );
+
+  v.it('the web key target is not read until a helper asks for it', () => {
+    expectIdleWebProviders({ eager: ['keyEvents'] });
   });
 });

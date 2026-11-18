@@ -16,11 +16,14 @@ import {
   resetEnvironment,
   setEnvironment,
 } from '../src/sdk/env.js';
+import { deviceMemory } from '../src/sdk/device.js';
 import {
-  deviceMemory,
-  resetDevicePorts,
-  setDevicePorts,
-} from '../src/sdk/device.js';
+  expectIdleWebProviders,
+  forbid,
+  provide,
+  useWebServices,
+  withoutServices,
+} from './services-helpers.js';
 
 v.describe('structured logging', () => {
   v.it('filters by level and merges child/base fields', () => {
@@ -129,25 +132,26 @@ v.describe('environment injection', () => {
 });
 
 v.describe('device memory', () => {
-  v.afterEach(() => resetDevicePorts());
+  useWebServices();
 
   v.it('uses a host memory signal first', () => {
-    setDevicePorts({
-      memory: () => ({ deviceMemoryGb: 1.5, lowMemory: false }),
+    provide({
+      memory: { get: () => ({ deviceMemoryGb: 1.5, lowMemory: false }) },
     });
     v.expect(deviceMemory(2)).toEqual({
       deviceMemoryGb: 1.5,
       lowMemory: true,
     });
-    setDevicePorts({ memory: () => ({ deviceMemoryGb: 8, lowMemory: true }) });
+    provide({
+      memory: { get: () => ({ deviceMemoryGb: 8, lowMemory: true }) },
+    });
     v.expect(deviceMemory(2)).toEqual({
       deviceMemoryGb: 8,
       lowMemory: true,
     });
   });
 
-  v.it('falls back to navigator.deviceMemory', () => {
-    resetDevicePorts();
+  v.it('the web provider reads navigator.deviceMemory', () => {
     Object.defineProperty(navigator, 'deviceMemory', {
       value: 1,
       configurable: true,
@@ -162,4 +166,28 @@ v.describe('device memory', () => {
     });
     v.expect(deviceMemory(2).lowMemory).toBe(false);
   });
+
+  v.it(
+    'reports no signal, and reads no browser API, without a memory service',
+    async () => {
+      const restore = forbid(navigator, 'deviceMemory');
+      try {
+        await withoutServices(() => {
+          v.expect(deviceMemory(2)).toEqual({
+            deviceMemoryGb: undefined,
+            lowMemory: false,
+          });
+        });
+      } finally {
+        restore();
+      }
+    },
+  );
+
+  v.it(
+    'the web provider is a plain object the registry reads synchronously',
+    () => {
+      expectIdleWebProviders({ eager: ['memory'] });
+    },
+  );
 });

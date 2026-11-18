@@ -11,14 +11,12 @@ import {
   downloadFile,
   downloadText,
   downloadUrl,
-  setDownloadPort,
 } from '../src/sdk/download.js';
 import {
   findMenuItem,
   menusAvailable,
   runMenuItem,
   setApplicationMenu,
-  setMenusPort,
   setTray,
   type ApplicationMenu,
 } from '../src/sdk/menus.js';
@@ -27,6 +25,15 @@ import {
   normalizeWindowBounds,
 } from '../src/sdk/window-state.js';
 import type { Store } from '../src/sdk/services.js';
+import { CapabilityError } from '../src/sdk/registry.js';
+import { webServices } from '../src/hosts/web-services/index.js';
+import {
+  expectIdleWebProviders,
+  expectSameTurn,
+  provide,
+  useWebServices,
+  withoutServices,
+} from './services-helpers.js';
 
 const memoryStore = (
   seed: Record<string, string> = {},
@@ -167,48 +174,65 @@ v.describe('PWA service worker', () => {
 });
 
 v.describe('downloads', () => {
+  useWebServices();
   v.afterEach(() => {
-    setDownloadPort(undefined);
     v.vi.unstubAllGlobals();
     v.vi.useRealTimers();
   });
 
   v.it('uses a host download port', async () => {
     const saved: unknown[] = [];
-    setDownloadPort({
-      async save(data, options) {
-        saved.push([data, options]);
+    provide({
+      download: {
+        async save(data, options) {
+          saved.push([data, options]);
+        },
       },
     });
     await downloadFile('hello', { name: 'a.txt', mimeType: 'text/plain' });
     v.expect(saved).toEqual([
       ['hello', { name: 'a.txt', mimeType: 'text/plain' }],
     ]);
+    // This host saves data but cannot fetch a URL itself.
+    v.expect(() => downloadUrl('https://x.test/file.zip')).toThrowError(
+      /download\.url/,
+    );
+    provide({
+      download: {
+        async save() {},
+        saveUrl: (url, name) => saved.push([url, name]),
+      },
+    });
+    downloadUrl('https://x.test/file.zip', 'file.zip');
+    v.expect(saved.at(-1)).toEqual(['https://x.test/file.zip', 'file.zip']);
   });
 
-  v.it('falls back to an anchor download with an object URL', async () => {
-    const urls: string[] = [];
-    v.vi.stubGlobal('URL', {
-      createObjectURL: (value: unknown) => {
-        urls.push(value instanceof Blob ? 'blob:blob' : String(value));
-        return 'blob:test';
-      },
-      revokeObjectURL: v.vi.fn(),
-    });
-    let clicked: { href: string; download: string } | undefined;
-    const click = v.vi
-      .spyOn(HTMLAnchorElement.prototype, 'click')
-      .mockImplementation(function (this: HTMLAnchorElement) {
-        clicked = { href: this.href, download: this.download };
+  v.it(
+    'the web provider downloads through an anchor and an object URL',
+    async () => {
+      const urls: string[] = [];
+      v.vi.stubGlobal('URL', {
+        createObjectURL: (value: unknown) => {
+          urls.push(value instanceof Blob ? 'blob:blob' : String(value));
+          return 'blob:test';
+        },
+        revokeObjectURL: v.vi.fn(),
       });
-    v.vi.useFakeTimers();
-    await downloadText('hello', 'a.txt');
-    v.expect(clicked).toEqual({ href: 'blob:test', download: 'a.txt' });
-    v.expect(urls).toEqual(['blob:blob']);
-    v.vi.advanceTimersByTime(1000);
-    v.expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:test');
-    click.mockRestore();
-  });
+      let clicked: { href: string; download: string } | undefined;
+      const click = v.vi
+        .spyOn(HTMLAnchorElement.prototype, 'click')
+        .mockImplementation(function (this: HTMLAnchorElement) {
+          clicked = { href: this.href, download: this.download };
+        });
+      v.vi.useFakeTimers();
+      await downloadText('hello', 'a.txt');
+      v.expect(clicked).toEqual({ href: 'blob:test', download: 'a.txt' });
+      v.expect(urls).toEqual(['blob:blob']);
+      v.vi.advanceTimersByTime(1000);
+      v.expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:test');
+      click.mockRestore();
+    },
+  );
 
   v.it('downloads bytes and existing URLs', async () => {
     v.vi.stubGlobal('URL', {
@@ -224,20 +248,76 @@ v.describe('downloads', () => {
     v.expect(click).toHaveBeenCalledTimes(2);
     click.mockRestore();
   });
+
+  v.it('the web download starts in the same turn as the call', async () => {
+    v.vi.stubGlobal('URL', {
+      createObjectURL: () => 'blob:same-turn',
+      revokeObjectURL: v.vi.fn(),
+    });
+    const click = v.vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {});
+    v.vi.useFakeTimers();
+    try {
+      await expectSameTurn(click, () => downloadText('hello', 'a.txt'));
+      await expectSameTurn(click, () =>
+        downloadFile(new Uint8Array([1]), { name: 'a.bin' }),
+      );
+      await expectSameTurn(click, () => downloadUrl('https://x.test/a.zip'));
+    } finally {
+      click.mockRestore();
+    }
+  });
+
+  v.it(
+    'a host without a download service saves nothing and adds nothing to the page',
+    async () => {
+      const create = v.vi.spyOn(document, 'createElement');
+      const objectUrl = v.vi.spyOn(URL, 'createObjectURL');
+      try {
+        await withoutServices(async () => {
+          await v.expect(downloadText('hello', 'a.txt')).rejects.toMatchObject({
+            name: 'CapabilityError',
+            capability: 'download',
+          });
+          await v
+            .expect(downloadBytes(new Uint8Array([1]), 'a.bin'))
+            .rejects.toThrowError(CapabilityError);
+          v.expect(() => downloadUrl('https://x.test/file.zip')).toThrowError(
+            CapabilityError,
+          );
+        });
+        v.expect(create).not.toHaveBeenCalled();
+        v.expect(objectUrl).not.toHaveBeenCalled();
+      } finally {
+        create.mockRestore();
+        objectUrl.mockRestore();
+      }
+    },
+  );
+
+  v.it(
+    'the web provider is a plain object the registry reads synchronously',
+    () => {
+      expectIdleWebProviders({ eager: ['download'] });
+    },
+  );
 });
 
 v.describe('desktop menus', () => {
-  v.afterEach(() => setMenusPort(undefined));
+  useWebServices();
 
   v.it('installs menus/tray and runs/toggles items', () => {
     const menus: unknown[] = [];
     const trays: unknown[] = [];
-    setMenusPort({
-      setApplicationMenu(menu) {
-        menus.push(menu);
-      },
-      setTray(tray) {
-        trays.push(tray);
+    provide({
+      menus: {
+        setApplicationMenu(menu) {
+          menus.push(menu);
+        },
+        setTray(tray) {
+          trays.push(tray);
+        },
       },
     });
     v.expect(menusAvailable()).toBe(true);
@@ -271,10 +351,16 @@ v.describe('desktop menus', () => {
     v.expect(runMenuItem(menu, 'missing')).toBe(false);
   });
 
-  v.it('returns false when no host menu provider exists', () => {
-    v.expect(menusAvailable()).toBe(false);
-    v.expect(setApplicationMenu({ items: [] })).toBe(false);
-    v.expect(setTray(null)).toBe(false);
+  v.it('returns false when no host menu provider exists', async () => {
+    const check = () => {
+      v.expect(menusAvailable()).toBe(false);
+      v.expect(setApplicationMenu({ items: [] })).toBe(false);
+      v.expect(setTray(null)).toBe(false);
+    };
+    // A page has no application menu or tray: no browser provider.
+    v.expect(webServices.menus).toBeUndefined();
+    check();
+    await withoutServices(check);
   });
 });
 

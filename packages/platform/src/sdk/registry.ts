@@ -152,6 +152,36 @@ export function useService<K extends ServiceName>(
   return port;
 }
 
+/**
+ * Calls `use` with the service's port and resolves with its result.
+ *
+ * When the port is available synchronously, `use` runs before this function
+ * returns: in the caller's own turn. Browsers allow some operations (a share
+ * sheet, fullscreen, a file picker, a clipboard write) only inside the user's
+ * event handler, so an SDK function must not put a tick between the app's
+ * call and the browser's. A provider that has to load is used once it has.
+ *
+ * Always returns a promise: a missing provider rejects it with a
+ * {@link CapabilityError}, and so does anything `use` throws.
+ */
+export function withService<K extends ServiceName, R>(
+  name: K,
+  use: (port: ServiceProviders[K]) => R | PromiseLike<R>,
+): Promise<R> {
+  let port: ServiceProviders[K] | undefined;
+  try {
+    port = peekService(name);
+  } catch (error) {
+    return Promise.reject(error as Error);
+  }
+  if (port === undefined) return loadService(name).then(use);
+  try {
+    return Promise.resolve(use(port));
+  } catch (error) {
+    return Promise.reject(error as Error);
+  }
+}
+
 /** Removes every installed provider. For tests and host teardown. */
 export function resetServices(): void {
   layers.length = 0;

@@ -4,12 +4,18 @@ import { expect, test, vi } from 'vitest';
 import {
   activeElement,
   Config,
+  deviceInfo,
   getRenderer,
   useCapabilities,
+  useColorScheme,
   type ElementNode,
 } from '@solid-multiplatform/platform';
 import { startApp, type HostContext } from '@solid-multiplatform/platform/host';
 import { domHost } from '@solid-multiplatform/platform/host/dom';
+import {
+  loadService,
+  serviceAvailable,
+} from '@solid-multiplatform/platform/services';
 
 globalThis.ResizeObserver = class {
   observe() {}
@@ -24,7 +30,7 @@ globalThis.MutationObserver = class {
   }
 } as unknown as typeof MutationObserver;
 window.matchMedia ??= ((query: string) => ({
-  matches: false,
+  matches: query === '(prefers-color-scheme: dark)',
   media: query,
   addEventListener() {},
   removeEventListener() {},
@@ -39,9 +45,11 @@ test('startApp runs an app on a host and its disposer tears it down', async () =
   let first!: ElementNode;
   let second!: ElementNode;
   const onEnter = vi.fn();
+  // Device services come from the host: none before it launches.
+  expect(serviceAvailable('clipboard')).toBe('unavailable');
 
   const stop = startApp(
-    domHost({ root, target: 'tizen' }),
+    domHost({ root, target: 'tizen', namespace: 'demo' }),
     (host) => {
       context = host;
       return (
@@ -73,6 +81,15 @@ test('startApp runs an app on a host and its disposer tears it down', async () =
   expect(context.keys).toBe(document);
   expect(context.pointer).toBeDefined();
   expect(context.text).toBeDefined();
+  expect(serviceAvailable('clipboard')).toBe('available');
+  expect((await deviceInfo()).platform).toBe('web');
+  // Settings are stored under the host's namespace.
+  const settings = await loadService('settings');
+  await settings.set('volume', '7');
+  expect(localStorage.getItem('demo:volume')).toBe('7');
+  await settings.remove('volume');
+  // The viewport binding found the colour scheme service already installed.
+  expect(useColorScheme()).toBe('dark');
   expect(root.querySelectorAll('div').length).toBeGreaterThan(2);
 
   // Keys reach the focus manager through the host's key source.
@@ -94,6 +111,28 @@ test('startApp runs an app on a host and its disposer tears it down', async () =
   );
   expect(onEnter).toHaveBeenCalledTimes(1);
   expect(getRenderer()).toBeDefined();
+  expect(serviceAvailable('clipboard')).toBe('unavailable');
+  expect(serviceAvailable('settings')).toBe('unavailable');
+  await expect(deviceInfo()).rejects.toMatchObject({
+    name: 'CapabilityError',
+    capability: 'deviceInfo',
+  });
+});
+
+test('the web host keeps settings under `app` unless told otherwise', async () => {
+  const root = document.body.appendChild(document.createElement('div'));
+  const stop = startApp(
+    domHost({ root }),
+    () => <view width={10} height={10} />,
+    { renderer: { appWidth: 1280, appHeight: 720 } },
+  );
+  await tick();
+  const settings = await loadService('settings');
+  await settings.set('k', 'v');
+  expect(localStorage.getItem('app:k')).toBe('v');
+  await settings.remove('k');
+  (stop as () => void)();
+  expect(serviceAvailable('settings')).toBe('unavailable');
 });
 
 test('a host that fails while starting leaves no renderer factory installed', async () => {

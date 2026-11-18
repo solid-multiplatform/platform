@@ -1,5 +1,5 @@
 // Contract tests: the service registry hosts install providers into.
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   CapabilityError,
   installServices,
@@ -9,8 +9,10 @@ import {
   resetServices,
   serviceAvailable,
   useService,
+  withService,
 } from '../src/sdk/registry.ts';
 import { CapabilityError as FromServices } from '../src/sdk/services.ts';
+import { webServices } from '../src/hosts/web-services/index.ts';
 
 interface Probe {
   value: string;
@@ -23,7 +25,14 @@ declare module '../src/sdk/registry.ts' {
   }
 }
 
-afterEach(resetServices);
+// Each test starts from an empty registry. The unit project shares one
+// registry between the files of a worker, so the browser's services go back
+// afterwards, as tests/setup.ts has them.
+beforeEach(resetServices);
+afterAll(() => {
+  resetServices();
+  installServices(webServices);
+});
 
 describe('service registry', () => {
   it('reports a service with no provider as unavailable and refuses it', async () => {
@@ -95,6 +104,50 @@ describe('service registry', () => {
     expect(useService('testEager')).toBe(host);
     remove();
     expect(useService('testEager')).toBe(host);
+  });
+
+  it("withService calls an available port in the caller's own turn", async () => {
+    const calls: string[] = [];
+    installServices({
+      testEager: { value: 'eager' },
+      testLazy: () => ({ value: 'lazy' }),
+    });
+    for (const name of ['testEager', 'testLazy'] as const) {
+      const result = withService(name, (port) => {
+        calls.push(port.value);
+        return port.value.length;
+      });
+      // Called before withService returned: no tick for a gesture to expire in.
+      expect(calls.at(-1)).toBe(name === 'testEager' ? 'eager' : 'lazy');
+      await expect(result).resolves.toBe(name === 'testEager' ? 5 : 4);
+    }
+  });
+
+  it('withService waits for a provider that has to load, constructing it once', async () => {
+    const later = vi.fn(async () => ({ value: 'async' }));
+    installServices({ testAsync: later });
+    const calls: string[] = [];
+    const first = withService('testAsync', (port) => calls.push(port.value));
+    const second = withService('testAsync', async (port) => port.value);
+    expect(calls).toEqual([]);
+    await expect(first).resolves.toBe(1);
+    await expect(second).resolves.toBe('async');
+    expect(later).toHaveBeenCalledTimes(1);
+    // Loaded now: the next call is immediate.
+    void withService('testAsync', (port) => calls.push(port.value));
+    expect(calls).toEqual(['async', 'async']);
+  });
+
+  it('withService always answers with a promise', async () => {
+    await expect(withService('testEager', () => 1)).rejects.toMatchObject({
+      name: 'CapabilityError',
+      capability: 'testEager',
+    });
+    installServices({ testEager: { value: 'eager' } });
+    const thrown = withService('testEager', () => {
+      throw new Error('refused');
+    });
+    await expect(thrown).rejects.toThrow('refused');
   });
 
   it('installing adds no timers and no listeners', () => {
