@@ -182,3 +182,33 @@ v.describe('browserSemantics', () => {
     root.remove();
   });
 });
+
+v.describe('modal semantics', () => {
+  v.it('hides sibling semantics while a dialog is registered', () => {
+    const root = document.createElement('div');
+    document.body.append(root);
+    const semantics = browserSemantics(root);
+    const button = semantics.register({
+      role: 'button',
+      label: 'Open',
+      activate: () => {},
+    });
+    const dialog = semantics.register({
+      role: 'dialog',
+      label: 'Confirm',
+    });
+    const buttonEl = root.querySelector('[role="button"]')!;
+    const dialogEl = root.querySelector('[role="dialog"]')!;
+    v.expect(buttonEl.getAttribute('aria-hidden')).toBe('true');
+    v.expect(buttonEl.hasAttribute('inert')).toBe(true);
+    v.expect(dialogEl.hasAttribute('aria-hidden')).toBe(false);
+    v.expect(dialogEl.getAttribute('aria-modal')).toBe('true');
+
+    dialog.dispose();
+    v.expect(buttonEl.hasAttribute('aria-hidden')).toBe(false);
+    v.expect(buttonEl.hasAttribute('inert')).toBe(false);
+    button.dispose();
+    semantics.dispose();
+    root.remove();
+  });
+});

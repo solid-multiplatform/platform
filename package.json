@@ -282,6 +282,20 @@
         "types": "./dist/src/sdk/gamepad.d.ts",
         "default": "./dist/src/sdk/gamepad.js"
       }
+    },
+    "./audio": {
+      "@solidtv/source": "./src/sdk/audio.ts",
+      "import": {
+        "types": "./dist/src/sdk/audio.d.ts",
+        "default": "./dist/src/sdk/audio.js"
+      }
+    },
+    "./drm": {
+      "@solidtv/source": "./src/sdk/drm.ts",
+      "import": {
+        "types": "./dist/src/sdk/drm.d.ts",
+        "default": "./dist/src/sdk/drm.js"
+      }
     }
   },
   "sideEffects": false,

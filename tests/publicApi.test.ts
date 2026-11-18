@@ -24,7 +24,7 @@ import * as focusManager from '@solid-multiplatform/platform/focusManager';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 247 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 252 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -72,6 +72,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'configureLogging',
       'configureMediaSession',
       'convertToShader',
+      'createAudioPlayer',
       'createBackDispatcher',
       'createBookmarks',
       'createComponent',
@@ -171,6 +172,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'logRenderTree',
       'matchRoute',
       'matchesCombo',
+      'mediaCapabilities',
       'meetsTouchTarget',
       'memo',
       'mergeProps',
@@ -217,6 +219,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'setActiveElement',
       'setActiveElementCore',
       'setAppVersion',
+      'setAudioPort',
       'setBiometricsPort',
       'setCameraPort',
       'setCapabilities',
@@ -230,6 +233,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'setFullscreenPort',
       'setGeolocationPort',
       'setHighContrast',
+      'setMediaCapabilitiesPort',
       'setMediaSessionPort',
       'setMicrophonePort',
       'setProp',
@@ -247,6 +251,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'stickyHeaderAt',
       'stopMicrophone',
       'supports',
+      'supportsDrm',
       'supportsOnlyWebGL2',
       'supportsWebGL',
       'supportsWebGL2',
@@ -639,6 +644,8 @@ v.describe('package.json exports', () => {
       './capture',
       './routes',
       './gamepad',
+      './audio',
+      './drm',
     ]);
   });
 

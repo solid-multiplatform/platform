@@ -47,3 +47,5 @@ export * from './sdk/transition.js';
 export * from './sdk/capture.js';
 export * from './sdk/routes.js';
 export * from './sdk/gamepad.js';
+export * from './sdk/audio.js';
+export * from './sdk/drm.js';

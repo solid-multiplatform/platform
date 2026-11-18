@@ -56,6 +56,24 @@ export function browserSemantics(root: HTMLElement) {
   root.appendChild(tree);
   tree.style.cssText =
     'position:absolute;top:0;left:0;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)';
+  const registered: { node: Semantics; el: HTMLElement }[] = [];
+  const applyModalState = () => {
+    const modalOpen = registered.some(
+      (entry) =>
+        entry.node.role === 'dialog' || entry.node.role === 'alertdialog',
+    );
+    for (const entry of registered) {
+      const isDialog =
+        entry.node.role === 'dialog' || entry.node.role === 'alertdialog';
+      if (modalOpen && !isDialog) {
+        entry.el.setAttribute('aria-hidden', 'true');
+        entry.el.setAttribute('inert', '');
+      } else {
+        entry.el.removeAttribute('aria-hidden');
+        entry.el.removeAttribute('inert');
+      }
+    }
+  };
   return {
     register(initial: Semantics) {
       const el = document.createElement(
@@ -111,8 +129,26 @@ export function browserSemantics(root: HTMLElement) {
       el.addEventListener('keyup', (e) => e.stopPropagation());
       update(initial);
       tree.appendChild(el);
-      return { update, dispose: () => el.remove() };
+      const entry = { node: initial, el };
+      registered.push(entry);
+      applyModalState();
+      return {
+        update(next: Semantics) {
+          entry.node = next;
+          update(next);
+          applyModalState();
+        },
+        dispose: () => {
+          const index = registered.indexOf(entry);
+          if (index >= 0) registered.splice(index, 1);
+          applyModalState();
+          el.remove();
+        },
+      };
     },
-    dispose: () => tree.remove(),
+    dispose: () => {
+      registered.splice(0, registered.length);
+      tree.remove();
+    },
   };
 }
