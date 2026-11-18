@@ -15,23 +15,23 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 1. Authoring, tooling and delivery
 
-| Feature                                     | Established pattern                                | Status | Evidence / gap                                                      | Phase |
-| ------------------------------------------- | -------------------------------------------------- | ------ | ------------------------------------------------------------------- | ----- |
-| Project init and target selection           | Expo `create-expo-app`, Flutter `create`           | S      | `cli/init.mjs`, `cli/main.mjs`                                      | —     |
-| Screen/component variants per target        | Flutter platform folders, RN `.ios/.android` files | S      | `cli/variants.mjs`, `tests/cli/variants.test.mjs`, `screens/Home.*` | —     |
-| Plugin scaffolding (Kotlin, Swift, C, Roku) | Tauri plugin template, Expo Modules                | S      | `cli/templates`, `android-smoke.sh`, `apple-smoke.sh`               | —     |
-| Build/run/package commands                  | Expo CLI, Tauri CLI                                | S      | `cli/build.mjs`, `cli/desktop-package.mjs`                          | —     |
-| Target explain/check                        | Flutter `flutter analyze`                          | S      | `solid-platform explain`, `check`                                   | —     |
-| Dev server and hot reload                   | Vite/Expo                                          | P      | Vite dev works; no state-preserving hot reload contract documented  | 10    |
-| Asset pipeline (images, fonts, icons)       | Expo Asset, Flutter pubspec assets                 | P      | Fonts and images load; no manifest/optimisation pipeline            | 10    |
-| Environment/config injection                | Expo `app.config`, Vite env                        | M      | No first-class API                                                  | 4     |
-| Generated type-safe routes                  | Expo Router typed routes                           | M      | Navigation is string-based                                          | 2     |
-| Debug inspector / component tree            | RN DevTools, Flutter Inspector                     | M      | Dev overlay and JSX locator exist only as stubs                     | 10    |
-| Error boundaries                            | React error boundaries                             | P      | `src/portable.ts` exports minimal support; no app-level primitive   | 4     |
-| Structured logging and tracing              | Expo/Flutter logging                               | M      | Trace markers exist in fixtures only                                | 10    |
-| Crash reporting hook                        | Sentry/Crashlytics integration point               | M      | No port                                                             | 5     |
-| Release signing/notarization hooks          | Tauri/Expo build profiles                          | P      | Manual per platform; documented in workflows                        | 10    |
-| OTA/update channel                          | Tauri updater, Expo Updates                        | M      | No API                                                              | 5     |
+| Feature                                     | Established pattern                                | Status | Evidence / gap                                                             | Phase |
+| ------------------------------------------- | -------------------------------------------------- | ------ | -------------------------------------------------------------------------- | ----- |
+| Project init and target selection           | Expo `create-expo-app`, Flutter `create`           | S      | `cli/init.mjs`, `cli/main.mjs`                                             | —     |
+| Screen/component variants per target        | Flutter platform folders, RN `.ios/.android` files | S      | `cli/variants.mjs`, `tests/cli/variants.test.mjs`, `screens/Home.*`        | —     |
+| Plugin scaffolding (Kotlin, Swift, C, Roku) | Tauri plugin template, Expo Modules                | S      | `cli/templates`, `android-smoke.sh`, `apple-smoke.sh`                      | —     |
+| Build/run/package commands                  | Expo CLI, Tauri CLI                                | S      | `cli/build.mjs`, `cli/desktop-package.mjs`                                 | —     |
+| Target explain/check                        | Flutter `flutter analyze`                          | S      | `solid-platform explain`, `check`                                          | —     |
+| Dev server and hot reload                   | Vite/Expo                                          | P      | Vite dev works; no state-preserving hot reload contract documented         | 10    |
+| Asset pipeline (images, fonts, icons)       | Expo Asset, Flutter pubspec assets                 | P      | Fonts and images load; no manifest/optimisation pipeline                   | 10    |
+| Environment/config injection                | Expo `app.config`, Vite env                        | M      | No first-class API                                                         | 4     |
+| Generated type-safe routes                  | Expo Router typed routes                           | M      | Navigation is string-based                                                 | 2     |
+| Debug inspector / component tree            | RN DevTools, Flutter Inspector                     | M      | Dev overlay and JSX locator exist only as stubs                            | 10    |
+| Error boundaries                            | React error boundaries                             | S      | `AppErrorBoundary` with `ListState` fallback and retry                     | —     |
+| Structured logging and tracing              | Expo/Flutter logging                               | M      | Trace markers exist in fixtures only                                       | 10    |
+| Crash reporting hook                        | Sentry/Crashlytics integration point               | S      | `setCrashReporter`/`reportCrash`; `AppErrorBoundary` reports render errors | —     |
+| Release signing/notarization hooks          | Tauri/Expo build profiles                          | P      | Manual per platform; documented in workflows                               | 10    |
+| OTA/update channel                          | Tauri updater, Expo Updates                        | M      | No API                                                                     | 5     |
 
 ## 2. Layout, rendering and visual system
 
@@ -115,7 +115,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 | -------------------------------- | --------------------------------------------- | ------ | --------------------------------------------------------------------------------------------- | ----- |
 | Stack navigation                 | React Navigation, Flutter Navigator           | S      | `createNavigation` push/replace/back/reset with `subscribe`                                   | —     |
 | Tabs                             | React Navigation tabs, Flutter TabBar         | S      | `createTabNavigation` with independent per-tab stacks and snapshots                           | —     |
-| Drawer                           | Flutter Drawer                                | M      | No primitive                                                                                  | 2     |
+| Drawer                           | Flutter Drawer                                | S      | `Drawer` on the shared Modal: edge panel, barrier, safe area, focus trap                      | —     |
 | URL/history integration (web)    | History API                                   | S      | `createBrowserNavigation`/`bindBrowserHistory`: pushState, replaceState, popstate, base paths | —     |
 | Deep links / universal links     | Tauri deep-link, Expo Linking                 | S      | `bindDeepLinks` + `routeFromUrl` feed the `links` port into navigation                        | —     |
 | Route guards/auth gating         | React Navigation guards                       | S      | `beforeEach` and `beforeBack` guards cancel stack changes                                     | —     |
@@ -229,23 +229,23 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 10. Performance, reliability and quality
 
-| Feature                  | Established pattern        | Status | Evidence / gap                                                 | Phase |
-| ------------------------ | -------------------------- | ------ | -------------------------------------------------------------- | ----- |
-| Startup measurement      | Roku 15s, Flutter startup  | S      | Android launch time recorded                                   | —     |
-| Frame pacing gate        | Android FrameTimeline      | S      | three ten-minute passes, zero misses                           | —     |
-| Idle frame scheduling    | Flutter frame callbacks    | S      | event-driven loop                                              | —     |
-| Image decode budgets     | Flutter image cache        | P      | renderer upload budget exists; no app API                      | 9     |
-| List recycling           | FlatList/ListView.builder  | S      | `Virtual`, `Lazy`                                              | —     |
-| Memory budgets / low-RAM | Android `isLowRamDevice`   | M      | No signal                                                      | 9     |
-| Error boundaries         | React/Solid                | P      | Minimal export only                                            | 4     |
-| Crash reporting hook     | Sentry/Crashlytics         | M      | No port                                                        | 5     |
-| Offline/retry            | React Query                | S      | `createOfflineQueue` with persisted items and retry            | —     |
-| State persistence        | React Navigation persist   | S      | `createPersistentStore` snapshot persistence                   | —     |
-| Version/update check     | Tauri updater              | M      | No API                                                         | 5     |
-| Profiling overlay        | RN/Flutter DevTools        | P      | FPSCounter primitive                                           | 10    |
-| Automated a11y audit     | axe, Accessibility Scanner | S      | `auditSemantics()` for labels, roles, values and touch targets | —     |
-| Visual regression        | screenshot tests           | S      | `tests/visual`, TV pixel audit                                 | —     |
-| Device smoke matrices    | CI                         | S      | Android TV, Apple simulator, desktop probe, browser smoke      | —     |
+| Feature                  | Established pattern        | Status | Evidence / gap                                                             | Phase |
+| ------------------------ | -------------------------- | ------ | -------------------------------------------------------------------------- | ----- |
+| Startup measurement      | Roku 15s, Flutter startup  | S      | Android launch time recorded                                               | —     |
+| Frame pacing gate        | Android FrameTimeline      | S      | three ten-minute passes, zero misses                                       | —     |
+| Idle frame scheduling    | Flutter frame callbacks    | S      | event-driven loop                                                          | —     |
+| Image decode budgets     | Flutter image cache        | P      | renderer upload budget exists; no app API                                  | 9     |
+| List recycling           | FlatList/ListView.builder  | S      | `Virtual`, `Lazy`                                                          | —     |
+| Memory budgets / low-RAM | Android `isLowRamDevice`   | M      | No signal                                                                  | 9     |
+| Error boundaries         | React/Solid                | S      | `AppErrorBoundary` with `ListState` fallback and retry                     | —     |
+| Crash reporting hook     | Sentry/Crashlytics         | S      | `setCrashReporter`/`reportCrash`; `AppErrorBoundary` reports render errors | —     |
+| Offline/retry            | React Query                | S      | `createOfflineQueue` with persisted items and retry                        | —     |
+| State persistence        | React Navigation persist   | S      | `createPersistentStore` snapshot persistence                               | —     |
+| Version/update check     | Tauri updater              | M      | No API                                                                     | 5     |
+| Profiling overlay        | RN/Flutter DevTools        | P      | FPSCounter primitive                                                       | 10    |
+| Automated a11y audit     | axe, Accessibility Scanner | S      | `auditSemantics()` for labels, roles, values and touch targets             | —     |
+| Visual regression        | screenshot tests           | S      | `tests/visual`, TV pixel audit                                             | —     |
+| Device smoke matrices    | CI                         | S      | Android TV, Apple simulator, desktop probe, browser smoke                  | —     |
 
 ## 11. Platform-specific requirements
 
@@ -322,7 +322,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 12. Implementation phases
 
-Progress: Phase 0 is implemented (theme tokens, colour scheme, capability registry, extended inset contract). Phase 1 is implemented for `useKeyboard`, `KeyboardAvoidingView`, `SafeArea`, `revealAboveKeyboard`, `keyboardAwareBounds`, `createForm` validation/touched/errors/submitting, and the keyboard-aware mobile template. Remaining: a rendered FormField component and automatic wiring of native editors. Desktop scene pointer hover/press/click is implemented (`useMouse` plus SDL pointer/mouse forwarding), along with `dragToScroll`, `wheelToScroll`, and pointer cursor styles (`cursorStyle`, `useCursor`). Phase 2 now has `Modal` with a real focus trap and restore, `Sheet`, `Toast`, `Popover`, `Menu`, `Tooltip` and `Alert`, plus tab navigation, guards, snapshot/restore and browser history. Remaining in Phase 2: drawer, route transitions, focus/scroll restoration on back, and deep-link router integration. Phase 4 data primitives are in place: `createQuery` (cache/retry/invalidation), `createPersistentStore` and `createOfflineQueue`. Device services now cover clipboard, share, haptics, device/battery info, keep-awake, orientation and external opening, and `bindDeepLinks` connects the links port to navigation. Internationalization covers translations, plurals, RTL, text scaling, high contrast and locale-aware formatting; `auditSemantics` and reading-order helpers cover the accessibility gate. Phase 6 has paged loading, pull-to-refresh state, selection and standard list states; section lists, sticky headers, swipe actions and reordering remain.
+Progress: Phase 0 is implemented (theme tokens, colour scheme, capability registry, extended inset contract). Phase 1 is implemented for `useKeyboard`, `KeyboardAvoidingView`, `SafeArea`, `revealAboveKeyboard`, `keyboardAwareBounds`, `createForm` validation/touched/errors/submitting, and the keyboard-aware mobile template. Remaining: a rendered FormField component and automatic wiring of native editors. Desktop scene pointer hover/press/click is implemented (`useMouse` plus SDL pointer/mouse forwarding), along with `dragToScroll`, `wheelToScroll`, and pointer cursor styles (`cursorStyle`, `useCursor`). Phase 2 now has `Modal` with a real focus trap and restore, `Sheet`, `Toast`, `Popover`, `Menu`, `Tooltip` and `Alert`, plus tab navigation, guards, snapshot/restore and browser history. Remaining in Phase 2: drawer, route transitions, focus/scroll restoration on back, and deep-link router integration. Phase 4 data primitives are in place: `createQuery` (cache/retry/invalidation), `createPersistentStore` and `createOfflineQueue`. Device services now cover clipboard, share, haptics, device/battery info, keep-awake, orientation and external opening, and `bindDeepLinks` connects the links port to navigation. Internationalization covers translations, plurals, RTL, text scaling, high contrast and locale-aware formatting; `auditSemantics` and reading-order helpers cover the accessibility gate. Phase 6 has paged loading, pull-to-refresh state, selection and standard list states; section lists, sticky headers, swipe actions and reordering remain. Phase 2 also has `Drawer`, and crash reporting is wired through `AppErrorBoundary`.
 
 ### Phase 0 — Contracts and theme foundation
 

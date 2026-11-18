@@ -24,7 +24,7 @@ import * as focusManager from '@solid-multiplatform/platform/focusManager';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 169 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 172 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -150,7 +150,9 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'registerDefaultShaderShadow',
       'registerDefaultShaders',
       'renderer',
+      'reportCrash',
       'resetCapabilities',
+      'resetCrashReporter',
       'resetCursor',
       'resetDevicePorts',
       'revealAboveKeyboard',
@@ -162,6 +164,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'setAppVersion',
       'setCapabilities',
       'setColorScheme',
+      'setCrashReporter',
       'setCursor',
       'setDevicePorts',
       'setHighContrast',
@@ -199,15 +202,17 @@ v.describe('Exports: runtime export names of every entry point', () => {
   });
 
   v.test(
-    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 74 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 76 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
         'ALPHA_NONE',
         'Alert',
         'Announcer',
+        'AppErrorBoundary',
         'BorderBoxStyle',
         'Column',
+        'Drawer',
         'FPSCounter',
         'FadeInOut',
         'FocusStackProvider',
@@ -540,6 +545,7 @@ v.describe('package.json exports', () => {
       './i18n',
       './a11y',
       './list',
+      './crash',
     ]);
   });
 

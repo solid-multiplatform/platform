@@ -177,6 +177,13 @@
         "types": "./dist/src/sdk/list.d.ts",
         "default": "./dist/src/sdk/list.js"
       }
+    },
+    "./crash": {
+      "@solidtv/source": "./src/sdk/crash.ts",
+      "import": {
+        "types": "./dist/src/sdk/crash.d.ts",
+        "default": "./dist/src/sdk/crash.js"
+      }
     }
   },
   "sideEffects": false,

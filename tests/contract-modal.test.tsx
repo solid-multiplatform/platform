@@ -3,6 +3,7 @@ import { createSignal } from 'solid-js';
 import * as lng from '@solid-multiplatform/platform';
 import {
   Alert,
+  Drawer,
   Menu,
   Modal,
   Popover,
@@ -110,4 +111,50 @@ v.describe('overlay primitives', () => {
       dispose();
     },
   );
+});
+
+v.describe('Drawer', () => {
+  v.it('traps focus in the panel and restores the trigger', async () => {
+    const [open, setOpen] = createSignal(false);
+    let trigger!: lng.ElementNode;
+    let panel!: lng.ElementNode;
+
+    const dispose = renderer.render(() => {
+      useFocusManager();
+      return (
+        <>
+          <view ref={trigger} width={100} height={40} autofocus />
+          <Drawer
+            visible={open}
+            label="Navigation"
+            initialFocus={() => panel}
+            onRequestClose={() => setOpen(false)}
+          >
+            <view ref={panel} width={200} height={40} />
+          </Drawer>
+        </>
+      );
+    });
+
+    await waitForUpdate();
+    trigger.setFocus();
+    await flush();
+    v.expect(lng.activeElement()).toBe(trigger);
+
+    setOpen(true);
+    await waitForUpdate();
+    await flush();
+    v.expect(lng.activeElement()).toBe(panel);
+
+    // Focus outside the drawer is rejected while it is open.
+    trigger.setFocus();
+    await flush();
+    v.expect(lng.activeElement()).toBe(panel);
+
+    setOpen(false);
+    await waitForUpdate();
+    await flush();
+    v.expect(lng.activeElement()).toBe(trigger);
+    dispose();
+  });
 });
