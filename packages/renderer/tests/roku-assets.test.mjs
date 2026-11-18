@@ -42,7 +42,7 @@ test('every pkg:/ path the backend names resolves to a shipped file', () => {
     }
   }
   assert.deepEqual(missing, []);
-  assert.ok(found > 20, 'the scan found the asset and font paths');
+  assert.ok(found > 20, 'the scan found the asset paths');
 });
 
 test('ASSETS names every generated image and nothing else', async () => {

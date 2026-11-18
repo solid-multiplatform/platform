@@ -6,8 +6,9 @@
  * (Poster/Rectangle/Label), then the layers that finish the fill (gradient
  * ramps, corner weights, border edges). effects.ts decides what those are
  * for the renderer's tier; this file writes them. Transform, opacity,
- * clipping and z-order follow the shared renderer's semantics; text is laid
- * out with native font metrics before it is written to a Label.
+ * clipping and z-order follow the shared renderer's semantics. Text is laid
+ * out here (text-layout.ts, from the font's own widths) and written to a
+ * Label as finished lines: the Label draws them, it does not break them.
  */
 
 import { createElement, insertNode, setProp, tmTransaction } from '@roku-sdk/solid';
@@ -24,7 +25,7 @@ import { ShaderHandle } from './shader-handle.js';
 import { planDecor, reportGap, toRokuColor } from './effects.js';
 import type { DecorLayer } from './effects.js';
 import type { EffectEntry } from './effect-cache.js';
-import { fontMetrics, getFontVersion, loadFace, measureText, measureWrapText, resolveFontUri, webLineHeight } from './fonts.js';
+import type { Face } from './fonts.js';
 import { layoutText, TextAlign, TextContain, TextLayoutResult, VerticalAlign, WordBreak } from './text-layout.js';
 
 export { RokuTexture } from './node-textures.js';
@@ -35,19 +36,9 @@ const APP_H = 1080;
 let nextUid = 1;
 let geometryEpoch = 0;
 
-function weightOf(family: string, weight: any): { family: string; weight: number } {
-  let fam = String(family || 'Roboto');
-  let w = weight;
-  const match = /^(.*?)(\d{3})$/.exec(fam);
-  if (match) {
-    fam = match[1];
-    w = Number(match[2]);
-  }
-  if (typeof w === 'string') {
-    w = /bold|black|heavy|semibold|demibold/i.test(w) ? 700 : 400;
-  }
-  return { family: fam, weight: typeof w === 'number' ? w : 400 };
-}
+/** Characters that draw nothing and take no width (the WebGL backend's list). */
+const invisible = (code: number) =>
+  code === 0x200b || code === 0x200c || code === 0x200d || code === 0xfeff || code === 0x00ad || code === 0x2060;
 
 /** A shadow or fill layer: a Poster or Rectangle and the fields written to it. */
 interface LayerNode {
@@ -98,8 +89,6 @@ export class RokuNode extends Events {
   private _y = 0;
   private _w = 0;
   private _h = 0;
-  private _ownW = 0;
-  private _ownH = 0;
   private _alpha = 1;
   private _color = 0xffffffff;
   private _hasColor = false;
@@ -136,8 +125,8 @@ export class RokuNode extends Events {
   private _layout: TextLayoutResult | null = null;
   private _destroyed = false;
 
-  private _fontFamily = 'Roboto';
-  private _fontWeight: any = 400;
+  private _fontFamily = '';
+  private _fontWeight: number | string | undefined = undefined;
   private _fontSize = 32;
   private _lineHeight = 1.2;
   private _maxWidth = 0;
@@ -151,9 +140,14 @@ export class RokuNode extends Events {
   private _letterSpacing = 0;
   private _offsetY = 0;
   private _textValue = '';
-  private _lastLayoutKey = '';
-  private _lastFontVersion = -1;
+  /** The font this text draws with, held until the node names another or goes. */
+  private _face: Face | null = null;
+  private _layoutStale = true;
+  /** The registry version `_layout` was made at. */
+  private _fontVersion = -1;
   private _loadedQueued = false;
+  /** One Label per glyph, for letter-spaced text (a Label has no letter spacing). */
+  private _glyphs: LayerNode[] = [];
   private _imageLoadedEmitted = false;
   private _imageRequest: PosterImage | null = null;
   private _imageUri = '';
@@ -239,7 +233,6 @@ export class RokuNode extends Events {
     this.applyProps(p);
     if (p.parent) this.parent = p.parent;
     this._initializing = false;
-    if (text) this.reflow();
     this.renderer.markDirty(this);
   }
 
@@ -265,14 +258,9 @@ export class RokuNode extends Events {
         case 'colorBottomLeft': this._effectDirty = true; this._blColor = value; this._cornerColors = true; this.recomputeCorners(); this._hasColor = true; break;
         case 'colorBr':
         case 'colorBottomRight': this._effectDirty = true; this._brColor = value; this._cornerColors = true; this.recomputeCorners(); this._hasColor = true; break;
-        case 'w':
-          if (this._isText) this._ownW = num(value, 0);
-          else this._w = num(value, 0);
-          break;
-        case 'h':
-          if (this._isText) this._ownH = num(value, 0);
-          else this._h = num(value, 0);
-          break;
+        // A text node's size is its laid-out text: a w or h it is created with is not kept.
+        case 'w': if (!this._isText) this._w = num(value, 0); break;
+        case 'h': if (!this._isText) this._h = num(value, 0); break;
         case 'x': this._x = num(value, 0); break;
         case 'y': this._y = num(value, 0); break;
         case 'alpha': this._alpha = num(value, 1); break;
@@ -323,7 +311,7 @@ export class RokuNode extends Events {
         case 'fontFamily': this._fontFamily = String(value); break;
         case 'fontWeight': this._fontWeight = value; break;
         case 'fontSize': this._fontSize = num(value, 32); break;
-        case 'lineHeight': this._lineHeight = num(value, 1.2); break;
+        case 'lineHeight': this._lineHeight = num(value, 0) || 1.2; break;
         case 'maxWidth': this._maxWidth = num(value, 0); break;
         case 'maxHeight': this._maxHeight = num(value, 0); break;
         case 'maxLines': this._maxLines = num(value, 0); break;
@@ -408,32 +396,30 @@ export class RokuNode extends Events {
   set x(v: number) { if (v !== this._x) { this._x = num(v, 0); this.markTransform("position"); } }
   get y() { return this._y; }
   set y(v: number) { if (v !== this._y) { this._y = num(v, 0); this.markTransform("position"); } }
-  get w() { return this._isText ? (this._layout ? this._layout.width : this._ownW) : this._w; }
+  // A text node's size is its laid-out text; writing w or h bounds the layout
+  // (maxWidth, maxHeight), as on WebGL.
+  get w() { return this._isText ? this.textLayout().width : this._w; }
   set w(v: number) {
-    if (this._isText) this._maxWidth = num(v, 0);
-    else this._w = num(v, 0);
+    if (this._isText) { this._maxWidth = num(v, 0); this.staleLayout(); return; }
+    this._w = num(v, 0);
     this.markTransform();
-    // A rect/poster paints at boxW/boxH; resizing the node without marking the
-    // visual leaves the Roku child at its old size (this kept the nav backdrop
-    // at 200 px while its Group pivot moved as if it were 1600 px wide).
-    if (!this._isText) this.markVisual();
-    if (this._isText) this.reflowSoon();
+    // A rect/poster paints at boxW/boxH: the visual is resized with the node.
+    this.markVisual();
   }
-  get h() { return this._isText ? (this._layout ? this._layout.height : this._ownH) : this._h; }
+  get h() { return this._isText ? this.textLayout().height : this._h; }
   set h(v: number) {
-    if (this._isText) this._maxHeight = num(v, 0);
-    else this._h = num(v, 0);
+    if (this._isText) { this._maxHeight = num(v, 0); this.staleLayout(); return; }
+    this._h = num(v, 0);
     this.markTransform();
-    if (!this._isText) this.markVisual();
-    if (this._isText) this.reflowSoon();
+    this.markVisual();
   }
   get width() { return this.w; }
   set width(v: number) { this.w = v; }
   get height() { return this.h; }
   set height(v: number) { this.h = v; }
 
-  get boxW() { return this._isText && this._layout ? this._layout.boxW : this._isText ? this._maxWidth : this._w; }
-  get boxH() { return this._isText && this._layout ? this._layout.boxH : this._isText ? this._maxHeight : this._h; }
+  get boxW() { return this._isText ? this.textLayout().boxW : this._w; }
+  get boxH() { return this._isText ? this.textLayout().boxH : this._h; }
 
   get alpha() { return this._alpha; }
   set alpha(v: number) { this._alpha = Math.max(0, Math.min(1, num(v, 1))); this.markTransform("alpha"); }
@@ -564,25 +550,7 @@ export class RokuNode extends Events {
 
   get src(): string { return this._src || (this._texture ? this._texture.src : ''); }
   set src(v: string | null) {
-    const raw = String(v || '');
-    // The demo passes colors such as "#000000" or "#333" through `src` to
-    // clear a background image. Treat a CSS color literal as a color, not a
-    // bad URI. The web renderer accepts 3/4-digit shorthand; do the same.
-    if (/^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(raw)) {
-      let hex = raw.slice(1);
-      if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('') + 'ff';
-      else if (hex.length === 4) hex = hex.split('').map((c) => c + c).join('');
-      else hex = hex.padEnd(8, 'f');
-      const color = parseInt(hex, 16) >>> 0;
-      this._src = '';
-      this.setTexture(null);
-      this._color = color;
-      this._colorTL = this._colorTR = this._colorBL = this._colorBR = color;
-      this._hasColor = true;
-      this.markVisual();
-      return;
-    }
-    const next = normalizeUri(raw);
+    const next = normalizeUri(String(v || ''));
     if (next === this._src) return;
     this._src = next;
     this.markVisual();
@@ -712,73 +680,74 @@ export class RokuNode extends Events {
   requestRender() { this.renderer.markDirty(this); }
 
   private _anims: Map<string, { settings: AnimationSettings; controller: AnimationController }> | null = null;
-  private _fontFace: any = null;
-
   get text() { return this._textValue; }
   set text(v: string) {
     const next = v === undefined || v === null ? '' : String(v);
     if (next === this._textValue) return;
     this._textValue = next;
-    this.reflow();
+    this.staleLayout();
   }
   get fontFamily() { return this._fontFamily; }
-  set fontFamily(v: string) { this._fontFamily = String(v || 'Roboto'); this.reflow(); }
-  // Stored only: a SceneGraph Font is a file and a size, and no italic or oblique face is bundled.
+  set fontFamily(v: string) { this._fontFamily = String(v || ''); this.staleLayout(); }
+  // `italic` picks a font registered as italic; there is no synthetic slant.
   get fontStyle(): string { return this._fontStyle; }
-  set fontStyle(v: string | undefined) { this._fontStyle = v === undefined || v === null ? 'normal' : String(v); }
+  set fontStyle(v: string | undefined) { this._fontStyle = v === undefined || v === null ? 'normal' : String(v); this.staleLayout(); }
   get fontWeight() { return this._fontWeight; }
-  set fontWeight(v: any) { this._fontWeight = v; this.reflow(); }
+  set fontWeight(v: number | string | undefined) { this._fontWeight = v; this.staleLayout(); }
   get fontSize() { return this._fontSize; }
-  set fontSize(v: number) { this._fontSize = num(v, 32); this.reflow(); }
+  set fontSize(v: number) { this._fontSize = num(v, 32); this.staleLayout(); }
   get lineHeight() { return this._lineHeight; }
-  set lineHeight(v: number | undefined) { this._lineHeight = num(v, 1.2); this.reflow(); }
+  set lineHeight(v: number | undefined) { this._lineHeight = num(v, 0) || 1.2; this.staleLayout(); }
   get maxWidth() { return this._maxWidth; }
-  set maxWidth(v: number) { this._maxWidth = num(v, 0); this.reflow(); }
+  set maxWidth(v: number) { this._maxWidth = num(v, 0); this.staleLayout(); }
   get maxHeight() { return this._maxHeight; }
-  set maxHeight(v: number) { this._maxHeight = num(v, 0); this.reflow(); }
+  set maxHeight(v: number) { this._maxHeight = num(v, 0); this.staleLayout(); }
   get maxLines() { return this._maxLines; }
-  set maxLines(v: number) { this._maxLines = num(v, 0); this.reflow(); }
+  set maxLines(v: number) { this._maxLines = num(v, 0); this.staleLayout(); }
   get contain() { return this._contain; }
-  set contain(v: TextContain) { this._contain = v || 'none'; this.reflow(); }
+  set contain(v: TextContain) { this._contain = v || 'none'; this.staleLayout(); }
   get textAlign() { return this._textAlign; }
-  set textAlign(v: TextAlign) { this._textAlign = v || 'left'; this.reflow(); }
+  set textAlign(v: TextAlign) { this._textAlign = v || 'left'; this.staleLayout(); }
   get verticalAlign() { return this._verticalAlign; }
-  set verticalAlign(v: VerticalAlign) { this._verticalAlign = v || 'top'; this.reflow(); }
+  set verticalAlign(v: VerticalAlign) { this._verticalAlign = v || 'top'; this.staleLayout(); }
   get wordBreak() { return this._wordBreak; }
-  set wordBreak(v: WordBreak) { this._wordBreak = v || 'break-word'; this.reflow(); }
+  set wordBreak(v: WordBreak) { this._wordBreak = v || 'break-word'; this.staleLayout(); }
   get overflowSuffix() { return this._overflowSuffix; }
-  set overflowSuffix(v: string) { this._overflowSuffix = String(v); this.reflow(); }
+  set overflowSuffix(v: string) { this._overflowSuffix = String(v); this.staleLayout(); }
   get letterSpacing() { return this._letterSpacing; }
-  set letterSpacing(v: number) { this._letterSpacing = num(v, 0); this.reflow(); }
+  set letterSpacing(v: number) { this._letterSpacing = num(v, 0); this.staleLayout(); }
   get offsetY() { return this._offsetY; }
-  set offsetY(v: number) { this._offsetY = num(v, 0); this.markVisual(); }
+  set offsetY(v: number) { this._offsetY = num(v, 0); this.staleLayout(); }
   get forceLoad() { return false; }
-  set forceLoad(_v: boolean) { /* native fonts are always loaded up front */ }
-  get layout() { return this._layout; }
+  set forceLoad(_v: boolean) { /* text is laid out whether or not it is on screen */ }
+  get layout() { return this._isText ? this.textLayout() : null; }
 
-  reflowSoon() {
-    const defer = this.renderer.defer;
-    if (typeof defer === 'function') defer(() => { if (!this._destroyed) this.reflow(); });
-    else setTimeout(() => { if (!this._destroyed) this.reflow(); }, 0);
+  /** A prop the layout reads changed: it is made again when next read, at the latest in the coming flush. */
+  private staleLayout() {
+    if (!this._isText) return;
+    this._layoutStale = true;
+    this.markTransform();
+    this.markVisual();
   }
 
-  reflow() {
-    if (!this._isText || this._destroyed) return;
-    const parsed = weightOf(this._fontFamily, this._fontWeight);
-    const uri = resolveFontUri(parsed.family, parsed.weight);
-    try {
-      const root = this.renderer.getFontRoot();
-      if (root) this._fontFace = loadFace(uri, root, Math.max(1, Math.round(this._fontSize)));
-    } catch (error) {
-      console.error('ROKU_TEXT_FONT ' + uri + ' ' + String((error as any)?.message || error));
-    }
-    const metrics = fontMetrics(parsed.family, parsed.weight, this._fontSize);
-    const layout = layoutText({
+  /**
+   * The text's layout, made when a prop it reads or the renderer's fonts
+   * changed since the last one. Synchronous: a registered font measures from
+   * its table. A new layout tells `loaded` listeners (the platform's flex
+   * layout) the text's size, after the flush that draws it.
+   */
+  private textLayout(): TextLayoutResult {
+    const fonts = this.renderer.fonts;
+    if (this._layout !== null && !this._layoutStale && this._fontVersion === fonts.version) return this._layout;
+    this._layoutStale = false;
+    this._fontVersion = fonts.version;
+    // The new face first: a face that stays in use is then not dropped and made again.
+    const face = fonts.acquire(this._fontFamily, this._fontWeight, this._fontStyle, this._fontSize);
+    if (this._face !== null) fonts.release(this._face);
+    this._face = this._destroyed ? null : face;
+    this._layout = layoutText({
       text: this._textValue,
-      measure: (value: string) => measureText(parsed.family, parsed.weight, this._fontSize, value),
-      measureWrap: (value: string) => measureWrapText(parsed.family, parsed.weight, this._fontSize, value),
-      naturalLineHeight: webLineHeight(parsed.family, parsed.weight, this._fontSize),
-      fontSize: this._fontSize,
+      font: face.font,
       lineHeight: this._lineHeight,
       maxWidth: this._maxWidth,
       maxHeight: this._maxHeight,
@@ -790,41 +759,36 @@ export class RokuNode extends Events {
       overflowSuffix: this._overflowSuffix,
       letterSpacing: this._letterSpacing,
       offsetY: this._offsetY,
-      rtl: this.rtlResolved,
+      rtl: this.direction(),
     });
-    this._layout = layout;
-    this._lastFontVersion = getFontVersion();
-    this._ownW = layout.width;
-    this._ownH = layout.height;
-    const key = [
-      this._textValue, parsed.family, parsed.weight, this._fontSize, this._lineHeight,
-      this._maxWidth, this._maxHeight, this._maxLines, this._contain, this._textAlign,
-      this._verticalAlign, this._wordBreak, this._overflowSuffix, this._letterSpacing,
-      this._offsetY, layout.width, layout.height, this._fontFace && this._fontFace.ready ? 1 : 0,
-    ].join('|');
-    if (key !== this._lastLayoutKey) {
-      this._lastLayoutKey = key;
-      this.queueLoaded();
-    }
-    this.markTransform();
-    this.markVisual();
+    if (this._destroyed) fonts.release(face);
+    else this.queueLoaded();
+    return this._layout;
   }
 
+  /** Whether this node reads right to left: its own `rtl`, else the nearest ancestor's. */
+  private direction(): boolean {
+    let node: RokuNode | null = this;
+    while (node !== null) {
+      if (node._rtl !== null) return node._rtl;
+      node = node._parent;
+    }
+    return false;
+  }
+
+  /** `loaded`, once per turn, after the current flush: a listener may move nodes. */
   private queueLoaded() {
     if (this._loadedQueued) return;
     this._loadedQueued = true;
-    setTimeout(() => {
+    void Promise.resolve().then(() => {
       this._loadedQueued = false;
-      if (this._destroyed) return;
+      if (this._destroyed || this._layout === null || this.listenerCount('loaded') === 0) return;
       try {
-        this.emit('loaded', {
-          type: 'text',
-          dimensions: { width: this._layout ? this._layout.width : 0, height: this._layout ? this._layout.height : 0 },
-        });
+        this.emit('loaded', { type: 'text', dimensions: { width: this._layout.width, height: this._layout.height } });
       } catch (error) {
         console.error('ROKU_TEXT_LOADED ' + String((error as any)?.message || error));
       }
-    }, 0);
+    });
   }
 
   // ---- visuals ----------------------------------------------------------
@@ -1067,43 +1031,106 @@ export class RokuNode extends Events {
     else this.loadImage(visual, src, w, h);
   }
 
+  /**
+   * Writes the laid-out text to the Label. The lines are already broken and
+   * cut, so the Label is given them joined by newlines in a box wider than
+   * any of them: it never breaks or ellipsizes on its own, and its own
+   * horizAlign puts every line where the layout has it. Vertically the first
+   * baseline goes where the layout has it and lineSpacing makes up the
+   * difference between the layout's line height and the Label's. Several
+   * lines get a height with a line to spare: left to size itself, a Label
+   * drops its last line for some fractional line spacings.
+   */
   private writeLabel() {
-    if (!this._layout) return;
-    const parsed = weightOf(this._fontFamily, this._fontWeight);
-    const natural = fontMetrics(parsed.family, parsed.weight, this._fontSize).lineHeight;
-    // CSS line-height can be tighter than the font's natural line box.
-    // Negative spacing is valid and is what keeps 32px body copy at 32px
-    // instead of the font's 34px default.
-    const extra = Math.round(this._layout.lineHeightPx - natural);
-    const lineText = this._layout.lines.map((line) => line.text).join('\n');
-    if (this._fontFace && this._fontFace.node) this.writeIf('font', this._fontFace.node);
-    // Native glyph advances are not perfectly linear with the 32pt
-    // measurement face. Auto-width labels need a small margin or Roku
-    // ellipsizes the last glyph. Box-constrained text keeps its exact width.
-    const autoWidth = this._maxWidth === 0;
-    const labelW = autoWidth
-      ? Math.ceil(this._layout.labelW * 1.08) + 8
-      : Math.max(1, this._layout.labelW);
-    // The layout's boxY resolves verticalAlign inside the text box. Roku's
-    // Label paints its first line at the top of the line box, so add the CSS
-    // half-leading (extra / 2) to reproduce text centered in lineHeight. This
-    // is what puts Play/Resume, HD/CC and nav labels in the middle of their
-    // fixed-height containers instead of at the top.
-    const labelH = Math.max(1, Math.ceil(this._layout.height) + 8);
-    this.writeIf('width', labelW);
-    this.writeIf('height', labelH);
-    this.writeIf('text', lineText);
-    this.writeIf('wrap', true);
-    this.writeIf('maxLines', this._maxLines > 0 ? this._maxLines : 0);
-    this.writeIf('lineSpacing', extra);
-    this.writeIf('horizAlign', this._textAlign);
-    this.writeIf('vertAlign', 'top');
+    const layout = this.textLayout();
+    const face = this._face;
+    if (face === null) return;
+    const font = face.font;
+    const lines = layout.lines;
+    this.writeIf('font', face.node);
     this.writeIf('color', toRokuColor(this._color, '0xFFFFFFFF'));
-    this.writeIf('translation', [0, this._layout.boxY + extra / 2]);
-    if (this._letterSpacing !== 0 && !(globalThis as any).__rokuLetterGap) {
-      (globalThis as any).__rokuLetterGap = true;
-      console.warn('ROKU_TEXT_GAP letterSpacing is measured but not drawn by the native Label');
+    this.writeIf('vertAlign', 'top');
+    if (face.failed) {
+      // The system font, and the firmware cannot measure it: one unmeasured line.
+      this.syncGlyphs(0);
+      this.writeIf('width', 0);
+      this.writeIf('height', 0);
+      this.writeIf('wrap', false);
+      this.writeIf('horizAlign', 'left');
+      this.writeIf('translation', [0, 0]);
+      this.writeIf('text', this._textValue);
+      return;
     }
+    if (lines.length === 0) {
+      this.syncGlyphs(0);
+      this.writeIf('text', '');
+      return;
+    }
+    const top = (line: number) => Math.round(layout.boxY + lines[line].baseline - font.labelAscent);
+    if (this._letterSpacing !== 0) {
+      // A Label has no letter spacing: each glyph is its own Label, placed by the layout.
+      this.writeIf('text', '');
+      let count = 0;
+      for (let l = 0; l < lines.length; l++) {
+        const text = lines[l].text;
+        const y = top(l);
+        let x = layout.boxX + lines[l].x;
+        for (let i = 0; i < text.length; ) {
+          const code = text.codePointAt(i)!;
+          const glyph = String.fromCodePoint(code);
+          i += glyph.length;
+          if (invisible(code)) continue;
+          if (code !== 32) this.writeGlyph(count++, face, glyph, x, y);
+          x += font.measure(glyph, this._letterSpacing);
+        }
+      }
+      this.syncGlyphs(count);
+      return;
+    }
+    this.syncGlyphs(0);
+    const many = lines.length > 1;
+    let width = 0;
+    let x = 0;
+    if (many || layout.align !== 'left') {
+      // Room beyond the widest line, on the side or sides the lines do not align to.
+      const room = Math.ceil(8 + layout.width * 0.06);
+      const span = Math.max(layout.alignWidth, layout.width);
+      width = span + (layout.align === 'center' ? room * 2 : room);
+      if (layout.align === 'center') x = (layout.alignWidth - width) * 0.5;
+      else if (layout.align === 'right') x = layout.alignWidth - width;
+    }
+    // A single line aligned left needs no box: at width 0 a Label draws one line whatever its length.
+    this.writeIf('width', width);
+    this.writeIf('height', many ? Math.ceil(layout.height + font.labelLineHeight) : 0);
+    this.writeIf('wrap', many);
+    this.writeIf('lineSpacing', many ? layout.lineHeight - font.labelLineHeight : 0);
+    this.writeIf('horizAlign', layout.align);
+    this.writeIf('translation', [x, top(0)]);
+    this.writeIf('text', many ? lines.map((line) => line.text).join('\n') : lines[0].text);
+  }
+
+  /** The `index`th glyph Label of letter-spaced text, made on first use. */
+  private writeGlyph(index: number, face: Face, glyph: string, x: number, y: number) {
+    let label = this._glyphs[index];
+    if (label === undefined) {
+      const node = createElement('label');
+      insertNode(this.dom, node, this.firstChildDom());
+      label = this._glyphs[index] = { node, poster: false, written: {} };
+    }
+    const set = (name: string, value: any) => {
+      if (label.written[name] !== undefined && same(label.written[name], value)) return;
+      label.written[name] = Array.isArray(value) ? value.slice() : value;
+      setProp(label.node, name, value);
+    };
+    set('font', face.node);
+    set('color', toRokuColor(this._color, '0xFFFFFFFF'));
+    set('translation', [x, y]);
+    set('text', glyph);
+  }
+
+  /** Drops the glyph Labels past `count`. */
+  private syncGlyphs(count: number) {
+    while (this._glyphs.length > count) tmTransaction.removeNode(this.dom, this._glyphs.pop()!.node);
   }
 
   // ---- shadow and fill layers --------------------------------------------
@@ -1188,12 +1215,13 @@ export class RokuNode extends Events {
     if (this._shadow) insertNode(this.dom, this._shadow.node);
     if (this.visual) insertNode(this.dom, this.visual);
     for (let i = 0; i < this._layers.length; i++) insertNode(this.dom, this._layers[i].node);
+    for (let i = 0; i < this._glyphs.length; i++) insertNode(this.dom, this._glyphs[i].node);
     for (let i = 0; i < sorted.length; i++) insertNode(this.dom, sorted[i].dom);
   }
 
   flush() {
     if (this._destroyed) return;
-    if (this._isText && this._lastFontVersion !== getFontVersion()) this.reflow();
+    if (this._isText) this.textLayout();
     this.ensureVisual();
     if (this._orderDirty) {
       this._orderDirty = false;
@@ -1272,6 +1300,11 @@ export class RokuNode extends Events {
     if (this._shader) this._shader.nodes.delete(this);
     this._imageRequest?.invalidate();
     this.clearDecor();
+    this.syncGlyphs(0);
+    if (this._face !== null) {
+      this.renderer.fonts.release(this._face);
+      this._face = null;
+    }
     if (this.visual) {
       try { tmTransaction.removeNode(this.dom, this.visual); } catch (e) { /* already detached */ }
       this.visual = null;

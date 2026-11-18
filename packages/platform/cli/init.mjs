@@ -38,6 +38,13 @@ function device(root, target, dependencies) {
       path.join(dest, 'package-zip.py'),
     );
     copy(path.join(origin, 'src'), path.join(dest, 'src'));
+    // Roku draws text with a font file, not the SDF atlas the other targets
+    // load from assets/fonts: the starter app's family (Lato) as a TTF, with
+    // its licence, kept with this target.
+    copy(
+      path.join(framework, 'cli/templates/roku/fonts'),
+      path.join(dest, 'fonts'),
+    );
     write(
       path.join(dest, 'roku-config.ts'),
       `import { rokuConfig } from '@solid-multiplatform/platform/roku/preset';

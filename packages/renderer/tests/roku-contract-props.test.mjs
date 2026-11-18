@@ -285,7 +285,8 @@ test('the renderer and node methods the contract names', async (t) => {
   assert.equal(renderer.stage, renderer);
   assert.equal(renderer.createShader('rounded', { radius: 8 }).shaderType, 'rounded');
   assert.equal(renderer.createTexture('ImageTexture', { src: 'pkg:/assets/a.png' }).src, 'pkg:/assets/a.png');
-  await renderer.loadFont({ fontFamily: 'Roboto' });
+  // A font needs its file: without one the load is refused, not ignored.
+  await assert.rejects(renderer.loadFont({ fontFamily: 'Roboto' }), /fontUrl/);
   renderer.requestRender();
 
   const parent = renderer.createNode({ ...box, parent: renderer.root });

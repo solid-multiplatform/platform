@@ -3,7 +3,8 @@
 // screenshot and probes the pixels. Each case mounts on its own, so one that
 // throws is reported on the console and the rest still draw.
 import { createSignal, type JSXElement } from 'solid-js';
-import { createRenderer } from '@solid-multiplatform/platform';
+import { createRenderer, loadFonts } from '@solid-multiplatform/platform';
+import robotoRegular from './fonts/Roboto-Regular.ttf';
 import {
   BG,
   CASES as C,
@@ -286,7 +287,9 @@ const cases: Record<string, () => JSXElement> = {
       <text
         y={(C.textOverGradient.h - C.textOverGradient.fontSize) / 2}
         width={C.textOverGradient.w}
+        contain="width"
         textAlign="center"
+        fontFamily="Roboto"
         fontSize={C.textOverGradient.fontSize}
         color={C.textOverGradient.textColor}
       >
@@ -327,6 +330,9 @@ function linear(c: {
  */
 export function mountWith(effectTier?: 'native' | 'assets'): () => void {
   console.log('VISUAL START');
+  void loadFonts([{ fontFamily: 'Roboto', fontUrl: robotoRegular }]).catch(
+    (error) => console.log('VISUAL FONT ' + String(error)),
+  );
   const { render } = createRenderer(
     effectTier ? ({ effectTier } as never) : undefined,
   );
@@ -336,7 +342,13 @@ export function mountWith(effectTier?: 'native' | 'assets'): () => void {
     const at = labelAt(i);
     try {
       render(() => (
-        <text x={at.x} y={at.y} fontSize={22} color={0xa0a8b0ff}>
+        <text
+          x={at.x}
+          y={at.y}
+          fontFamily="Roboto"
+          fontSize={22}
+          color={0xa0a8b0ff}
+        >
           {(LABELS as Record<string, string>)[name]}
         </text>
       ));

@@ -92,7 +92,7 @@ const reading = readConsole(
     if (at === -1) return false;
     const text = line.slice(at);
     if (text.startsWith('VISUAL START')) notes = [];
-    if (!/^ROKU_(PERF|FONTS) /.test(text)) notes.push(text);
+    if (!text.startsWith('ROKU_PERF ')) notes.push(text);
     ready = text.startsWith('VISUAL READY');
     return ready;
   },
@@ -492,14 +492,24 @@ const probes = {
   },
   textOverGradient(c) {
     expectRamp('gradient beside the text', [c.x + 10, c.y], [c.x + 10, c.y + c.h], c.colors, c.stops);
-    // White glyph pixels somewhere in the middle of the box.
-    let brightest = 0;
-    for (let y = c.y + c.h * 0.25; y < c.y + c.h * 0.75; y++) {
-      for (let x = c.x + c.w * 0.2; x < c.x + c.w * 0.8; x++) {
-        brightest = Math.max(brightest, Math.min(...sample(image, x, y, 0)));
+    // The white glyph pixels: centred in the box (textAlign center in a
+    // contain="width" box), and all of them inside it.
+    let left = Infinity;
+    let right = -Infinity;
+    for (let y = c.y; y < c.y + c.h; y++) {
+      for (let x = c.x - 20; x < c.x + c.w + 20; x++) {
+        if (Math.min(...sample(image, x, y, 0)) < 190) continue;
+        left = Math.min(left, x);
+        right = Math.max(right, x);
       }
     }
-    if (brightest < 200) failures.push(`no white text over the gradient (brightest pixel ${brightest})`);
+    if (right < 0) failures.push('no white text over the gradient');
+    else {
+      const centre = (left + right + 1) / 2;
+      if (Math.abs(centre - (c.x + c.w / 2)) > 3)
+        failures.push(`text is centred on ${centre}, want ${c.x + c.w / 2} +-3 (ink ${left}..${right})`);
+      if (left < c.x || right >= c.x + c.w) failures.push(`text ink ${left}..${right} leaves the box ${c.x}..${c.x + c.w - 1}`);
+    }
   },
 };
 

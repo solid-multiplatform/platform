@@ -9,7 +9,6 @@
 import type { SceneRenderer } from '../contracts.js';
 import type { AnimationSettings } from './animation-types.js';
 import type { CompositorAnimation } from './compositor-animation.js';
-import { subscribeFontChanges } from './fonts.js';
 import { getAppMemoryMonitor, getDeviceInfo } from '@roku-sdk/rsg-ts/runtime';
 import { Animator } from './animation.js';
 import { FrameClock } from './frame-clock.js';
@@ -17,7 +16,10 @@ import { Events } from './events.js';
 import { EffectCache } from './effect-cache.js';
 import { effectGaps } from './effects.js';
 import type { EffectTier } from './effects.js';
-import { fontMetrics, measureText as measureNativeText } from './fonts.js';
+import { FontRegistry, fontMetricsFor, fontTable } from './fonts.js';
+import type { FontDescription } from './fonts.js';
+import type { FontLineMetrics } from './font-metrics.js';
+import { layoutText } from './text-layout.js';
 import { RokuNode, RokuTexture, ShaderHandle } from './node.js';
 import type { RokuNodeProps } from './node.js';
 
@@ -42,6 +44,28 @@ export function detectEffectTier(): EffectTier {
     console.warn('ROKU_DEVICE_INFO unavailable: ' + String((error as any)?.message || error));
   }
   return 'assets';
+}
+
+/**
+ * What `loadFont` takes: the scene contract's SceneFont with this backend's
+ * options. `fontUrl` is the packaged font file, as `import url from
+ * './X.ttf'` gives it under the platform's Roku preset; the same import makes
+ * the file's layout table at build time.
+ */
+export interface RokuFont {
+  /** The family text names; more than one registers the file under each. */
+  fontFamily: string | string[];
+  /** More family names for the same file. */
+  aliases?: string[];
+  fontUrl: string;
+  /** 100 to 900, `normal` or `bold`. Default 400. */
+  fontWeight?: number | string;
+  /** `normal` (default) or `italic`. */
+  fontStyle?: string;
+  /** Line metrics to lay out with instead of the file's own, as on the WebGL backend. */
+  metrics?: FontLineMetrics;
+  /** How long the file may take to load, in ms. */
+  timeout?: number;
 }
 
 export interface SceneGraphHost {
@@ -97,7 +121,8 @@ export class SceneGraphRenderer extends Events implements SceneRenderer<RokuNode
   private routeLabel: RokuNode | null = null;
   private dirtyList: RokuNode[] = [];
 
-  private unsubscribeFonts: () => void;
+  /** The fonts registered with this renderer. */
+  readonly fonts: FontRegistry;
 
   constructor(settings: any, rootId: object, readonly host: SceneGraphHost = {}) {
     super();
@@ -105,7 +130,7 @@ export class SceneGraphRenderer extends Events implements SceneRenderer<RokuNode
     this.rootId = rootId;
     this.nativeRoot = rootId;
     this.effectTier = settings?.effectTier === 'native' || settings?.effectTier === 'assets' ? settings.effectTier : detectEffectTier();
-    this.unsubscribeFonts = subscribeFontChanges(() => this.onFontVersionChanged());
+    this.fonts = new FontRegistry(this.nativeRoot, () => this.onFontsChanged());
     // The renderer root is the app group. The host already inserted it into the
     // scene (usually inside a Scene with a solid background).
     this.root = new RokuNode(this, { w: settings?.appWidth ?? APP_W, h: settings?.appHeight ?? APP_H }, this.nativeRoot || undefined, false);
@@ -173,10 +198,6 @@ export class SceneGraphRenderer extends Events implements SceneRenderer<RokuNode
     this.requestRender();
   }
 
-  getFontRoot() {
-    return this.nativeRoot || this.root.dom;
-  }
-
   markDirty(node: RokuNode) {
     if (this.destroyed) return;
     this.dirty.add(node);
@@ -187,25 +208,25 @@ export class SceneGraphRenderer extends Events implements SceneRenderer<RokuNode
     this.scheduleFlush();
   }
 
-  /**
-   * A font face became measurable. Dirty every text node so flush() re-runs
-   * its layout with the new metrics (a dirty-driven renderer otherwise never
-   * revisits auto-width labels).
-   */
   setRoute(route: string) {
     if (this.routeLabel) this.routeLabel.text = 'route ' + String(route || '?');
   }
 
-  onFontVersionChanged() {
-    if (this.destroyed) return;
+  /**
+   * The fonts changed (one was registered or failed, or the system font
+   * became measurable): every text node is flushed, where it lays itself out
+   * against the registry's new version.
+   */
+  private onFontsChanged() {
+    // The first registrations come before the root exists.
+    if (this.destroyed || !this.root) return;
     const walk = (node: RokuNode) => {
       if (node.destroyed) return;
-      if ((node as any)._isText) node.markVisual();
+      if (node.layout !== null) node.markVisual();
       const children = node.children;
       for (let i = 0; i < children.length; i++) walk(children[i]);
     };
     walk(this.root);
-    this.scheduleFlush();
   }
 
   defer(fn: () => void) {
@@ -312,17 +333,35 @@ export class SceneGraphRenderer extends Events implements SceneRenderer<RokuNode
     this.registerShaderType(name, shaderType);
   }
 
-  measureText(
-    text: string,
-    fontFamily?: string,
-    fontWeight?: any,
-    fontSize: number = 32,
-    letterSpacing: number = 0,
-    maxWidth: number = 0,
-  ) {
-    const width = measureNativeText(fontFamily, fontWeight, fontSize, String(text || '')) + Math.max(0, String(text || '').length - 1) * letterSpacing;
-    const height = fontMetrics(fontFamily, fontWeight, fontSize).lineHeight;
-    return { width, height, maxWidth: maxWidth > 0 ? maxWidth : width };
+  /**
+   * The size a text node created with `props` reads as `w` and `h`, without
+   * making one (the WebGL backend's measureText). Null while the text's font
+   * cannot be measured: the system font, before the firmware has it.
+   */
+  measureText(props: RokuNodeProps): { w: number; h: number } | null {
+    const face = this.fonts.acquire(String(props.fontFamily || ''), props.fontWeight, props.fontStyle, props.fontSize || 32);
+    try {
+      if (!face.measurable) return null;
+      const layout = layoutText({
+        text: String(props.text ?? ''),
+        font: face.font,
+        lineHeight: props.lineHeight || 1.2,
+        maxWidth: props.maxWidth || 0,
+        maxHeight: props.maxHeight || 0,
+        maxLines: props.maxLines || 0,
+        textAlign: (props.textAlign || 'left') as any,
+        verticalAlign: 'top',
+        contain: 'none',
+        wordBreak: (props.wordBreak || 'break-word') as any,
+        overflowSuffix: props.overflowSuffix ?? '...',
+        letterSpacing: props.letterSpacing || 0,
+        offsetY: 0,
+        rtl: false,
+      });
+      return { w: layout.width, h: layout.height };
+    } finally {
+      this.fonts.release(face);
+    }
   }
 
   getCapabilities() {
@@ -400,12 +439,45 @@ export class SceneGraphRenderer extends Events implements SceneRenderer<RokuNode
     };
   }
 
-  loadFont(_font: any, _options?: any) {
-    return Promise.resolve(_font);
+  /** Registers a font file with its layout table; text naming the family lays out from it from now on. */
+  registerFont(font: FontDescription): void {
+    this.fonts.registerFont(font);
   }
 
-  loadFonts(fonts: any[] = []) {
-    return Promise.resolve(fonts);
+  /**
+   * Registers a font and loads its file (the scene contract's entry; the
+   * 1.x form `loadFont(kind, options)` works too). Resolves when the firmware
+   * has the font. Rejects when the file has no layout table (it was not
+   * imported, so the build made none) or did not load within `timeout`;
+   * the family's text then uses another weight of it or the system font.
+   */
+  loadFont(font: RokuFont | string, options?: object): Promise<void> {
+    const given = (typeof font === 'string' ? options : font) as RokuFont | undefined;
+    const names = ([] as string[]).concat(given?.fontFamily ?? [], given?.aliases ?? []);
+    const uri = given?.fontUrl;
+    if (!given || names.length === 0 || typeof uri !== 'string')
+      return Promise.reject(new Error('loadFont needs fontFamily and fontUrl (an imported .ttf or .otf)'));
+    let metrics = fontTable(uri);
+    if (metrics === undefined)
+      return Promise.reject(
+        new Error('no layout table for ' + uri + ": import the font file (import url from './X.ttf') so the build makes one"),
+      );
+    if (given.metrics) {
+      try {
+        metrics = fontMetricsFor(uri)!.withLineMetrics(given.metrics);
+      } catch (error) {
+        return Promise.reject(error);
+      }
+    }
+    return Promise.all(
+      names.map((family) =>
+        this.fonts.load({ family, weight: given.fontWeight, style: given.fontStyle, uri, metrics }, given.timeout),
+      ),
+    ).then(() => undefined);
+  }
+
+  loadFonts(fonts: RokuFont[] = []): Promise<void> {
+    return Promise.all(fonts.map((font) => this.loadFont(font))).then(() => undefined);
   }
 
   pause() {
@@ -438,7 +510,7 @@ export class SceneGraphRenderer extends Events implements SceneRenderer<RokuNode
     }
     this.dirty.clear();
     this.removeAllListeners();
-    this.unsubscribeFonts();
+    this.fonts.destroy();
   }
 }
 
