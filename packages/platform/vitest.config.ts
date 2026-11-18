@@ -1,6 +1,18 @@
 import { configDefaults, defineConfig } from 'vitest/config';
 import solidPlugin from 'vite-plugin-solid';
 
+const shared = [
+  ...configDefaults.exclude,
+  // Real-renderer tests run in a browser: vitest.webgl.config.ts.
+  'tests/webgl/**',
+  'tests/native/**',
+  'tests/cli/**',
+  'examples/**',
+  'bench/**',
+  // .claude/** holds nested git worktrees with their own copies of tests.
+  '.claude/**',
+];
+
 export default defineConfig(() => ({
   define: {
     __DEV__: false,
@@ -18,20 +30,29 @@ export default defineConfig(() => ({
   ],
   test: {
     watch: false,
-    // Real-renderer tests run in a browser: vitest.webgl.config.ts.
-    exclude: [
-      ...configDefaults.exclude,
-      'tests/webgl/**',
-      'tests/native/**',
-      'tests/cli/**',
-      'examples/**',
-      'bench/**',
-      // .claude/** holds nested git worktrees with their own copies of tests.
-      '.claude/**',
-    ],
-    isolate: false,
+    exclude: shared,
     passWithNoTests: true,
     environment: 'jsdom',
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'unit',
+          exclude: [...shared, 'tests/host/**'],
+          // One renderer for every file in a worker: tests/setup.ts.
+          isolate: false,
+        },
+      },
+      {
+        extends: true,
+        test: {
+          // Each file starts its own app on its own host.
+          name: 'host',
+          include: ['tests/host/**/*.test.{ts,tsx}'],
+          isolate: true,
+        },
+      },
+    ],
   },
   resolve: {
     dedupe: ['solid-js'],

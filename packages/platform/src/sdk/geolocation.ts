@@ -1,4 +1,4 @@
-import { CapabilityError } from './services.js';
+import { useService, withService } from './registry.js';
 
 export interface GeoPosition {
   latitude: number;
@@ -26,41 +26,17 @@ export interface GeolocationPort {
   ): () => void;
 }
 
-let port: GeolocationPort | undefined;
-
-export function setGeolocationPort(next: GeolocationPort | undefined): void {
-  port = next;
+declare module './registry.js' {
+  interface ServiceProviders {
+    geolocation: GeolocationPort;
+  }
 }
 
-const fromWeb = (position: GeolocationPosition): GeoPosition => ({
-  latitude: position.coords.latitude,
-  longitude: position.coords.longitude,
-  accuracy: position.coords.accuracy,
-  altitude: position.coords.altitude ?? undefined,
-  heading: position.coords.heading ?? undefined,
-  speed: position.coords.speed ?? undefined,
-  timestamp: position.timestamp,
-});
-
-const webGeolocation = (): Geolocation | undefined => {
-  if (typeof navigator === 'undefined') return undefined;
-  return navigator.geolocation;
-};
-
-/** Current location through the host port or the browser Geolocation API. */
-export function getCurrentPosition(
+/** Current location through the host's `geolocation` service. */
+export async function getCurrentPosition(
   options: GeoOptions = {},
 ): Promise<GeoPosition> {
-  if (port) return port.getCurrent(options);
-  const web = webGeolocation();
-  if (!web) throw new CapabilityError('geolocation');
-  return new Promise((resolve, reject) => {
-    web.getCurrentPosition(
-      (position) => resolve(fromWeb(position)),
-      (error) => reject(error),
-      options,
-    );
-  });
+  return withService('geolocation', (port) => port.getCurrent(options));
 }
 
 /**
@@ -71,13 +47,5 @@ export function watchPosition(
   options: GeoOptions,
   listener: (position: GeoPosition) => void,
 ): () => void {
-  if (port) return port.watch(options, listener);
-  const web = webGeolocation();
-  if (!web) throw new CapabilityError('geolocation');
-  const id = web.watchPosition(
-    (position) => listener(fromWeb(position)),
-    () => undefined,
-    options,
-  );
-  return () => web.clearWatch(id);
+  return useService('geolocation').watch(options, listener);
 }

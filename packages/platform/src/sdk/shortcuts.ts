@@ -1,3 +1,5 @@
+import { peekService } from './registry.js';
+
 export interface Shortcut {
   /** `Mod+K`, `Shift+?`, `ArrowLeft`. `Mod` is Cmd on macOS, Ctrl elsewhere. */
   combo: string;
@@ -56,9 +58,28 @@ export function parseCombo(combo: string): ParsedCombo {
   };
 }
 
+/**
+ * The host's hardware keys: where their events arrive, and which key its
+ * keyboard uses for shortcuts.
+ */
+export interface KeyEventsPort {
+  /** The target that receives `keydown`/`keyup`: the page's window on the web. */
+  target(): EventTarget;
+  /**
+   * The key `Mod` stands for in a combo: `meta` (Command) on Apple keyboards,
+   * `ctrl` elsewhere. A host that leaves it out gets `ctrl`.
+   */
+  primaryModifier?(): 'meta' | 'ctrl';
+}
+
+declare module './registry.js' {
+  interface ServiceProviders {
+    keyEvents: KeyEventsPort;
+  }
+}
+
 const isMac = (): boolean =>
-  typeof navigator !== 'undefined' &&
-  /Mac|iPhone|iPad/.test(navigator.platform);
+  peekService('keyEvents')?.primaryModifier?.() === 'meta';
 
 /** Whether a keyboard event satisfies a parsed combo. */
 export function matchesCombo(
@@ -92,13 +113,13 @@ export interface ShortcutLayer {
 /**
  * App-wide keyboard shortcuts in the React Hotkeys / Flutter `Shortcuts`
  * style. Only the registered combos are inspected, so normal Tab/arrow/Enter
- * focus navigation is untouched. Pass `target` to scope shortcuts to a pane.
+ * focus navigation is untouched. Pass `target` to scope shortcuts to a pane;
+ * without one they listen where the host's `keyEvents` service delivers keys,
+ * and only `handle` works on a host that has none.
  */
 export function createShortcuts(
   shortcuts: readonly Shortcut[],
-  target: EventTarget | undefined = typeof window === 'undefined'
-    ? undefined
-    : window,
+  target: EventTarget | undefined = peekService('keyEvents')?.target(),
 ): ShortcutLayer {
   const parsed = shortcuts.map((shortcut) => ({
     shortcut,

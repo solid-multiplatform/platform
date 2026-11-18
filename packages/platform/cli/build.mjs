@@ -204,12 +204,14 @@ function buildTarget(root, target, dev, legacy) {
     path.join(work, 'main.ts'),
     `${target === 'web' ? "import { browserSemantics } from '@solid-multiplatform/platform/semantics'; import { bindBrowserViewport } from '@solid-multiplatform/platform/viewport/web'; import {createInputScope,bindPointerEvents} from '@solid-multiplatform/platform/input'; import { registerServiceWorker } from '@solid-multiplatform/platform/pwa';" : ''}
 ${browserTVs.includes(target) ? "import { bindBrowserTV, bindTVViewport } from '@solid-multiplatform/platform/browser-tv/input';" : ''}
+${browser ? "import { installServices } from '@solid-multiplatform/platform/services'; import { webAppServices, webServices } from '@solid-multiplatform/platform/services/web';" : ''}
 ${legacy ? "import {useCanvas} from '@solid-multiplatform/platform/browser-tv/canvas'; useCanvas();" : ''}
 ${rokuFont ? "import { loadFonts } from '@solid-multiplatform/platform'; import lato from '../fonts/Lato-Regular.ttf';" : ''}
 import { mount as start } from './src/app';
 import { attachPlugins } from '@solid-multiplatform/platform/plugins';
 import { plugins } from './plugins.mjs';
 export function mount(host = { target: '${target}' }) {
+  ${browser ? `const removeServices = installServices({ ...webServices, ...webAppServices(${JSON.stringify(project(root).name)}) });` : 'const removeServices = () => {};'}
   ${target === 'web' ? "const el=document.getElementById('app');const stopViewport=bindBrowserViewport(el);host.semantics=browserSemantics(el); const input=host.input=createInputScope();const stopPointer=bindPointerEvents(el,input,(x,y)=>{const r=el.getBoundingClientRect();return {x:x-r.left,y:y-r.top};});" : ''}
   ${browserTVs.includes(target) ? "const el=document.getElementById('app'); const display=bindTVViewport(el); const tv=bindBrowserTV(host.target,el,display.point);host.input=tv.input;" : ''}
   const detach = attachPlugins(plugins, host);
@@ -217,8 +219,8 @@ export function mount(host = { target: '${target}' }) {
   try {
     const dispose = start(plugins, ${fonts}, host.input, host);
     ${browserTVs.includes(target) ? 'display.attach();' : ''}
-    return () => { try { dispose?.(); } finally { detach(); ${target === 'web' ? 'stopPointer(); input.dispose(); host.semantics.dispose();stopViewport();' : browserTVs.includes(target) ? 'tv.dispose();display.dispose();' : ''} } };
-  } catch (error) { detach(); ${target === 'web' ? 'stopPointer(); input.dispose(); host.semantics.dispose();stopViewport();' : browserTVs.includes(target) ? 'tv.dispose();display.dispose();' : ''} throw error; }
+    return () => { try { dispose?.(); } finally { detach(); removeServices(); ${target === 'web' ? 'stopPointer(); input.dispose(); host.semantics.dispose();stopViewport();' : browserTVs.includes(target) ? 'tv.dispose();display.dispose();' : ''} } };
+  } catch (error) { detach(); removeServices(); ${target === 'web' ? 'stopPointer(); input.dispose(); host.semantics.dispose();stopViewport();' : browserTVs.includes(target) ? 'tv.dispose();display.dispose();' : ''} throw error; }
 }
 ` + (browser ? 'mount();\n' + (target === 'web' ? "if (import.meta.env.PROD && 'serviceWorker' in navigator) void registerServiceWorker({ url: './sw.js' });\n" : '') : ''),
   );

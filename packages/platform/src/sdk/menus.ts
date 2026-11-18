@@ -1,3 +1,5 @@
+import { peekService, serviceAvailable } from './registry.js';
+
 export type MenuItemType = 'normal' | 'separator' | 'checkbox' | 'radio';
 
 export interface MenuItem {
@@ -32,18 +34,19 @@ export interface MenusPort {
   setTray(tray: TrayOptions | null): void;
 }
 
-let port: MenusPort | undefined;
-
-export function setMenusPort(next: MenusPort | undefined): void {
-  port = next;
+declare module './registry.js' {
+  interface ServiceProviders {
+    menus: MenusPort;
+  }
 }
 
 export function menusAvailable(): boolean {
-  return port !== undefined;
+  return serviceAvailable('menus') === 'available';
 }
 
 /** Install the native application menu. Pass null to remove it. */
 export function setApplicationMenu(menu: ApplicationMenu | null): boolean {
+  const port = peekService('menus');
   if (!port) return false;
   port.setApplicationMenu(menu);
   return true;
@@ -51,6 +54,7 @@ export function setApplicationMenu(menu: ApplicationMenu | null): boolean {
 
 /** Install or remove the system tray icon/menu. */
 export function setTray(tray: TrayOptions | null): boolean {
+  const port = peekService('menus');
   if (!port) return false;
   port.setTray(tray);
   return true;

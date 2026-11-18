@@ -1,5 +1,10 @@
 import { createSignal, type Accessor } from 'solid-js';
-import { CapabilityError } from './services.js';
+import {
+  CapabilityError,
+  loadService,
+  peekService,
+  serviceAvailable,
+} from './registry.js';
 
 export interface AudioTrack {
   id: string;
@@ -27,56 +32,11 @@ export interface AudioPort {
   setVolume(volume: number): void;
 }
 
-let port: AudioPort | undefined;
-
-export function setAudioPort(next: AudioPort | undefined): void {
-  port = next;
+declare module './registry.js' {
+  interface ServiceProviders {
+    audio: AudioPort;
+  }
 }
-
-const webAudio = (): AudioPort => {
-  if (typeof Audio === 'undefined') throw new CapabilityError('audio');
-  let element: HTMLAudioElement | undefined;
-  let volume = 1;
-  const ensure = () => {
-    if (!element) {
-      element = new Audio();
-      element.preload = 'metadata';
-      element.volume = volume;
-    }
-    return element;
-  };
-  return {
-    async play(track, options = {}) {
-      const audio = ensure();
-      audio.src = track.url;
-      if (options.volume !== undefined) {
-        volume = Math.min(1, Math.max(0, options.volume));
-        audio.volume = volume;
-      }
-      if (options.position) audio.currentTime = options.position;
-      await audio.play();
-    },
-    async pause() {
-      element?.pause();
-    },
-    async resume() {
-      await element?.play();
-    },
-    async stop() {
-      if (!element) return;
-      element.pause();
-      element.removeAttribute('src');
-      element.load();
-    },
-    async seek(position) {
-      if (element) element.currentTime = Math.max(0, position);
-    },
-    setVolume(next) {
-      volume = Math.min(1, Math.max(0, next));
-      if (element) element.volume = volume;
-    },
-  };
-};
 
 export interface AudioPlayer {
   track: Accessor<AudioTrack | undefined>;
@@ -91,14 +51,17 @@ export interface AudioPlayer {
 }
 
 /**
- * Shared audio playback controller. Native hosts register `AudioPort`; on the
- * web the helper drives one `HTMLAudioElement`. Resume/bookmarks and the media
- * session are separate helpers, so a player can compose them.
+ * Shared audio playback controller over the host's `audio` service (one
+ * `HTMLAudioElement` on the web). Resume/bookmarks and the media session are
+ * separate helpers, so a player can compose them.
  */
 export function createAudioPlayer(
   options: { port?: AudioPort; volume?: number } = {},
 ): AudioPlayer {
-  const backend = () => options.port ?? port ?? webAudio();
+  // The port, when it can be had without waiting. Each method then calls it
+  // in the caller's own turn: browsers start playback only inside the user's
+  // gesture. A provider that still has to load is awaited instead.
+  const ready = () => options.port ?? peekService('audio');
   const [track, setTrack] = createSignal<AudioTrack | undefined>();
   const [playing, setPlaying] = createSignal(false);
   const [volume, setVolumeSignal] = createSignal(options.volume ?? 1);
@@ -108,7 +71,8 @@ export function createAudioPlayer(
     playing,
     volume,
     async play(next, playOptions = {}) {
-      await backend().play(next, {
+      const port = ready() ?? (await loadService('audio'));
+      await port.play(next, {
         ...playOptions,
         volume: playOptions.volume ?? volume(),
       });
@@ -116,25 +80,34 @@ export function createAudioPlayer(
       setPlaying(true);
     },
     async pause() {
-      await backend().pause();
+      const port = ready() ?? (await loadService('audio'));
+      await port.pause();
       setPlaying(false);
     },
     async resume() {
-      await backend().resume();
+      const port = ready() ?? (await loadService('audio'));
+      await port.resume();
       setPlaying(true);
     },
     async stop() {
-      await backend().stop();
+      const port = ready() ?? (await loadService('audio'));
+      await port.stop();
       setPlaying(false);
       setTrack(undefined);
     },
     async seek(position) {
-      await backend().seek(position);
+      const port = ready() ?? (await loadService('audio'));
+      await port.seek(position);
     },
     setVolume(next) {
       const clamped = Math.min(1, Math.max(0, next));
       setVolumeSignal(clamped);
-      backend().setVolume(clamped);
+      if (options.port) return options.port.setVolume(clamped);
+      if (serviceAvailable('audio') === 'unavailable')
+        throw new CapabilityError('audio');
+      // A provider that has not loaded yet is playing nothing; `play` hands
+      // it the volume kept above.
+      peekService('audio')?.setVolume(clamped);
     },
   };
 }

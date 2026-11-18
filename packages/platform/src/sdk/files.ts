@@ -1,4 +1,4 @@
-import { CapabilityError } from './services.js';
+import { peekService, withService } from './registry.js';
 
 export interface FileInfo {
   name: string;
@@ -24,54 +24,47 @@ export interface FileSystemPort {
   list(path: string): Promise<FileInfo[]>;
 }
 
-let port: FileSystemPort | undefined;
-
-export function setFileSystemPort(next: FileSystemPort | undefined): void {
-  port = next;
-}
-
-const requireFiles = (): FileSystemPort => {
-  if (!port) throw new CapabilityError('files');
-  return port;
-};
-
 /** App-owned document/cache directories, when the host exposes them. */
 export function fileDirectories(): {
   documents?: string;
   cache?: string;
 } {
+  const port = peekService('fileSystem');
   return {
     documents: port?.documentDirectory,
     cache: port?.cacheDirectory,
   };
 }
 
-export function readFileText(path: string): Promise<string> {
-  return requireFiles().readText(path);
+export async function readFileText(path: string): Promise<string> {
+  return withService('fileSystem', (port) => port.readText(path));
 }
 
-export function writeFileText(path: string, data: string): Promise<void> {
-  return requireFiles().writeText(path, data);
+export async function writeFileText(path: string, data: string): Promise<void> {
+  return withService('fileSystem', (port) => port.writeText(path, data));
 }
 
-export function readFileBytes(path: string): Promise<Uint8Array> {
-  return requireFiles().readBytes(path);
+export async function readFileBytes(path: string): Promise<Uint8Array> {
+  return withService('fileSystem', (port) => port.readBytes(path));
 }
 
-export function writeFileBytes(path: string, data: Uint8Array): Promise<void> {
-  return requireFiles().writeBytes(path, data);
+export async function writeFileBytes(
+  path: string,
+  data: Uint8Array,
+): Promise<void> {
+  return withService('fileSystem', (port) => port.writeBytes(path, data));
 }
 
-export function fileExists(path: string): Promise<boolean> {
-  return requireFiles().exists(path);
+export async function fileExists(path: string): Promise<boolean> {
+  return withService('fileSystem', (port) => port.exists(path));
 }
 
-export function removeFile(path: string): Promise<void> {
-  return requireFiles().remove(path);
+export async function removeFile(path: string): Promise<void> {
+  return withService('fileSystem', (port) => port.remove(path));
 }
 
-export function listFiles(path: string): Promise<FileInfo[]> {
-  return requireFiles().list(path);
+export async function listFiles(path: string): Promise<FileInfo[]> {
+  return withService('fileSystem', (port) => port.list(path));
 }
 
 export interface PickedFile {
@@ -92,10 +85,11 @@ export interface FilePickerPort {
   pick(options: FilePickerOptions): Promise<PickedFile[]>;
 }
 
-let pickerPort: FilePickerPort | undefined;
-
-export function setFilePickerPort(next: FilePickerPort | undefined): void {
-  pickerPort = next;
+declare module './registry.js' {
+  interface ServiceProviders {
+    fileSystem: FileSystemPort;
+    filePicker: FilePickerPort;
+  }
 }
 
 export const pickedFileFromWeb = (file: File): PickedFile => ({
@@ -107,40 +101,15 @@ export const pickedFileFromWeb = (file: File): PickedFile => ({
 });
 
 /**
- * Open the platform document/image picker. Resolves with an empty array when
- * the user cancels. The web fallback uses a hidden `<input type="file">`; the
- * desktop/mobile hosts provide their native picker.
+ * Open the platform document/image picker through the host's `filePicker`
+ * service. Resolves with an empty array when the user cancels. The web host
+ * uses a hidden `<input type="file">`; desktop and mobile hosts provide their
+ * native picker.
  */
 export async function pickFiles(
   options: FilePickerOptions = {},
 ): Promise<PickedFile[]> {
-  if (pickerPort) return pickerPort.pick(options);
-  if (typeof document === 'undefined') throw new CapabilityError('filePicker');
-
-  return new Promise<PickedFile[]>((resolve, reject) => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.multiple = options.multiple ?? false;
-    if (options.accept) input.accept = options.accept;
-    input.style.display = 'none';
-    const cleanup = () => input.remove();
-    input.addEventListener('change', () => {
-      const files = Array.from(input.files ?? []).map(pickedFileFromWeb);
-      cleanup();
-      resolve(files);
-    });
-    input.addEventListener('cancel', () => {
-      cleanup();
-      resolve([]);
-    });
-    document.body.append(input);
-    try {
-      input.click();
-    } catch (error) {
-      cleanup();
-      reject(error);
-    }
-  });
+  return withService('filePicker', (port) => port.pick(options));
 }
 
 /**

@@ -1,4 +1,4 @@
-import { CapabilityError } from './services.js';
+import { serviceAvailable, withService } from './registry.js';
 
 export interface ContactPhone {
   label?: string;
@@ -36,14 +36,14 @@ export interface ContactsPort {
   pick?(): Promise<Contact | undefined>;
 }
 
-let port: ContactsPort | undefined;
-
-export function setContactsPort(next: ContactsPort | undefined): void {
-  port = next;
+declare module './registry.js' {
+  interface ServiceProviders {
+    contacts: ContactsPort;
+  }
 }
 
 export function contactsAvailable(): boolean {
-  return port !== undefined;
+  return serviceAvailable('contacts') === 'available';
 }
 
 /**
@@ -53,12 +53,10 @@ export function contactsAvailable(): boolean {
 export async function getContacts(
   query: ContactQuery = {},
 ): Promise<Contact[]> {
-  if (!port) throw new CapabilityError('contacts');
-  return port.list(query);
+  return withService('contacts', (port) => port.list(query));
 }
 
 /** Open the system contact picker, or undefined when the user cancels. */
 export async function pickContact(): Promise<Contact | undefined> {
-  if (!port) throw new CapabilityError('contacts');
-  return port.pick?.();
+  return withService('contacts', (port) => port.pick?.());
 }

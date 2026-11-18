@@ -4,12 +4,15 @@ import {
   Connectivity,
 } from '@nativescript/core';
 import { androidLinks } from './providers.mjs';
-import { services } from '@solid-multiplatform/platform/services';
 
-/** Application-owned push, secure-store and job providers can augment the device's ports. */
+/**
+ * The phone and TV host's application services, for `installServices`.
+ * Application-owned push, secure-store and job providers can augment the
+ * device's ports.
+ */
 export function mobileServices(namespace, extensions = {}) {
   const key = (k) => namespace + ':' + k;
-  return services({
+  return {
     settings: {
       async get(k) {
         return ApplicationSettings.getString(key(k), null);
@@ -42,11 +45,11 @@ export function mobileServices(namespace, extensions = {}) {
       },
     },
     ...(typeof globalThis.fetch === 'function'
-      ? { request: globalThis.fetch.bind(globalThis) }
+      ? { request: { fetch: globalThis.fetch.bind(globalThis) } }
       : {}),
     ...(Application.android ? { links: androidLinks() } : {}),
     ...extensions,
-  });
+  };
 }
 const connectivityListeners = new Set();
 function listenConnectivity(listener) {

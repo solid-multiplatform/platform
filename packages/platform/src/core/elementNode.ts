@@ -88,9 +88,7 @@ export function enqueueDelete(node: ElementNode, n: number): void {
 function schedulePostMutation() {
   if (postMutationQueued) return;
   postMutationQueued = true;
-  if ('reprocessUpdates' in renderer.stage && renderer.stage.reprocessUpdates) {
-    renderer.stage.reprocessUpdates(runPostMutation);
-  }
+  (renderer as SceneRenderer).reprocessUpdates?.(runPostMutation);
   queueMicrotask(runPostMutation);
 }
 
