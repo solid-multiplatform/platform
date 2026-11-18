@@ -135,7 +135,9 @@ export function createShortcuts(
     return false;
   };
   const listener = (event: Event) => {
-    if (event instanceof KeyboardEvent) handle(event);
+    // Native hosts deliver key events that are not browser KeyboardEvents.
+    if (typeof (event as KeyboardEvent).key === 'string')
+      handle(event as KeyboardEvent);
   };
   target?.addEventListener('keydown', listener);
   return {
@@ -194,8 +196,10 @@ export function bindBackKey(
   target: EventTarget,
   dispatcher: BackDispatcher,
 ): () => void {
-  const listener = (event: Event) => {
-    if (!(event instanceof KeyboardEvent)) return;
+  const listener = (input: Event) => {
+    // Native hosts deliver key events that are not browser KeyboardEvents.
+    const event = input as KeyboardEvent;
+    if (typeof event.key !== 'string') return;
     if (
       event.key !== 'Escape' &&
       event.key !== 'Backspace' &&

@@ -36,7 +36,12 @@ export function Tooltip(props: TooltipProps): JSX.Element {
   return (
     <Show when={visible()}>
       <Portal>
-        <view {...rect()} color={0x0b1118f2}>
+        <view
+          {...rect()}
+          color={0x0b1118f2}
+          role="tooltip"
+          ariaLabel={props.label}
+        >
           <text x={12} y={10} fontSize={18} color={0xf2f6faff}>
             {props.label}
           </text>

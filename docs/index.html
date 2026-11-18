@@ -2,11 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>SolidTV Documentation for TV App Development</title>
+    <title>Solid Multiplatform documentation</title>
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
     <meta
       name="description"
-      content="Get started with SolidTV App Development"
+      content="One SolidJS scene on Roku, browser TVs, Android, iOS, tvOS, desktop and web"
     />
     <meta
       name="viewport"
@@ -16,7 +16,7 @@
       rel="icon"
       type="image/png"
       sizes="32x32"
-      href="./images/favicons/favicon-32x32.png"
+      href="./images/favicon-32x32.png"
     />
     <link
       rel="stylesheet"
@@ -31,33 +31,14 @@
         --base-font-size: 18px;
       }
     </style>
-    <!-- Google tag (gtag.js) -->
-    <script
-      async
-      src="https://www.googletagmanager.com/gtag/js?id=G-2WZXHDZ1WH"
-    ></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
-      }
-      gtag('js', new Date());
-
-      gtag('config', 'G-2WZXHDZ1WH');
-    </script>
   </head>
 
   <body>
-    <nav>
-      <a href="https://solidtv.dev/#services" target="_blank" rel="noopener"
-        >Commercial Support</a
-      >
-    </nav>
     <div id="app"></div>
     <script>
       window.$docsify = {
-        name: 'SolidTV',
-        repo: 'https://github.com/solid-tv/solid/',
+        name: 'Solid Multiplatform',
+        repo: 'https://github.com/solid-multiplatform/platform',
         loadSidebar: true,
         relativePath: true,
         auto2top: true,
@@ -68,22 +49,6 @@
           noData: 'No Results!',
           depth: 5,
         },
-        plugins: [
-          // Old lightning-tv.github.io/solid links land on #/migrate?from=<page>;
-          // offer a link back to that page on this site.
-          function (hook, vm) {
-            hook.doneEach(function () {
-              var el = document.getElementById('migrate-continue');
-              var from = vm.route.query.from;
-              if (!el || !from || !/^[\w\-\/]+$/.test(from)) return;
-              var link = document.createElement('a');
-              link.href = '#/' + from.replace(/^\/+/, '');
-              link.textContent = 'Continue to the page you were looking for';
-              el.appendChild(link);
-              el.hidden = false;
-            });
-          },
-        ],
       };
     </script>
     <!-- Docsify v4 -->
@@ -91,5 +56,8 @@
     <script src="//unpkg.com/docsify/lib/plugins/search.js"></script>
     <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
     <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-jsx.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-typescript.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-tsx.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/prismjs@1/components/prism-json.min.js"></script>
   </body>
 </html>

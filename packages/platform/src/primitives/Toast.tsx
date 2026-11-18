@@ -58,6 +58,9 @@ export function Toast(props: ToastProps): JSX.Element {
         <view
           {...rect()}
           color={0x1d2937f2}
+          role="status"
+          ariaLive="polite"
+          ariaLabel={props.message}
           onEnter={() => props.onAction?.()}
           onMouseClick={() => props.onAction?.()}
         >

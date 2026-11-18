@@ -1,42 +1,36 @@
 import { For } from '@solid-multiplatform/platform';
-import { useMouse } from '@solid-multiplatform/platform/primitives';
+import { Column } from '@solid-multiplatform/platform/primitives';
+import { viewport } from '@solid-multiplatform/platform/viewport';
 import type { ScreenProps } from '../screen';
 export function Home(p: ScreenProps) {
-  // SDL3 pointer events reach the scene through the host; useMouse adds
-  // hover-to-focus, press state and click activation without per-app code.
-  useMouse();
-  const rail = () => Math.min(240, p.viewport().width * 0.35);
+  const rail = () => Math.min(240, viewport().width * 0.35);
   return (
-    <view width={p.viewport().width} height={p.viewport().height}>
-      <view width={rail()} height={p.viewport().height} color={0x142235ff}>
-        <For each={p.names}>
-          {(name, i) => (
-            <view
-              ref={(v) => p.register(name, v)}
-              x={8}
-              y={16 + i() * 48}
-              width={rail() - 16}
-              height={42}
-              autofocus={i() === 0}
-              style={{ color: 0x243145ff, $focus: { color: 0x385f92ff } }}
-              onEnter={() => p.activate(name)}
-              onUp={() => p.next(-1)}
-              onDown={() => p.next(1)}
-            >
-              <text x={12} y={6} fontSize={22}>
-                {name}
-              </text>
-            </view>
-          )}
-        </For>
+    <view width={viewport().width} height={viewport().height}>
+      <view width={rail()} height={viewport().height} color={0x142235ff}>
+        <Column x={8} y={16} gap={6} scroll="none" wrap autofocus>
+          <For each={p.names}>
+            {(name) => (
+              <view
+                width={rail() - 16}
+                height={42}
+                style={{ color: 0x243145ff, $focus: { color: 0x385f92ff } }}
+                onEnter={() => p.onRun(name)}
+              >
+                <text x={12} y={6} fontSize={22}>
+                  {name}
+                </text>
+              </view>
+            )}
+          </For>
+        </Column>
       </view>
       <text
         x={rail() + 24}
         y={24}
-        width={Math.max(0, p.viewport().width - rail() - 48)}
+        width={Math.max(0, viewport().width - rail() - 48)}
         fontSize={28}
       >
-        {p.message()}
+        {p.message}
       </text>
     </view>
   );

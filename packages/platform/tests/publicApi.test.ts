@@ -500,12 +500,13 @@ v.describe('Exports: runtime export names of every entry point', () => {
   );
 
   v.test(
-    '@solid-multiplatform/platform/focusManager (src/core/focusManager.ts): 10 names',
+    '@solid-multiplatform/platform/focusManager (src/core/focusManager.ts): 11 names',
     () => {
       v.expect(names(focusManager)).toEqual([
         'currentFocusTrap',
         'focusPath',
         'getFocusHistory',
+        'pressKey',
         'printFocusHistory',
         'pushFocusTrap',
         'releaseKeySuppression',
@@ -685,6 +686,7 @@ v.describe('package.json exports', () => {
       './services/native/secure-storage',
       './services/native/notifications',
       './permissions/android',
+      './services/android',
       './editor/roku',
       './scroll',
       './network',

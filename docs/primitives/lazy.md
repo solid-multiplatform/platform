@@ -1,44 +1,55 @@
-## LazyRow and LazyColumn Primitives
+# LazyRow and LazyColumn
 
-`LazyRow` and `LazyColumn` are components designed to lazily render a list of items. These components improve performance by only rendering a subset of items initially and dynamically loading additional items as the user navigates.
+`LazyRow` and `LazyColumn` are a [Row or Column](/primitives/row_column.md)
+that mounts its children a few at a time. They start with `upCount` items and
+add one more each time the selection comes close to the last mounted item.
+Mounted items stay mounted. To keep the node count bounded on long lists, use
+[VirtualRow and VirtualColumn](/primitives/virtual.md).
 
-### Behavior
+```tsx
+import { LazyRow } from '@solid-multiplatform/platform/primitives';
 
-- **LazyRow** renders items in a horizontal row and listens for `onRight` key presses to load more items.
-- **LazyColumn** renders items in a vertical column and listens for `onDown` key presses to load more items.
-- The `upCount` prop determines how many items are initially rendered.
-- Additional items are loaded incrementally as the user navigates.
-- If `sync` is `true`, all `upCount` items are loaded immediately.
-
-### lazyScrollToIndex
-
-You can also `lazyScrollToIndex` by using a ref on LazyRow or LazyColumn, simply `rowRef.lazyScrollToIndex(3)`
-
-### Example Usage
-
-```javascript
-import { LazyRow } from '@solidtv/solid/primitives';
-
-<LazyRow upCount={4} delay={250} each={local.items} style={styles.Row}>
-  {(item, index) => <Thumbnail {...item} key={index} />}
-</LazyRow>;
+export const Rail = (props: { items: string[] }) => (
+  <LazyRow upCount={5} delay={250} each={props.items} gap={20} autofocus>
+    {(item, index) => (
+      <view width={300} height={170} color="#264653ff">
+        <text>{`${index}: ${item()}`}</text>
+      </view>
+    )}
+  </LazyRow>
+);
 ```
 
-### Props
+`children` receives the item as an accessor and the index as a number.
 
-- **each** (`T | undefined | null | false`): The array of items to be rendered.
-- **fallback** (`JSX.Element`): Optional fallback element displayed if `each` is empty or undefined.
-- **container** (`JSX.Element`): Optional container element for wrapping items.
-- **upCount** (`number`): Number of items to render initially.
-- **delay** (`number`): Delay in milliseconds before loading additional items (default: `0`).
-- **sync** (`boolean`): If `true`, preloads `upCount` items immediately instead of incrementally loading.
-- **eagerLoad** (`boolean`): If `true`, loads all the items after upCount using scheduleTask.
-- **children** (`(item: T[number], index: number) => JSX.Element`): A function that returns a JSX element for each item.
+## Props
 
-### Performance Optimization
+Both components take the `Row` or `Column` props, plus:
 
-- Dynamically slices the `each` array based on `offset`.
-- Uses `setTimeout` (with optional `delay`) to stagger item loading for smoother rendering during animations.
-- When `sync` is `true`, skips incremental loading for immediate rendering of `upCount` items.
+- `each` (`T[] | undefined | null | false`): the items.
+- `upCount` (`number`, required): how many items to mount before the user
+  navigates.
+- `buffer` (`number`): how many items to keep mounted ahead of the selection.
+  The default depends on the `scroll` mode.
+- `delay` (`number`): milliseconds to wait after a key press before mounting
+  the next item. Set it to the duration of the scroll transition so a mount
+  does not land in the middle of the animation. If the user presses again
+  before the delay ends, the item mounts at once.
+- `sync` (`boolean`): mount the first `upCount` items in one pass instead of
+  one by one.
+- `eagerLoad` (`boolean`): keep mounting the remaining items in the background
+  after the first `upCount`.
+- `noRefocus` (`boolean`): do not refocus the container when the length of
+  `each` changes.
 
-These components help optimize rendering performance, particularly when dealing with large lists or slow-loading content.
+## lazyScrollToIndex
+
+A ref has `lazyScrollToIndex(index, options)`. It mounts items up to `index`
+and then calls `scrollToIndex`. Pass `{ noFocus: true }` to scroll without
+moving focus.
+
+## Timers
+
+`delay` and the initial ramp-up use timers. They run only while items are
+still being mounted and are cleared when the component is destroyed. Nothing
+is scheduled once the list is fully mounted or the user stops navigating.
