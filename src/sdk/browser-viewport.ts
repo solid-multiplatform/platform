@@ -1,6 +1,10 @@
-import { updateViewport } from './viewport.js';
+import { updateViewport, zeroInsets } from './viewport.js';
+import { bindColorScheme } from './theme.js';
+import { setCapabilities } from './capabilities.js';
 
 export function bindBrowserViewport(root: HTMLElement) {
+  setCapabilities('web');
+  const stopScheme = bindColorScheme();
   const probe = document.createElement('div');
   probe.setAttribute('aria-hidden', 'true');
   probe.style.cssText =
@@ -20,6 +24,13 @@ export function bindBrowserViewport(root: HTMLElement) {
         visual && visual.scale === 1
           ? Math.max(0, bottom - visual.height - visual.offsetTop)
           : 0,
+      ime: {
+        ...zeroInsets,
+        bottom:
+          visual && visual.scale === 1
+            ? Math.max(0, bottom - visual.height - visual.offsetTop)
+            : 0,
+      },
       safeArea: {
         top: parseFloat(style.paddingTop) || 0,
         right: parseFloat(style.paddingRight) || 0,
@@ -47,6 +58,7 @@ export function bindBrowserViewport(root: HTMLElement) {
     visual?.removeEventListener('resize', update);
     visual?.removeEventListener('scroll', update);
     motion.removeEventListener('change', update);
+    stopScheme();
     probe.remove();
   };
 }

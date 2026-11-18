@@ -107,6 +107,34 @@
         "types": "./dist/src/sdk/desktop-field.d.ts",
         "default": "./dist/src/sdk/desktop-field.jsx"
       }
+    },
+    "./theme": {
+      "@solidtv/source": "./src/sdk/theme.tsx",
+      "import": {
+        "types": "./dist/src/sdk/theme.d.ts",
+        "default": "./dist/src/sdk/theme.jsx"
+      }
+    },
+    "./capabilities": {
+      "@solidtv/source": "./src/sdk/capabilities.ts",
+      "import": {
+        "types": "./dist/src/sdk/capabilities.d.ts",
+        "default": "./dist/src/sdk/capabilities.js"
+      }
+    },
+    "./keyboard": {
+      "@solidtv/source": "./src/sdk/keyboard.ts",
+      "import": {
+        "types": "./dist/src/sdk/keyboard.d.ts",
+        "default": "./dist/src/sdk/keyboard.js"
+      }
+    },
+    "./form": {
+      "@solidtv/source": "./src/sdk/form.ts",
+      "import": {
+        "types": "./dist/src/sdk/form.d.ts",
+        "default": "./dist/src/sdk/form.js"
+      }
     }
   },
   "sideEffects": false,

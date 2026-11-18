@@ -9,23 +9,62 @@ export interface Insets {
   bottom: number;
   left: number;
 }
+
+/**
+ * The four system insets an application may need, kept separate because they
+ * are not interchangeable:
+ *
+ * - `safeArea` is the area that is safe to put content in (bars + cutout +
+ *   anything the host decides to reserve).
+ * - `systemBars` is the area occupied by status/navigation/caption bars.
+ * - `displayCutout` is the physical notch/camera housing.
+ * - `ime` is the software keyboard. Only `bottom` is normally non-zero.
+ *
+ * Android exposes these separately through `WindowInsets.Type`; iOS exposes
+ * the combined safe area through `UIView.safeAreaInsets` and the keyboard
+ * through `UIKeyboardWillChangeFrameNotification`. Web combines
+ * `env(safe-area-inset-*)` with `visualViewport`.
+ */
+export interface ViewportInsets {
+  safeArea: Insets;
+  systemBars: Insets;
+  displayCutout: Insets;
+  ime: Insets;
+}
+
 export interface Viewport {
   width: number;
   height: number;
   scale: number;
   framebufferWidth: number;
   framebufferHeight: number;
+  /** Kept for compatibility. Equal to `insets.safeArea`. */
   safeArea: Insets;
+  /** Kept for compatibility. Equal to `insets.ime.bottom`. */
   keyboardInset: number;
+  insets: ViewportInsets;
   reducedMotion: boolean;
 }
+
 export const zeroInsets: Insets = Object.freeze({
   top: 0,
   right: 0,
   bottom: 0,
   left: 0,
 });
-type Geometry = Omit<Viewport, 'framebufferWidth' | 'framebufferHeight'>;
+
+export interface ViewportInput {
+  width: number;
+  height: number;
+  scale: number;
+  safeArea: Insets;
+  keyboardInset: number;
+  reducedMotion: boolean;
+  systemBars?: Insets;
+  displayCutout?: Insets;
+  ime?: Insets;
+}
+
 const [viewport, publish] = createSignal<Viewport>({
   width: 1920,
   height: 1080,
@@ -34,13 +73,25 @@ const [viewport, publish] = createSignal<Viewport>({
   framebufferHeight: 1080,
   safeArea: zeroInsets,
   keyboardInset: 0,
+  insets: {
+    safeArea: zeroInsets,
+    systemBars: zeroInsets,
+    displayCutout: zeroInsets,
+    ime: zeroInsets,
+  },
   reducedMotion: false,
 });
 export { viewport };
 
+const sameInsets = (a: Insets, b: Insets) =>
+  a.top === b.top &&
+  a.right === b.right &&
+  a.bottom === b.bottom &&
+  a.left === b.left;
+
 /** Called by host layout events, never from the frame loop. Sizes use logical units. */
 export function updateViewport(
-  next: Geometry,
+  next: ViewportInput,
   scene: ReturnType<typeof getRenderer> | null = getRenderer(),
 ) {
   if (
@@ -55,8 +106,16 @@ export function updateViewport(
     prev.width !== next.width ||
     prev.height !== next.height ||
     prev.scale !== next.scale;
-  const a = prev.safeArea,
-    b = next.safeArea;
+  const insets: ViewportInsets = {
+    safeArea: { ...next.safeArea },
+    systemBars: { ...(next.systemBars ?? zeroInsets) },
+    displayCutout: { ...(next.displayCutout ?? zeroInsets) },
+    ime: {
+      ...zeroInsets,
+      ...(next.ime ?? {}),
+      bottom: next.ime?.bottom ?? next.keyboardInset,
+    },
+  };
   const settings = (Config.rendererOptions ??= {});
   Object.assign(settings, {
     appWidth: next.width,
@@ -71,18 +130,22 @@ export function updateViewport(
   }
   if (
     resized ||
-    a.top !== b.top ||
-    a.left !== b.left ||
-    a.right !== b.right ||
-    a.bottom !== b.bottom ||
-    prev.keyboardInset !== next.keyboardInset ||
+    !sameInsets(prev.insets.safeArea, insets.safeArea) ||
+    !sameInsets(prev.insets.systemBars, insets.systemBars) ||
+    !sameInsets(prev.insets.displayCutout, insets.displayCutout) ||
+    !sameInsets(prev.insets.ime, insets.ime) ||
     prev.reducedMotion !== next.reducedMotion
   ) {
     publish({
-      ...next,
-      safeArea: { ...b },
+      width: next.width,
+      height: next.height,
+      scale: next.scale,
       framebufferWidth: Math.round(next.width * next.scale),
       framebufferHeight: Math.round(next.height * next.scale),
+      safeArea: insets.safeArea,
+      keyboardInset: insets.ime.bottom,
+      insets,
+      reducedMotion: next.reducedMotion,
     });
   }
 }

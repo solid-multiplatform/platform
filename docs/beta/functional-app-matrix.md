@@ -35,32 +35,32 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 2. Layout, rendering and visual system
 
-| Feature                                     | Established pattern                             | Status | Evidence / gap                                                       | Phase |
-| ------------------------------------------- | ----------------------------------------------- | ------ | -------------------------------------------------------------------- | ----- |
-| Flex row/column                             | Yoga/Flexbox, Flutter Row/Column                | S      | `src/core/flex*`, contract tests                                     | —     |
-| Grid                                        | CSS grid, Flutter GridView                      | S      | `Grid`, `VirtualGrid`                                                | —     |
-| Absolute positioning and z-order            | CSS position/z-index                            | S      | `x/y/zIndex`, paint-order tests                                      | —     |
-| Min/max sizing, aspect ratio                | CSS min/max/aspect-ratio                        | P      | Check coverage in `contract-flex`; aspect ratio not first-class      | 1     |
-| Padding/margin/borders                      | CSS box model                                   | S      | `borderBox`, contract tests                                          | —     |
-| Border radius                               | CSS radius, Flutter BorderRadius                | P      | Verify per backend; document limits                                  | 1     |
-| Clipping and overflow                       | CSS overflow, Flutter clipBehavior              | S      | Flex clipping/culling                                                | —     |
-| Safe-area-aware layout                      | iOS safe area, Android insets, Flutter SafeArea | P      | `safeArea` exists; no `SafeArea` primitive or automatic screen inset | 1     |
-| RTL and writing direction                   | CSS direction, I18nManager                      | M      | No direction contract                                                | 8     |
-| Responsive breakpoints                      | CSS media queries, Flutter LayoutBuilder        | P      | Viewport signals exist; no breakpoint helper                         | 1     |
-| Text wrapping, ellipsis, truncation         | CSS text-overflow, Flutter Text                 | P      | Text layout exists; verify ellipsis/maxLines                         | 1     |
-| Rich text / inline spans                    | RN Text nesting, Flutter TextSpan               | P      | Text nodes exist; no documented span API                             | 1     |
-| Custom fonts and fallbacks                  | CSS @font-face, Flutter FontLoader              | S      | MSDF font loading, font tests                                        | —     |
-| Image fit/placeholder/lazy decode           | RN Image, Flutter Image                         | P      | `Image` placeholder/load; no visibility-driven deferral              | 3     |
-| SVG and icons                               | react-native-svg, Flutter vector                | M      | No SVG primitive                                                     | 9     |
-| Gradients, shaders, blur                    | CSS gradients/filters, Skia                     | P      | Shaders and blurred-image helper exist; no high-level API            | 9     |
-| Opacity and alpha blending                  | CSS opacity/blend                               | S      | Contract and visual tests                                            | —     |
-| Shadows and elevation                       | CSS box-shadow, Material elevation              | M      | No shadow primitive                                                  | 9     |
-| Transforms                                  | CSS transform                                   | P      | `scale` exists; rotation/translation coverage to document            | 1     |
-| Theme tokens (color, type, spacing, motion) | Material Theme, Tailwind, SwiftUI Environment   | M      | No ThemeProvider/token contract                                      | 0     |
-| Light/dark/system color scheme              | RN `useColorScheme`, Flutter ThemeMode          | M      | No color-scheme signal                                               | 0     |
-| Idle frame scheduling                       | Flutter/RN frame callbacks                      | S      | Renderer sleeps when idle; fast harness uses it                      | —     |
-| Frame pacing and trace markers              | Android FrameTimeline                           | S      | Three-pass gate and `quick-android.py`                               | —     |
-| Virtualization and culling                  | FlatList, Flutter ListView.builder              | S      | `Virtual`, `VirtualGrid`, `Lazy`                                     | —     |
+| Feature                                     | Established pattern                             | Status | Evidence / gap                                                     | Phase |
+| ------------------------------------------- | ----------------------------------------------- | ------ | ------------------------------------------------------------------ | ----- |
+| Flex row/column                             | Yoga/Flexbox, Flutter Row/Column                | S      | `src/core/flex*`, contract tests                                   | —     |
+| Grid                                        | CSS grid, Flutter GridView                      | S      | `Grid`, `VirtualGrid`                                              | —     |
+| Absolute positioning and z-order            | CSS position/z-index                            | S      | `x/y/zIndex`, paint-order tests                                    | —     |
+| Min/max sizing, aspect ratio                | CSS min/max/aspect-ratio                        | P      | Check coverage in `contract-flex`; aspect ratio not first-class    | 1     |
+| Padding/margin/borders                      | CSS box model                                   | S      | `borderBox`, contract tests                                        | —     |
+| Border radius                               | CSS radius, Flutter BorderRadius                | P      | Verify per backend; document limits                                | 1     |
+| Clipping and overflow                       | CSS overflow, Flutter clipBehavior              | S      | Flex clipping/culling                                              | —     |
+| Safe-area-aware layout                      | iOS safe area, Android insets, Flutter SafeArea | S      | `viewport().insets` + `SafeArea` primitive                         | —     |
+| RTL and writing direction                   | CSS direction, I18nManager                      | M      | No direction contract                                              | 8     |
+| Responsive breakpoints                      | CSS media queries, Flutter LayoutBuilder        | P      | Viewport signals exist; no breakpoint helper                       | 1     |
+| Text wrapping, ellipsis, truncation         | CSS text-overflow, Flutter Text                 | P      | Text layout exists; verify ellipsis/maxLines                       | 1     |
+| Rich text / inline spans                    | RN Text nesting, Flutter TextSpan               | P      | Text nodes exist; no documented span API                           | 1     |
+| Custom fonts and fallbacks                  | CSS @font-face, Flutter FontLoader              | S      | MSDF font loading, font tests                                      | —     |
+| Image fit/placeholder/lazy decode           | RN Image, Flutter Image                         | P      | `Image` placeholder/load; no visibility-driven deferral            | 3     |
+| SVG and icons                               | react-native-svg, Flutter vector                | M      | No SVG primitive                                                   | 9     |
+| Gradients, shaders, blur                    | CSS gradients/filters, Skia                     | P      | Shaders and blurred-image helper exist; no high-level API          | 9     |
+| Opacity and alpha blending                  | CSS opacity/blend                               | S      | Contract and visual tests                                          | —     |
+| Shadows and elevation                       | CSS box-shadow, Material elevation              | M      | No shadow primitive                                                | 9     |
+| Transforms                                  | CSS transform                                   | P      | `scale` exists; rotation/translation coverage to document          | 1     |
+| Theme tokens (color, type, spacing, motion) | Material Theme, Tailwind, SwiftUI Environment   | S      | `ThemeProvider`, `useTheme`, light/dark palettes                   | —     |
+| Light/dark/system color scheme              | RN `useColorScheme`, Flutter ThemeMode          | P      | `useColorScheme`; web/Android/iOS hosts; desktop defaults to light | 0     |
+| Idle frame scheduling                       | Flutter/RN frame callbacks                      | S      | Renderer sleeps when idle; fast harness uses it                    | —     |
+| Frame pacing and trace markers              | Android FrameTimeline                           | S      | Three-pass gate and `quick-android.py`                             | —     |
+| Virtualization and culling                  | FlatList, Flutter ListView.builder              | S      | `Virtual`, `VirtualGrid`, `Lazy`                                   | —     |
 
 ## 3. Input, gestures and focus
 
@@ -87,27 +87,27 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 4. Controls, forms and editing
 
-| Feature                       | Established pattern                         | Status | Evidence / gap                              | Phase |
-| ----------------------------- | ------------------------------------------- | ------ | ------------------------------------------- | ----- |
-| Text and labels               | RN Text, Flutter Text                       | S      | Text node, contract tests                   | —     |
-| Buttons                       | RN Button/Pressable                         | S      | TV/web templates, controls                  | —     |
-| Switch/toggle                 | RN Switch, Flutter Switch                   | S      | `Toggle`, native/web controls               | —     |
-| Checkbox and radio            | Material/Flutter                            | M      | No primitive                                | 9     |
-| Slider and progress           | RN Slider/Progress                          | S      | `Slider`, `Progress`, native controls       | —     |
-| Single-line text field        | RN TextInput                                | S      | Native/desktop/web editors                  | —     |
-| Multiline text area           | RN multiline                                | P      | Verify native editor supports multiline     | 1     |
-| Password masking and autofill | Android autofill, Apple Password AutoFill   | S      | `purpose`, password smoke tested            | —     |
-| Keyboard types and return key | RN keyboardType/returnKeyType               | P      | Email/password handled; full matrix missing | 1     |
-| Validation and error messages | HTML constraint validation, Flutter Form    | M      | No form/validation primitive                | 1     |
-| Focus traversal inside forms  | HTML tab order, Flutter FocusTraversal      | P      | Tab works globally; no form grouping        | 1     |
-| Date/time picker              | RN community datetimepicker                 | M      | No primitive                                | 9     |
-| Select/picker                 | RN Picker, Flutter Dropdown                 | M      | No primitive                                | 9     |
-| Search field                  | Flutter SearchBar                           | M      | No primitive                                | 9     |
-| File/image picker             | Expo ImagePicker/DocumentPicker             | M      | No app-facing API                           | 5     |
-| Clipboard                     | Expo Clipboard, Capacitor Clipboard         | M      | No API                                      | 5     |
-| Loading/submitting states     | Flutter Form/Button state                   | M      | No form state helper                        | 1     |
-| Input above keyboard          | RN KeyboardAvoidingView, Flutter viewInsets | M      | `keyboardInset` data only                   | 1     |
-| Auto-reveal focused field     | Flutter ensureVisible, Android adjustResize | M      | None                                        | 1     |
+| Feature                       | Established pattern                         | Status | Evidence / gap                                                                               | Phase |
+| ----------------------------- | ------------------------------------------- | ------ | -------------------------------------------------------------------------------------------- | ----- |
+| Text and labels               | RN Text, Flutter Text                       | S      | Text node, contract tests                                                                    | —     |
+| Buttons                       | RN Button/Pressable                         | S      | TV/web templates, controls                                                                   | —     |
+| Switch/toggle                 | RN Switch, Flutter Switch                   | S      | `Toggle`, native/web controls                                                                | —     |
+| Checkbox and radio            | Material/Flutter                            | M      | No primitive                                                                                 | 9     |
+| Slider and progress           | RN Slider/Progress                          | S      | `Slider`, `Progress`, native controls                                                        | —     |
+| Single-line text field        | RN TextInput                                | S      | Native/desktop/web editors                                                                   | —     |
+| Multiline text area           | RN multiline                                | P      | Verify native editor supports multiline                                                      | 1     |
+| Password masking and autofill | Android autofill, Apple Password AutoFill   | S      | `purpose`, password smoke tested                                                             | —     |
+| Keyboard types and return key | RN keyboardType/returnKeyType               | P      | Email/password handled; full matrix missing                                                  | 1     |
+| Validation and error messages | HTML constraint validation, Flutter Form    | P      | `createForm` validation, touched state and per-field errors; no rendered field component yet | 1     |
+| Focus traversal inside forms  | HTML tab order, Flutter FocusTraversal      | P      | Tab works globally; no form grouping                                                         | 1     |
+| Date/time picker              | RN community datetimepicker                 | M      | No primitive                                                                                 | 9     |
+| Select/picker                 | RN Picker, Flutter Dropdown                 | M      | No primitive                                                                                 | 9     |
+| Search field                  | Flutter SearchBar                           | M      | No primitive                                                                                 | 9     |
+| File/image picker             | Expo ImagePicker/DocumentPicker             | M      | No app-facing API                                                                            | 5     |
+| Clipboard                     | Expo Clipboard, Capacitor Clipboard         | M      | No API                                                                                       | 5     |
+| Loading/submitting states     | Flutter Form/Button state                   | P      | `createForm().submitting` plus per-app disabled state                                        | 1     |
+| Input above keyboard          | RN KeyboardAvoidingView, Flutter viewInsets | S      | `KeyboardAvoidingView` + keyboard-aware mobile template                                      | —     |
+| Auto-reveal focused field     | Flutter ensureVisible, Android adjustResize | P      | `revealAboveKeyboard` and `keyboardAwareBounds`; native editor wiring remains app-owned      | 1     |
 
 ## 5. Navigation and presentation
 
@@ -153,42 +153,43 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 7. Device, platform and app services
 
-| Feature                                | Established pattern                         | Status | Evidence / gap                                        | Phase |
-| -------------------------------------- | ------------------------------------------- | ------ | ----------------------------------------------------- | ----- |
-| Lifecycle (active/background)          | RN AppState, Flutter AppLifecycleState      | S      | `AppServices.lifecycle`, host bindings                | —     |
-| Orientation lock                       | Expo ScreenOrientation                      | P      | Rotation/reflow works; no lock API                    | 5     |
-| Status/navigation bars                 | Capacitor StatusBar/SystemBars              | P      | `setSystemBars` visibility/icons; no background color | 5     |
-| Keyboard inset and visibility          | Android IME insets, iOS notifications       | S      | `viewport().keyboardInset`                            | —     |
-| Safe area and display cutout           | Apple safeAreaInsets, Android displayCutout | S      | `safeArea` per edge                                   | —     |
-| Dark/light/system theme                | RN useColorScheme                           | M      | No signal                                             | 0     |
-| Text scaling / accessibility font size | iOS Dynamic Type, Android sp                | M      | No signal                                             | 8     |
-| Reduce motion                          | iOS/Android/Web                             | S      | `reducedMotion` in viewport                           | —     |
-| Locale and i18n                        | i18next, Flutter intl                       | M      | No API                                                | 8     |
-| RTL layout                             | CSS direction, I18nManager                  | M      | No API                                                | 8     |
-| Haptics                                | Expo Haptics, Capacitor Haptics             | M      | No API                                                | 5     |
-| Clipboard                              | Expo/Capacitor                              | M      | No API                                                | 5     |
-| Share sheet                            | RN Share, Capacitor Share                   | M      | No API                                                | 5     |
-| Local notifications                    | Expo/Capacitor LocalNotifications           | S      | `notifications` port + host                           | —     |
-| Push notifications                     | Expo/Capacitor PushNotifications            | P      | `push` port exists; no end-to-end flow                | 5     |
-| Permissions                            | Expo/Capacitor Permissions                  | S      | `createPermissions`, host ports                       | —     |
-| Connectivity state                     | NetInfo, Capacitor Network                  | S      | `connectivity` port                                   | —     |
-| HTTP client and cancellation           | fetch/axios, Tauri HTTP                     | S      | `network.ts`, host adapters                           | —     |
-| Preferences/settings                   | AsyncStorage, Capacitor Preferences         | S      | `settings` store                                      | —     |
-| Secure storage                         | Keychain/Keystore                           | S      | `secureStorage` port + native                         | —     |
-| File system                            | Expo FileSystem, Capacitor Filesystem       | M      | Native modules exist for plugins; no app API          | 5     |
-| Background jobs                        | Expo BackgroundTask, WorkManager            | P      | `jobs` port + native registries                       | 5     |
-| Device info                            | Expo Device                                 | M      | No API                                                | 5     |
-| Battery/power state                    | Expo Battery                                | M      | No API                                                | 5     |
-| Keep awake / screen lock               | Expo KeepAwake                              | P      | Video uses platform flags; no app API                 | 7     |
-| Biometrics/local auth                  | Expo LocalAuthentication                    | M      | No API                                                | 5     |
-| Geolocation                            | Expo Location, Capacitor Geolocation        | M      | No API                                                | 5     |
-| Camera                                 | Expo Camera/ImagePicker                     | M      | No API                                                | 5     |
-| Microphone/recording                   | Expo Audio                                  | M      | No API                                                | 7     |
-| Contacts/calendar                      | Expo Contacts/Calendar                      | M      | Deferred; optional                                    | —     |
-| Sensors                                | Expo Sensors                                | M      | Deferred; optional                                    | —     |
-| Maps                                   | Expo Maps                                   | M      | Deferred; optional                                    | —     |
-| In-app browser / external opener       | Expo WebBrowser, Tauri Opener               | M      | No API                                                | 5     |
-| App/store review                       | Expo StoreReview                            | M      | Deferred; optional                                    | —     |
+| Feature                                | Established pattern                         | Status | Evidence / gap                                            | Phase |
+| -------------------------------------- | ------------------------------------------- | ------ | --------------------------------------------------------- | ----- |
+| Lifecycle (active/background)          | RN AppState, Flutter AppLifecycleState      | S      | `AppServices.lifecycle`, host bindings                    | —     |
+| Orientation lock                       | Expo ScreenOrientation                      | P      | Rotation/reflow works; no lock API                        | 5     |
+| Status/navigation bars                 | Capacitor StatusBar/SystemBars              | P      | `setSystemBars` visibility/icons; no background color     | 5     |
+| Keyboard inset and visibility          | Android IME insets, iOS notifications       | S      | `viewport().keyboardInset`                                | —     |
+| Safe area and display cutout           | Apple safeAreaInsets, Android displayCutout | S      | `safeArea` per edge                                       | —     |
+| Dark/light/system theme                | RN useColorScheme                           | M      | No signal                                                 | 0     |
+| Text scaling / accessibility font size | iOS Dynamic Type, Android sp                | M      | No signal                                                 | 8     |
+| Reduce motion                          | iOS/Android/Web                             | S      | `reducedMotion` in viewport                               | —     |
+| Locale and i18n                        | i18next, Flutter intl                       | M      | No API                                                    | 8     |
+| RTL layout                             | CSS direction, I18nManager                  | M      | No API                                                    | 8     |
+| Haptics                                | Expo Haptics, Capacitor Haptics             | M      | No API                                                    | 5     |
+| Clipboard                              | Expo/Capacitor                              | M      | No API                                                    | 5     |
+| Share sheet                            | RN Share, Capacitor Share                   | M      | No API                                                    | 5     |
+| Local notifications                    | Expo/Capacitor LocalNotifications           | S      | `notifications` port + host                               | —     |
+| Push notifications                     | Expo/Capacitor PushNotifications            | P      | `push` port exists; no end-to-end flow                    | 5     |
+| Permissions                            | Expo/Capacitor Permissions                  | S      | `createPermissions`, host ports                           | —     |
+| Capability registry                    | Expo modules `isAvailableAsync`             | S      | `src/sdk/capabilities.ts` (`setCapabilities`, `supports`) | —     |
+| Connectivity state                     | NetInfo, Capacitor Network                  | S      | `connectivity` port                                       | —     |
+| HTTP client and cancellation           | fetch/axios, Tauri HTTP                     | S      | `network.ts`, host adapters                               | —     |
+| Preferences/settings                   | AsyncStorage, Capacitor Preferences         | S      | `settings` store                                          | —     |
+| Secure storage                         | Keychain/Keystore                           | S      | `secureStorage` port + native                             | —     |
+| File system                            | Expo FileSystem, Capacitor Filesystem       | M      | Native modules exist for plugins; no app API              | 5     |
+| Background jobs                        | Expo BackgroundTask, WorkManager            | P      | `jobs` port + native registries                           | 5     |
+| Device info                            | Expo Device                                 | M      | No API                                                    | 5     |
+| Battery/power state                    | Expo Battery                                | M      | No API                                                    | 5     |
+| Keep awake / screen lock               | Expo KeepAwake                              | P      | Video uses platform flags; no app API                     | 7     |
+| Biometrics/local auth                  | Expo LocalAuthentication                    | M      | No API                                                    | 5     |
+| Geolocation                            | Expo Location, Capacitor Geolocation        | M      | No API                                                    | 5     |
+| Camera                                 | Expo Camera/ImagePicker                     | M      | No API                                                    | 5     |
+| Microphone/recording                   | Expo Audio                                  | M      | No API                                                    | 7     |
+| Contacts/calendar                      | Expo Contacts/Calendar                      | M      | Deferred; optional                                        | —     |
+| Sensors                                | Expo Sensors                                | M      | Deferred; optional                                        | —     |
+| Maps                                   | Expo Maps                                   | M      | Deferred; optional                                        | —     |
+| In-app browser / external opener       | Expo WebBrowser, Tauri Opener               | M      | No API                                                    | 5     |
+| App/store review                       | Expo StoreReview                            | M      | Deferred; optional                                        | —     |
 
 ## 8. Media
 
@@ -320,6 +321,8 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 | Certification budgets (15s launch, 3s scenes, 250ms keys, 4MB) | P      | No automated gate                |
 
 ## 12. Implementation phases
+
+Progress: Phase 0 is implemented (theme tokens, colour scheme, capability registry, extended inset contract). Phase 1 is implemented for `useKeyboard`, `KeyboardAvoidingView`, `SafeArea`, `revealAboveKeyboard`, `keyboardAwareBounds`, `createForm` validation/touched/errors/submitting, and the keyboard-aware mobile template. Remaining: a rendered FormField component and automatic wiring of native editors.
 
 ### Phase 0 — Contracts and theme foundation
 

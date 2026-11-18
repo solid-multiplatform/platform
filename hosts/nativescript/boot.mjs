@@ -30,6 +30,7 @@ export function runNativeApp(
         bindCanvas(canvas);
         const platform = await import('@solid-multiplatform/platform');
         platform.Config.preventDefaultOnHandledKeys = true;
+        platform.setCapabilities(target);
         const bridge = new KeyBridge({ target: document });
         const binding = bindDevice(canvas, bridge, platform, root);
         const lifecycle = bindLifecycle(

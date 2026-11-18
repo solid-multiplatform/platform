@@ -1,4 +1,4 @@
-import { Config } from '@solid-multiplatform/platform';
+import { Config, setColorScheme } from '@solid-multiplatform/platform';
 import { Application, Screen } from '@nativescript/core';
 import {
   updateViewport,
@@ -35,6 +35,8 @@ function observeSafeArea(view, update) {
 export function bindMobileViewport(root, target) {
   Config.rendererOptions = { ...Config.rendererOptions, resizable: true };
   let keyboardInset = 0;
+  let systemBars = zeroInsets;
+  let displayCutout = zeroInsets;
   const update = () => {
     // A rotation can deliver a layout callback before the new bounds exist,
     // and NativeScript returns undefined from getActualSize until then. Keep
@@ -51,6 +53,8 @@ export function bindMobileViewport(root, target) {
       const insets = view.getRootWindowInsets?.();
       if (insets && android.os.Build.VERSION.SDK_INT >= 30) {
         const types = android.view.WindowInsets.Type;
+        const system = insets.getInsets(types.systemBars());
+        const cutout = insets.getInsets(types.displayCutout());
         const bars = insets.getInsets(
           types.systemBars() | types.displayCutout(),
         );
@@ -60,7 +64,24 @@ export function bindMobileViewport(root, target) {
           bottom: bars.bottom / scale,
           left: bars.left / scale,
         };
+        systemBars = {
+          top: system.top / scale,
+          right: system.right / scale,
+          bottom: system.bottom / scale,
+          left: system.left / scale,
+        };
+        displayCutout = {
+          top: cutout.top / scale,
+          right: cutout.right / scale,
+          bottom: cutout.bottom / scale,
+          left: cutout.left / scale,
+        };
         keyboardInset = insets.getInsets(types.ime()).bottom / scale;
+        const night =
+          (view.getContext().getResources().getConfiguration().uiMode &
+            android.content.res.Configuration.UI_MODE_NIGHT_MASK) ===
+          android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        setColorScheme(night ? 'dark' : 'light');
       }
       reducedMotion =
         android.provider.Settings.Global.getFloat(
@@ -93,6 +114,14 @@ export function bindMobileViewport(root, target) {
       }
       reducedMotion = UIAccessibilityIsReduceMotionEnabled();
     }
+    if (target === 'ios') {
+      const style =
+        root.ios?.traitCollection?.userInterfaceStyle ??
+        UIScreen.mainScreen.traitCollection.userInterfaceStyle;
+      setColorScheme(style === 2 ? 'dark' : 'light');
+      systemBars = zeroInsets;
+      displayCutout = zeroInsets;
+    }
     updateViewport({
       width,
       height,
@@ -100,6 +129,9 @@ export function bindMobileViewport(root, target) {
       safeArea,
       keyboardInset,
       reducedMotion,
+      systemBars,
+      displayCutout,
+      ime: { ...zeroInsets, bottom: keyboardInset },
     });
   };
   const dispose = [];

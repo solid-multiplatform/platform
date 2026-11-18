@@ -1,4 +1,5 @@
 import { desktopEditors } from './editors.mjs';
+import * as platformApi from '@solid-multiplatform/platform';
 import { desktopSemantics } from './semantics.mjs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -8,6 +9,7 @@ import { channel } from 'node:diagnostics_channel';
 import sharp from 'sharp';
 import { openWindow } from './window.mjs';
 
+platformApi.setCapabilities('desktop');
 const windowHost = openWindow(
   process.env.SOLID_APP_TITLE ?? 'Solid Multiplatform',
 );

@@ -24,7 +24,7 @@ import * as focusManager from '@solid-multiplatform/platform/focusManager';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 99 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 117 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -44,9 +44,11 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'Switch',
       'Text',
       'TextNode',
+      'ThemeProvider',
       'View',
       'activeElement',
       'assertTruthy',
+      'bindColorScheme',
       'clamp',
       'clearTasks',
       'combineStyles',
@@ -54,9 +56,11 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'convertToShader',
       'createComponent',
       'createElement',
+      'createForm',
       'createRawShaderAccessor',
       'createRenderer',
       'createTextNode',
+      'darkTheme',
       'defaultShaderHolePunch',
       'defaultShaderLinearGradient',
       'defaultShaderRadialGradient',
@@ -74,6 +78,8 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'getRendererFactory',
       'getWebglSupportedVersions',
       'hasFocus',
+      'hasKeyboard',
+      'hasPointer',
       'hexColor',
       'insert',
       'insertNode',
@@ -92,6 +98,8 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'isString',
       'isTextNode',
       'keyExists',
+      'keyboardAwareBounds',
+      'lightTheme',
       'loadFontToDom',
       'loadFonts',
       'log',
@@ -110,10 +118,14 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'registerDefaultShaderShadow',
       'registerDefaultShaders',
       'renderer',
+      'resetCapabilities',
+      'revealAboveKeyboard',
       'rootNode',
       'scheduleTask',
       'setActiveElement',
       'setActiveElementCore',
+      'setCapabilities',
+      'setColorScheme',
       'setProp',
       'setRendererFactory',
       'setTasksEnabled',
@@ -121,15 +133,21 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'spliceItem',
       'spread',
       'startLightningRenderer',
+      'supports',
       'supportsOnlyWebGL2',
       'supportsWebGL',
       'supportsWebGL2',
+      'themeFor',
       'use',
+      'useCapabilities',
+      'useColorScheme',
+      'useKeyboard',
+      'useTheme',
     ]);
   });
 
   v.test(
-    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 64 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 66 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
@@ -142,12 +160,14 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'FocusStackProvider',
         'Grid',
         'Image',
+        'KeyboardAvoidingView',
         'LazyColumn',
         'LazyRow',
         'Marquee',
         'MarqueeText',
         'Portal',
         'Row',
+        'SafeArea',
         'Suspense',
         'VirtualColumn',
         'VirtualGrid',
@@ -448,6 +468,10 @@ v.describe('package.json exports', () => {
       './scroll',
       './network',
       './editor/desktop',
+      './theme',
+      './capabilities',
+      './keyboard',
+      './form',
     ]);
   });
 
@@ -470,7 +494,9 @@ v.describe('package.json exports', () => {
         types: stem + '.d.ts',
         default:
           stem +
-          (subpath === './controls' || subpath === './editor/desktop'
+          (subpath === './controls' ||
+          subpath === './editor/desktop' ||
+          subpath === './theme'
             ? '.jsx'
             : '.js'),
       });

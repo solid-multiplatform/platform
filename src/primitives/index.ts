@@ -20,6 +20,7 @@ export * from './Suspense.jsx';
 export * from './Marquee.jsx';
 export * from './createFocusStack.jsx';
 export * from './useHold.js';
+export * from './KeyboardAvoidingView.js';
 export * from './VirtualGrid.jsx';
 export * from './Virtual.jsx';
 export * from './utils/withScrolling.js';
