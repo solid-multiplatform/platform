@@ -5,12 +5,8 @@ import { mkdtempSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createDesktopUpdater } from '../hosts/desktop/updater.mjs';
-import {
-  checkForUpdate,
-  createUpdateDelivery,
-  setUpdateDeliveryPort,
-  setUpdateSource,
-} from '../src/sdk/update.js';
+import { checkForUpdate, createUpdateDelivery } from '../src/sdk/update.js';
+import { serviceAvailable } from '../src/sdk/registry.js';
 
 const payload = Buffer.from('desktop update payload');
 const sha256 = createHash('sha256').update(payload).digest('hex');
@@ -44,8 +40,6 @@ const server = async () => {
 
 v.describe('desktop updater', () => {
   v.afterEach(() => {
-    setUpdateSource(undefined);
-    setUpdateDeliveryPort(undefined);
     delete process.env.BAD_CHECKSUM;
   });
 
@@ -55,7 +49,7 @@ v.describe('desktop updater', () => {
     const appData = mkdtempSync(path.join(tmpdir(), 'solid-update-'));
     const installed = [];
     const relaunched = [];
-    createDesktopUpdater({
+    const updater = createDesktopUpdater({
       appData,
       feedUrl: `http://127.0.0.1:${port}/feed.json`,
       currentVersion: '1.0.0',
@@ -63,7 +57,12 @@ v.describe('desktop updater', () => {
         installed.push([file, update.version]);
       },
       relaunch: async () => relaunched.push(true),
-    }).wire();
+    });
+    // Building the updater installs nothing; `wire` does, `unwire` undoes it.
+    v.expect(serviceAvailable('updateSource')).toBe('unavailable');
+    v.expect(serviceAvailable('updateDelivery')).toBe('unavailable');
+    updater.wire();
+    v.onTestFinished(() => updater.unwire());
 
     v.expect(await checkForUpdate('1.0.0')).toMatchObject({
       version: '2.0.0',
@@ -87,6 +86,10 @@ v.describe('desktop updater', () => {
     v.expect(existsSync(installed[0][0])).toBe(true);
     v.expect(readFileSync(installed[0][0], 'utf8')).toBe(payload.toString());
     v.expect(relaunched).toEqual([true]);
+
+    updater.unwire();
+    v.expect(serviceAvailable('updateSource')).toBe('unavailable');
+    v.expect(serviceAvailable('updateDelivery')).toBe('unavailable');
 
     await new Promise((resolve) => http.close(resolve));
   });

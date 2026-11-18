@@ -1,6 +1,12 @@
 import { createSignal, type Accessor } from 'solid-js';
 import { openExternal } from './device.js';
-import { CapabilityError } from './services.js';
+import {
+  CapabilityError,
+  loadService,
+  peekService,
+  serviceAvailable,
+  withService,
+} from './registry.js';
 
 /** Parse `1.2.3-beta.1` into comparable numeric parts. */
 export function parseVersion(version: string): number[] {
@@ -115,32 +121,26 @@ export interface UpdateDeliveryPort {
   relaunch?(): Promise<void>;
 }
 
-let deliveryPort: UpdateDeliveryPort | undefined;
-
-export function setUpdateDeliveryPort(
-  next: UpdateDeliveryPort | undefined,
-): void {
-  deliveryPort = next;
-}
-
 export interface UpdateDelivery {
   applying: Accessor<boolean>;
   /** Download progress 0..1. */
   progress: Accessor<number>;
   /**
-   * Download and install through the host. Without a delivery port, opens
-   * `update.url` (store listing / installer); throws when there is no URL.
+   * Download and install through the host. Without an `updateDelivery`
+   * service, opens `update.url` (store listing / installer); throws when
+   * there is no URL.
    */
   apply(update: UpdateInfo): Promise<'installed' | 'opened'>;
 }
 
 /**
  * OTA delivery for `createUpdateChecker` results. Tauri's updater, Expo
- * Updates and store installers provide the port; the web fallback opens the
- * store/installer URL. Signing and package verification stay in the host.
+ * Updates and store installers provide the `updateDelivery` service (or pass
+ * a port); a host without one opens the store/installer URL. Signing and
+ * package verification stay in the host.
  */
 export function createUpdateDelivery(
-  port: UpdateDeliveryPort | undefined = deliveryPort,
+  delivery?: UpdateDeliveryPort,
 ): UpdateDelivery {
   const [applying, setApplying] = createSignal(false);
   const [progress, setProgress] = createSignal(0);
@@ -148,6 +148,12 @@ export function createUpdateDelivery(
     applying,
     progress,
     async apply(update) {
+      const port =
+        delivery ??
+        (serviceAvailable('updateDelivery') === 'available'
+          ? (peekService('updateDelivery') ??
+            (await loadService('updateDelivery')))
+          : undefined);
       if (!port) {
         if (!update.url) throw new CapabilityError('updateDelivery');
         await openExternal(update.url);
@@ -177,23 +183,24 @@ export interface UpdateSource {
   check(): Promise<UpdateInfo | null>;
 }
 
-let source: UpdateSource | undefined;
-
-/** Hosts install a feed source (desktop updater, Expo Updates, Tauri). */
-export function setUpdateSource(next: UpdateSource | undefined): void {
-  source = next;
+declare module './registry.js' {
+  interface ServiceProviders {
+    updateDelivery: UpdateDeliveryPort;
+    /** The host's update feed (desktop updater, Expo Updates, Tauri). */
+    updateSource: UpdateSource;
+  }
 }
 
+/** The host's update feed, when it has one. */
 export function updateSource(): UpdateSource | undefined {
-  return source;
+  return peekService('updateSource');
 }
 
 /** Check the configured host feed and filter out current/older versions. */
 export async function checkForUpdate(
   currentVersion: string,
 ): Promise<UpdateInfo | null> {
-  if (!source) throw new CapabilityError('updateSource');
-  const info = await source.check();
+  const info = await withService('updateSource', (source) => source.check());
   if (!info) return null;
   return compareVersions(info.version, currentVersion) > 0 ? info : null;
 }

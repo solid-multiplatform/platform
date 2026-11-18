@@ -1336,6 +1336,14 @@ export class RendererMain extends EventEmitter {
   }
 
   /**
+   * Run `callback` in the next drawn frame, after pending node updates were
+   * applied. On its own it requests no frame.
+   */
+  reprocessUpdates(callback?: () => void): void {
+    this.stage.reprocessUpdates(callback);
+  }
+
+  /**
    * Register a font with a text renderer.
    *
    * @remarks

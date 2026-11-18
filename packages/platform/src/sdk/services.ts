@@ -1,11 +1,29 @@
-export type Availability = 'available' | 'unavailable';
+/**
+ * The services entry point for hosts and apps: the registry functions, and the
+ * ports of the application services every host may provide (storage,
+ * lifecycle, connectivity, links, notifications, push, background jobs and
+ * network requests).
+ *
+ * A host installs providers with `installServices`; an app reads a service
+ * with `loadService('settings')`, or `useService` where it cannot wait.
+ */
+export {
+  CapabilityError,
+  installServices,
+  installedServices,
+  loadService,
+  peekService,
+  resetServices,
+  serviceAvailable,
+  useService,
+  type Availability,
+  type ProviderMap,
+  type ServiceName,
+  type ServiceProvider,
+  type ServiceProviders,
+} from './registry.js';
+
 export type Permission = 'granted' | 'denied' | 'prompt' | 'unavailable';
-export class CapabilityError extends Error {
-  constructor(public readonly capability: string) {
-    super('Unavailable capability: ' + capability);
-    this.name = 'CapabilityError';
-  }
-}
 export interface Store {
   get(key: string): Promise<string | null>;
   set(key: string, value: string): Promise<void>;
@@ -17,45 +35,48 @@ export interface NotificationMessage {
   id?: string;
   data?: Record<string, string>;
 }
-export interface AppServices {
-  settings?: Store;
-  secureStorage?: Store;
-  lifecycle?: {
-    active(): boolean;
-    subscribe(listener: (active: boolean) => void): () => void;
-  };
-  connectivity?: {
-    online(): boolean;
-    subscribe(listener: (online: boolean) => void): () => void;
-  };
-  links?: {
-    initial(): string | null;
-    subscribe(listener: (link: string) => void): () => void;
-  };
-  notifications?: {
-    permission(): Promise<Permission>;
-    request(): Promise<Permission>;
-    show(value: NotificationMessage): Promise<void>;
-  };
-  push?: {
-    register(publicKey: string): Promise<unknown>;
-    unregister(): Promise<void>;
-  };
-  jobs?: { schedule(id: string): Promise<void> };
-  request?: typeof fetch;
+export interface LifecyclePort {
+  active(): boolean;
+  subscribe(listener: (active: boolean) => void): () => void;
 }
-export function services(ports: AppServices) {
-  return {
-    available(name: keyof AppServices): Availability {
-      return ports[name] ? 'available' : 'unavailable';
-    },
-    use<K extends keyof AppServices>(name: K): NonNullable<AppServices[K]> {
-      const value = ports[name];
-      if (!value) throw new CapabilityError(name);
-      return value;
-    },
-  };
+export interface ConnectivityPort {
+  online(): boolean;
+  subscribe(listener: (online: boolean) => void): () => void;
 }
+export interface LinksPort {
+  initial(): string | null;
+  subscribe(listener: (link: string) => void): () => void;
+}
+export interface NotificationsPort {
+  permission(): Promise<Permission>;
+  request(): Promise<Permission>;
+  show(value: NotificationMessage): Promise<void>;
+}
+export interface PushPort {
+  register(publicKey: string): Promise<unknown>;
+  unregister(): Promise<void>;
+}
+export interface JobsPort {
+  schedule(id: string): Promise<void>;
+}
+export interface RequestPort {
+  fetch: typeof fetch;
+}
+
+declare module './registry.js' {
+  interface ServiceProviders {
+    settings: Store;
+    secureStorage: Store;
+    lifecycle: LifecyclePort;
+    connectivity: ConnectivityPort;
+    links: LinksPort;
+    notifications: NotificationsPort;
+    push: PushPort;
+    jobs: JobsPort;
+    request: RequestPort;
+  }
+}
+
 export function subscribeEvent(
   target: EventTarget,
   type: string,

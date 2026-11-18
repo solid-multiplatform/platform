@@ -10,6 +10,7 @@ import {
   useHighContrast as highContrast,
   useTextScale as textScale,
 } from './i18n.js';
+import { peekService } from './registry.js';
 
 /** The platform-reported appearance. `system` is resolved by the host. */
 export type ColorScheme = 'light' | 'dark';
@@ -104,20 +105,37 @@ export function setColorScheme(scheme: ColorScheme): void {
   setColorSchemeSignal(scheme);
 }
 
+/** The system's light/dark appearance, where the host can report it. */
+export interface ColorSchemePort {
+  current(): ColorScheme;
+  /** Calls `listener` on every change until the returned function is called. */
+  subscribe(listener: (scheme: ColorScheme) => void): () => void;
+}
+
+declare module './registry.js' {
+  interface ServiceProviders {
+    colorScheme: ColorSchemePort;
+  }
+}
+
 /**
- * Bind to the browser's `prefers-color-scheme`. Native hosts call
- * `setColorScheme` from their trait/configuration listeners instead.
+ * Follow the system appearance: `useColorScheme` takes the value of the host's
+ * `colorScheme` service (the browser's `prefers-color-scheme` on the web) now
+ * and on every change, until the returned function is called. A media query
+ * list can be passed instead. Does nothing on a host without the service;
+ * such hosts call `setColorScheme` from their own listeners.
  */
-export function bindColorScheme(
-  match: MediaQueryList | undefined = typeof matchMedia === 'function'
-    ? matchMedia('(prefers-color-scheme: dark)')
-    : undefined,
-): () => void {
-  if (!match) return () => {};
-  const update = () => setColorScheme(match.matches ? 'dark' : 'light');
-  update();
-  match.addEventListener?.('change', update);
-  return () => match.removeEventListener?.('change', update);
+export function bindColorScheme(match?: MediaQueryList): () => void {
+  if (match) {
+    const update = () => setColorScheme(match.matches ? 'dark' : 'light');
+    update();
+    match.addEventListener?.('change', update);
+    return () => match.removeEventListener?.('change', update);
+  }
+  const source = peekService('colorScheme');
+  if (!source) return () => {};
+  setColorScheme(source.current());
+  return source.subscribe(setColorScheme);
 }
 
 /** High-contrast light palette (WCAG AAA on body text). */
@@ -205,7 +223,9 @@ export function ThemeProvider(props: {
     return theme ?? themeFor(colorScheme(), highContrast());
   });
   return (
-    <ThemeContext.Provider value={value}>{props.children}</ThemeContext.Provider>
+    <ThemeContext.Provider value={value}>
+      {props.children}
+    </ThemeContext.Provider>
   );
 }
 

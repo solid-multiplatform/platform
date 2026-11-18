@@ -1,4 +1,5 @@
 import { openExternal } from './device.js';
+import { serviceAvailable, withService } from './registry.js';
 
 export interface MapCoordinate {
   latitude: number;
@@ -31,14 +32,14 @@ export interface MapsPort {
   directions(options: DirectionsOptions): Promise<void>;
 }
 
-let port: MapsPort | undefined;
-
-export function setMapsPort(next: MapsPort | undefined): void {
-  port = next;
+declare module './registry.js' {
+  interface ServiceProviders {
+    maps: MapsPort;
+  }
 }
 
 export function mapsAvailable(): boolean {
-  return port !== undefined;
+  return serviceAvailable('maps') === 'available';
 }
 
 const coordinate = (value: MapCoordinate | string): string =>
@@ -71,11 +72,11 @@ const directionsUrl = (options: DirectionsOptions): string => {
 };
 
 /**
- * Open the platform map (or Google Maps on the web) centred on a place.
- * Native hosts provide `MapsPort`; the fallback delegates to `openExternal`.
+ * Open the platform map centred on a place. A host without a `maps` service
+ * gets a Google Maps link through `openExternal`.
  */
 export async function openMap(options: MapOptions): Promise<void> {
-  if (port) return port.open(options);
+  if (mapsAvailable()) return withService('maps', (port) => port.open(options));
   await openExternal(queryUrl(options));
 }
 
@@ -83,6 +84,7 @@ export async function openMap(options: MapOptions): Promise<void> {
 export async function openDirections(
   options: DirectionsOptions,
 ): Promise<void> {
-  if (port) return port.directions(options);
+  if (mapsAvailable())
+    return withService('maps', (port) => port.directions(options));
   await openExternal(directionsUrl(options));
 }

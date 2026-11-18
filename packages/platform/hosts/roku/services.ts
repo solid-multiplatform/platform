@@ -1,8 +1,9 @@
 import { jsonDeviceStorage } from './device-storage';
-import { services } from '@solid-multiplatform/platform/services';
+import type { ProviderMap } from '@solid-multiplatform/platform/services';
 
-export function rokuServices(section: string) {
-  return services({
+/** The Roku host's application services, for `installServices`. */
+export function rokuServices(section: string): ProviderMap {
+  return {
     settings: {
       async get(k) {
         return jsonDeviceStorage<string>(section, k).load();
@@ -14,5 +15,5 @@ export function rokuServices(section: string) {
         await jsonDeviceStorage<string>(section, k).clear();
       },
     },
-  });
+  };
 }
