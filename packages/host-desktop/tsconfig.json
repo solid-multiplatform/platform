@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    // DOM for the renderer's platform contract, which is written in DOM
+    // types; nothing here uses a DOM global.
+    "lib": ["ES2022", "DOM"],
+    "types": [],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "jsxImportSource": "@solid-multiplatform/platform"
+  },
+  "include": ["src", "tests/**/*.ts", "tests/**/*.tsx"]
+}

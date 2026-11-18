@@ -11,6 +11,7 @@ fn main() {
     println!("cargo:rerun-if-env-changed=HERMES_SRC");
     println!("cargo:rerun-if-env-changed=HERMES_BUILD");
     println!("cargo:rerun-if-changed=src/glue.cpp");
+    println!("cargo:rerun-if-changed=src/prelude.js");
 
     // The glue includes Hermes' own VM headers, so it must be compiled with
     // the flags Hermes was built with: they decide the layout of VM classes.
@@ -42,8 +43,12 @@ fn main() {
     for dir in ["include", "lib/config", "external/llvh/include"] {
         glue.include(build.join(dir));
     }
-    glue
-        .file("src/glue.cpp")
+    // Hermes builds its source-to-bytecode entry point (`--compile`) as a
+    // separate library that the documented build does not produce, so its one
+    // file is compiled here, against the same headers.
+    glue.include(src.join("API/napi"));
+    glue.file("src/glue.cpp")
+        .file(src.join("API/napi/hermes_napi_compile.cpp"))
         .compile("solid_glue");
 
     for dir in [

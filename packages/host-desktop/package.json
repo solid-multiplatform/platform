@@ -1,0 +1,26 @@
+{
+  "name": "@solid-multiplatform/host-desktop",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Desktop host: the renderer's platform adapter over the native runtime, and the bundler for it",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "solid-desktop-bundle": "./cli/bundle.mjs"
+  },
+  "scripts": {
+    "test": "bash tests/run.sh"
+  },
+  "dependencies": {
+    "@solid-multiplatform/platform": "workspace:*",
+    "@solid-multiplatform/renderer": "workspace:*"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.10",
+    "babel-preset-solid": "^1.9.5",
+    "esbuild": "^0.28.2"
+  }
+}

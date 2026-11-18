@@ -24,6 +24,25 @@ importers:
         specifier: ^3.8.3
         version: 3.8.3
 
+  packages/host-desktop:
+    dependencies:
+      '@solid-multiplatform/platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@solid-multiplatform/renderer':
+        specifier: workspace:*
+        version: link:../renderer
+    devDependencies:
+      '@babel/core':
+        specifier: ^7.26.10
+        version: 7.26.10
+      babel-preset-solid:
+        specifier: ^1.9.5
+        version: 1.9.5(@babel/core@7.26.10)
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
+
   packages/platform:
     dependencies:
       '@nativescript/local-notifications':

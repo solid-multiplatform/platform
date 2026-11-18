@@ -22,3 +22,5 @@ strip = true
 
 [dependencies]
 sdl3-sys = "0.7.3"
+# Decoders only, all in Rust: no encoders, no C libraries.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
