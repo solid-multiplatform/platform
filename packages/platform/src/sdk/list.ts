@@ -182,7 +182,7 @@ export interface PullToRefresh {
   /** Current pull distance in scene units, clamped at zero. */
   distance: Accessor<number>;
   refreshing: Accessor<boolean>;
-  /** Pass to `InputControl.drag` / `createInputScope`. */
+  /** Pass to a node's `onPointerDrag`. */
   drag(
     phase: 'start' | 'move' | 'end' | 'cancel',
     point: Point,

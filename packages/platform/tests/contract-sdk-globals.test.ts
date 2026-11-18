@@ -32,7 +32,6 @@ const PINNED: Record<string, { count: number; where: string }> = {
     count: 2,
     where: 'bindBrowserHistory, createBrowserNavigation',
   },
-  'semantics.ts': { count: 2, where: 'browserSemantics' },
 };
 
 // A reference to the global: not a member (`options.window`) and not a

@@ -1,5 +1,10 @@
+import type { ElementNode } from '../core/elementNode.js';
 import type { Rect } from './input.js';
-import type { Semantics, SemanticsRole } from './semantics.js';
+import {
+  sceneSemantics,
+  type Semantics,
+  type SemanticsRole,
+} from './semantics.js';
 
 /** Apple HIG 44pt / Android Material 48dp. 44 covers both at scene scale 1. */
 export const MIN_TOUCH_TARGET = 44;
@@ -76,16 +81,41 @@ const ACTION_ROLES = new Set<SemanticsRole>([
   'switch',
 ]);
 
+/** Roles a pointer or finger operates: the ones a touch target is for. */
+const TARGET_ROLES = new Set<SemanticsRole>([
+  ...ACTION_ROLES,
+  'slider',
+  'textbox',
+  'searchbox',
+]);
+
+/** Containers and dividers: they may have a name and need none. */
+const UNNAMED_ROLES = new Set<SemanticsRole>([
+  'list',
+  'listitem',
+  'group',
+  'separator',
+  'navigation',
+  'main',
+]);
+
 /**
  * Static accessibility gate for the semantics tree. This covers the checks an
  * axe/Accessibility Scanner pass can make without a running screen reader:
  * labels, roles that need state/value, heading levels, actions and target
  * size. Apps run it in tests or a dev screen and fail the build on issues.
+ *
+ * Pass the scene's root (`rootNode`, or any node) to audit what is on screen
+ * now, as derived from the nodes' accessibility props; or a list of semantics
+ * nodes kept elsewhere.
  */
 export function auditSemantics(
-  nodes: readonly Semantics[],
+  source: readonly Semantics[] | ElementNode,
   options: AuditOptions = {},
 ): A11yIssue[] {
+  const nodes = Array.isArray(source)
+    ? (source as readonly Semantics[])
+    : sceneSemantics(source as ElementNode);
   const issues: A11yIssue[] = [];
   const requireAction = options.requireAction !== false;
 
@@ -93,7 +123,7 @@ export function auditSemantics(
     const add = (rule: A11yRule, message: string) =>
       issues.push({ rule, message, role: node.role, index });
 
-    if (!node.label || !node.label.trim()) {
+    if (!UNNAMED_ROLES.has(node.role) && (!node.label || !node.label.trim())) {
       add('label', `${node.role} is missing an accessible label`);
     }
     if (node.description !== undefined && !node.description.trim()) {
@@ -134,7 +164,10 @@ export function auditSemantics(
       add('action', `${node.role} has no activate action`);
     }
 
-    const bounds = options.bounds?.(node) ?? node.bounds?.();
+    // Only what is operated needs a target: a heading or a list does not.
+    const bounds = TARGET_ROLES.has(node.role)
+      ? (options.bounds?.(node) ?? node.bounds?.())
+      : undefined;
     if (bounds && !meetsTouchTarget(bounds, options)) {
       add(
         'touch-target',

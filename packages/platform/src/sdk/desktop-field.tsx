@@ -1,7 +1,7 @@
 import { createSignal, createEffect, onCleanup, For } from 'solid-js';
 import { getRenderer } from '../index.js';
 import type { EditorOptions } from './editor.js';
-import type { Rect, InputScope } from './input.js';
+import type { Rect } from './input.js';
 
 interface EditState {
   display: string;
@@ -21,7 +21,6 @@ interface Session {
   dispose(): void;
 }
 export interface DesktopFieldHost {
-  input: InputScope;
   editors: {
     createEditor(
       options: EditorOptions & { onState(state: EditState): void },
@@ -121,17 +120,6 @@ export function DesktopTextField(
     }
     return raw.slice(0, row).reduce((n, l) => n + l.length + 1, 0) + index;
   }
-  const unregister = props.host.input.register({
-    bounds: rect,
-    focus: () => field.focus(),
-    activate: (p) => {
-      field.focus();
-      if (p) field.select(indexAt(p));
-    },
-    drag: (phase, p, origin) => {
-      if (phase !== 'cancel') field.select(indexAt(origin), indexAt(p));
-    },
-  });
   createEffect(() => {
     field.setBounds({ ...props.bounds });
     if (props.value !== undefined) field.setValue(props.value);
@@ -143,7 +131,6 @@ export function DesktopTextField(
   });
   props.ref?.(field);
   onCleanup(() => {
-    unregister();
     semantics?.dispose();
     field.dispose();
   });
@@ -155,6 +142,16 @@ export function DesktopTextField(
       height={rect().height}
       clipping
       color={state().focused ? 0x293c52ff : 0x1b2736ff}
+      cursorStyle="text"
+      onFocus={() => field.focus()}
+      onMouseClick={(point) => {
+        field.focus();
+        field.select(indexAt(point));
+      }}
+      onPointerDrag={(phase, point, origin) => {
+        if (phase === 'start') field.focus();
+        if (phase !== 'cancel') field.select(indexAt(origin), indexAt(point));
+      }}
     >
       <For each={lines()}>
         {(line, index) => {

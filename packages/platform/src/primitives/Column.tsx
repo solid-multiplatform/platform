@@ -35,6 +35,7 @@ const onDown = handleNavigation('down');
 export const Column: Component<ColumnProps> = (props) => {
   return (
     <view
+      role="list"
       transitionUp={defaultTransitionUp}
       transitionDown={defaultTransitionDown}
       {...props}

@@ -79,13 +79,13 @@ export interface DragScrollOptions {
 }
 
 /**
- * Adapt a pointer drag to a scroll axis. Pass the result straight to
- * `InputControl.drag`, which `createInputScope` calls on native touch and the
- * web pointer binder:
+ * Adapt a pointer drag to a scroll axis. Pass the result to a node's
+ * `onPointerDrag`; a drag that starts on the node or anything inside it then
+ * scrolls, on every host with a pointer:
  *
  * ```tsx
  * const scroll = scrollAxis();
- * <view drag={dragToScroll(scroll)} ... />
+ * <view onPointerDrag={dragToScroll(scroll)} ... />
  * ```
  */
 export function dragToScroll(
@@ -120,8 +120,9 @@ export interface WheelScrollOptions {
 }
 
 /**
- * Map a wheel event to a scroll axis. The event shape is structural so native
- * hosts and tests can call it without a DOM WheelEvent.
+ * Map a wheel event to a scroll axis. Pass the result to a node's
+ * `onPointerScroll`. The event shape is structural so native hosts and tests
+ * can call it without a DOM WheelEvent.
  */
 export function wheelToScroll(
   scroll: { by(delta: number): void },
