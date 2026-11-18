@@ -1,10 +1,11 @@
 {
   "name": "@solid-multiplatform/platform",
-  "version": "0.1.0",
+  "version": "0.2.0-preview.1",
   "description": "Portable Solid primitives and device hosts",
   "type": "module",
   "exports": {
     ".": {
+      "canvas": "./dist/src/portable.js",
       "roku": "./dist/src/portable.js",
       "@solidtv/source": "./src/index.ts",
       "import": {
@@ -64,7 +65,33 @@
     "./browser-tv": "./dist/src/hosts/browser-tv.js",
     "./browser-tv/canvas": "./dist/src/hosts/canvas.js",
     "./ios": "./hosts/ios/index.mjs",
-    "./plugins": "./dist/src/hosts/plugins.js"
+    "./plugins": "./dist/src/hosts/plugins.js",
+    "./cli/variants": "./cli/variants.mjs",
+    "./android": "./hosts/android/index.mjs",
+    "./viewport": "./dist/src/sdk/viewport.js",
+    "./viewport/web": "./dist/src/sdk/browser-viewport.js",
+    "./input": "./dist/src/sdk/input.js",
+    "./editor": "./dist/src/sdk/editor.js",
+    "./editor/native": "./hosts/nativescript/editors.mjs",
+    "./android/system": "./hosts/android/system.mjs",
+    "./services": "./dist/src/sdk/services.js",
+    "./services/web": "./dist/src/sdk/web-services.js",
+    "./services/native": "./hosts/nativescript/services.mjs",
+    "./navigation": "./dist/src/sdk/navigation.js",
+    "./controls": {
+      "@solidtv/source": "./src/sdk/controls.tsx",
+      "import": {
+        "types": "./dist/src/sdk/controls.d.ts",
+        "default": "./dist/src/sdk/controls.jsx"
+      }
+    },
+    "./controls/web": "./dist/src/sdk/web-controls.js",
+    "./controls/native": "./hosts/nativescript/controls.mjs",
+    "./browser-tv/input": "./hosts/web-tv/input.mjs",
+    "./services/mobile-providers": "./hosts/nativescript/providers.mjs",
+    "./services/desktop": "./hosts/desktop/services.mjs",
+    "./services/roku": "./hosts/roku/services.ts",
+    "./motion": "./dist/src/sdk/motion.js"
   },
   "sideEffects": false,
   "scripts": {
@@ -119,7 +146,7 @@
     "vite": "^8.0.13",
     "vite-plugin-solid": "^2.11.12",
     "vitest": "^4.1.6",
-    "@solid-multiplatform/renderer": "file:vendor/solid-multiplatform-renderer-0.1.0.tgz",
+    "@solid-multiplatform/renderer": "file:vendor/solid-multiplatform-renderer-0.2.0-preview.1.tgz",
     "solid-js": "1.9.17"
   },
   "lint-staged": {
@@ -131,7 +158,7 @@
   },
   "peerDependencies": {
     "@solidjs/router": "^0.16.1",
-    "@solid-multiplatform/renderer": "^0.1.0",
+    "@solid-multiplatform/renderer": "0.2.0-preview.1",
     "solid-js": "*"
   },
   "peerDependenciesMeta": {},
@@ -147,7 +174,7 @@
     "hosts",
     "PROVENANCE.md",
     "cli",
-    "vendor/*.tgz",
+    "vendor/solid-multiplatform-renderer-0.2.0-preview.1.tgz",
     "tests/webgl/fonts",
     "examples/*/package.json",
     "examples/*/pnpm-workspace.yaml",
@@ -167,6 +194,7 @@
   },
   "imports": {
     "#default-backend": {
+      "canvas": "./dist/src/hosts/native-backend.js",
       "roku": "./dist/src/hosts/native-backend.js",
       "types": "./src/hosts/web-backend.ts",
       "@solidtv/source": "./src/hosts/web-backend.ts",

@@ -13,3 +13,7 @@ bench/public
 examples/**/platforms
 examples/**/dist-roku
 examples/**/hooks
+
+packages/video/upstream
+packages/video/core
+packages/video/core.mjs

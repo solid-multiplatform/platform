@@ -247,7 +247,7 @@ const git = (dir, ...a) => {
 /** What each arm is, for the record. */
 function armSource(arm) {
   if (arm === 'A') {
-    return { solid: PINS.solidA, renderer: `npm ${PINS.rendererA}` };
+    return { solid: PINS.solidA, renderer: PINS.rendererA };
   }
   const dirty =
     (git(solidRoot, 'status', '--porcelain', '--', 'src') ?? '') !== '';

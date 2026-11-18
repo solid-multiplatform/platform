@@ -23,7 +23,7 @@ export function runNativeApp(target, loadApp, bindDevice) {
         const platform = await import('@solid-multiplatform/platform');
         platform.Config.preventDefaultOnHandledKeys = true;
         const bridge = new KeyBridge({ target: document });
-        const unbind = bindDevice(canvas, bridge, platform);
+        const binding = bindDevice(canvas, bridge, platform, root);
         const lifecycle = bindLifecycle(
           () => platform.renderer,
           bridge,
@@ -33,14 +33,23 @@ export function runNativeApp(target, loadApp, bindDevice) {
         let active = true;
         const cleanup = () => {
           active = false;
-          dispose?.();
-          unbind();
-          lifecycle.unbind();
-          Application.off('exit', cleanup);
+          try {
+            dispose?.();
+          } finally {
+            if (typeof binding === 'function') binding();
+            else binding.dispose();
+            lifecycle.unbind();
+            Application.off('exit', cleanup);
+          }
         };
         Application.on('exit', cleanup);
         try {
-          const app = await loadApp({ target, root, canvas });
+          const app = await loadApp({
+            target,
+            root,
+            canvas,
+            input: binding.input,
+          });
           if (active) dispose = app.mount();
         } catch (error) {
           cleanup();

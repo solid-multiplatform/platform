@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools" package="__PACKAGE__">
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+  <application android:name="com.tns.NativeScriptApplication" android:label="Solid Multiplatform"
+      android:icon="@drawable/banner" android:banner="@drawable/banner"
+      android:theme="@style/AppTheme" android:hardwareAccelerated="true"
+      android:usesCleartextTraffic="false" android:networkSecurityConfig="@xml/native_network_security" android:allowBackup="false" tools:replace="android:allowBackup">
+    <activity android:name="com.tns.NativeScriptActivity" android:exported="true" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize"
+        android:configChanges="keyboard|keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|uiMode|density">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity>
+  </application>
+</manifest>

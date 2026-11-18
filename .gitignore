@@ -26,3 +26,5 @@ examples/**/dist-roku/
 *.tsbuildinfo
 
 examples/**/.artifacts/
+
+!packages/video/package-lock.json

@@ -1,3 +1,4 @@
+import { browserTVs } from './variants.mjs';
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import {
@@ -135,13 +136,16 @@ export function newPlugin(root, name, selected, mode) {
     writeJson(path.join(dir, 'plugin.json'), {
       name,
       targets: selected,
-      ...(selected.includes('android-tv') && { androidKind: mode }),
+      ...(selected.some((t) => t === 'android' || t === 'android-tv') && {
+        androidKind: mode,
+      }),
     });
     for (const target of selected) {
       const dest = path.join(dir, target);
       const values = { CLASS: label, PLUGIN: name };
-      if (target === 'android-tv') androidPlugin(dest, name, mode);
-      if (target === 'web')
+      if (target === 'android-tv' || target === 'android')
+        androidPlugin(dest, name, mode);
+      if (target === 'web' || browserTVs.includes(target))
         write(
           path.join(dest, 'index.mjs'),
           `export async function run() { return '${name} web'; }\n`,

@@ -1,3 +1,4 @@
+import { browserTVs } from './variants.mjs';
 import path from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 import {
@@ -16,7 +17,11 @@ function device(root, target, dependencies) {
   const origin = path.join(
     framework,
     'examples',
-    target === 'ios' ? 'apple-tv' : target,
+    target === 'ios'
+      ? 'apple-tv'
+      : target === 'android'
+        ? 'android-tv'
+        : target,
   );
   const dest = path.join(root, 'targets', target);
   const pkg = json(path.join(origin, 'package.json'));
@@ -44,13 +49,19 @@ export default rokuConfig({ title: ${JSON.stringify(json(path.join(root, 'solid-
   }
   const copyResource = (file) =>
     copy(path.join(origin, file), path.join(dest, file));
-  if (target === 'android-tv') {
+  if (target === 'android-tv' || target === 'android') {
     for (const file of [
       'App_Resources/Android/src/main/AndroidManifest.xml',
       'App_Resources/Android/src/main/res',
     ])
       copyResource(file);
     const resource = path.join(dest, 'App_Resources/Android');
+    if (target === 'android') {
+      copy(
+        path.join(framework, 'hosts/android/AndroidManifest.xml'),
+        path.join(resource, 'src/main/AndroidManifest.xml'),
+      );
+    }
     const base = readFileSync(
       path.join(origin, 'App_Resources/Android/app.gradle'),
       'utf8',
@@ -94,9 +105,11 @@ export default rokuConfig({ title: ${JSON.stringify(json(path.join(root, 'solid-
   const fn =
     target === 'android-tv'
       ? 'runAndroidTV'
-      : target === 'ios'
-        ? 'runIOS'
-        : 'runAppleTV';
+      : target === 'android'
+        ? 'runAndroid'
+        : target === 'ios'
+          ? 'runIOS'
+          : 'runAppleTV';
   write(
     path.join(dest, 'app/app.ts'),
     `import { ${fn} } from '@solid-multiplatform/platform/${target}';\n${fn}(async host => { const app = await import('../work/main'); return { mount: () => app.mount(host) }; });\n`,
@@ -136,7 +149,7 @@ export function init(destination, selected) {
       packageManager: meta.packageManager,
       scripts: {
         platform: 'solid-platform',
-        check: 'tsc -p tsconfig.json',
+        check: 'solid-platform check',
         build: 'solid-platform build',
         dev: 'solid-platform dev',
       },
@@ -165,6 +178,14 @@ export function init(destination, selected) {
       template('app/app.tsx', { APP_NAME: name }),
     );
     copy(
+      path.join(framework, 'cli/templates/app/screens'),
+      path.join(root, 'src/screens'),
+    );
+    copy(
+      path.join(framework, 'cli/templates/app/screen.ts'),
+      path.join(root, 'src/screen.ts'),
+    );
+    copy(
       path.join(framework, 'tests/webgl/fonts'),
       path.join(root, 'assets/fonts'),
     );
@@ -182,10 +203,34 @@ export function init(destination, selected) {
       if (target === 'desktop')
         writeJson(path.join(dest, 'package.json'), {
           name: 'desktop-host',
+          packageManager: meta.packageManager,
+          solidDesktopWindow: true,
+          dependencies: {
+            ...dependencies,
+            'webgl-raub': '5.3.0',
+            koffi: '3.3.8',
+            sharp: '0.35.5',
+          },
+          devDependencies: {
+            esbuild: '0.27.4',
+            '@babel/core': '7.29.7',
+            'babel-preset-solid': '1.9.15',
+            '@babel/preset-typescript': '7.29.7',
+          },
+          pnpm: {
+            onlyBuiltDependencies: [
+              'esbuild',
+              'koffi',
+              'sharp',
+              'webgl-raub',
+              'deps-opengl-raub',
+              'segfault-raub',
+            ],
+          },
           private: true,
           type: 'module',
         });
-      else if (target === 'web') {
+      else if (target === 'web' || browserTVs.includes(target)) {
         writeJson(path.join(dest, 'package.json'), {
           name: 'web-host',
           private: true,
@@ -193,7 +238,14 @@ export function init(destination, selected) {
           packageManager: meta.packageManager,
           scripts: { build: 'vite build', dev: 'vite' },
           dependencies,
-          devDependencies: { vite: '8.0.13', 'vite-plugin-solid': '2.11.12' },
+          devDependencies: {
+            vite: '8.0.13',
+            'vite-plugin-solid': '2.11.12',
+            ...(browserTVs.includes(target)
+              ? { '@vitejs/plugin-legacy': '8.2.4', terser: '5.51.2' }
+              : {}),
+            ...(target === 'webos' ? { '@webos-tools/cli': '3.2.6' } : {}),
+          },
         });
         write(
           path.join(dest, 'pnpm-workspace.yaml'),
@@ -202,7 +254,18 @@ export function init(destination, selected) {
         for (const file of ['index.html', 'vite.config.mjs'])
           write(
             path.join(dest, file),
-            template('web/' + file, { APP_NAME: name }),
+            template(
+              'web/' +
+                (file === 'vite.config.mjs' && browserTVs.includes(target)
+                  ? 'tv-vite.config.mjs'
+                  : file),
+              { APP_NAME: name, TARGET: target },
+            ),
+          );
+        if (browserTVs.includes(target))
+          copy(
+            path.join(framework, 'cli/templates/web/icon.png'),
+            path.join(dest, 'public/icon.png'),
           );
       } else device(root, target, dependencies);
     }

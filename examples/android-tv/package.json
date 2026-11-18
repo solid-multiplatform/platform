@@ -16,7 +16,7 @@
     "@solid-primitives/list": "0.1.2",
     "@solid-primitives/scheduled": "1.5.2",
     "solid-js": "1.9.17",
-    "@solid-multiplatform/renderer": "file:../../vendor/solid-multiplatform-renderer-0.1.0.tgz",
+    "@solid-multiplatform/renderer": "file:../../vendor/solid-multiplatform-renderer-0.2.0-preview.1.tgz",
     "@solid-multiplatform/platform": "file:../.."
   },
   "devDependencies": {

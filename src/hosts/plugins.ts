@@ -1,8 +1,12 @@
 /** Host resources are available after device startup and before the app mounts. */
 export type PluginHost =
-  | { target: 'web' | 'desktop' }
+  | { target: 'web' | 'tizen' | 'webos' | 'vizio' | 'desktop' }
   | { target: 'roku'; root: object }
-  | { target: 'android-tv' | 'ios' | 'apple-tv'; root: object; canvas: object };
+  | {
+      target: 'android' | 'android-tv' | 'ios' | 'apple-tv';
+      root: object;
+      canvas: object;
+    };
 
 export interface HostPlugin {
   attach?(host: PluginHost): void | (() => void);

@@ -74,6 +74,7 @@ function rendererAliases(): Alias[] {
   for (const [subpath, target] of Object.entries(
     pkg.exports as Record<string, string>,
   )) {
+    if (typeof target !== 'string') continue;
     const name = '@solid-multiplatform/renderer' + subpath.slice(1);
     aliases.push({
       find: new RegExp(`^${escape(name)}$`),

@@ -1,0 +1,45 @@
+import { SessionPlayer } from './session-player';
+import { type OpenPlayerRequest, type PlayerCapabilities } from './types';
+/** Copies encoded tracks incrementally; the native video decoder owns AV sync. */
+export declare class MediabunnyMseAdapter extends SessionPlayer {
+    private readonly media;
+    readonly capabilities: PlayerCapabilities;
+    private input?;
+    private conversion?;
+    private output?;
+    private objectUrl?;
+    private abort;
+    private request?;
+    private origin;
+    private duration;
+    private handlers;
+    private volume;
+    private muted;
+    private generation;
+    private maximumAhead;
+    private backBuffer;
+    private frameClockVerified;
+    private frameObserver?;
+    constructor(media: HTMLVideoElement);
+    open(request: OpenPlayerRequest): Promise<void>;
+    private prepareLiveCopy;
+    private bufferedAhead;
+    private publishTime;
+    private bind;
+    private observeFrameClock;
+    private waitForFrame;
+    private event;
+    play(): Promise<void>;
+    pause(): Promise<void>;
+    seek(position: number): Promise<void>;
+    private replace;
+    loadAudioTracks(): Promise<void>;
+    selectAudioTrack(id: string): Promise<void>;
+    selectQuality(id: string): Promise<void>;
+    selectTextTrack(): Promise<void>;
+    setVolume(level: number): Promise<void>;
+    setMuted(muted: boolean): Promise<void>;
+    stop(): Promise<void>;
+    dispose(): Promise<void>;
+    private release;
+}

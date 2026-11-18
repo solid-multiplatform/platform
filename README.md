@@ -62,3 +62,15 @@ A host binds its native root or graphics surface and input before mounting the a
 For a new device with native WebGL, adapt the renderer platform's surface creation, asset loading, present and clock methods. Register the surface before importing the app, then bind native input and lifecycle. For a different graphics model, add a backend in the renderer repository and install it with `setRendererFactory` before `createRenderer`. The factory receives the settings and root and returns a structural `HostRenderer`. The default web path remains available to existing applications. Run the shared fixture against the backend and add a device package smoke build.
 
 The existing Roku video code is preserved under [references/roku-video](references/roku-video). It illustrates native playback and caption needs for a future extension. [Source records](PROVENANCE.md)
+
+## Beta development and target qualification
+
+The 0.2 preview adds build-time screen variants. Import `./screens/Home` normally. For Roku the CLI selects `Home.roku.tsx`, `Home.tv.tsx`, then `Home.tsx`. Android and iOS phones use the mobile family. Windows, macOS and Linux use desktop. Web runs one responsive build. The same selection applies in nested directories, Vite development, packaging and `solid-platform check`. Run `solid-platform explain roku screens/Home` to inspect a choice.
+
+The CLI recognizes `android`, `android-tv`, `ios`, `apple-tv`, `roku`, `tizen`, `webos`, `vizio`, `web` and `desktop`. `build webos --legacy` produces a Canvas 2D IPK. Tizen generates a widget project; set `TIZEN_SECURITY_PROFILE` to an existing signing profile for the Tizen CLI to produce the signed WGT. Vizio produces partner-hosted web assets. Legacy and modern builds have separate output directories.
+
+New desktop projects use SDL3, a native graphics binding and Node. Install SDL3 or point `SOLID_SDL3_LIBRARY` at its shared library. `dev desktop` opens a window, `build desktop` produces the compiled scene and launcher under `targets/desktop/work`, and `plugins run desktop` runs the headless command fixture. Linux/X11 was exercised with rendered text, window resize and keyboard activation. ANGLE/driver availability and accessibility require separate OS qualification.
+
+The optional video archive is installed with `solid-platform add video /path/to/solid-multiplatform-video-0.2.0-preview.1.tgz`. It preserves the pinned @viptv/video exports. Import `/native`, `/android`, `/apple`, `/roku` or `/desktop` from the video package for native integration. The base renderer and UI have no media decoder dependency.
+
+The [native feature guide](hosts/native-features.md) covers forms, autofill, insets, permissions and background jobs. The [qualification matrix](docs/beta/README.md) distinguishes software checks, physical measurements and beta status.

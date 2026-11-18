@@ -1,3 +1,6 @@
+import { packageTV } from './tv-package.mjs';
+import { buildDesktopUI } from './desktop.mjs';
+import { stageSources, browserTVs } from './variants.mjs';
 import path from 'node:path';
 import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import {
@@ -38,7 +41,7 @@ function buildDesktop(root, work, plugins, launch) {
     else
       command(process.env.CC || 'cc', ['-O2', 'worker.c', '-o', 'worker'], dir);
   }
-  const main = path.join(root, 'src/desktop.mjs');
+  const main = path.join(work, 'src/desktop.mjs');
   if (existsSync(main)) copy(main, path.join(work, 'desktop.mjs'));
   else
     write(
@@ -52,12 +55,12 @@ function buildDesktop(root, work, plugins, launch) {
   if (launch) command(process.execPath, ['main.mjs'], work);
 }
 
-function android(root, work, plugins) {
+function android(root, work, plugins, target) {
   const modules = plugins.map(({ name }) => {
     const relative = path
       .relative(
-        path.join(root, 'targets/android-tv/platforms/android'),
-        path.join(root, 'plugins', name, 'android-tv'),
+        path.join(root, 'targets', target, 'platforms/android'),
+        path.join(root, 'plugins', name, target),
       )
       .split(path.sep)
       .join('/');
@@ -101,11 +104,13 @@ function roku(work, plugins, dir) {
   );
 }
 
-function buildTarget(root, target, dev) {
+function buildTarget(root, target, dev, legacy) {
   if (dev && !['web', 'desktop'].includes(target))
     throw new Error(
       'Use build for native packages, then launch them with the device SDK.',
     );
+  if (legacy && !browserTVs.includes(target))
+    throw new Error('--legacy requires a browser TV target');
   const dir = path.join(root, 'targets', target);
   const work = path.join(dir, 'work');
   if (existsSync(work) && !existsSync(path.join(work, '.generated')))
@@ -122,7 +127,7 @@ function buildTarget(root, target, dev) {
     const src = path.join(root, 'plugins', name, target);
     const dest = path.join(work, 'plugins', name);
     // Native Android modules remain in their source directories and are compiled by Gradle.
-    if (target === 'android-tv')
+    if (target === 'android-tv' || target === 'android')
       copy(path.join(src, 'index.mjs'), path.join(dest, 'index.mjs'));
     else copy(src, dest);
     const ext = target === 'roku' ? 'ts' : 'mjs';
@@ -138,39 +143,49 @@ function buildTarget(root, target, dev) {
       entries.join(',\n') +
       '\n};\n',
   );
+  stageSources(path.join(root, 'src'), path.join(work, 'src'), target);
   if (target === 'desktop') {
-    buildDesktop(root, work, plugins, dev);
+    const graphical =
+      json(path.join(dir, 'package.json')).solidDesktopWindow &&
+      dev !== 'plugins';
+    buildDesktop(root, work, plugins, dev && !graphical);
+    if (graphical) buildDesktopUI(root, dir, work, dev);
+
     return;
   }
-  copy(path.join(root, 'src'), path.join(work, 'src'));
+  const browser = target === 'web' || browserTVs.includes(target);
   const fonts =
-    target === 'roku'
+    target === 'roku' || legacy
       ? 'undefined'
-      : target === 'web'
+      : browser
         ? "'./fonts'"
         : "'file:///app/fonts'";
   write(
     path.join(work, 'main.ts'),
-    `import { mount as start } from './src/app';
+    `${target === 'web' ? "import { bindBrowserViewport } from '@solid-multiplatform/platform/viewport/web'; import {createInputScope,bindPointerEvents} from '@solid-multiplatform/platform/input';" : ''}
+${browserTVs.includes(target) ? "import { bindBrowserTV } from '@solid-multiplatform/platform/browser-tv/input';" : ''}
+${legacy ? "import {useCanvas} from '@solid-multiplatform/platform/browser-tv/canvas'; useCanvas();" : ''}
+import { mount as start } from './src/app';
 import { attachPlugins } from '@solid-multiplatform/platform/plugins';
 import { plugins } from './plugins.mjs';
 export function mount(host = { target: '${target}' }) {
+  ${target === 'web' ? "const el=document.getElementById('app');const stopViewport=bindBrowserViewport(el); const input=host.input=createInputScope();const stopPointer=bindPointerEvents(el,input,(x,y)=>{const r=el.getBoundingClientRect();return {x:x-r.left,y:y-r.top};});" : ''}
+  ${browserTVs.includes(target) ? "const tv=bindBrowserTV(host.target,document.getElementById('app'));host.input=tv.input;" : ''}
   const detach = attachPlugins(plugins, host);
   try {
-    const dispose = start(plugins, ${fonts});
-    return () => { try { dispose?.(); } finally { detach(); } };
-  } catch (error) { detach(); throw error; }
+    const dispose = start(plugins, ${fonts}, host.input, host);
+    return () => { try { dispose?.(); } finally { detach(); ${target === 'web' ? 'stopPointer(); input.dispose(); stopViewport();' : browserTVs.includes(target) ? 'tv.dispose();' : ''} } };
+  } catch (error) { detach(); ${target === 'web' ? 'stopPointer(); input.dispose(); stopViewport();' : browserTVs.includes(target) ? 'tv.dispose();' : ''} throw error; }
 }
-` + (target === 'web' ? 'mount();\n' : ''),
+` + (browser ? 'mount();\n' : ''),
   );
   if (target !== 'roku')
     copy(
       path.join(root, 'assets/fonts'),
-      target === 'web'
-        ? path.join(dir, 'public/fonts')
-        : path.join(work, 'fonts'),
+      browser ? path.join(dir, 'public/fonts') : path.join(work, 'fonts'),
     );
-  if (target === 'android-tv') android(root, work, plugins);
+  if (target === 'android-tv' || target === 'android')
+    android(root, work, plugins, target);
   command(
     'corepack',
     [
@@ -212,10 +227,18 @@ export function mount(host = { target: '${target}' }) {
       ],
       dir,
     );
-  else command('corepack', ['pnpm', dev ? 'dev' : 'build'], dir);
+  else {
+    command(
+      'corepack',
+      ['pnpm', dev ? 'dev' : 'build', ...(legacy ? ['--mode', 'legacy'] : [])],
+      dir,
+    );
+    if (!dev && browserTVs.includes(target))
+      packageTV(dir, target, project(root).name, legacy);
+  }
 }
 
-export function build(root, target, dev = false) {
+export function build(root, target, dev = false, legacy = false) {
   if (!project(root).targets.includes(target))
     throw new Error('Unknown target: ' + target);
   const lock = path.join(root, 'targets', target, '.solid-build.lock');
@@ -229,7 +252,7 @@ export function build(root, target, dev = false) {
     );
   }
   try {
-    buildTarget(root, target, dev);
+    buildTarget(root, target, dev, legacy);
   } finally {
     rmSync(lock, { recursive: true, force: true });
   }

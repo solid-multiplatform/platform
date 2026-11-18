@@ -2,20 +2,21 @@ import { createSignal, onCleanup } from 'solid-js';
 import {
   Config,
   createRenderer,
-  For,
+  activeElement,
   loadFonts,
   type ElementNode,
 } from '@solid-multiplatform/platform';
-
 import { useFocusManager } from '@solid-multiplatform/platform/focusManager';
-
+import { viewport } from '@solid-multiplatform/platform/viewport';
+import { Home } from './screens/Home';
 export interface Plugin {
   run(): Promise<string>;
 }
-export type Plugins = Record<string, Plugin>;
-
-// Commands stay behind the target-specific binding. Shared components consume this API.
-export function mount(plugins: Plugins, fontRoot?: string) {
+export function mount(
+  plugins: Record<string, Plugin>,
+  fontRoot?: string,
+  pointer?: import('@solid-multiplatform/platform/input').InputScope,
+) {
   const fonts =
     fontRoot &&
     loadFonts([
@@ -28,96 +29,83 @@ export function mount(plugins: Plugins, fontRoot?: string) {
     ]);
   if (fontRoot) Config.fontSettings = { fontFamily: 'Lato', fontSize: 32 };
   const { render } = createRenderer();
-  if (fonts) void fonts.catch((error) => console.error(error));
-  let view!: ElementNode;
+  if (fonts) void fonts.catch((e) => console.error(e));
+  const names = Object.keys(plugins);
+  let root!: ElementNode;
   const dispose = render(() => {
     useFocusManager();
-    const rows: ElementNode[] = [];
     const [message, setMessage] = createSignal('__APP_NAME__');
-    let active = true;
+    const rows = new Map<string, ElementNode>();
+    let active = true,
+      generation = 0;
     onCleanup(() => {
       active = false;
     });
-    const run = async (name: string) => {
-      try {
-        const value = await plugins[name]!.run();
-        if (active) setMessage(value);
-      } catch (error) {
-        if (active) setMessage(String(error));
-      }
-    };
-    if (fontRoot) {
-      const click = (event: MouseEvent) => {
-        const target = event.target as HTMLCanvasElement | null;
-        const bounds = target?.getBoundingClientRect?.();
-        const x = bounds?.width
-          ? ((event.clientX - bounds.left) *
-              (Config.rendererOptions?.appWidth ?? 1920)) /
-            bounds.width
-          : event.clientX;
-        const y = bounds?.height
-          ? ((event.clientY - bounds.top) *
-              (Config.rendererOptions?.appHeight ?? 1080)) /
-            bounds.height
-          : event.clientY;
-        const index = rows.findIndex((row) => {
-          const left = row.lng.absX ?? 0;
-          const top = row.lng.absY ?? 0;
-          return (
-            x >= left &&
-            x <= left + row.width &&
-            y >= top &&
-            y <= top + row.height
-          );
-        });
-        if (index >= 0) {
-          rows[index]!.setFocus();
-          void run(Object.keys(plugins)[index]!);
-        }
-      };
-      window.addEventListener('click', click);
-      onCleanup(() => window.removeEventListener('click', click));
+    function activate(name: string): true {
+      const n = ++generation;
+      void Promise.resolve()
+        .then(() => plugins[name]!.run())
+        .then(
+          (v) => {
+            if (active && n === generation) setMessage(v);
+          },
+          (e) => {
+            if (active && n === generation) setMessage(String(e));
+          },
+        );
+      return true;
+    }
+    function register(name: string, node: ElementNode) {
+      rows.set(name, node);
+      const remove = pointer?.register({
+        bounds: () => ({
+          x: node.lng.absX ?? 0,
+          y: node.lng.absY ?? 0,
+          width: node.width,
+          height: node.height,
+        }),
+        activate: () => activate(name),
+        focus: () => node.setFocus(),
+        hover: (v) =>
+          v ? node.states.add('$hover') : node.states.remove('$hover'),
+        pressed: (v) =>
+          v ? node.states.add('$pressed') : node.states.remove('$pressed'),
+      });
+      onCleanup(() => {
+        remove?.();
+        if (rows.get(name) === node) rows.delete(name);
+      });
+    }
+    function next(offset: number): true {
+      const i = names.findIndex((name) => rows.get(name) === activeElement());
+      rows
+        .get(
+          names[
+            (Math.max(0, i) + (offset % names.length) + names.length) %
+              names.length
+          ]!,
+        )
+        ?.setFocus();
+      return true;
     }
     return (
-      <view ref={view}>
-        <text x={48} y={48}>
-          {message()}
-        </text>
-        <For each={Object.keys(plugins)}>
-          {(name, index) => (
-            <text
-              ref={(node) => {
-                rows[index()] = node;
-              }}
-              x={48}
-              y={120 + index() * 56}
-              autofocus={index() === 0}
-              $focus={{ color: 0x4fb3ffff }}
-              onDown={() => {
-                rows[(index() + 1) % rows.length]?.setFocus();
-                return true;
-              }}
-              onUp={() => {
-                rows[(index() + rows.length - 1) % rows.length]?.setFocus();
-                return true;
-              }}
-              onEnter={() => {
-                void run(name);
-                return true;
-              }}
-            >
-              {name}
-            </text>
-          )}
-        </For>
+      <view ref={root} width={viewport().width} height={viewport().height}>
+        <Home
+          names={names}
+          message={message}
+          viewport={viewport}
+          register={register}
+          activate={activate}
+          next={next}
+        />
       </view>
     );
   });
   return () => {
     dispose();
-    if (view.parent) {
-      view.parent.removeChild(view);
-      view.destroy();
+    if (root.parent) {
+      root.parent.removeChild(root);
+      root.destroy();
     }
   };
 }

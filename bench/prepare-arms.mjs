@@ -1,11 +1,5 @@
-// Prepares the benchmark arms under bench/.arms (gitignored).
-//
-//   A: solid 1.6.4 on renderer 1.9.3 (what ships today)
-//   C: this working tree (src/) on its installed @solidtv/renderer
-//      (node_modules/@solidtv/renderer, whatever version that is)
-//
-// Re-running is cheap: an arm already prepared at the pinned ref is kept.
-import { execSync } from 'node:child_process';
+// A is the last pre-beta release. C is the current checkout.
+import { execFileSync } from 'node:child_process';
 import {
   existsSync,
   mkdirSync,
@@ -18,84 +12,56 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const solidRoot = resolve(here, '..');
-const armsDir = join(here, '.arms');
-const rendererC = realpathSync(
-  join(solidRoot, 'node_modules', '@solidtv', 'renderer'),
-);
-const rendererCVersion = JSON.parse(
-  readFileSync(join(rendererC, 'package.json'), 'utf8'),
-).version;
-
+const root = resolve(here, '..');
+const arms = join(here, '.arms');
 export const PINS = {
-  solidA: '71c170f', // v1.6.4
-  rendererA: '1.9.3', // npm
+  solidA: '6140e99b4ae7f0b990f11a53d5c1237439dc085e',
+  rendererA: '39a7dccb4d9087d11af083affd16d85c33bc6b6d',
 };
-
+const installed = realpathSync(
+  join(root, 'node_modules/@solid-multiplatform/renderer'),
+);
 export const ARMS = {
   A: {
-    solid: join(armsDir, 'solid-a'),
-    renderer: join(armsDir, 'renderer-a'),
-    rendererMajor: 1,
-    rendererVersion: PINS.rendererA,
+    solid: join(arms, 'solid-a'),
+    renderer: join(arms, 'renderer-a'),
+    rendererMajor: 2,
+    rendererVersion: '0.1.0',
   },
   C: {
-    solid: solidRoot,
-    renderer: rendererC,
-    rendererMajor: Number(rendererCVersion.split('.')[0]),
-    rendererVersion: rendererCVersion,
+    solid: root,
+    renderer: installed,
+    rendererMajor: 2,
+    rendererVersion: JSON.parse(readFileSync(join(installed, 'package.json')))
+      .version,
   },
 };
 
-const sh = (cmd, cwd) =>
-  execSync(cmd, { cwd, stdio: 'inherit', shell: '/bin/bash' });
-
-function stamped(dir, pin) {
-  const f = join(dir, '.bench-pin');
-  return existsSync(f) && readFileSync(f, 'utf8') === pin;
-}
-function stamp(dir, pin) {
-  writeFileSync(join(dir, '.bench-pin'), pin);
-}
-
-function gitArchive(repo, ref, dir) {
-  rmSync(dir, { recursive: true, force: true });
-  mkdirSync(dir, { recursive: true });
-  sh(`git -C "${repo}" archive ${ref} | tar -x -C "${dir}"`);
-}
-
 export function prepareArms() {
-  mkdirSync(armsDir, { recursive: true });
-
-  if (!stamped(ARMS.A.solid, PINS.solidA)) {
-    gitArchive(solidRoot, PINS.solidA, ARMS.A.solid);
-    stamp(ARMS.A.solid, PINS.solidA);
+  const marker = join(arms, '.baseline');
+  if (
+    existsSync(marker) &&
+    readFileSync(marker, 'utf8') === PINS.solidA &&
+    existsSync(join(ARMS.A.renderer, 'package.json'))
+  )
+    return ARMS;
+  for (const dir of [ARMS.A.solid, ARMS.A.renderer]) {
+    rmSync(dir, { recursive: true, force: true });
+    mkdirSync(dir, { recursive: true });
   }
-  if (!stamped(ARMS.A.renderer, PINS.rendererA)) {
-    rmSync(ARMS.A.renderer, { recursive: true, force: true });
-    mkdirSync(ARMS.A.renderer, { recursive: true });
-    const tgz = execSync(
-      `npm pack @solidtv/renderer@${PINS.rendererA} --silent`,
-      {
-        cwd: armsDir,
-      },
-    )
-      .toString()
-      .trim()
-      .split('\n')
-      .pop();
-    sh(
-      `tar -xzf "${tgz}" -C "${ARMS.A.renderer}" --strip-components=1 && rm "${tgz}"`,
-      armsDir,
-    );
-    stamp(ARMS.A.renderer, PINS.rendererA);
-  }
-  // C builds from the working tree and the installed renderer's dist as
-  // they are: nothing to prepare.
+  const archive = execFileSync('git', ['archive', PINS.solidA], {
+    cwd: root,
+    maxBuffer: 128 * 1024 * 1024,
+  });
+  execFileSync('tar', ['-x', '-C', ARMS.A.solid], { input: archive });
+  execFileSync('tar', [
+    '-xzf',
+    join(ARMS.A.solid, 'vendor/solid-multiplatform-renderer-0.1.0.tgz'),
+    '--strip-components=1',
+    '-C',
+    ARMS.A.renderer,
+  ]);
+  writeFileSync(marker, PINS.solidA);
   return ARMS;
 }
-
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  prepareArms();
-  console.log(JSON.stringify(ARMS, null, 2));
-}
+if (process.argv[1] === fileURLToPath(import.meta.url)) prepareArms();

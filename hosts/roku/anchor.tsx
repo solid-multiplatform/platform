@@ -2,13 +2,21 @@
 import { defineAnchorNode } from '@roku-sdk/rsg-ts';
 import { KeyHandler } from '@roku-sdk/components';
 import { createElement, onCleanup, onMount } from '@roku-sdk/solid';
-import { SceneGraphRenderer, loadBundledFonts } from '@solid-multiplatform/renderer/roku';
+import {
+  SceneGraphRenderer,
+  loadBundledFonts,
+} from '@solid-multiplatform/renderer/roku';
 import { dispatchNativeKey, installBrowserServices } from './browser-services';
 import { createNativeTextEntry } from './native-text-entry';
 import { setTaskRoot } from './worker-task';
 
 export default defineAnchorNode(
-  { componentName: 'SolidApp', extends: 'Group' as const, inputFields: {}, outputFields: {} },
+  {
+    componentName: 'SolidApp',
+    extends: 'Group' as const,
+    inputFields: {},
+    outputFields: {},
+  },
   () => {
     const root = createElement('group');
     let scene: SceneGraphRenderer | undefined;
@@ -23,15 +31,23 @@ export default defineAnchorNode(
       const platform = await import('@solid-multiplatform/platform');
       if (!active) return;
       platform.Config.preventDefaultOnHandledKeys = true;
-      const factory: import('@solid-multiplatform/platform').RendererFactory = (settings, target) =>
-        scene = new SceneGraphRenderer(settings, typeof target === 'string' ? root : target);
+      const factory: import('@solid-multiplatform/platform').RendererFactory = (
+        settings,
+        target,
+      ) =>
+        (scene = new SceneGraphRenderer(
+          settings,
+          typeof target === 'string' ? root : target,
+        ));
       platform.setRendererFactory(factory);
       uninstall = () => {
-        if (platform.getRendererFactory() === factory) platform.setRendererFactory(undefined);
+        if (platform.getRendererFactory() === factory)
+          platform.setRendererFactory(undefined);
       };
       void loadBundledFonts(root);
       const app = await import('solid-app-entry');
-      if (active) disposeApp = app.mount({ target: 'roku', root });
+      if (active)
+        disposeApp = app.mount({ target: 'roku', root, textEntry: text });
     });
     onCleanup(() => {
       active = false;
@@ -41,7 +57,16 @@ export default defineAnchorNode(
       uninstall?.();
       setTaskRoot(undefined);
     });
-    return <KeyHandler handleAllKeys gainFocus onKeyEvent={({ key, press }) =>
-      dispatchNativeKey(key, press, () => text?.ownsInput() ?? false)}>{root as unknown as import("solid-js").JSX.Element}</KeyHandler>;
+    return (
+      <KeyHandler
+        handleAllKeys
+        gainFocus
+        onKeyEvent={({ key, press }) =>
+          dispatchNativeKey(key, press, () => text?.ownsInput() ?? false)
+        }
+      >
+        {root as unknown as import('solid-js').JSX.Element}
+      </KeyHandler>
+    );
   },
 );

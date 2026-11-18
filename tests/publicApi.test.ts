@@ -418,6 +418,26 @@ v.describe('package.json exports', () => {
       './browser-tv/canvas',
       './ios',
       './plugins',
+      './cli/variants',
+      './android',
+      './viewport',
+      './viewport/web',
+      './input',
+      './editor',
+      './editor/native',
+      './android/system',
+      './services',
+      './services/web',
+      './services/native',
+      './navigation',
+      './controls',
+      './controls/web',
+      './controls/native',
+      './browser-tv/input',
+      './services/mobile-providers',
+      './services/desktop',
+      './services/roku',
+      './motion',
     ]);
   });
 
@@ -435,10 +455,10 @@ v.describe('package.json exports', () => {
       if (typeof entry === 'string' || subpath === './jsx-runtime') continue;
       const stem = (entry['@solidtv/source'] as string)
         .replace('./src/', './dist/src/')
-        .replace(/\.ts$/, '');
+        .replace(/\.tsx?$/, '');
       v.expect(entry['import'], subpath).toEqual({
         types: stem + '.d.ts',
-        default: stem + '.js',
+        default: stem + (subpath === './controls' ? '.jsx' : '.js'),
       });
     }
   });

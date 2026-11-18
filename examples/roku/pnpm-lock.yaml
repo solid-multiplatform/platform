@@ -28,10 +28,10 @@ importers:
         version: 2.19.0(@roku-sdk/runtime@2.19.0)(solid-js@1.9.17)
       '@solid-multiplatform/platform':
         specifier: file:../..
-        version: file:../..(@solid-multiplatform/renderer@file:../../vendor/solid-multiplatform-renderer-0.1.0.tgz(@roku-sdk/interfaces@2.19.0)(@roku-sdk/rsg-ts@2.19.0)(@roku-sdk/solid@2.19.0))(@solidjs/router@0.16.1(solid-js@1.9.17))(solid-js@1.9.17)
+        version: file:../..(@solid-multiplatform/renderer@file:../../vendor/solid-multiplatform-renderer-0.2.0-preview.1.tgz(@roku-sdk/interfaces@2.19.0)(@roku-sdk/rsg-ts@2.19.0)(@roku-sdk/solid@2.19.0))(@solidjs/router@0.16.1(solid-js@1.9.17))(solid-js@1.9.17)
       '@solid-multiplatform/renderer':
-        specifier: file:../../vendor/solid-multiplatform-renderer-0.1.0.tgz
-        version: file:../../vendor/solid-multiplatform-renderer-0.1.0.tgz(@roku-sdk/interfaces@2.19.0)(@roku-sdk/rsg-ts@2.19.0)(@roku-sdk/solid@2.19.0)
+        specifier: file:../../vendor/solid-multiplatform-renderer-0.2.0-preview.1.tgz
+        version: file:../../vendor/solid-multiplatform-renderer-0.2.0-preview.1.tgz(@roku-sdk/interfaces@2.19.0)(@roku-sdk/rsg-ts@2.19.0)(@roku-sdk/solid@2.19.0)
       '@solid-primitives/list':
         specifier: 0.1.2
         version: 0.1.2(solid-js@1.9.17)
@@ -1352,14 +1352,15 @@ packages:
 
   '@solid-multiplatform/platform@file:../..':
     resolution: {directory: ../.., type: directory}
+    hasBin: true
     peerDependencies:
-      '@solid-multiplatform/renderer': ^0.1.0
+      '@solid-multiplatform/renderer': 0.2.0-preview.1
       '@solidjs/router': ^0.16.1
       solid-js: '*'
 
-  '@solid-multiplatform/renderer@file:../../vendor/solid-multiplatform-renderer-0.1.0.tgz':
-    resolution: {integrity: sha512-IqN5HiK0vCjBbWyS37JGIWbkb1Y3eYD/rgQopI/il0QD6A1G1LIyhb8MiBnLegaylaa+S0UfPE3q3K8neHl9/A==, tarball: file:../../vendor/solid-multiplatform-renderer-0.1.0.tgz}
-    version: 0.1.0
+  '@solid-multiplatform/renderer@file:../../vendor/solid-multiplatform-renderer-0.2.0-preview.1.tgz':
+    resolution: {integrity: sha512-NHPft7MlexwXWLiA9lEmkgr9JhPjxrzhF+bXdngUbCBJlUw7htizOpsWS/UPOKqpn812iUH8uoU/jxHMvHW3zA==, tarball: file:../../vendor/solid-multiplatform-renderer-0.2.0-preview.1.tgz}
+    version: 0.2.0-preview.1
     peerDependencies:
       '@roku-sdk/interfaces': 2.19.0
       '@roku-sdk/rsg-ts': 2.19.0
@@ -4817,9 +4818,9 @@ snapshots:
     dependencies:
       '@sinonjs/commons': 3.0.1
 
-  '@solid-multiplatform/platform@file:../..(@solid-multiplatform/renderer@file:../../vendor/solid-multiplatform-renderer-0.1.0.tgz(@roku-sdk/interfaces@2.19.0)(@roku-sdk/rsg-ts@2.19.0)(@roku-sdk/solid@2.19.0))(@solidjs/router@0.16.1(solid-js@1.9.17))(solid-js@1.9.17)':
+  '@solid-multiplatform/platform@file:../..(@solid-multiplatform/renderer@file:../../vendor/solid-multiplatform-renderer-0.2.0-preview.1.tgz(@roku-sdk/interfaces@2.19.0)(@roku-sdk/rsg-ts@2.19.0)(@roku-sdk/solid@2.19.0))(@solidjs/router@0.16.1(solid-js@1.9.17))(solid-js@1.9.17)':
     dependencies:
-      '@solid-multiplatform/renderer': file:../../vendor/solid-multiplatform-renderer-0.1.0.tgz(@roku-sdk/interfaces@2.19.0)(@roku-sdk/rsg-ts@2.19.0)(@roku-sdk/solid@2.19.0)
+      '@solid-multiplatform/renderer': file:../../vendor/solid-multiplatform-renderer-0.2.0-preview.1.tgz(@roku-sdk/interfaces@2.19.0)(@roku-sdk/rsg-ts@2.19.0)(@roku-sdk/solid@2.19.0)
       '@solid-primitives/event-listener': 2.4.6(solid-js@1.9.17)
       '@solid-primitives/list': 0.1.2(solid-js@1.9.17)
       '@solid-primitives/mouse': 2.1.7(solid-js@1.9.17)
@@ -4827,7 +4828,7 @@ snapshots:
       '@solidjs/router': 0.16.1(solid-js@1.9.17)
       solid-js: 1.9.17
 
-  '@solid-multiplatform/renderer@file:../../vendor/solid-multiplatform-renderer-0.1.0.tgz(@roku-sdk/interfaces@2.19.0)(@roku-sdk/rsg-ts@2.19.0)(@roku-sdk/solid@2.19.0)':
+  '@solid-multiplatform/renderer@file:../../vendor/solid-multiplatform-renderer-0.2.0-preview.1.tgz(@roku-sdk/interfaces@2.19.0)(@roku-sdk/rsg-ts@2.19.0)(@roku-sdk/solid@2.19.0)':
     optionalDependencies:
       '@roku-sdk/interfaces': 2.19.0
       '@roku-sdk/rsg-ts': 2.19.0

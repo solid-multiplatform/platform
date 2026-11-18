@@ -9,7 +9,7 @@ corepack pnpm install
 corepack pnpm platform plugin new greeting
 if corepack pnpm platform plugin new greeting; then exit 1; fi
 corepack pnpm check
-corepack pnpm dev desktop | tee "$scratch/desktop.log"
+corepack pnpm platform plugins run desktop | tee "$scratch/desktop.log"
 grep -Fx 'greeting greeting desktop' "$scratch/desktop.log"
 # Observe a command called by the real starter via keyboard input in Chromium.
 cat > plugins/greeting/web/index.mjs <<'JS'

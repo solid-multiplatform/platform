@@ -15,6 +15,10 @@ import { spawnSync } from 'node:child_process';
 export const framework = fileURLToPath(new URL('../', import.meta.url));
 export const available = [
   'web',
+  'tizen',
+  'webos',
+  'vizio',
+  'android',
   'roku',
   'android-tv',
   'apple-tv',
