@@ -83,7 +83,14 @@ export function requireSigningIdentity(envKey: string): ReleaseHook {
   return {
     name: `require:${envKey}`,
     run(context) {
-      const value = context.env?.[envKey] ?? process.env?.[envKey];
+      let fromProcess: string | undefined;
+      try {
+        fromProcess =
+          typeof process === 'undefined' ? undefined : process.env?.[envKey];
+      } catch {
+        fromProcess = undefined;
+      }
+      const value = context.env?.[envKey] ?? fromProcess;
       if (!value) {
         throw new Error(`Missing release signing value: ${envKey}`);
       }
