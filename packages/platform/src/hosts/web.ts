@@ -18,6 +18,8 @@ import { bindBrowserViewport } from '../sdk/browser-viewport.js';
 import type { PlatformTarget } from '../sdk/capabilities.js';
 import { browserEditorHost } from '../sdk/editor.js';
 import { bindPointerEvents, createInputScope } from '../sdk/input.js';
+import { installServices } from '../sdk/registry.js';
+import { webServices } from './web-services/index.js';
 
 export interface WebHostOptions {
   /** The element to draw in, or its id. Defaults to `app`. */
@@ -50,6 +52,7 @@ export function createWebHost(
     target,
     launch(run) {
       const surface = webSurface(options.root);
+      const removeServices = installServices(webServices);
       const stopViewport = bindBrowserViewport(surface);
       const pointer = createInputScope();
       const stopPointer = bindPointerEvents(surface, pointer, (x, y) => {
@@ -60,6 +63,7 @@ export function createWebHost(
         stopPointer();
         pointer.dispose();
         stopViewport();
+        removeServices();
       };
       let stop: () => void;
       try {

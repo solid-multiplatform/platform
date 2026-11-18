@@ -1,11 +1,7 @@
-export type Availability = 'available' | 'unavailable';
+import { CapabilityError, type Availability } from './registry.js';
+
+export { CapabilityError, type Availability };
 export type Permission = 'granted' | 'denied' | 'prompt' | 'unavailable';
-export class CapabilityError extends Error {
-  constructor(public readonly capability: string) {
-    super('Unavailable capability: ' + capability);
-    this.name = 'CapabilityError';
-  }
-}
 export interface Store {
   get(key: string): Promise<string | null>;
   set(key: string, value: string): Promise<void>;

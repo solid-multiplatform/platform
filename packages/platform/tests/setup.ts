@@ -1,5 +1,7 @@
 import * as lng from '@solid-multiplatform/platform';
 import * as v from 'vitest';
+import { installServices } from '../src/sdk/registry.ts';
+import { webServices } from '../src/hosts/web-services/index.ts';
 
 lng.Config.domRendererEnabled = true;
 
@@ -36,6 +38,9 @@ if (!document.fonts) {
     ready: Promise.resolve(),
   };
 }
+
+// jsdom stands in for a browser: unit tests get the browser's services.
+installServices(webServices);
 
 export const renderer = lng.createRenderer(undefined, root);
 
