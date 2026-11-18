@@ -53,8 +53,25 @@ jobs:
           name: desktop-${{ runner.os }}-${{ runner.arch }}
           path: gallery-app/targets/desktop/dist/*.tar.gz
           if-no-files-found: error
-      - name: Verify native window pixels
+      - name: Verify extracted archive and capture native pixels
         run: |
-          cp tests/cli/desktop-frame-probe.mjs gallery-app/targets/desktop/work/
-          cd gallery-app/targets/desktop/work
-          node --import ./desktop-frame-probe.mjs run.mjs
+          set -euo pipefail
+          root="$PWD"
+          mkdir -p "$RUNNER_TEMP/installed"
+          tar -xzf gallery-app/targets/desktop/dist/*.tar.gz -C "$RUNNER_TEMP/installed"
+          cd "$RUNNER_TEMP/installed"/gallery-app-*
+          cp "$root/tests/cli/desktop-frame-probe.mjs" targets/desktop/work/
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            export SOLID_SDL3_LIBRARY="$(cygpath -w "$PWD/lib/SDL3.dll")"
+            export SOLID_DESKTOP_PNG="$(cygpath -w "$RUNNER_TEMP/gallery-desktop.png")"
+            ./bin/node.exe --import ./targets/desktop/work/desktop-frame-probe.mjs targets/desktop/work/run.mjs
+          else
+            export SOLID_SDL3_LIBRARY=$(find "$PWD/lib" -maxdepth 1 -type f | head -1)
+            export SOLID_DESKTOP_PNG="$RUNNER_TEMP/gallery-desktop.png"
+            ./bin/node --import ./targets/desktop/work/desktop-frame-probe.mjs targets/desktop/work/run.mjs
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: graphics-${{ runner.os }}
+          path: ${{ runner.temp }}/gallery-desktop.png
+          if-no-files-found: error

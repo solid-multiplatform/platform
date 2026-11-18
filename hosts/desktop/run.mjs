@@ -31,8 +31,10 @@ for (const name of ['clear', 'drawElements']) {
     needsPresent = true;
   };
 }
+const presented = channel('solid.desktop.present');
 function present() {
   if (needsPresent) {
+    if (presented.hasSubscribers) presented.publish(gl);
     needsPresent = false;
     windowHost.swap();
   }
