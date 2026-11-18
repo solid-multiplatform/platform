@@ -327,3 +327,47 @@ export async function captureThumbnail(
   context.drawImage(video, 0, 0);
   return canvas.toDataURL('image/png');
 }
+
+/**
+ * Map hardware media keys to transport actions. TV remotes and keyboards
+ * report several spellings (`MediaPlayPause`, `MediaTrackNext`, …); this
+ * helper accepts all of them and returns a disposer.
+ */
+export function bindMediaKeys(
+  actions: Partial<
+    Record<
+      'play' | 'pause' | 'playpause' | 'next' | 'previous' | 'stop',
+      () => void
+    >
+  >,
+  target: EventTarget | undefined = typeof window === 'undefined'
+    ? undefined
+    : window,
+): () => void {
+  const listener = (event: Event) => {
+    if (!(event instanceof KeyboardEvent)) return;
+    const key = event.key;
+    const action =
+      key === 'MediaPlayPause' || key === 'PlayPause'
+        ? 'playpause'
+        : key === 'MediaPlay' || key === 'Play'
+          ? 'play'
+          : key === 'MediaPause' || key === 'Pause'
+            ? 'pause'
+            : key === 'MediaTrackNext' || key === 'MediaNextTrack'
+              ? 'next'
+              : key === 'MediaTrackPrevious' || key === 'MediaPreviousTrack'
+                ? 'previous'
+                : key === 'MediaStop'
+                  ? 'stop'
+                  : undefined;
+    if (!action) return;
+    const handler = actions[action];
+    if (handler) {
+      event.preventDefault();
+      handler();
+    }
+  };
+  target?.addEventListener('keydown', listener);
+  return () => target?.removeEventListener('keydown', listener);
+}

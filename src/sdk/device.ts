@@ -30,6 +30,20 @@ export interface DeviceMemoryInfo {
   lowMemory: boolean;
 }
 
+export interface SystemBarStyle {
+  /** ARGB 0xAARRGGBB, the same format as scene colours. */
+  statusBarColor?: number;
+  navigationBarColor?: number;
+  /** Dark glyphs for a light background. */
+  lightStatusIcons?: boolean;
+  lightNavigationIcons?: boolean;
+}
+
+export interface SystemBarsPort {
+  /** Apply the style; the returned function restores the previous one. */
+  apply(style: SystemBarStyle): () => void;
+}
+
 export interface ShareOptions {
   title?: string;
   text?: string;
@@ -67,6 +81,8 @@ export interface DevicePorts {
   keepAwake?(active: boolean): Promise<void>;
   openExternal?(url: string): Promise<void>;
   lockOrientation?(orientation: OrientationLock): Promise<void>;
+  systemBars?: SystemBarsPort;
+  appReview?: { request(): Promise<boolean> };
 }
 
 let ports: DevicePorts = {};
@@ -292,6 +308,47 @@ export async function lockOrientation(
   }
   if (!target?.lock) throw new CapabilityError('lockOrientation');
   await target.lock(orientation);
+}
+
+/**
+ * Apply status/navigation bar colours and icon polarity. Android hosts map
+ * this to `Window.setStatusBarColor` + `WindowInsetsController`; the web
+ * fallback is the theme-color meta tag. Returns a disposer that restores the
+ * previous appearance.
+ */
+export function applySystemBarStyle(style: SystemBarStyle): () => void {
+  if (ports.systemBars) return ports.systemBars.apply(style);
+  if (typeof document === 'undefined') throw new CapabilityError('systemBars');
+  const existing = document.querySelector('meta[name="theme-color"]');
+  const previous = existing?.getAttribute('content') ?? null;
+  let meta: HTMLMetaElement | null = existing as HTMLMetaElement | null;
+  let created = false;
+  if (style.statusBarColor !== undefined) {
+    const color = `#${(style.statusBarColor >>> 8)
+      .toString(16)
+      .padStart(6, '0')}`;
+    if (!meta) {
+      const createdMeta = document.createElement('meta');
+      createdMeta.name = 'theme-color';
+      meta = createdMeta;
+      document.head.append(meta);
+      created = true;
+    }
+    meta.setAttribute('content', color);
+  }
+  return () => {
+    if (created) meta?.remove();
+    else if (meta && previous !== null) meta.setAttribute('content', previous);
+  };
+}
+
+/**
+ * Ask the store/host for an in-app review. Returns false when the host has no
+ * review flow or declined to show it.
+ */
+export async function requestAppReview(): Promise<boolean> {
+  if (!ports.appReview) return false;
+  return ports.appReview.request();
 }
 
 /**

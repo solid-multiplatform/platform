@@ -261,6 +261,13 @@
         "types": "./dist/src/sdk/transition.d.ts",
         "default": "./dist/src/sdk/transition.js"
       }
+    },
+    "./capture": {
+      "@solidtv/source": "./src/sdk/capture.ts",
+      "import": {
+        "types": "./dist/src/sdk/capture.d.ts",
+        "default": "./dist/src/sdk/capture.js"
+      }
     }
   },
   "sideEffects": false,

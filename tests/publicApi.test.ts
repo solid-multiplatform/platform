@@ -24,7 +24,7 @@ import * as focusManager from '@solid-multiplatform/platform/focusManager';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 232 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 240 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -48,15 +48,18 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'ThemeProvider',
       'View',
       'activeElement',
+      'applySystemBarStyle',
       'assertTruthy',
       'auditSemantics',
       'authenticate',
       'batteryState',
       'bindBackKey',
       'bindColorScheme',
+      'bindMediaKeys',
       'biometricsAvailable',
       'breakpoint',
       'breakpointFor',
+      'capturePhoto',
       'captureThumbnail',
       'clamp',
       'clearTasks',
@@ -169,6 +172,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'mod',
       'moveItem',
       'openExternal',
+      'openMicrophone',
       'parseCombo',
       'parseVersion',
       'pickFiles',
@@ -190,6 +194,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'removeFile',
       'renderer',
       'reportCrash',
+      'requestAppReview',
       'requireEnv',
       'resetCapabilities',
       'resetCrashReporter',
@@ -206,6 +211,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'setActiveElementCore',
       'setAppVersion',
       'setBiometricsPort',
+      'setCameraPort',
       'setCapabilities',
       'setColorScheme',
       'setCrashReporter',
@@ -218,6 +224,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'setGeolocationPort',
       'setHighContrast',
       'setMediaSessionPort',
+      'setMicrophonePort',
       'setProp',
       'setQueryData',
       'setRendererFactory',
@@ -231,6 +238,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'spread',
       'startLightningRenderer',
       'stickyHeaderAt',
+      'stopMicrophone',
       'supports',
       'supportsOnlyWebGL2',
       'supportsWebGL',
@@ -262,7 +270,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   });
 
   v.test(
-    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 79 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 80 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
@@ -293,6 +301,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'RadioGroup',
         'Row',
         'SafeArea',
+        'Select',
         'Sheet',
         'Suspense',
         'Toast',
@@ -620,6 +629,7 @@ v.describe('package.json exports', () => {
       './logging',
       './env',
       './transition',
+      './capture',
     ]);
   });
 

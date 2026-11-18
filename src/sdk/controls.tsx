@@ -65,3 +65,17 @@ export function TextField(
   onCleanup(() => editor.dispose());
   return null;
 }
+
+/** Native search field (`purpose: 'search'`), sharing the editor host. */
+export function SearchField(
+  props: EditorOptions & { bounds: Rect; autofocus?: boolean },
+) {
+  return <TextField {...props} purpose="search" multiline={false} />;
+}
+
+/** Native multiline editor (`TextView` on Android/iOS, textarea on web). */
+export function TextArea(
+  props: EditorOptions & { bounds: Rect; autofocus?: boolean },
+) {
+  return <TextField {...props} multiline />;
+}
