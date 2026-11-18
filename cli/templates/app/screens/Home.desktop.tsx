@@ -1,6 +1,10 @@
 import { For } from '@solid-multiplatform/platform';
+import { useMouse } from '@solid-multiplatform/platform/primitives';
 import type { ScreenProps } from '../screen';
 export function Home(p: ScreenProps) {
+  // SDL3 pointer events reach the scene through the host; useMouse adds
+  // hover-to-focus, press state and click activation without per-app code.
+  useMouse();
   const rail = () => Math.min(240, p.viewport().width * 0.35);
   return (
     <view width={p.viewport().width} height={p.viewport().height}>

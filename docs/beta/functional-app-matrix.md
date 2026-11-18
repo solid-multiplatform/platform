@@ -64,26 +64,26 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 3. Input, gestures and focus
 
-| Feature                          | Established pattern                        | Status | Evidence / gap                                      | Phase |
-| -------------------------------- | ------------------------------------------ | ------ | --------------------------------------------------- | ----- |
-| Remote/D-pad navigation          | Android TV D-pad, Roku remote              | S      | Focus manager, TV templates, gate fixture           | —     |
-| Gamepad input                    | Android gamepad keys                       | M      | No mapping                                          | 9     |
-| Physical keyboard                | Tab/arrows/Enter/Escape                    | P      | Tab/arrows/Enter work; no documented shortcut layer | 3     |
-| Mouse hover/press/click          | Pointer Events                             | P      | Web only; desktop scene nodes unbound               | 3     |
-| Mouse drag and wheel             | Pointer Events, wheel                      | P      | Wheel exists in scope; drag gestures unused         | 3     |
-| Touch multi-point                | Pointer Events, Android MotionEvent        | S      | `bindSceneTouch`, pointer IDs                       | —     |
-| Pointer capture and cancellation | Pointer Events `setPointerCapture`         | S      | Web binding; mobile cancel                          | —     |
-| Long press and key repeat        | RN Pressable, Android key repeat           | S      | `useHold`, input hold, KeyBridge repeat             | —     |
-| Focus states and visible focus   | CSS :focus-visible, TV focus               | S      | `$focus`, focus manager tests                       | —     |
-| Spatial/directional focus        | TV/console navigation                      | S      | `handleNavigation`, focus manager                   | —     |
-| Focus restoration and stack      | Flutter Navigator, focus stack             | P      | `createFocusStack` is manual; no route integration  | 2     |
-| Focus trap / modal containment   | Flutter DialogRoute closedLoop, ARIA modal | M      | No primitive                                        | 2     |
-| IME composition and text editing | RN TextInput, native editors               | S      | Native editor + desktop editor; mobile smoke        | —     |
-| Hardware back                    | Android BackHandler, Roku Back             | P      | TV back works; no app-wide back contract            | 2     |
-| Media transport keys             | Android TV media keys, Roku                | P      | TV fixture handles play/pause; no shared API        | 9     |
-| Drag and drop files              | Desktop/web DnD                            | M      | No API                                              | 9     |
-| Pointer cursor styles            | CSS cursor                                 | M      | No cursor contract                                  | 3     |
-| Pinch/rotate gestures            | Pointer Events multi-touch                 | M      | Not required for beta; document as non-goal         | —     |
+| Feature                          | Established pattern                        | Status | Evidence / gap                                                                        | Phase |
+| -------------------------------- | ------------------------------------------ | ------ | ------------------------------------------------------------------------------------- | ----- |
+| Remote/D-pad navigation          | Android TV D-pad, Roku remote              | S      | Focus manager, TV templates, gate fixture                                             | —     |
+| Gamepad input                    | Android gamepad keys                       | M      | No mapping                                                                            | 9     |
+| Physical keyboard                | Tab/arrows/Enter/Escape                    | P      | Tab/arrows/Enter work; no documented shortcut layer                                   | 3     |
+| Mouse hover/press/click          | Pointer Events                             | S      | Web pointer binding; SDL3 pointer/mouse mapping + `useMouse()` in the desktop starter | —     |
+| Mouse drag and wheel             | Pointer Events, wheel                      | P      | Wheel exists in scope; drag gestures unused                                           | 3     |
+| Touch multi-point                | Pointer Events, Android MotionEvent        | S      | `bindSceneTouch`, pointer IDs                                                         | —     |
+| Pointer capture and cancellation | Pointer Events `setPointerCapture`         | S      | Web binding; mobile cancel                                                            | —     |
+| Long press and key repeat        | RN Pressable, Android key repeat           | S      | `useHold`, input hold, KeyBridge repeat                                               | —     |
+| Focus states and visible focus   | CSS :focus-visible, TV focus               | S      | `$focus`, focus manager tests                                                         | —     |
+| Spatial/directional focus        | TV/console navigation                      | S      | `handleNavigation`, focus manager                                                     | —     |
+| Focus restoration and stack      | Flutter Navigator, focus stack             | P      | `createFocusStack` is manual; no route integration                                    | 2     |
+| Focus trap / modal containment   | Flutter DialogRoute closedLoop, ARIA modal | M      | No primitive                                                                          | 2     |
+| IME composition and text editing | RN TextInput, native editors               | S      | Native editor + desktop editor; mobile smoke                                          | —     |
+| Hardware back                    | Android BackHandler, Roku Back             | P      | TV back works; no app-wide back contract                                              | 2     |
+| Media transport keys             | Android TV media keys, Roku                | P      | TV fixture handles play/pause; no shared API                                          | 9     |
+| Drag and drop files              | Desktop/web DnD                            | M      | No API                                                                                | 9     |
+| Pointer cursor styles            | CSS cursor                                 | M      | No cursor contract                                                                    | 3     |
+| Pinch/rotate gestures            | Pointer Events multi-touch                 | M      | Not required for beta; document as non-goal                                           | —     |
 
 ## 4. Controls, forms and editing
 
@@ -322,7 +322,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 12. Implementation phases
 
-Progress: Phase 0 is implemented (theme tokens, colour scheme, capability registry, extended inset contract). Phase 1 is implemented for `useKeyboard`, `KeyboardAvoidingView`, `SafeArea`, `revealAboveKeyboard`, `keyboardAwareBounds`, `createForm` validation/touched/errors/submitting, and the keyboard-aware mobile template. Remaining: a rendered FormField component and automatic wiring of native editors.
+Progress: Phase 0 is implemented (theme tokens, colour scheme, capability registry, extended inset contract). Phase 1 is implemented for `useKeyboard`, `KeyboardAvoidingView`, `SafeArea`, `revealAboveKeyboard`, `keyboardAwareBounds`, `createForm` validation/touched/errors/submitting, and the keyboard-aware mobile template. Remaining: a rendered FormField component and automatic wiring of native editors. Desktop scene pointer hover/press/click is implemented (`useMouse` plus SDL pointer/mouse forwarding); drag and cursor styles remain in Phase 3.
 
 ### Phase 0 — Contracts and theme foundation
 

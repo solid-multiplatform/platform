@@ -22,7 +22,7 @@ export {
   Index,
   ErrorBoundary,
 } from 'solid-js';
-export * from './sdk/theme.js';
+export * from './sdk/theme.jsx';
 export * from './sdk/capabilities.js';
 export * from './sdk/keyboard.js';
 export * from './sdk/form.js';

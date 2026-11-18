@@ -51,16 +51,29 @@ function createKeyboardEvent(
   keyCode: number,
   eventName: string = 'keydown',
 ): KeyboardEvent {
-  const event = new KeyboardEvent(eventName, {
-    key,
-    keyCode,
-    which: keyCode,
-    ctrlKey: false,
-    altKey: false,
-    shiftKey: false,
-    metaKey: false,
-    bubbles: true,
-  });
+  const KeyboardEventCtor = (
+    globalThis as { KeyboardEvent?: typeof KeyboardEvent }
+  ).KeyboardEvent;
+  const event = KeyboardEventCtor
+    ? new KeyboardEventCtor(eventName, {
+        key,
+        keyCode,
+        which: keyCode,
+        ctrlKey: false,
+        altKey: false,
+        shiftKey: false,
+        metaKey: false,
+        bubbles: true,
+      })
+    : Object.assign(new Event(eventName, { bubbles: true }), {
+        key,
+        keyCode,
+        which: keyCode,
+        ctrlKey: false,
+        altKey: false,
+        shiftKey: false,
+        metaKey: false,
+      });
 
   // Chrome < 51 (LG webOS 3.x runs Chrome 38) ignores the key/keyCode/which
   // members of KeyboardEventInit, so the event arrives with key '' / keyCode 0
@@ -72,7 +85,7 @@ function createKeyboardEvent(
     Object.defineProperty(event, 'which', { get: () => keyCode });
   }
 
-  return event;
+  return event as KeyboardEvent;
 }
 
 const [cursorVisible, setCursorVisible] = createSignal(false);
@@ -114,9 +127,9 @@ let scrollTimeout: ReturnType<typeof setTimeout>;
 const handleScroll = throttle((e: WheelEvent): void => {
   const deltaY = e.deltaY;
   if (deltaY < 0) {
-    document.body.dispatchEvent(createKeyboardEvent('ArrowUp', 38));
+    document.body?.dispatchEvent(createKeyboardEvent('ArrowUp', 38));
   } else if (deltaY > 0) {
-    document.body.dispatchEvent(createKeyboardEvent('ArrowDown', 40));
+    document.body?.dispatchEvent(createKeyboardEvent('ArrowDown', 40));
   }
 
   // clear the last timeout if the user is still scrolling

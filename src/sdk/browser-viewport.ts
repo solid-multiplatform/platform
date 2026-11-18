@@ -1,5 +1,5 @@
 import { updateViewport, zeroInsets } from './viewport.js';
-import { bindColorScheme } from './theme.js';
+import { bindColorScheme } from './theme.jsx';
 import { setCapabilities } from './capabilities.js';
 
 export function bindBrowserViewport(root: HTMLElement) {

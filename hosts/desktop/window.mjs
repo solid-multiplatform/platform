@@ -197,13 +197,20 @@ export function openWindow(title) {
         } else if (type >= 0x400 && type <= 0x402) {
           if (type === 0x401) captureMouse(true);
           else if (type === 0x402) captureMouse(false);
-          send(['pointermove', 'pointerdown', 'pointerup'][type - 0x400], {
+          const kind = ['pointermove', 'pointerdown', 'pointerup'][
+            type - 0x400
+          ];
+          const payload = {
             pointerId: 1,
             pointerType: 'mouse',
             button: type === 0x400 ? -1 : buffer[24] - 1,
             clientX: buffer.readFloatLE(28),
             clientY: buffer.readFloatLE(32),
-          });
+          };
+          // The scene's pointer helpers and useMouse both consume DOM-style
+          // events; map SDL motion to both pointer and mouse event names.
+          send(kind, payload);
+          send(kind.replace('pointer', 'mouse'), payload);
         } else if (type === 0x403) {
           const direction = buffer.readUInt32LE(32) === 1 ? -1 : 1;
           send('wheel', {
