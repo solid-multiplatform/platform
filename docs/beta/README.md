@@ -2,15 +2,15 @@
 
 The 0.2 archives are an engineering preview. TV promotion requires three ten-minute physical passes at the predeclared display cadence with zero missed presentation deadlines across input, artwork, animation, modals, playback and return from suspension. Capture startup separately. A missing trace, incomplete scenario set or missed deadline leaves the profile in preview.
 
-| Profile                          | Evidence in this checkout                                                                                                       |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Browser                          | Chromium WebGL/Canvas regression suite, native DOM editor tests and resize/focus checks                                         |
-| Linux desktop                    | SDL3, native GL, text rendering, resize and keyboard invocation on Linux/X11 with Mesa software rendering                       |
-| Windows / macOS desktop          | Extracted Windows x64 and macOS arm64 packages launched in CI and rendered the starter labels and focus panel                   |
-| Android handset / iOS / Apple TV | Separate host builds, native input/editor and plugin integrations; report device and simulator results separately               |
-| Roku OS 16                       | SceneGraph ZIP and native task build. Physical developer slot occupied; existing channel preserved                              |
-| Android TV                       | Physical onn. 4K Pro at 60 Hz. Visible gallery recorded 0, 0 and 3 late frames in three ten-minute runs                         |
-| Tizen / webOS / Vizio            | Generated WebGL and legacy Canvas apps rendered their title and reacted to remote Enter in Chromium 85. Physical timing pending |
+| Profile                          | Evidence in this checkout                                                                                                                                                                                                      |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Browser                          | Chromium WebGL/Canvas regression suite, native DOM editor tests and resize/focus checks                                                                                                                                        |
+| Linux desktop                    | SDL3, native GL, text rendering, resize and keyboard invocation on Linux/X11 with Mesa software rendering                                                                                                                      |
+| Windows / macOS desktop          | Extracted Windows x64 and macOS arm64 packages launched in CI and rendered the starter labels and focus panel                                                                                                                  |
+| Android handset / iOS / Apple TV | Separate host builds, native input/editor and plugin integrations; report device and simulator results separately                                                                                                              |
+| Roku OS 16                       | SceneGraph ZIP and native task build. Physical developer slot occupied; existing channel preserved                                                                                                                             |
+| Android TV                       | Physical onn. 4K Pro at 60 Hz. Three ten-minute mixed passes recorded **0** late/dropped window frames each, with gallery, modal, playback, suspend/resume and exit; 10 resume-transition buffers per pass presented in ~20 ms |
+| Tizen / webOS / Vizio            | Generated WebGL and legacy Canvas apps rendered their title and reacted to remote Enter in Chromium 85. Physical timing pending                                                                                                |
 
 Baseline refs: platform 6140e99b4ae7f0b990f11a53d5c1237439dc085e, renderer 39a7dccb4d9087d11af083affd16d85c33bc6b6d. The benchmark now resolves these exact revisions from Git history and the checked-in package archive. The Chromium CPU smoke measurement is diagnostic and does not measure TV presentation timing.
 
@@ -78,7 +78,21 @@ The original analyzer counted child-layer transactions alongside activity-window
 
 The device ran Android 14 at 60 Hz. Every window frame matched a SurfaceFlinger display frame. Of the 159 late or dropped window frames, 98 occurred in the modal phase (including opening the player), 57 while resuming and four in the gallery. Media3 reported 16 dropped output buffers across the 30 playback sessions. The window and decoder measurements describe different surfaces; their counts must be interpreted separately.
 
-These traces used the corrected WebGL painter on the default TextureView path. The redrawn paused controls on the dedicated SurfaceView received a separate physical pixel check. Android TV remains in preview.
+These traces used the corrected WebGL painter on the default TextureView path. The redrawn paused controls on the dedicated SurfaceView received a separate physical pixel check.
+
+### Zero-miss mixed gate
+
+The current qualification fixture prewarms one Media3 engine, `PlayerView` and caption before capture, initializes playback once, and reuses them for every preview. It releases nothing inside the measured window and drives suspend/resume through the app's normal lifecycle handlers. This removes the surface inflation, teardown and first-shader work that previously landed in measured frames.
+
+Three physical ten-minute passes on the same onn. 4K Pro at 60 Hz then recorded:
+
+| Pass | Window frames | Late or dropped window frames | Resume transition buffers | Resume presentation | Media3 dropped buffers |
+| ---- | ------------: | ----------------------------: | ------------------------: | ------------------: | ---------------------: |
+| 1    |        15,639 |                             0 |                        10 |            19–21 ms |                    110 |
+| 2    |        16,837 |                             0 |                        10 |            20–21 ms |                    132 |
+| 3    |        16,989 |                             0 |                        10 |            19–21 ms |                    127 |
+
+Every pass completed all ten interaction cycles and all 150 action markers. Gallery, modal, player, suspended and resuming phases each recorded zero late or dropped window frames. The separate Media3 decoder counters include drops at seeks and suspend/resume and are not window-presentation misses. The visual pass on the same APK passed every composited-pixel check. The Android TV profile is qualified for this device.
 
 ### Transition accounting and recent pacing work
 
