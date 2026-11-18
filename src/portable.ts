@@ -26,3 +26,4 @@ export * from './sdk/theme.jsx';
 export * from './sdk/capabilities.js';
 export * from './sdk/keyboard.js';
 export * from './sdk/form.js';
+export * from './sdk/cursor.js';

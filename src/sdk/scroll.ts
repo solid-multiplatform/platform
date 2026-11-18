@@ -1,4 +1,5 @@
 import { createSignal } from 'solid-js';
+import type { Point } from './input.js';
 import { viewport } from './viewport.js';
 /** One logical offset for layout, focus reveal and virtualization. No idle frame timer. */
 export function scrollAxis(initial = 0) {
@@ -64,5 +65,72 @@ export function scrollAxis(initial = 0) {
         ),
       };
     },
+  };
+}
+
+export interface DragScrollOptions {
+  /** Coordinate that moves the content. Defaults to the vertical axis. */
+  axis?: 'x' | 'y';
+  /**
+   * `1` follows a finger/pointer drag (content moves with the pointer), `-1`
+   * inverts it. Defaults to `1`.
+   */
+  direction?: 1 | -1;
+}
+
+/**
+ * Adapt a pointer drag to a scroll axis. Pass the result straight to
+ * `InputControl.drag`, which `createInputScope` calls on native touch and the
+ * web pointer binder:
+ *
+ * ```tsx
+ * const scroll = scrollAxis();
+ * <view drag={dragToScroll(scroll)} ... />
+ * ```
+ */
+export function dragToScroll(
+  scroll: { by(delta: number): void },
+  options: DragScrollOptions = {},
+): (
+  phase: 'start' | 'move' | 'end' | 'cancel',
+  point: Point,
+  origin: Point,
+) => void {
+  const axis = options.axis ?? 'y';
+  const direction = options.direction ?? 1;
+  let last = 0;
+  return (phase, point) => {
+    const value = axis === 'x' ? point.x : point.y;
+    if (phase === 'start') {
+      last = value;
+      return;
+    }
+    if (phase === 'end' || phase === 'cancel') return;
+    const delta = last - value;
+    last = value;
+    if (delta) scroll.by(delta * direction);
+  };
+}
+
+export interface WheelScrollOptions {
+  /** Wheel delta that moves the content. Defaults to vertical. */
+  axis?: 'x' | 'y';
+  /** Multiplier applied to the delta. Defaults to 1. */
+  direction?: 1 | -1;
+}
+
+/**
+ * Map a wheel event to a scroll axis. The event shape is structural so native
+ * hosts and tests can call it without a DOM WheelEvent.
+ */
+export function wheelToScroll(
+  scroll: { by(delta: number): void },
+  options: WheelScrollOptions = {},
+): (event: { deltaX: number; deltaY: number }) => void {
+  const axis = options.axis ?? 'y';
+  const direction = options.direction ?? 1;
+  return (event) => {
+    const delta = axis === 'x' ? event.deltaX : event.deltaY;
+    if (delta) scroll.by(delta * direction);
   };
 }

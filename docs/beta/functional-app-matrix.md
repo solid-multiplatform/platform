@@ -70,7 +70,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 | Gamepad input                    | Android gamepad keys                       | M      | No mapping                                                                            | 9     |
 | Physical keyboard                | Tab/arrows/Enter/Escape                    | P      | Tab/arrows/Enter work; no documented shortcut layer                                   | 3     |
 | Mouse hover/press/click          | Pointer Events                             | S      | Web pointer binding; SDL3 pointer/mouse mapping + `useMouse()` in the desktop starter | —     |
-| Mouse drag and wheel             | Pointer Events, wheel                      | P      | Wheel exists in scope; drag gestures unused                                           | 3     |
+| Mouse drag and wheel             | Pointer Events, wheel                      | S      | `dragToScroll`, `wheelToScroll`; `createInputScope` drag/wheel on native and web      | —     |
 | Touch multi-point                | Pointer Events, Android MotionEvent        | S      | `bindSceneTouch`, pointer IDs                                                         | —     |
 | Pointer capture and cancellation | Pointer Events `setPointerCapture`         | S      | Web binding; mobile cancel                                                            | —     |
 | Long press and key repeat        | RN Pressable, Android key repeat           | S      | `useHold`, input hold, KeyBridge repeat                                               | —     |
@@ -82,7 +82,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 | Hardware back                    | Android BackHandler, Roku Back             | P      | TV back works; no app-wide back contract                                              | 2     |
 | Media transport keys             | Android TV media keys, Roku                | P      | TV fixture handles play/pause; no shared API                                          | 9     |
 | Drag and drop files              | Desktop/web DnD                            | M      | No API                                                                                | 9     |
-| Pointer cursor styles            | CSS cursor                                 | M      | No cursor contract                                                                    | 3     |
+| Pointer cursor styles            | CSS cursor                                 | S      | `cursorStyle` on elements, `useCursor`/`setCursor`; applied by `useMouse`             | —     |
 | Pinch/rotate gestures            | Pointer Events multi-touch                 | M      | Not required for beta; document as non-goal                                           | —     |
 
 ## 4. Controls, forms and editing
@@ -322,7 +322,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 12. Implementation phases
 
-Progress: Phase 0 is implemented (theme tokens, colour scheme, capability registry, extended inset contract). Phase 1 is implemented for `useKeyboard`, `KeyboardAvoidingView`, `SafeArea`, `revealAboveKeyboard`, `keyboardAwareBounds`, `createForm` validation/touched/errors/submitting, and the keyboard-aware mobile template. Remaining: a rendered FormField component and automatic wiring of native editors. Desktop scene pointer hover/press/click is implemented (`useMouse` plus SDL pointer/mouse forwarding); drag and cursor styles remain in Phase 3. Phase 2 now has `Modal` with a real focus trap and restore, `Sheet`, `Toast`, `Popover`, `Menu`, `Tooltip` and `Alert`, plus tab navigation, guards, snapshot/restore and browser history. Remaining in Phase 2: drawer, route transitions, focus/scroll restoration on back, and deep-link router integration.
+Progress: Phase 0 is implemented (theme tokens, colour scheme, capability registry, extended inset contract). Phase 1 is implemented for `useKeyboard`, `KeyboardAvoidingView`, `SafeArea`, `revealAboveKeyboard`, `keyboardAwareBounds`, `createForm` validation/touched/errors/submitting, and the keyboard-aware mobile template. Remaining: a rendered FormField component and automatic wiring of native editors. Desktop scene pointer hover/press/click is implemented (`useMouse` plus SDL pointer/mouse forwarding), along with `dragToScroll`, `wheelToScroll`, and pointer cursor styles (`cursorStyle`, `useCursor`). Phase 2 now has `Modal` with a real focus trap and restore, `Sheet`, `Toast`, `Popover`, `Menu`, `Tooltip` and `Alert`, plus tab navigation, guards, snapshot/restore and browser history. Remaining in Phase 2: drawer, route transitions, focus/scroll restoration on back, and deep-link router integration.
 
 ### Phase 0 — Contracts and theme foundation
 

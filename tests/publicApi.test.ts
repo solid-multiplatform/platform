@@ -24,7 +24,7 @@ import * as focusManager from '@solid-multiplatform/platform/focusManager';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 117 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 121 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -60,6 +60,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'createRawShaderAccessor',
       'createRenderer',
       'createTextNode',
+      'cursorForElement',
       'darkTheme',
       'defaultShaderHolePunch',
       'defaultShaderLinearGradient',
@@ -119,6 +120,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'registerDefaultShaders',
       'renderer',
       'resetCapabilities',
+      'resetCursor',
       'revealAboveKeyboard',
       'rootNode',
       'scheduleTask',
@@ -126,6 +128,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'setActiveElementCore',
       'setCapabilities',
       'setColorScheme',
+      'setCursor',
       'setProp',
       'setRendererFactory',
       'setTasksEnabled',
@@ -141,6 +144,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'use',
       'useCapabilities',
       'useColorScheme',
+      'useCursor',
       'useKeyboard',
       'useTheme',
     ]);
@@ -481,6 +485,7 @@ v.describe('package.json exports', () => {
       './capabilities',
       './keyboard',
       './form',
+      './cursor',
     ]);
   });
 

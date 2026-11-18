@@ -9,6 +9,7 @@ import {
 } from '../index.js';
 import { makeEventListener } from '@solid-primitives/event-listener';
 import { useMousePosition } from '@solid-primitives/mouse';
+import { cursorForElement, resetCursor, setCursor } from '../sdk/cursor.js';
 import { createScheduled, throttle } from '@solid-primitives/scheduled';
 import { createEffect, createSignal, getOwner, runWithOwner } from 'solid-js';
 
@@ -403,6 +404,7 @@ export function useMouse<TApp extends ElementNode = ElementNode>(
         el.onEnter ||
         el.onMouseClick ||
         el.onFocus ||
+        el.cursorStyle ||
         el[focusKey] ||
         (hoverState && el[hoverState])
       ) {
@@ -416,6 +418,7 @@ export function useMouse<TApp extends ElementNode = ElementNode>(
         removeCustomStateFromElement(previousElement, hoverState);
         previousElement = null;
       }
+      resetCursor();
       return;
     }
 
@@ -442,5 +445,6 @@ export function useMouse<TApp extends ElementNode = ElementNode>(
     }
 
     previousElement = activeElm;
+    setCursor(cursorForElement(activeElm));
   });
 }
