@@ -2,10 +2,7 @@
 import { defineAnchorNode } from '@roku-sdk/rsg-ts';
 import { KeyHandler } from '@roku-sdk/components';
 import { createElement, onCleanup, onMount } from '@roku-sdk/solid';
-import {
-  SceneGraphRenderer,
-  loadBundledFonts,
-} from '@solid-multiplatform/renderer/roku';
+import { SceneGraphRenderer } from '@solid-multiplatform/renderer/roku';
 import { dispatchNativeKey, installBrowserServices } from './browser-services';
 import { createNativeTextEntry } from './native-text-entry';
 import { setTaskRoot } from './worker-task';
@@ -40,12 +37,22 @@ export default defineAnchorNode(
           settings,
           typeof target === 'string' ? root : target,
         ));
-      platform.setRendererFactory(factory);
+      // The fonts an app loads with `loadFonts`: each font file it imported
+      // (`fontUrl`) is registered with the scene. An entry for another
+      // backend (an SDF atlas) has no file to register here.
+      platform.setRendererFactory(factory, (fonts) =>
+        Promise.all(
+          fonts.map((font) =>
+            scene && typeof font.fontUrl === 'string'
+              ? scene.loadFont(font as never)
+              : undefined,
+          ),
+        ).then(() => undefined),
+      );
       uninstall = () => {
         if (platform.getRendererFactory() === factory)
           platform.setRendererFactory(undefined);
       };
-      void loadBundledFonts(root);
       const app = await import('solid-app-entry');
       const video = createRokuVideoApi(
         root,
