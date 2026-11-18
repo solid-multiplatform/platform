@@ -685,6 +685,7 @@ v.describe('package.json exports', () => {
       './services/native/secure-storage',
       './services/native/notifications',
       './permissions/android',
+      './services/android',
       './editor/roku',
       './scroll',
       './network',
