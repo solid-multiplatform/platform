@@ -6,8 +6,8 @@ import {
 } from '#default-backend';
 import type { HostRenderer } from '@solid-multiplatform/renderer/contracts';
 import { Config, DOM_RENDERING } from './config.js';
-import type { DOMRendererMain } from './dom-renderer/domRenderer.js';
-import { DomRendererMainSettings } from './dom-renderer/domRendererTypes.js';
+import type { DOMRendererMain } from '@solid-multiplatform/renderer/dom';
+import { DomRendererMainSettings } from '@solid-multiplatform/renderer/dom';
 import { FontLoadOptions } from './intrinsicTypes.js';
 
 export type SdfFontType = 'ssdf' | 'msdf';
@@ -126,6 +126,8 @@ export function startLightningRenderer(
   if (browserHost && enableDomRenderer && rendererFactory === undefined) {
     if (typeof rootId !== 'string' && !(rootId instanceof HTMLElement))
       throw new TypeError('DOM renderer requires an element');
+    // The DOM backend reads font defaults from the live Config object.
+    browserHost.configureDomRenderer(Config);
     // Its stage has its own (inert) shManager.
     renderer = new browserHost.DOMRendererMain(settings, rootId);
   } else if (rendererFactory !== undefined) {

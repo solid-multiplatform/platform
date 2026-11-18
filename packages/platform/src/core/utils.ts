@@ -1,4 +1,4 @@
-import { type INode } from '@solid-multiplatform/renderer';
+import type { SceneNode } from '@solid-multiplatform/renderer/contracts';
 import { Config, isDev } from './config.js';
 import type { Styles, ElementText } from './intrinsicTypes.js';
 import { ElementNode } from './elementNode.js';
@@ -46,7 +46,7 @@ export function isInteger(item: unknown): item is number {
   return Number.isInteger(item);
 }
 
-export function isINode(node: object): node is INode {
+export function isINode(node: object): node is SceneNode {
   return 'destroy' in node && typeof node.destroy === 'function';
 }
 

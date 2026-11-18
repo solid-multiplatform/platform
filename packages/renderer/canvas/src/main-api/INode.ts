@@ -27,8 +27,21 @@ import type { CoreShaderNode } from '../core/renderers/CoreShaderNode.js';
  * instead of CoreNode objects.
  */
 export interface INode<ShaderNode extends CoreShaderNode = CoreShaderNode>
-  extends Omit<CoreNode, 'shader' | 'animate' | 'parent'> {
+  extends Omit<
+    CoreNode,
+    'shader' | 'animate' | 'parent' | 'children' | 'insertBefore'
+  > {
   shader: ShaderNode;
+  /** The children in paint order. */
+  readonly children: Array<INode | ITextNode>;
+  /**
+   * Make `child` a child of this node, painted before `before`, or last when
+   * `before` is null. See {@link CoreNode.insertBefore}.
+   */
+  insertBefore(
+    child: INode | ITextNode,
+    before: INode | ITextNode | null,
+  ): void;
   animate(
     props: Partial<INodeAnimateProps<ShaderNode>>,
     settings: Partial<AnimationSettings>,
@@ -71,7 +84,16 @@ export interface INodeProps<ShNode extends CoreShaderNode = CoreShaderNode>
  * Users of the Renderer API, should generally interact with ITextNode objects
  * instead of CoreTextNode objects.
  */
-export interface ITextNode extends Omit<CoreTextNode, 'animate' | 'parent'> {
+export interface ITextNode
+  extends Omit<
+    CoreTextNode,
+    'animate' | 'parent' | 'children' | 'insertBefore'
+  > {
+  readonly children: Array<INode | ITextNode>;
+  insertBefore(
+    child: INode | ITextNode,
+    before: INode | ITextNode | null,
+  ): void;
   animate(
     props: Partial<INodeAnimateProps<CoreShaderNode>>,
     settings: Partial<AnimationSettings>,

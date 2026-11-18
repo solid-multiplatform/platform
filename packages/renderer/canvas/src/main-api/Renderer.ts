@@ -7,8 +7,10 @@ import { type CoreTextNodeProps } from '../core/CoreTextNode.js';
 import type { INode, INodeProps, ITextNode, ITextNodeProps } from './INode.js';
 import type { TextureMemoryManagerSettings } from '../core/TextureMemoryManager.js';
 import type {
+  FontLoadOptions,
   TextBaselineMode,
   TextRenderer,
+  TextRenderers,
 } from '../core/text-rendering/TextRenderer.js';
 import type { CanvasRenderer } from '../core/renderers/canvas/CanvasRenderer.js';
 import type { WebGlRenderer } from '../core/renderers/webgl/WebGlRenderer.js';
@@ -318,10 +320,14 @@ export interface RendererRuntimeSettings {
    *
    * This is the only switch for FPS sampling: it is honoured in production
    * builds as well as development ones, so field telemetry needs nothing but a
-   * non-zero value here. Rendered frames and the ~15ms idle polls are
+   * non-zero value here. Rendered frames and ticks that drew nothing are
    * accumulated apart — `fps` covers rendering time only, so a mostly static
    * scene reports the rate it sustained while actually drawing, with the
-   * polls counted separately as `idleTicks`.
+   * undrawn ticks counted separately as `idleTicks`.
+   *
+   * The interval counts time the render loop spent ticking. The loop sleeps
+   * while the scene is idle, so `fpsUpdate` does not fire then: it is not a
+   * heartbeat.
    *
    * @defaultValue `0` (disabled)
    */
@@ -746,6 +752,26 @@ export type RendererMainSettings = RendererRuntimeSettings & {
    * @defaultValue a no-op (errors are swallowed; the loop keeps running)
    */
   handleLoopError?: (error: unknown) => void;
+
+  /**
+   * Milliseconds a frame requested by a sleeping render loop waits for its
+   * animation frame before a timer runs it instead.
+   *
+   * @remarks
+   * The loop sleeps while the scene is idle and requests one animation frame
+   * when something changes. Some hosts stop delivering animation frames once
+   * none has been requested for a while, until input arrives; there, a change
+   * that no key press caused (an image arriving, a timer of the app's) would
+   * not reach the screen until the next one. The timer is armed only for a
+   * frame requested while none is on its way and is cleared when that frame
+   * arrives: nothing runs while the scene is idle. Same name, default and
+   * meaning as the WebGL backend's setting.
+   *
+   * `0` or less turns it off.
+   *
+   * @defaultValue `50`
+   */
+  wakeFallbackDelay?: number;
 };
 
 /**
@@ -906,6 +932,10 @@ export class RendererMain extends EventEmitter {
   readonly canvas: HTMLCanvasElement;
   readonly stage: Stage;
   private inspector: Inspector | null = null;
+  /** The renderer created the canvas, so {@link destroy} detaches it. */
+  private ownsCanvas: boolean;
+  /** {@link destroy} ran: the loop stays stopped. */
+  private destroyed = false;
 
   /**
    * Constructs a new Renderer instance
@@ -1004,6 +1034,12 @@ export class RendererMain extends EventEmitter {
       // Default to a no-op so a thrown frame is swallowed and the render loop
       // never crashes; apps can override to log/report.
       handleLoopError: settings.handleLoopError ?? noop,
+      wakeFallbackDelay:
+        settings.wakeFallbackDelay === undefined
+          ? 50
+          : settings.wakeFallbackDelay > 0
+          ? settings.wakeFallbackDelay
+          : 0,
     };
 
     const {
@@ -1017,6 +1053,7 @@ export class RendererMain extends EventEmitter {
     const deviceLogicalHeight = appHeight * deviceLogicalPixelRatio;
 
     this.canvas = canvas;
+    this.ownsCanvas = settings.canvas !== canvas;
     platform.sizeCanvas(
       canvas,
       deviceLogicalWidth * devicePhysicalPixelRatio,
@@ -1073,7 +1110,7 @@ export class RendererMain extends EventEmitter {
    * @returns
    */
   createNode<ShNode extends CoreShaderNode<any>>(
-    props: Partial<INodeProps<ShNode>>,
+    props: Partial<INodeProps<ShNode>> = {},
     resolved = false,
   ): INode<ShNode> {
     const node = this.stage.createNode(
@@ -1116,7 +1153,10 @@ export class RendererMain extends EventEmitter {
    * @param props
    * @returns
    */
-  createTextNode(props: Partial<ITextNodeProps>, resolved = false): ITextNode {
+  createTextNode(
+    props: Partial<ITextNodeProps> = {},
+    resolved = false,
+  ): ITextNode {
     const textNode = this.stage.createTextNode(
       props as CoreTextNodeProps,
       resolved,
@@ -1288,16 +1328,83 @@ export class RendererMain extends EventEmitter {
   }
 
   /**
-   * Stop the render loop so it schedules no frames, timers or idle polls.
+   * Schedule a frame. Nothing is drawn while the loop is paused; the frame
+   * comes after {@link resume}.
+   */
+  requestRender(): void {
+    this.stage.requestRender();
+  }
+
+  /**
+   * Register a font with a text renderer.
+   *
+   * @remarks
+   * `loadFont(options)` picks the text renderer from the options: `'sdf'`
+   * for an atlas (`atlasUrl`), `'canvas'` otherwise. `loadFont(type,
+   * options)` names it, as {@link Stage.loadFont} does. Rejects when the
+   * stage has no text renderer of that type.
+   */
+  loadFont(options: FontLoadOptions): Promise<void>;
+  loadFont(type: TextRenderers, options: FontLoadOptions): Promise<void>;
+  loadFont(
+    typeOrOptions: TextRenderers | FontLoadOptions,
+    options?: FontLoadOptions,
+  ): Promise<void> {
+    if (typeof typeOrOptions === 'string') {
+      return this.stage.loadFont(typeOrOptions, options!);
+    }
+    return this.stage.loadFont(
+      typeOrOptions.atlasUrl !== undefined ? 'sdf' : 'canvas',
+      typeOrOptions,
+    );
+  }
+
+  /**
+   * Stop the render loop for good, destroy the scene and detach a canvas the
+   * renderer created. A second call does nothing.
+   *
+   * @remarks
+   * The loop stops at once without drawing, as after
+   * `pause({ immediate: true })`: a frame or timer it had pending is
+   * cancelled, so nothing of the renderer stays scheduled. {@link pause} and
+   * {@link resume} do nothing from then on. Destroying the root releases every node's texture;
+   * the cleanup that follows frees the ones nothing else holds.
+   */
+  destroy(): void {
+    if (this.destroyed === true) {
+      return;
+    }
+    this.destroyed = true;
+    const stage = this.stage;
+    stage.pauseLoop(true);
+    if (ENABLE_INSPECTOR && this.inspector !== null) {
+      this.inspector.destroy();
+      this.inspector = null;
+    }
+    this.root.destroy();
+    stage.cleanup(true);
+    // Some hosts' canvases have no parentNode at all, not even null.
+    const parent = this.canvas.parentNode;
+    if (this.ownsCanvas === true && parent !== null && parent !== undefined) {
+      parent.removeChild(this.canvas);
+    }
+    this.removeAllListeners();
+  }
+
+  /**
+   * Stop the render loop so it schedules no frames or timers, and nothing
+   * wakes it.
    *
    * @remarks
    * Animations are never frozen mid-flight: while any animation is active the
    * loop keeps running, and it stops once the last one has finished and its
    * final frame is drawn. Poll {@link isPaused} to see whether it has stopped.
+   * A loop that is asleep, as it is whenever the scene is idle, is paused at
+   * once.
    *
-   * With `immediate` the loop stops on its next tick before it draws
-   * anything, animations included: they freeze where they are and carry on
-   * after {@link resume}. For a host leaving the foreground, where a frame
+   * With `immediate` the loop stops at once and draws nothing more,
+   * animations included: they freeze where they are and carry on after
+   * {@link resume}. A frame it had requested is cancelled. For a host leaving the foreground, where a frame
    * drawn from the background gets the app killed on Apple platforms.
    *
    * While paused nothing is drawn, no texture uploads or idle cleanup run, and
@@ -1312,6 +1419,9 @@ export class RendererMain extends EventEmitter {
    * ```
    */
   pause(options?: { immediate?: boolean }) {
+    if (this.destroyed === true) {
+      return;
+    }
     this.stage.pauseLoop(options?.immediate === true);
   }
 
@@ -1320,6 +1430,9 @@ export class RendererMain extends EventEmitter {
    * animations. Does nothing if the loop is running.
    */
   resume() {
+    if (this.destroyed === true) {
+      return;
+    }
     this.stage.resumeLoop();
   }
 

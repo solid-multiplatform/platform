@@ -22,6 +22,8 @@
     "canvas/**/*.ts",
     "webgl/**/*.ts",
     "roku/**/*.ts",
+    "dom/**/*.ts",
+    "conformance/**/*.ts",
     "contracts.ts"
   ]
 }

@@ -51,6 +51,16 @@ export abstract class Platform {
 
   /**
    * Starts the main rendering loop, calling the provided update function every frame.
+   *
+   * @remarks
+   * The loop installs `stage.loopResume`, which requests one frame for a loop
+   * that has none pending. A loop may stop scheduling while the stage has
+   * nothing to do (`stage.needsTick()` is false): it then sets
+   * `stage.loopAsleep` as the last thing its tick does, and the stage calls
+   * `loopResume` when there is work again. One that never sets the flag is
+   * never woken and has to keep itself running. It may also install
+   * `stage.loopStop`, which cancels what the loop has pending.
+   *
    * @param Stage - The stage for rendering
    */
   abstract startLoop(stage: Stage): void;

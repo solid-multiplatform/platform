@@ -181,10 +181,36 @@ export class Stage {
   isLoopPaused = false;
 
   /**
-   * Restarts a paused loop. Installed by the platform in `startLoop`, since
-   * only the platform owns the tick function and its scheduler.
+   * Requests one frame for a loop that has none pending: restarts a paused
+   * loop and wakes a sleeping one. Installed by the platform in `startLoop`,
+   * since only the platform owns the tick function and its scheduler.
    */
   loopResume: (() => void) | null = null;
+
+  /**
+   * Takes back whatever the loop has pending (a requested frame, the frame
+   * cap's timer, the wake fallback's timer), so that a loop stopped from
+   * outside leaves nothing scheduled. Returns `false` when called from inside
+   * a tick, which has nothing pending and stops at its own end. Installed by
+   * the platform in `startLoop`; a platform that installs none keeps stopping
+   * on its next tick.
+   */
+  loopStop: (() => boolean) | null = null;
+
+  /**
+   * True while the platform loop is asleep: its last tick found nothing to
+   * do, so it requested no frame and no timer, and nothing runs until
+   * {@link wakeLoop}.
+   *
+   * @remarks
+   * Set by the platform as the last step of the tick that goes to sleep, and
+   * by nothing else. It is false while a frame is pending and while the loop
+   * is paused, lost its context or was destroyed, so those states need no
+   * check of their own at the wake sites: one flag read is the whole cost of
+   * a wake that has nothing to do. A platform whose loop never sleeps leaves
+   * it false, and every wake is then a no-op.
+   */
+  loopAsleep = false;
 
   /// State
   startTime = 0;
@@ -194,10 +220,10 @@ export class Stage {
   elapsedTime = 0;
   private timedNodes: CoreNode[] = [];
   private clrColor = 0x00000000;
-  // FPS sampling state. Rendered frames and idle polls are counted apart:
-  // idle polls come from a setTimeout throttled to ~15ms and mean the loop is
-  // checking for work, not that the renderer is keeping up, so folding them
-  // into one average makes any mostly-static scene report the poll cadence.
+  // FPS sampling state. Rendered frames and ticks that drew nothing are
+  // counted apart: an undrawn tick (the one a burst settles on, an
+  // animation's delay, a tick that only delivers events) says nothing about
+  // whether the renderer is keeping up, so it stays out of the rate.
   private fpsSampleFrames = 0;
   private fpsSampleElapsed = 0;
   private fpsRenderedFrames = 0;
@@ -325,6 +351,11 @@ export class Stage {
     this.txMemManager = new TextureMemoryManager(this, textureMemory);
 
     this.animationManager = new AnimationManager();
+    // An animation started while the loop sleeps needs a tick to step it: it
+    // writes no prop until then, so no other wake source would fire.
+    this.animationManager.onActive = () => {
+      this.wakeLoop();
+    };
     this.contextSpy = enableContextSpy ? new ContextSpy() : null;
 
     this.boundsMargin = normalizeBoundsMargin(boundsMargin);
@@ -560,6 +591,12 @@ export class Stage {
       return;
     }
     this.isContextLost = true;
+    // The loop is over, not asleep: nothing may wake it, and the frame it may
+    // have pending would only find the context gone.
+    this.loopAsleep = false;
+    if (this.loopStop !== null) {
+      this.loopStop();
+    }
     this.eventBus.emit('contextLost');
   }
 
@@ -614,12 +651,37 @@ export class Stage {
 
   /**
    * Check if the scene has updates
+   *
+   * @remarks
+   * Each of the three inputs wakes a sleeping loop where it turns true:
+   * `root.updateType` in `CoreNode.setUpdateType`, `renderRequested` in
+   * {@link requestRender}, and the upload queue where `CoreTextureManager`
+   * adds to it. A new input needs a wake of its own.
    */
   hasSceneUpdates() {
     return (
       !!this.root.updateType ||
       this.renderRequested ||
       this.txManager.hasUpdates()
+    );
+  }
+
+  /**
+   * Whether the platform loop must tick again: the scene has updates, an
+   * animation is active (it has to be stepped even where it changes nothing
+   * yet, as during its delay), or events wait for a flush.
+   *
+   * @remarks
+   * The platform reads this as the last thing it does before it sleeps, after
+   * every listener of the tick has run, so that work a listener asked for is
+   * not slept on. From then on each of these conditions wakes the loop where
+   * it turns true.
+   */
+  needsTick(): boolean {
+    return (
+      this.hasSceneUpdates() === true ||
+      this.animationManager.activeAnimations.length > 0 ||
+      this.frameEventQueue.length > 0
     );
   }
 
@@ -872,6 +934,11 @@ export class Stage {
    */
   queueFrameEvent(name: string, data: unknown) {
     this.frameEventQueue.push([name, data]);
+    // Queued from outside a tick (a cleanup the app asked for, a telemetry
+    // segment change): a sleeping loop has no flush coming, so ask for one.
+    if (this.loopAsleep === true) {
+      this.wakeLoop();
+    }
   }
 
   /**
@@ -907,8 +974,8 @@ export class Stage {
   /**
    * Accumulate one loop tick into the current FPS sample.
    *
-   * @param rendered `true` for a tick that drew a frame, `false` for an idle
-   *   poll (WebPlatform's idle path, where the scene had no updates).
+   * @param rendered `true` for a tick that drew a frame, `false` for one
+   *   that did not (WebPlatform's idle path, where the scene had no updates).
    * @param animating `true` when animations were running for this frame.
    *   Defaults to `false` so that a caller written against the previous
    *   one-argument signature still compiles and behaves as it did: this is
@@ -933,9 +1000,11 @@ export class Stage {
 
       const delta = this.deltaTime;
 
-      // The interval is wall clock, so a sample still lands on schedule while
-      // the scene sits idle. That keeps the event working as a heartbeat
-      // instead of going silent, which would read as a hang.
+      // The interval is time the loop spent ticking. A sleeping loop does not
+      // tick, so no sample closes while the scene is idle: `fpsUpdate` is not
+      // a heartbeat, and the sample in progress carries over to the next
+      // burst. The tick that wakes the loop takes the nominal delta (see
+      // `wakeLoop`), so the time slept is never booked as one long frame.
       this.fpsIntervalElapsed += delta;
 
       if (rendered === true) {
@@ -943,11 +1012,12 @@ export class Stage {
 
         // Pair a frame with its delta only when the previous tick rendered
         // too. `deltaTime` spans the gap since the previous tick of either
-        // kind, so the frame that resumes rendering after an idle stretch
-        // carries that whole idle gap (>=15ms). Counting it would charge idle
-        // time to the renderer and understate the rate, severely for short
-        // bursts. Dropping that frame from both sides of the ratio costs one
-        // sample per burst and leaves what remains unbiased.
+        // kind, or is the nominal step on the tick that wakes the loop, so
+        // the frame that resumes rendering does not carry a frame time of its
+        // own. Counting it would charge time nothing was drawn in to the
+        // renderer and misstate the rate, severely for short bursts. Dropping
+        // that frame from both sides of the ratio costs one sample per burst
+        // and leaves what remains unbiased.
         if (this.fpsLastTickRendered === true) {
           this.fpsSampleFrames++;
           this.fpsSampleElapsed += delta;
@@ -1224,6 +1294,38 @@ export class Stage {
    */
   requestRender() {
     this.renderRequested = true;
+    if (this.loopAsleep === true) {
+      this.wakeLoop();
+    }
+  }
+
+  /**
+   * Request one tick from a sleeping loop. Does nothing while a frame is
+   * already pending, or while the loop is paused, lost or destroyed.
+   *
+   * @remarks
+   * Every event that gives the loop something to do calls this (or checks
+   * {@link loopAsleep} inline, where the call itself would cost the hot
+   * path): a sleeping loop polls for nothing, so a source that does not wake
+   * it is a frame that never draws.
+   *
+   * The tick it asks for does whatever is due and no more. Without scene
+   * updates it draws nothing: it flushes queued events, runs a due texture
+   * cleanup, steps animations, and sleeps again unless one is active.
+   */
+  wakeLoop() {
+    if (this.loopAsleep === false) {
+      return;
+    }
+    this.loopAsleep = false;
+    // As after a resume: zero the previous frame time so the first tick takes
+    // the nominal delta. The frame clock stood still while the loop slept,
+    // and the whole gap would otherwise reach the animation step (an
+    // animation started now would jump to its end) and the FPS sample.
+    this.currentFrameTime = 0;
+    if (this.loopResume !== null) {
+      this.loopResume();
+    }
   }
 
   /**
@@ -1231,13 +1333,34 @@ export class Stage {
    *
    * @remarks
    * The loop keeps running until no animation is active and the pending frame
-   * has been drawn, then stops. With `immediate` it stops on its next tick
-   * before drawing anything, animations frozen where they are.
-   * {@link isLoopPaused} reports when it has.
+   * has been drawn, then stops. With `immediate` it stops at once without
+   * drawing anything more, animations frozen where they are: a frame or timer
+   * it had pending is cancelled (from inside a tick, it stops when that tick
+   * ends). {@link isLoopPaused} reports when it has.
    */
   pauseLoop(immediate: boolean = false) {
     this.loopPauseRequested = true;
     this.loopPauseImmediate = immediate;
+    // A sleeping loop has no tick coming to honour the request, and nothing
+    // to wait for either: no animation is active and no frame is pending. It
+    // is paused as of now, without a frame requested just to say so.
+    if (this.loopAsleep === true) {
+      this.loopAsleep = false;
+      this.isLoopPaused = true;
+      return;
+    }
+    // An immediate pause draws nothing more, so it does not wait for the
+    // pending frame to say so either: that frame and the loop's timers are
+    // taken back now, and nothing of a destroyed renderer stays scheduled.
+    // Asked for from inside a tick, it lands when that tick ends.
+    if (
+      immediate === true &&
+      this.isLoopPaused === false &&
+      this.loopStop !== null &&
+      this.loopStop() === true
+    ) {
+      this.isLoopPaused = true;
+    }
   }
 
   /**
@@ -1580,8 +1703,8 @@ export class Stage {
 
   set clearColor(value: number) {
     this.renderer.updateClearColor(value);
-    this.renderRequested = true;
     this.clrColor = value;
+    this.requestRender();
   }
 
   get clearColor() {

@@ -1,8 +1,8 @@
+import type { SceneNode } from '@solid-multiplatform/renderer/contracts';
 import { Config } from './config.js';
 import { isElementNode } from './utils.js';
 import { isDev } from './env.js';
 import type { ElementNode } from './elementNode.js';
-import { IRendererNode } from './dom-renderer/domRendererTypes.js';
 
 let installed = false;
 
@@ -50,7 +50,7 @@ function handleClick(event: MouseEvent) {
   const el = findDeepestAtPosition(root, event.clientX, event.clientY);
   event.preventDefault();
   event.stopPropagation();
-  const lng = el.lng as IRendererNode;
+  const lng = el.lng as SceneNode & { div?: HTMLElement };
   const label = el.componentName || el._type;
   const loc = el.componentLocation ? ` @ ${el.componentLocation}` : '';
   console.log(

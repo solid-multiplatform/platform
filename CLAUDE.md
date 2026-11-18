@@ -8,11 +8,11 @@ Solid Multiplatform: one SolidJS (universal renderer) scene on Roku, browser TVs
 
 This is a pnpm workspace (Node 24, pnpm via Corepack):
 
-| Package                         | Path                | Contents                                                                                                                                                                               |
-| ------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@solid-multiplatform/renderer` | `packages/renderer` | `webgl/` (Lightning-derived v2), `canvas/` (v1 Canvas 2D), `roku/` (SceneGraph on the device's Hermes), `contracts.ts`                                                                 |
-| `@solid-multiplatform/platform` | `packages/platform` | `src/core` (ElementNode, layout, focus), `src/primitives`, `src/sdk` (services), `src/hosts` + `hosts/` (per-target hosts), `cli/` (`solid-platform`), `examples/`, `bench/`, `tests/` |
-| `@solid-multiplatform/video`    | `packages/video`    | Optional playback adapters: Media3, AVPlayer, Roku Video node, mpv, web                                                                                                                |
+| Package                         | Path                | Contents                                                                                                                                                                                                                 |
+| ------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@solid-multiplatform/renderer` | `packages/renderer` | `contracts.ts` (the scene contract), `webgl/` (Lightning-derived v2), `canvas/` (v1 Canvas 2D), `roku/` (SceneGraph on the device's Hermes), `dom/` (jsdom test backend), `conformance/` (cases every backend must pass) |
+| `@solid-multiplatform/platform` | `packages/platform` | `src/core` (ElementNode, layout, focus), `src/primitives`, `src/sdk` (services), `src/hosts` + `hosts/` (per-target hosts), `cli/` (`solid-platform`), `examples/`, `bench/`, `tests/`                                   |
+| `@solid-multiplatform/video`    | `packages/video`    | Optional playback adapters: Media3, AVPlayer, Roku Video node, mpv, web                                                                                                                                                  |
 
 The structure is mid-restructure. The plan and its phase order are in the pull requests titled "Phase N"; hosts and the CLI become their own packages later. Do not add new code to patterns the plan removes: `setXPort` setters, browser-API fallbacks inside `src/sdk`, fake `document`/`window` shims, `.lng` access from primitives.
 
@@ -54,7 +54,8 @@ Type-aware lint needs `packages/platform/examples/roku` installed (`corepack pnp
 - `packages/platform/src/render.ts` + `solidOpts.ts`: Solid universal renderer over `ElementNode`.
 - `src/core/elementNode.ts`: forwards props to the backend node, runs flex layout (`flexLayout.ts`), states, transitions.
 - `src/core/focusManager.ts`: key handling and the focus path; takes a key event target.
-- Unit tests run against a DOM renderer in jsdom (`SOLIDTV_DOM_RENDERING` define in `vitest.config.ts`); each test imports `tests/setup.ts` itself. WebGL, Canvas and the Roku backend are covered by `tests/webgl` and the renderer's own tests.
+- `ElementNode.lng` is the backend's node, typed by the scene contract (`SceneNode`). Core and primitives may use only what the contract declares; a backend difference is fixed in the backend, never by branching in core.
+- Unit tests run against the renderer package's DOM backend in jsdom (`SOLIDTV_DOM_RENDERING` define in `vitest.config.ts`); each test imports `tests/setup.ts` itself. WebGL, Canvas and the Roku backend are covered by `tests/webgl` and the renderer's own tests.
 - The `@solidtv/source` import condition resolves package subpaths to TypeScript sources in tests and dev.
 - `cli/init.mjs` scaffolds an app from `cli/templates` and `examples/*`; `cli/renderer-archive.mjs` packs the workspace renderer for it.
 

@@ -4,12 +4,12 @@ Experimental DOM renderer
 
 */
 
-import * as lng from '@solid-multiplatform/renderer';
+import * as lng from '../webgl/exports/index.js';
 
-import { EventEmitter } from '@solid-multiplatform/renderer/utils';
-import { Config } from '../config.js';
-import { FontLoadOptions } from '../intrinsicTypes.js';
+import { EventEmitter } from '../webgl/exports/utils.js';
+import { Config } from './config.js';
 import type {
+  DomFontLoadOptions as FontLoadOptions,
   DomRendererMainSettings,
   ExtractProps,
   IRendererMain,
@@ -1446,6 +1446,24 @@ export class DOMNode extends EventEmitter implements IRendererNode {
 
   animate = animate;
 
+  /** One prop, started at once: what the platform's transitions call. */
+  animateProp(
+    name: string,
+    value: number,
+    settings: Partial<lng.AnimationSettings> = {},
+  ): lng.IAnimationController {
+    return this.animate({ [name]: value }, settings).start();
+  }
+
+  /**
+   * Places `child` before `before` among this node's children, or last when
+   * `before` is null. Document order is the paint order of equal-z siblings.
+   */
+  insertBefore(child: IRendererNode, before: IRendererNode | null): void {
+    if (child.parent !== this) child.parent = this;
+    this.div.insertBefore(child.div!, before ? before.div! : null);
+  }
+
   updateRenderState(renderState: lng.CoreNodeRenderState) {
     if (renderState === this.renderState) return;
     const previous = this.renderState;
@@ -1688,6 +1706,8 @@ export class DOMNode extends EventEmitter implements IRendererNode {
   set scale(v) {
     if (this.props.scale === v) return;
     this.props.scale = v;
+    // The shorthand sets both axes, as on every other backend.
+    if (v != null) this.props.scaleX = this.props.scaleY = v;
     this.boundsDirty = true;
     this.markChildrenBoundsDirty();
     updateTransformOnly(this);
@@ -1717,7 +1737,7 @@ export class DOMNode extends EventEmitter implements IRendererNode {
   }
   set mount(v) {
     if (this.props.mount === v) return;
-    this.props.mount = v;
+    this.props.mount = this.props.mountX = this.props.mountY = v;
     this.boundsDirty = true;
     this.markChildrenBoundsDirty();
     updateTransformOnly(this);
@@ -1747,7 +1767,7 @@ export class DOMNode extends EventEmitter implements IRendererNode {
   }
   set pivot(v) {
     if (this.props.pivot === v) return;
-    this.props.pivot = v;
+    this.props.pivot = this.props.pivotX = this.props.pivotY = v;
     this.boundsDirty = true;
     this.markChildrenBoundsDirty();
     updateNodeStyles(this);
@@ -1876,7 +1896,7 @@ export class DOMNode extends EventEmitter implements IRendererNode {
   }
 }
 
-class DOMText extends DOMNode {
+export class DOMText extends DOMNode {
   public loaded = false;
 
   constructor(
@@ -2081,6 +2101,7 @@ export class DOMRendererMain implements IRendererMain {
     string,
     Set<(target: unknown, data: unknown) => void>
   > = new Map();
+  private disposers: Array<() => void> = [];
 
   constructor(
     public settings: DomRendererMainSettings,
@@ -2162,11 +2183,17 @@ export class DOMRendererMain implements IRendererMain {
 
     updateRootPosition.call(this);
 
-    new MutationObserver(updateRootPosition.bind(this)).observe(this.canvas, {
-      attributes: true,
-    });
-    new ResizeObserver(updateRootPosition.bind(this)).observe(this.canvas);
-    window.addEventListener('resize', updateRootPosition.bind(this));
+    const reposition = updateRootPosition.bind(this);
+    const mutations = new MutationObserver(reposition);
+    mutations.observe(this.canvas, { attributes: true });
+    const resizes = new ResizeObserver(reposition);
+    resizes.observe(this.canvas);
+    window.addEventListener('resize', reposition);
+    this.disposers.push(
+      () => mutations.disconnect(),
+      () => resizes.disconnect(),
+      () => window.removeEventListener('resize', reposition),
+    );
   }
 
   removeAllListeners(): void {
@@ -2240,12 +2267,28 @@ export class DOMRendererMain implements IRendererMain {
     }
   }
 
-  createNode(props: Partial<IRendererNodeProps>): IRendererNode {
+  createNode(props: Partial<IRendererNodeProps> = {}): DOMNode {
     return new DOMNode(this.stage, resolveNodeDefaults(props));
   }
 
-  createTextNode(props: Partial<IRendererTextNodeProps>): IRendererTextNode {
+  createTextNode(props: Partial<IRendererTextNodeProps> = {}): DOMText {
     return new DOMText(this.stage, resolveTextNodeDefaults(props));
+  }
+
+  /** Registers a web font; text re-measures when the file has loaded. */
+  loadFont(font: FontLoadOptions): void {
+    loadFontToDom(font);
+  }
+
+  /** The browser paints DOM changes itself; there is no frame to schedule. */
+  requestRender(): void {}
+
+  destroy(): void {
+    for (const dispose of this.disposers) dispose();
+    this.disposers.length = 0;
+    this.removeAllListeners();
+    this.root.destroy();
+    this.canvas.remove();
   }
 
   /** TODO: restore this */

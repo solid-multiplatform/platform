@@ -15,6 +15,7 @@ import {
   SingleBorderStyle,
   type DollarString,
 } from './intrinsicTypes.js';
+import type { ShaderEffectProps as IRendererShaderProps } from './shaders.js';
 import States, { type NodeStates } from './states.js';
 import calculateFlex from './flexLayout.js';
 import {
@@ -41,6 +42,15 @@ import type {
   INodeProps,
 } from '@solid-multiplatform/renderer';
 import { assertTruthy } from '@solid-multiplatform/renderer/utils';
+import type {
+  SceneAnimationController,
+  SceneNode,
+  SceneRenderer,
+  SceneShader,
+  SceneTextNode,
+  SceneTextProps,
+  SceneNodeProps,
+} from '@solid-multiplatform/renderer/contracts';
 import { NodeType, TextNode } from './nodeTypes.js';
 import {
   ForwardFocusHandler,
@@ -48,15 +58,6 @@ import {
   FocusNode,
 } from './focusManager.js';
 import { initClickInspector } from './clickInspector.js';
-
-import {
-  IRendererNode,
-  IRendererNodeProps,
-  IRendererShader,
-  IRendererShaderProps,
-  IRendererTextNode,
-  IRendererTextNodeProps,
-} from './dom-renderer/domRendererTypes.js';
 
 // Unified post-mutation scheduler.
 //
@@ -295,7 +296,7 @@ const hasBorderWidth = (
 export function convertToShader(
   node: ElementNode,
   v: StyleEffects,
-): IRendererShader {
+): SceneShader {
   const props = v as Record<string, unknown>;
   const features =
     (hasBorderWidth(props) ? BORDER_FEATURE : 0) |
@@ -305,7 +306,7 @@ export function convertToShader(
   return renderer.createShader(
     ROUNDED_SHADER_TYPES[features]!,
     props,
-  ) as IRendererShader;
+  ) as SceneShader;
 }
 
 function getPropertyAlias(name: string) {
@@ -339,12 +340,9 @@ const LightningRendererNumberProps = [
   'scaleX',
   'scaleY',
   'w',
-  'worldX',
-  'worldY',
   'x',
   'y',
   'zIndex',
-  'zIndexLocked',
 ];
 
 const LightningRendererNonAnimatingProps = [
@@ -372,23 +370,18 @@ const LightningRendererNonAnimatingProps = [
   'overflowSuffix',
   'placeholderColor',
   'preventCleanup',
-  'scrollable',
-  'scrollY',
   'srcHeight',
   'srcWidth',
   'srcX',
   'srcY',
-  'strictBounds',
   'text',
   'textAlign',
   'textBaseline',
-  'textOverflow',
   'texture',
   'textureOptions',
   'textRendererOverride',
   'verticalAlign',
   'wordBreak',
-  'wordWrap',
 ];
 
 declare global {
@@ -399,6 +392,9 @@ declare global {
 }
 
 initClickInspector();
+
+/** `ElementNode.lng` before the node is rendered: the props to create it with. */
+type PendingNodeProps = Partial<ElementNode> & { shader?: any };
 
 export type RendererNode = AddColorString<
   Partial<
@@ -524,13 +520,10 @@ export interface ElementNode extends RendererNode, FocusNode {
    */
   forwardStates?: boolean;
   /**
-   * The underlying Lightning Renderer node object. This is where the properties are ultimately set for rendering.
+   * The backend's node once rendered (see the scene contract); before that, a
+   * plain bag of the props to create it with.
    */
-  lng:
-    | INode
-    | IRendererNode
-    | Partial<ElementNode>
-    | (IRendererTextNode & { shader?: any });
+  lng: SceneNode | SceneTextNode | PendingNodeProps;
   /**
    * A reference to the `ElementNode` instance. Can be an object or a callback function.
    */
@@ -982,7 +975,7 @@ export class ElementNode {
     this.lng.shader = renderer.createShader(
       ROUNDED_SHADER_TYPES[next]!,
       props,
-    ) as IRendererShader;
+    ) as SceneShader;
   }
 
   set effects(v: StyleEffects) {
@@ -1020,7 +1013,7 @@ export class ElementNode {
   set parent(p) {
     this._parent = p;
     if (this.rendered && p?.rendered) {
-      this.lng.parent = (p.lng as IRendererNode) ?? null;
+      this.lng.parent = (p.lng as SceneNode) ?? null;
     }
   }
 
@@ -1112,44 +1105,19 @@ export class ElementNode {
   /** Keep the backend's equal-z paint order aligned with the universal JSX child list.
    * Text placeholders occupy logical slots but have no native draw node. */
   private placeRenderedChild(node: ElementNode, nextIndex: number) {
-    type PaintNode = {
-      parent?: PaintNode | null;
-      insertBefore?(child: PaintNode, anchor: PaintNode | null): void;
-      div?: HTMLElement;
-      children?: PaintNode[];
-      sortChildren?(): void;
-    };
-    const parent = this.lng as unknown as PaintNode;
-    const child = node.lng as unknown as PaintNode;
-    let anchor: PaintNode | null = null;
+    const parent = this.lng as SceneNode;
+    let anchor: SceneNode | null = null;
     for (let i = nextIndex; i < this.children.length; i++) {
       const sibling = this.children[i]!;
       if (isElementNode(sibling) && sibling.rendered) {
-        const native = sibling.lng as unknown as PaintNode;
+        const native = sibling.lng as SceneNode;
         if (native.parent === parent) {
           anchor = native;
           break;
         }
       }
     }
-    if (parent.insertBefore) {
-      parent.insertBefore(child, anchor);
-      return;
-    }
-    if (parent.div && child.div) {
-      parent.div.insertBefore(child.div, anchor?.div ?? null);
-      return;
-    }
-    // Canvas 1.x exposes its mutable paint list and stable z sort.
-    if (parent.sortChildren && Array.isArray(parent.children)) {
-      const list = parent.children,
-        old = list.indexOf(child);
-      if (old < 0) return;
-      list.splice(old, 1);
-      const index = anchor ? list.indexOf(anchor) : -1;
-      list.splice(index < 0 ? list.length : index, 0, child);
-      parent.sortChildren();
-    }
+    parent.insertBefore(node.lng as SceneNode, anchor);
   }
 
   insertChild(
@@ -1225,7 +1193,7 @@ export class ElementNode {
   }
 
   set shader(
-    shaderProps: IRendererShader | [kind: string, props: IRendererShaderProps],
+    shaderProps: SceneShader | [kind: string, props: IRendererShaderProps],
   ) {
     this._shaderProps = undefined;
     this.lng.shader = isArray(shaderProps)
@@ -1250,18 +1218,7 @@ export class ElementNode {
               | undefined
               | AnimationSettings);
 
-      // If the renderer doesn't support animateProp,
-      // keep backwards compatible with LightningRenderer
-      if (!('animateProp' in this.lng)) {
-        const animationController = this.animate(
-          { [name]: value },
-          animationSettings,
-        );
-        this._fireAnimationEvents(name, value, animationSettings);
-        return animationController.start();
-      }
-
-      const result = (this.lng as INode).animateProp(
+      const result = (this.lng as SceneNode).animateProp(
         name,
         value,
         animationSettings || this.animationSettings || {},
@@ -1270,8 +1227,7 @@ export class ElementNode {
       return result;
     }
 
-    (this.lng[name as keyof (IRendererNode | INode)] as number | string) =
-      value;
+    (this.lng as Record<string, unknown>)[name] = value;
   }
 
   _fireAnimationEvents(
@@ -1294,12 +1250,12 @@ export class ElementNode {
   animate(
     props: Partial<AnimateProps>,
     animationSettings?: AnimationSettings,
-  ): IAnimationController {
+  ): SceneAnimationController {
     if (!this.rendered) {
       if (isDev) console.log('NOT RENDERED! CANNOT ANIMATE');
-      return { start: () => {} } as IAnimationController;
+      return { start: () => {} } as SceneAnimationController;
     }
-    return (this.lng as IRendererNode).animate(
+    return (this.lng as SceneNode).animate(
       props,
       animationSettings || this.animationSettings || {},
     );
@@ -1381,7 +1337,7 @@ export class ElementNode {
   }
 
   _layoutOnLoad() {
-    (this.lng as IRendererNode).on('loaded', () => {
+    (this.lng as SceneNode).on('loaded', () => {
       schedulePostMutation();
       this.parent!.updateLayout();
     });
@@ -1416,7 +1372,7 @@ export class ElementNode {
 
   _destroy() {
     if (isINode(this.lng)) {
-      this.lng.destroy();
+      (this.lng as SceneNode).destroy();
     }
   }
 
@@ -1649,7 +1605,7 @@ export class ElementNode {
     if (isDev) log('State Changed: ', this, this.states);
 
     if (isDev) {
-      const div = (this.lng as IRendererNode)?.div;
+      const div = (this.lng as { div?: HTMLElement })?.div;
       if (div) {
         if (this.states.length > 0) {
           div.dataset.states = this.states.join(' ');
@@ -1789,7 +1745,7 @@ export class ElementNode {
 
     props.x = props.x || 0;
     props.y = props.y || 0;
-    props.parent = parent.lng as IRendererNode;
+    props.parent = parent.lng as SceneNode;
 
     if (this.right || this.right === 0) {
       props.x = parentWidth - this.right;
@@ -1880,9 +1836,9 @@ export class ElementNode {
 
       if (isDev) log('Rendering: ', this, props);
 
-      node.lng = renderer.createTextNode(
-        props as Partial<ITextNodeProps> & Partial<IRendererTextNodeProps>,
-      ) as IRendererTextNode;
+      node.lng = (renderer as SceneRenderer).createTextNode(
+        props as Partial<SceneTextProps>,
+      );
 
       if (parent.requiresLayout()) {
         if (!textProps.maxWidth || !textProps.maxHeight) {
@@ -1950,16 +1906,16 @@ export class ElementNode {
 
       if (isDev) log('Rendering: ', this, props);
 
-      node.lng = renderer.createNode(
-        props as Partial<INodeProps> & Partial<IRendererNodeProps>,
-      ) as INode | IRendererNode;
+      node.lng = (renderer as SceneRenderer).createNode(
+        props as Partial<SceneNodeProps>,
+      );
 
       if (node._hasRenderedChildren) {
         node._hasRenderedChildren = false;
 
         for (const child of node.children) {
           if (isElementNode(child) && isINode(child.lng)) {
-            child.lng.parent = node.lng as INode;
+            child.lng.parent = node.lng as SceneNode;
           }
         }
       }
@@ -1991,7 +1947,7 @@ export class ElementNode {
     }
 
     // L3 Inspector adds div to the lng object
-    const div: HTMLElement | undefined = (node.lng as IRendererNode)?.div;
+    const div = (node.lng as { div?: HTMLElement })?.div;
     if (isDev && div) {
       div.element = node;
       if (node._states && node._states.length > 0) {

@@ -2,7 +2,7 @@
   "name": "@solid-multiplatform/renderer",
   "version": "0.2.0-preview.2",
   "type": "module",
-  "description": "WebGL, Canvas 2D and Roku SceneGraph backends",
+  "description": "WebGL, Canvas 2D, Roku SceneGraph and DOM test backends behind one scene contract",
   "repository": "github:solid-multiplatform/renderer",
   "license": "Apache-2.0",
   "files": [
@@ -12,6 +12,8 @@
     "canvas/src",
     "canvas/exports",
     "canvas/index.ts",
+    "conformance",
+    "dom",
     "roku",
     "contracts.ts",
     "PROVENANCE.md",
@@ -27,7 +29,9 @@
   "exports": {
     ".": "./dist/webgl/exports/index.js",
     "./contracts": {
-      "types": "./dist/contracts.d.ts"
+      "@solid-multiplatform/renderer-source": "./contracts.ts",
+      "types": "./dist/contracts.d.ts",
+      "default": "./dist/contracts.js"
     },
     "./webgl": "./dist/webgl/exports/index.js",
     "./canvas": "./dist/canvas/index.js",
@@ -37,7 +41,17 @@
     "./shaders": "./dist/webgl/exports/shaders.js",
     "./webgl/shaders": "./dist/webgl/exports/webgl-shaders.js",
     "./inspector": "./dist/webgl/exports/inspector.js",
-    "./platform": "./dist/webgl/exports/platform.js"
+    "./platform": "./dist/webgl/exports/platform.js",
+    "./dom": {
+      "@solid-multiplatform/renderer-source": "./dom/index.ts",
+      "types": "./dist/dom/index.d.ts",
+      "default": "./dist/dom/index.js"
+    },
+    "./conformance": {
+      "@solid-multiplatform/renderer-source": "./conformance/index.ts",
+      "types": "./dist/conformance/index.d.ts",
+      "default": "./dist/conformance/index.js"
+    }
   },
   "peerDependencies": {
     "@roku-sdk/interfaces": "2.19.0",

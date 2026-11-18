@@ -1,13 +1,27 @@
-import * as lng from '@solid-multiplatform/renderer';
-import { EventEmitter } from '@solid-multiplatform/renderer/utils';
-import {
-  ShaderBorderPrefixedProps,
-  ShaderHolePunchProps,
-  ShaderLinearGradientProps,
-  ShaderRadialGradientProps,
-  ShaderRoundedProps,
-  ShaderShadowPrefixedProps,
-} from '../shaders.js';
+import type * as lng from '../webgl/exports/index.js';
+import type { EventEmitter } from '../webgl/exports/utils.js';
+
+type ShaderHolePunchProps = lng.HolePunchProps;
+type ShaderLinearGradientProps = lng.LinearGradientProps;
+type ShaderRadialGradientProps = lng.RadialGradientProps;
+type ShaderRoundedProps = lng.RoundedProps;
+interface ShaderBorderProps extends lng.BorderProps {
+  gap: number;
+  inset: boolean;
+}
+type ShaderBorderPrefixedProps = {
+  [P in keyof ShaderBorderProps as `border-${P}`]: ShaderBorderProps[P];
+};
+type ShaderShadowPrefixedProps = {
+  [P in keyof lng.ShadowProps as `shadow-${P}`]: lng.ShadowProps[P];
+};
+
+/** A web font for the DOM backend: one file under one or more family names. */
+export interface DomFontLoadOptions {
+  fontFamily: string | string[];
+  fontUrl?: string;
+  [option: string]: unknown;
+}
 
 /** Based on {@link lng.CoreRenderer} */
 export interface IRendererCoreRenderer {
@@ -78,6 +92,15 @@ export interface IRendererNodeShaded extends EventEmitter {
     props: Partial<lng.AnimateProps>,
     settings: Partial<lng.AnimationSettings>,
   ) => lng.IAnimationController;
+  /** One prop, started at once. */
+  animateProp(
+    name: string,
+    value: number,
+    settings: Partial<lng.AnimationSettings>,
+  ): lng.IAnimationController;
+  /** Places `child` before `before` in paint order, or last when null. */
+  insertBefore(child: IRendererNode, before: IRendererNode | null): void;
+  destroy(): void;
   get absX(): number;
   get absY(): number;
 }

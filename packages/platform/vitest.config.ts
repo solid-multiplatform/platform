@@ -35,7 +35,12 @@ export default defineConfig(() => ({
   },
   resolve: {
     dedupe: ['solid-js'],
-    conditions: ['@solidtv/source', 'browser', 'development'],
+    conditions: [
+      '@solidtv/source',
+      '@solid-multiplatform/renderer-source',
+      'browser',
+      'development',
+    ],
     alias: {
       // @solidjs/router resolves to untranspiled .jsx under the
       // `@solidtv/source` condition, which vitest can't load. Tests only

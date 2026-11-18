@@ -189,13 +189,16 @@ export interface FpsUpdatePayload {
    * Frames per second sustained while the renderer had work to do.
    *
    * @remarks
-   * Measured over continuous rendering time only: idle polls (and the single
-   * frame that resumes rendering after them) are excluded, so an interval that
-   * was mostly idle still reports the rate reached while drawing rather than
-   * the ~15ms idle poll cadence.
+   * Measured over continuous rendering time only: ticks that drew nothing
+   * (and the single frame that resumes rendering after them) are excluded, so
+   * a burst reports the rate reached while drawing.
    *
-   * `0` means nothing rendered during the interval. Read it together with
-   * {@link idleTicks} to tell an idle scene from a stalled one.
+   * `0` means no two frames were drawn back to back during the interval.
+   *
+   * The interval (`fpsUpdateInterval`) counts the time the render loop spent
+   * ticking. The loop sleeps while the scene is idle, so no sample closes
+   * then: `fpsUpdate` is not a heartbeat, and a sample a burst left open is
+   * carried into the next one. The time slept is in neither.
    */
   fps: number;
   /**
@@ -220,11 +223,13 @@ export interface FpsUpdatePayload {
    */
   renderedFrames: number;
   /**
-   * Idle polls during the interval, i.e. ticks where the scene had no updates.
+   * Ticks during the interval that drew nothing, i.e. where the scene had no
+   * updates.
    *
    * @remarks
-   * These are throttled to roughly 15ms and do no rendering work. A high count
-   * next to a low {@link renderedFrames} is a quiet app, not a slow one.
+   * The loop does not poll an idle scene, so these are few: the tick each
+   * burst settles on, the ticks of an animation's delay, and a tick that only
+   * delivers queued events or runs a due texture cleanup.
    */
   idleTicks: number;
   /**
@@ -243,7 +248,7 @@ export interface FpsUpdatePayload {
    * Length is {@link FRAME_TIME_BUCKET_COUNT}; use
    * {@link frameTimeBucketLowerBound} to map an index to its millisecond
    * range. Covers exactly the frames behind {@link fps} and
-   * {@link renderedMs}, so idle polls and the frame that resumes rendering
+   * {@link renderedMs}, so undrawn ticks and the frame that resumes rendering
    * after them are excluded and the buckets sum to that paired frame count
    * rather than to {@link renderedFrames}.
    *

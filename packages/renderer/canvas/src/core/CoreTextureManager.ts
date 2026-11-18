@@ -547,6 +547,9 @@ export class CoreTextureManager extends EventEmitter {
       return;
     }
     this.uploadTextureQueue.add(texture);
+    // The queue drains inside a frame (`Stage.drawFrame`), and a decode that
+    // finishes while the loop sleeps has no frame coming.
+    this.stage.wakeLoop();
   }
 
   /**
@@ -614,6 +617,7 @@ export class CoreTextureManager extends EventEmitter {
     const localPixels = isImage && typeof ImageData !== 'undefined' && (texture as ImageTexture).props.src instanceof ImageData;
     if (isImage === true && !localPixels && this.initialized === false) {
       this.uploadTextureQueue.add(texture);
+      this.stage.wakeLoop();
       return;
     }
 

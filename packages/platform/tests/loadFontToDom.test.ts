@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { loadFontToDom } from '../src/core/dom-renderer/domRenderer.js';
+import { loadFontToDom } from '@solid-multiplatform/renderer/dom';
 
 // The renderer's font descriptors accept `fontFamily` as an array to register
 // one file under several names. Passing that array straight to `FontFace`

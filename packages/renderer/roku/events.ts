@@ -25,10 +25,14 @@ export class Events {
     return this.on(name, cb);
   }
 
-  off(name: string, fn: Function): this {
+  /** Removes `fn`, or every listener of `name` when `fn` is omitted. */
+  off(name: string, fn?: Function): this {
     if (this.handlers !== null) {
       const set = this.handlers.get(name);
-      if (set !== undefined) set.delete(fn);
+      if (set !== undefined) {
+        if (fn === undefined) set.clear();
+        else set.delete(fn);
+      }
     }
     return this;
   }

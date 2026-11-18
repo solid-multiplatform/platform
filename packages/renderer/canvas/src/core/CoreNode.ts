@@ -673,7 +673,7 @@ export interface CoreNodeProps {
    *
    * @default `undefined`
    */
-  data?: CustomDataMap;
+  data?: CustomDataMap | null;
 
   /**
    * Image Type to explicitly set the image type that is being loaded
@@ -1180,7 +1180,21 @@ export class CoreNode extends EventEmitter {
     this.updateType |= type;
 
     const parent = this.props.parent;
-    if (!parent || parent.updateType & UpdateType.Children) return;
+    if (!parent) {
+      // The top of the walk: the stage root, or the root of a detached
+      // subtree. A write that dirties the stage root gives a sleeping loop a
+      // frame to draw, so this is where a prop write wakes it. A write under
+      // an ancestor that is already dirty stops at the check below and never
+      // gets here, and one that does reads a single flag unless the loop is
+      // asleep. A detached subtree draws nothing and wakes nothing; attaching
+      // it goes through `addChild`, which walks up from the new parent.
+      const stage = this.stage;
+      if (stage.loopAsleep === true && this === stage.root) {
+        stage.wakeLoop();
+      }
+      return;
+    }
+    if (parent.updateType & UpdateType.Children) return;
 
     parent.setUpdateType(UpdateType.Children);
   }
@@ -2081,16 +2095,84 @@ export class CoreNode extends EventEmitter {
     this.stage.requestRenderListUpdate();
   }
 
+  /**
+   * Make `child` a child of this node, painted before `before`.
+   *
+   * @remarks
+   * `null`, or a node that is not this node's child, appends, as setting
+   * `child.parent` does. A child of this node moves; one placed before itself
+   * stays where it is. A child of another node is re-parented. Children stay
+   * sorted by zIndex: where `before`'s zIndex is not the child's, the child
+   * goes to the nearest place that keeps them sorted. A destroyed node on
+   * either side does nothing.
+   *
+   * The move shifts the children in place, so it allocates nothing.
+   */
+  insertBefore(child: CoreNode, before: CoreNode | null): void {
+    if (this.destroyed === true || child.destroyed === true || child === this) {
+      return;
+    }
+    // A new child goes through the parent setter, which takes it from its old
+    // parent, appends it here and raises the updates a new parent needs.
+    if (child.props.parent !== this) {
+      child.parent = this;
+    }
+    if (before === child) {
+      return;
+    }
+    const children = this.children;
+    const from = children.indexOf(child);
+    if (from === -1) {
+      return;
+    }
+    let to =
+      before === null || before.props.parent !== this
+        ? -1
+        : children.indexOf(before);
+    if (to === -1) {
+      to = children.length;
+    }
+    // The child leaves `from`, so every slot after it is one lower.
+    if (from < to) {
+      to--;
+    }
+    if (from !== to) {
+      if (from < to) {
+        for (let i = from; i < to; i++) {
+          children[i] = children[i + 1]!;
+        }
+      } else {
+        for (let i = from; i > to; i--) {
+          children[i] = children[i - 1]!;
+        }
+      }
+      children[to] = child;
+    }
+    // Sort now rather than on the next update, so `children` reads in paint
+    // order as soon as this returns. Only a child whose zIndex differs from
+    // its new neighbours' can be out of place.
+    const z = child.props.zIndex;
+    if (
+      (to > 0 && children[to - 1]!.props.zIndex > z) ||
+      (to < children.length - 1 && children[to + 1]!.props.zIndex < z)
+    ) {
+      this.sortChildren();
+    } else if (from !== to) {
+      this.stage.requestRenderListUpdate();
+    }
+  }
+
   //#region Properties
   get id(): number {
     return this._id;
   }
 
-  get data(): CustomDataMap | undefined {
-    return this.props.data;
+  /** The custom data, or `null` once it has been cleared. */
+  get data(): CustomDataMap | null {
+    return this.props.data ?? null;
   }
 
-  set data(d: CustomDataMap | undefined) {
+  set data(d: CustomDataMap | null | undefined) {
     this.props.data = d;
   }
 

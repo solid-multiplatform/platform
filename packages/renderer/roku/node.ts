@@ -8,6 +8,10 @@
  */
 
 import { createElement, insertNode, setProp, tmTransaction } from '@roku-sdk/solid';
+import type { SceneAnimatableProps, SceneTextProps } from '../contracts.js';
+import type { AnimationController } from './animation.js';
+import type { AnimationSettings } from './animation-types.js';
+import type { SceneGraphRenderer } from './renderer.js';
 import { Events } from './events.js';
 import { PosterImage } from './poster-image.js';
 import { isColorKey, lerpColor } from './animation-color.js';
@@ -52,11 +56,33 @@ const CORNER_GRADIENT_PNGS: Record<string, string> = {
   '0x0000FFFF|0xFFFFFFFF|0x0000FFFF|0xFFFFFFFF': 'pkg:/assets/gradient-corners-0000ff-ffffff.png',
 };
 
+type ColorSource = number | null | undefined;
+type ClipRect = [number, number, number, number];
+
+/** The scene contract's props plus the names only this backend reads. */
+export interface RokuNodeProps extends Partial<SceneTextProps<RokuNode>> {
+  colorTopLeft?: number;
+  colorTopRight?: number;
+  colorBottomLeft?: number;
+  colorBottomRight?: number;
+  textColor?: number;
+  fontWeight?: number | string;
+  placeholder?: string;
+  fallback?: string;
+  marginLeft?: number;
+  marginTop?: number;
+  marginRight?: number;
+  marginBottom?: number;
+  compositorHolder?: boolean;
+  nativeMotionRoot?: boolean;
+  nativeCompositorPrepared?: boolean;
+}
+
 export class RokuNode extends Events {
   uid = nextUid++;
   private _isText: boolean;
-  readonly stage: any;
-  readonly renderer: any;
+  readonly stage: SceneGraphRenderer;
+  readonly renderer: SceneGraphRenderer;
   dom: any;
   visual: any = null;
   private _claimedVisual: any = null;
@@ -80,15 +106,15 @@ export class RokuNode extends Events {
   // Web corner precedence: explicit corner > colorTop/Bottom > colorLeft/Right
   // > base color. Keep the sources and recompose, so apply order does not
   // change the result (Solid applies colorTop before colorRight).
-  private _baseColor: any = 0x00000000;
-  private _topColor: any = undefined;
-  private _bottomColor: any = undefined;
-  private _leftColor: any = undefined;
-  private _rightColor: any = undefined;
-  private _tlColor: any = undefined;
-  private _trColor: any = undefined;
-  private _blColor: any = undefined;
-  private _brColor: any = undefined;
+  private _baseColor = 0x00000000;
+  private _topColor: ColorSource = undefined;
+  private _bottomColor: ColorSource = undefined;
+  private _leftColor: ColorSource = undefined;
+  private _rightColor: ColorSource = undefined;
+  private _tlColor: ColorSource = undefined;
+  private _trColor: ColorSource = undefined;
+  private _blColor: ColorSource = undefined;
+  private _brColor: ColorSource = undefined;
   private _cornerColors = false;
   private _colorTL = 0xffffffff;
   private _colorTR = 0xffffffff;
@@ -105,7 +131,7 @@ export class RokuNode extends Events {
   private _rotation = 0;
   private _zIndex = 0;
   private _rtl: boolean | null = null;
-  private _clipping: boolean | number[] = false;
+  private _clipping: boolean | ClipRect = false;
   private _margins: number[] = [0, 0, 0, 0];
   private _layout: TextLayoutResult | null = null;
   private _destroyed = false;
@@ -143,6 +169,14 @@ export class RokuNode extends Events {
   private _sub: number[] | null = null;
   private _subHooked = false;
   private _forceClip = false;
+  private _srcX: number | undefined = undefined;
+  private _srcY: number | undefined = undefined;
+  private _srcWidth: number | undefined = undefined;
+  private _srcHeight: number | undefined = undefined;
+  private _imageType: string | null = null;
+  private _autosize = false;
+  private _ignoreParentAlpha = false;
+  private _fontStyle = 'normal';
   private _shader: ShaderHandle | null = null;
   private _effect: RokuEffect | null = null;
   private _bands: { node: any; color: number }[] = [];
@@ -152,7 +186,7 @@ export class RokuNode extends Events {
   private _shadowGroup: any = null;
   private _shadowPoster: any = null;
   private _shadowKey = '';
-  private _data: any = null;
+  private _data: Record<string, unknown> | null = null;
   private _textureOptions: any = { resizeMode: { x: 'fill', y: 'fill' } };
   private _placeholderColor = 0;
   private _placeholder = '';
@@ -168,7 +202,7 @@ export class RokuNode extends Events {
   private _written: { [name: string]: any } = {};
   private _writtenGroup: { [name: string]: any } = {};
 
-  constructor(renderer: any, props: any = {}, existingRoot?: any, text = false) {
+  constructor(renderer: SceneGraphRenderer, props: RokuNodeProps = {}, existingRoot?: any, text = false) {
     super();
     this.renderer = renderer;
     this.stage = renderer;
@@ -184,16 +218,20 @@ export class RokuNode extends Events {
     this._bottomColor = p.colorBottom;
     this._leftColor = p.colorLeft;
     this._rightColor = p.colorRight;
-    this._tlColor = p.colorTopLeft;
-    this._trColor = p.colorTopRight;
-    this._blColor = p.colorBottomLeft;
-    this._brColor = p.colorBottomRight;
+    this._tlColor = p.colorTl ?? p.colorTopLeft;
+    this._trColor = p.colorTr ?? p.colorTopRight;
+    this._blColor = p.colorBl ?? p.colorBottomLeft;
+    this._brColor = p.colorBr ?? p.colorBottomRight;
     this._hasColor =
       p.color !== undefined ||
       p.colorTop !== undefined ||
       p.colorBottom !== undefined ||
       p.colorLeft !== undefined ||
       p.colorRight !== undefined ||
+      p.colorTl !== undefined ||
+      p.colorTr !== undefined ||
+      p.colorBl !== undefined ||
+      p.colorBr !== undefined ||
       p.colorTopLeft !== undefined ||
       p.colorTopRight !== undefined ||
       p.colorBottomLeft !== undefined ||
@@ -207,7 +245,7 @@ export class RokuNode extends Events {
     this.renderer.markDirty(this);
   }
 
-  private applyProps(props: any) {
+  private applyProps(props: RokuNodeProps) {
     for (const key in props) {
       const value = props[key];
       if (value === undefined) continue;
@@ -221,9 +259,13 @@ export class RokuNode extends Events {
         case 'colorBottom': this._effectDirty = true; this._bottomColor = value; this.recomputeCorners(); this._hasColor = true; break;
         case 'colorLeft': this._effectDirty = true; this._leftColor = value; this.recomputeCorners(); this._hasColor = true; break;
         case 'colorRight': this._effectDirty = true; this._rightColor = value; this.recomputeCorners(); this._hasColor = true; break;
+        case 'colorTl':
         case 'colorTopLeft': this._effectDirty = true; this._tlColor = value; this._cornerColors = true; this.recomputeCorners(); this._hasColor = true; break;
+        case 'colorTr':
         case 'colorTopRight': this._effectDirty = true; this._trColor = value; this._cornerColors = true; this.recomputeCorners(); this._hasColor = true; break;
+        case 'colorBl':
         case 'colorBottomLeft': this._effectDirty = true; this._blColor = value; this._cornerColors = true; this.recomputeCorners(); this._hasColor = true; break;
+        case 'colorBr':
         case 'colorBottomRight': this._effectDirty = true; this._brColor = value; this._cornerColors = true; this.recomputeCorners(); this._hasColor = true; break;
         case 'w':
           if (this._isText) this._ownW = num(value, 0);
@@ -244,8 +286,10 @@ export class RokuNode extends Events {
         }
         case 'scaleX': this._scaleX = num(value, 1); break;
         case 'scaleY': this._scaleY = num(value, 1); break;
+        case 'mount': this._mountX = this._mountY = num(value, 0); break;
         case 'mountX': this._mountX = num(value, 0); break;
         case 'mountY': this._mountY = num(value, 0); break;
+        case 'pivot': this._pivotX = this._pivotY = num(value, 0.5); break;
         case 'pivotX': this._pivotX = num(value, 0.5); break;
         case 'pivotY': this._pivotY = num(value, 0.5); break;
         case 'rotation': this._rotation = num(value, 0); break;
@@ -260,8 +304,16 @@ export class RokuNode extends Events {
         case 'marginTop': this._margins[1] = num(value, 0); break;
         case 'marginRight': this._margins[2] = num(value, 0); break;
         case 'marginBottom': this._margins[3] = num(value, 0); break;
-        case 'src': this.src = String(value); break;
+        case 'src': this.src = value; break;
         case 'texture': this.setTexture(value); break;
+        case 'srcX': this._srcX = value; this.updateCrop(); break;
+        case 'srcY': this._srcY = value; this.updateCrop(); break;
+        case 'srcWidth': this._srcWidth = value; this.updateCrop(); break;
+        case 'srcHeight': this._srcHeight = value; this.updateCrop(); break;
+        case 'imageType': this.imageType = value; break;
+        case 'autosize': this.autosize = value; break;
+        case 'ignoreParentAlpha': this.ignoreParentAlpha = value; break;
+        case 'fontStyle': this.fontStyle = value; break;
         case 'shader': this.setShader(value); break;
         case 'data': this._data = value; break;
         case 'textureOptions': this._textureOptions = value || this._textureOptions; break;
@@ -323,7 +375,7 @@ export class RokuNode extends Events {
   }
   get children() { return this._children; }
 
-  insertBefore(child: RokuNode, before?: RokuNode | null) {
+  insertBefore(child: RokuNode, before: RokuNode | null) {
     if (child.parent) {
       const i = child.parent._children.indexOf(child);
       if (i >= 0) child.parent._children.splice(i, 1);
@@ -391,7 +443,7 @@ export class RokuNode extends Events {
   set visible(v: boolean) { this.alpha = v ? 1 : 0; }
 
   private recomputeCorners() {
-    const pick = (first: any, second: any, third: any) =>
+    const pick = (first: ColorSource, second: ColorSource, third: ColorSource): number =>
       first !== undefined && first !== null
         ? first
         : second !== undefined && second !== null
@@ -407,25 +459,36 @@ export class RokuNode extends Events {
 
   get color() { return this._color; }
   set color(v: number) { this._hasColor = true; this._color = v; this._baseColor = v; this.recomputeCorners(); this.markVisual(); this.effectDirty(); }
-  get colorTop() { return this._topColor; }
+  // A side or corner that was never set reads the colour that corner draws
+  // with, as the other backends read theirs.
+  get colorTop(): number { return this._topColor ?? this._colorTL; }
   set colorTop(v: number) { this._hasColor = true; this._topColor = v; this.recomputeCorners(); this.markVisual(); this.effectDirty(); }
-  get colorBottom() { return this._bottomColor; }
+  get colorBottom(): number { return this._bottomColor ?? this._colorBL; }
   set colorBottom(v: number) { this._hasColor = true; this._bottomColor = v; this.recomputeCorners(); this.markVisual(); this.effectDirty(); }
-  get colorLeft() { return this._leftColor; }
+  get colorLeft(): number { return this._leftColor ?? this._colorTL; }
   set colorLeft(v: number) { this._hasColor = true; this._leftColor = v; this.recomputeCorners(); this.markVisual(); this.effectDirty(); }
-  get colorRight() { return this._rightColor; }
+  get colorRight(): number { return this._rightColor ?? this._colorTR; }
   set colorRight(v: number) { this._hasColor = true; this._rightColor = v; this.recomputeCorners(); this.markVisual(); this.effectDirty(); }
-  get colorTopLeft() { return this._tlColor; }
-  set colorTopLeft(v: number) { this._hasColor = true; this._tlColor = v; this._cornerColors = true; this.recomputeCorners(); this.markVisual(); this.effectDirty(); }
-  get colorTopRight() { return this._trColor; }
-  set colorTopRight(v: number) { this._hasColor = true; this._trColor = v; this._cornerColors = true; this.recomputeCorners(); this.markVisual(); this.effectDirty(); }
-  get colorBottomLeft() { return this._blColor; }
-  set colorBottomLeft(v: number) { this._hasColor = true; this._blColor = v; this._cornerColors = true; this.recomputeCorners(); this.markVisual(); this.effectDirty(); }
-  get colorBottomRight() { return this._brColor; }
-  set colorBottomRight(v: number) { this._hasColor = true; this._brColor = v; this._cornerColors = true; this.recomputeCorners(); this.markVisual(); this.effectDirty(); }
+  get colorTl(): number { return this._tlColor ?? this._colorTL; }
+  set colorTl(v: number) { this._hasColor = true; this._tlColor = v; this._cornerColors = true; this.recomputeCorners(); this.markVisual(); this.effectDirty(); }
+  get colorTr(): number { return this._trColor ?? this._colorTR; }
+  set colorTr(v: number) { this._hasColor = true; this._trColor = v; this._cornerColors = true; this.recomputeCorners(); this.markVisual(); this.effectDirty(); }
+  get colorBl(): number { return this._blColor ?? this._colorBL; }
+  set colorBl(v: number) { this._hasColor = true; this._blColor = v; this._cornerColors = true; this.recomputeCorners(); this.markVisual(); this.effectDirty(); }
+  get colorBr(): number { return this._brColor ?? this._colorBR; }
+  set colorBr(v: number) { this._hasColor = true; this._brColor = v; this._cornerColors = true; this.recomputeCorners(); this.markVisual(); this.effectDirty(); }
+  // The names this backend had before the scene contract named the corners.
+  get colorTopLeft(): number { return this.colorTl; }
+  set colorTopLeft(v: number) { this.colorTl = v; }
+  get colorTopRight(): number { return this.colorTr; }
+  set colorTopRight(v: number) { this.colorTr = v; }
+  get colorBottomLeft(): number { return this.colorBl; }
+  set colorBottomLeft(v: number) { this.colorBl = v; }
+  get colorBottomRight(): number { return this.colorBr; }
+  set colorBottomRight(v: number) { this.colorBr = v; }
 
-  get scale() { return this._scaleX; }
-  set scale(v: number) {
+  get scale(): number { return this._scaleX; }
+  set scale(v: number | null) {
     const s = num(v, 1);
     this._scaleX = s;
     this._scaleY = s;
@@ -439,21 +502,33 @@ export class RokuNode extends Events {
   set mountX(v: number) { this._mountX = num(v, 0); this.markTransform(); }
   get mountY() { return this._mountY; }
   set mountY(v: number) { this._mountY = num(v, 0); this.markTransform(); }
+  /** Sets both axes; reads `mountX`, as `scale` reads `scaleX`. */
+  get mount(): number { return this._mountX; }
+  set mount(v: number) { this._mountX = this._mountY = num(v, 0); this.markTransform(); }
   get pivotX() { return this._pivotX; }
   set pivotX(v: number) { this._pivotX = num(v, 0.5); this.markTransform(); }
   get pivotY() { return this._pivotY; }
   set pivotY(v: number) { this._pivotY = num(v, 0.5); this.markTransform(); }
+  /** Sets both axes; reads `pivotX`. */
+  get pivot(): number { return this._pivotX; }
+  set pivot(v: number) { this._pivotX = this._pivotY = num(v, 0.5); this.markTransform(); }
   get rotation() { return this._rotation; }
   set rotation(v: number) { this._rotation = num(v, 0); this.markTransform(); }
   get zIndex() { return this._zIndex; }
   set zIndex(v: number) { this._zIndex = num(v, 0); this.markOrder(); }
   get rtlResolved(): boolean { this.updateWorld(); return this._worldRtl; }
 
-  get clipping() { return this._clipping; }
-  set clipping(v: any) {
+  get clipping(): boolean | ClipRect { return this._clipping; }
+  set clipping(v: boolean | ClipRect) {
     this._clipping = v === true || Array.isArray(v) ? v : false;
     this.markClip();
   }
+  // Stored only: a node keeps the w/h it was given. Poster reports its bitmap size on load, but nothing resizes the node from it yet.
+  get autosize(): boolean { return this._autosize; }
+  set autosize(v: boolean | undefined) { this._autosize = v === true; }
+  // Stored only: a Group's opacity always multiplies into its children here. SceneGraph's `inheritParentOpacity` is not wired yet.
+  get ignoreParentAlpha(): boolean { return this._ignoreParentAlpha; }
+  set ignoreParentAlpha(v: boolean | undefined) { this._ignoreParentAlpha = v === true; }
   get clippingRect() {
     const x = this.absX;
     const y = this.absY;
@@ -489,8 +564,8 @@ export class RokuNode extends Events {
 
   // ---- resources --------------------------------------------------------
 
-  get src() { return this._src || (this._texture ? this._texture.src : ''); }
-  set src(v: string) {
+  get src(): string { return this._src || (this._texture ? this._texture.src : ''); }
+  set src(v: string | null) {
     const raw = String(v || '');
     // The demo passes colors such as "#000000" or "#333" through `src` to
     // clear a background image. Treat a CSS color literal as a color, not a
@@ -534,15 +609,38 @@ export class RokuNode extends Events {
   set texture(v: RokuTexture | null) { this.setTexture(v); this.markVisual(); }
   private setTexture(v: RokuTexture | null) {
     this._texture = v || null;
-    this._sub = null;
-    this._forceClip = false;
-    if (v && v.textureType === 'SubTexture') {
-      const p = v.props || {};
-      this._sub = [num(p.x, 0), num(p.y, 0), num(p.w, 0), num(p.h, 0)];
-      this._forceClip = true;
-      this.markClip();
-    }
+    this.updateCrop();
   }
+  /**
+   * The source rectangle the Poster path crops to (see writeVisual): a
+   * SubTexture's, else `srcX/srcY/srcWidth/srcHeight` of a node drawn from
+   * `src`. As on the web, a crop needs both a width and a height.
+   */
+  private updateCrop() {
+    const texture = this._texture;
+    let sub: number[] | null = null;
+    if (texture && texture.textureType === 'SubTexture') {
+      const p = texture.props || {};
+      sub = [num(p.x, 0), num(p.y, 0), num(p.w, 0), num(p.h, 0)];
+    } else if (!texture && num(this._srcWidth, 0) > 0 && num(this._srcHeight, 0) > 0) {
+      sub = [num(this._srcX, 0), num(this._srcY, 0), num(this._srcWidth, 0), num(this._srcHeight, 0)];
+    }
+    const clipped = this._forceClip;
+    this._sub = sub;
+    this._forceClip = sub !== null;
+    if (this._forceClip || clipped) this.markClip();
+  }
+  get srcX(): number | undefined { return this._srcX; }
+  set srcX(v: number | undefined) { this._srcX = v; this.updateCrop(); this.markVisual(); }
+  get srcY(): number | undefined { return this._srcY; }
+  set srcY(v: number | undefined) { this._srcY = v; this.updateCrop(); this.markVisual(); }
+  get srcWidth(): number | undefined { return this._srcWidth; }
+  set srcWidth(v: number | undefined) { this._srcWidth = v; this.updateCrop(); this.markVisual(); }
+  get srcHeight(): number | undefined { return this._srcHeight; }
+  set srcHeight(v: number | undefined) { this._srcHeight = v; this.updateCrop(); this.markVisual(); }
+  // Stored only: Poster chooses its decoder from the file. SceneGraph has no image type hint.
+  get imageType(): string | null { return this._imageType; }
+  set imageType(v: string | null | undefined) { this._imageType = v ?? null; }
   get shader() { return this._shader; }
   set shader(v: ShaderHandle | null) { this.setShader(v); this.markVisual(); }
   private setShader(v: ShaderHandle | null) {
@@ -552,12 +650,12 @@ export class RokuNode extends Events {
     if (this._shader) this._shader.nodes.add(this);
     this.effectDirty();
   }
-  get data() { return this._data; }
-  set data(v: any) { this._data = v; }
+  get data(): Record<string, unknown> | null { return this._data; }
+  set data(v: Record<string, unknown> | null) { this._data = v; }
   get textureOptions() { return this._textureOptions; }
   set textureOptions(v: any) { this._textureOptions = v; this.markVisual(); }
-  get placeholderColor() { return this._placeholderColor; }
-  set placeholderColor(v: any) { this._placeholderColor = v; this.markVisual(); }
+  get placeholderColor(): number { return this._placeholderColor; }
+  set placeholderColor(v: number) { this._placeholderColor = v; this.markVisual(); }
 
   effectDirty() {
     this._effectDirty = true;
@@ -577,7 +675,7 @@ export class RokuNode extends Events {
   markClip() { this._clipDirty = true; this.renderer.markDirty(this); }
   requestRender() { this.renderer.markDirty(this); }
 
-  private _anims: Map<string, any> | null = null;
+  private _anims: Map<string, { settings: AnimationSettings; controller: AnimationController }> | null = null;
   private _fontFace: any = null;
 
   get text() { return this._textValue; }
@@ -589,12 +687,15 @@ export class RokuNode extends Events {
   }
   get fontFamily() { return this._fontFamily; }
   set fontFamily(v: string) { this._fontFamily = String(v || 'Roboto'); this.reflow(); }
+  // Stored only: a SceneGraph Font is a file and a size, and no italic or oblique face is bundled.
+  get fontStyle(): string { return this._fontStyle; }
+  set fontStyle(v: string | undefined) { this._fontStyle = v === undefined || v === null ? 'normal' : String(v); }
   get fontWeight() { return this._fontWeight; }
   set fontWeight(v: any) { this._fontWeight = v; this.reflow(); }
   get fontSize() { return this._fontSize; }
   set fontSize(v: number) { this._fontSize = num(v, 32); this.reflow(); }
   get lineHeight() { return this._lineHeight; }
-  set lineHeight(v: number) { this._lineHeight = num(v, 1.2); this.reflow(); }
+  set lineHeight(v: number | undefined) { this._lineHeight = num(v, 1.2); this.reflow(); }
   get maxWidth() { return this._maxWidth; }
   set maxWidth(v: number) { this._maxWidth = num(v, 0); this.reflow(); }
   get maxHeight() { return this._maxHeight; }
@@ -752,14 +853,14 @@ export class RokuNode extends Events {
           if (!this._imageLoadedEmitted) {
             this._imageLoadedEmitted = true;
             const dimensions = { width: Number(poster.bitmapWidth) || this.boxW, height: Number(poster.bitmapHeight) || this.boxH };
-            this.emit('loaded', this, { type: 'image', dimensions });
-            this._texture?.emit('loaded', this._texture, { dimensions });
+            this.emit('loaded', { type: 'image', dimensions });
+            this._texture?.emit('loaded', { dimensions });
           }
           this._imageOnLoaded?.(poster);
           return;
         }
         if (this._texture) { this._texture.state = 'failed'; this._texture.emit('failed'); }
-        this.emit('failed', this, { type: 'image' });
+        this.emit('failed', { type: 'image' });
         const next = normalizeUri(this._fallback);
         if (this._fallback && next !== this._src) {
           this.src = next;
@@ -883,6 +984,8 @@ export class RokuNode extends Events {
       } else {
         this.writeIf('width', w);
         this.writeIf('height', h);
+        // A crop that was removed leaves its offset on the Poster.
+        if (this._written.translation !== undefined) this.writeIf('translation', [0, 0]);
         const resizeMode = this._textureOptions && this._textureOptions.resizeMode;
         const contained =
           this._contain === 'both' ||
@@ -1292,20 +1395,18 @@ export class RokuNode extends Events {
 
   // ---- animation --------------------------------------------------------
 
-  animate(props: any, settings: any = {}) {
+  animate(props: SceneAnimatableProps, settings: AnimationSettings = {}): AnimationController {
     if (this._children.length && Object.keys(props || {}).some(key => key === "x" || key === "y" || key === "alpha")) this.nativeMotionRoot = true;
     const animator = this.renderer.animator;
-    if (!animator) return null;
     const controller = animator.create(this, props || {}, settings, () => this.renderer.ensureTicker());
     if (!this._anims) this._anims = new Map();
     for (const key in props || {}) this._anims.set(key, { settings, controller });
     return controller;
   }
 
-  animateProp(name: string, value: number, settings: any = {}) {
+  animateProp(name: string, value: number, settings: AnimationSettings = {}): AnimationController {
     if (this._children.length && (name === "x" || name === "y" || name === "alpha")) this.nativeMotionRoot = true;
     const animator = this.renderer.animator;
-    if (!animator) return null;
     if (!this._anims) this._anims = new Map();
     const color = isColorKey(name);
     const existing = this._anims.get(name);
