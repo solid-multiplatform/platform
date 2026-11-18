@@ -1,0 +1,526 @@
+import type { CoreTextNodeProps } from '../CoreTextNode.js';
+import type { Matrix3d } from '../lib/Matrix3d.js';
+import type { ClipRect } from '../lib/utils.js';
+import type { CoreRenderer } from '../renderers/CoreRenderer.js';
+import type { SdfRenderOp } from '../renderers/webgl/SdfRenderOp.js';
+import type { Stage } from '../Stage.js';
+
+// Text baseline and vertical align types
+export type TextBaseline =
+  | 'alphabetic'
+  | 'hanging'
+  | 'middle'
+  | 'ideographic'
+  | 'bottom';
+export type TextVerticalAlign = 'top' | 'middle' | 'bottom';
+export type TextRenderers = 'canvas' | 'sdf';
+
+/**
+ * Selects which font-derived height the text layout engine centers on each
+ * line's geometric mid-line. Configured via {@link RendererMainSettings} and
+ * cannot be overridden per node — see the engine-wide reasoning in
+ * `TextLayoutEngine.mapTextLayout`.
+ *
+ * - `'optical'` (default): the midpoint of cap-height and x-height is
+ *   centered. Looks visually centered for mixed-case text — the
+ *   sweet spot between `'cap'` (which can read low for lowercase-heavy
+ *   strings) and `'x'` (which can read high for headings).
+ * - `'cap'`: capital letters centered. Use when content is mostly
+ *   uppercase or numeric (badges, timers). Mixed-case strings like
+ *   "Button" may read slightly low.
+ * - `'x'`: lowercase x-height centered. Best for running body text;
+ *   capitals appear slightly high in headings.
+ * - `'linebox'`: legacy. Centers the abstract asc-to-desc-plus-leading
+ *   rectangle. Mathematically tidy but visually unbalanced because most
+ *   Latin fonts have asymmetric asc/desc ratios.
+ */
+export type TextBaselineMode = 'optical' | 'cap' | 'x' | 'linebox';
+/**
+ * Font metrics used for layout and default line height calculations.
+ */
+export interface FontMetrics {
+  /**
+   * The distance, in font units, from the baseline to the highest point of the font.
+   */
+  ascender: number;
+  /**
+   * The distance, in font units, from the baseline to the lowest point of the font.
+   */
+  descender: number;
+  /**
+   * The additional space used in the calculation of the default line height in font units.
+   */
+  lineGap: number;
+  /**
+   * The number of font units per 1 EM.
+   */
+  unitsPerEm: number;
+  /**
+   * The distance, in font units, from the baseline to the top of an uppercase
+   * letter (OS/2 sCapHeight).
+   *
+   * Used by the layout engine to vertically center capital letters on each
+   * line's geometric mid-line. When absent, the SDF backend derives this
+   * value from glyph `H` (id 72) in the BMFont atlas; the Canvas backend
+   * falls back to `0.7 × ascender` (a generic Latin-font approximation).
+   */
+  capHeight?: number;
+  /**
+   * The distance, in font units, from the baseline to the top of a lowercase
+   * letter (OS/2 sxHeight). Optional; used only when the baseline-anchor
+   * mode is set to x-height centering (experimental).
+   */
+  xHeight?: number;
+}
+
+/**
+ * Normalized font metrics where values are expressed in pixels at the
+ * configured font size (em-px).
+ */
+export interface NormalizedFontMetrics {
+  /**
+   * The distance, in em-px, from the baseline to the highest point of the font.
+   */
+  ascender: number;
+  /**
+   * The distance, in em-px, from the baseline to the lowest point of the font.
+   */
+  descender: number;
+  /**
+   * The additional space used in the calculation of the default line height, in em-px.
+   */
+  lineGap: number;
+  /**
+   * The distance, in em-px, from the baseline to the top of an uppercase letter.
+   * Always populated; derived or approximated when {@link FontMetrics.capHeight}
+   * is not provided by the caller.
+   */
+  capHeight: number;
+  /**
+   * The distance, in em-px, from the baseline to the top of a lowercase letter.
+   * Always populated; derived from glyph `x` for SDF, falls back to
+   * `0.5 × ascender` otherwise. Only used by the experimental x-height
+   * baseline-anchor mode.
+   */
+  xHeight: number;
+}
+
+/**
+ * Text renderer properties that are used in resolving appropriate font faces
+ *
+ * @remarks
+ * Extended by {@link TrProps}
+ */
+export interface TrFontProps {
+  /**
+   * Font Family
+   *
+   * @internalRemarks
+   * `fontFamily` is defined currently as single string, but in the future we may want to
+   * support multiple font family fallbacks, as this is supported by CSS / Canvas2d. We can
+   * do this in a backwards compatible way by unioning an array of strings to the
+   * `fontFamily` property.
+   */
+  fontFamily: string;
+  /**
+   * Font Style
+   *
+   * @remarks
+   * The font style to use when looking up the font face. This can be one of the
+   * following strings:
+   * - `'normal'`
+   * - `'italic'`
+   * - `'oblique'`
+   *
+   * **Canvas only.** It is passed through to the `ctx.font` string, so the
+   * browser applies the style (synthesizing an oblique when the loaded face
+   * has no italic variant) for both measurement and draw. The SDF renderer
+   * ignores it: an SDF font is a single atlas registered under a family name
+   * with no style axis, so there is no face to switch to and no synthetic
+   * slant: `fontStyle` reaches only the layout cache key there. Pinned by the
+   * `text-font-style` visual regression test.
+   */
+  fontStyle: 'normal' | 'italic' | 'oblique';
+  /**
+   * Font Size
+   *
+   * @remarks
+   * The font size to use when looking up the font face.
+   *
+   * The font size is specified in pixels and is the height of the font's
+   * em-square. The em-square is essentially the height of the capital letters
+   * for the font. The actual height of the text can be larger than the
+   * specified font size, as the font may have ascenders and descenders that
+   * extend beyond the em-square.
+   *
+   * @default 16
+   */
+  fontSize: number;
+}
+
+export interface TrProps extends TrFontProps {
+  /**
+   * Text to display
+   *
+   * @default ''
+   */
+  text: string;
+  /**
+   * Text alignment
+   *
+   * @remarks
+   * Alignment of the text relative to it's contained bounds. For best results,
+   * use {@link contain} mode `'width'` or `'both'` and a set an explicit
+   * {@link width} for the text to be aligned within.
+   *
+   * @default 'left'
+   */
+  textAlign: 'left' | 'center' | 'right';
+  /**
+   * Color of text
+   *
+   * @remarks
+   * The color value is a number in the format 0xRRGGBBAA, where RR is the red
+   * component, GG is the green component, BB is the blue component, and AA is
+   * the alpha component.
+   *
+   * @default 0xffffffff (opaque white)
+   */
+  color: number;
+  x: number;
+  y: number;
+
+  maxWidth: number;
+  maxHeight: number;
+  /**
+   * Vertical offset for text
+   *
+   * @remarks
+   * The vertical offset of the text.
+   *
+   * @default 0
+   */
+  offsetY: number;
+  /**
+   * Letter spacing for text (in pixels)
+   *
+   * @remarks
+   * This property sets additional (or reduced, if value is negative) spacing
+   * between characters in the text.
+   *
+   * @default 0
+   */
+  letterSpacing: number;
+  /**
+   * Line height for text (in pixels)
+   *
+   * @remarks
+   * This property sets the height of each line. If set to `undefined`, the
+   * line height will be calculated based on the font and font size to be the
+   * minimal height required to completely contain a line of text.
+   *
+   * See: https://github.com/lightning-js/renderer/issues/170
+   *
+   * @default `undefined`
+   */
+  lineHeight: number;
+  /**
+   * Max lines for text
+   *
+   * @remarks
+   * This property sets max number of lines of a text paragraph.
+   * Not yet implemented in the SDF renderer.
+   *
+   * @default 0
+   */
+  maxLines: number;
+  /**
+   * Vertical alignment of the text block within its containing box.
+   *
+   * @remarks
+   * The containing box is `maxHeight` if set, otherwise the node's
+   * own `h` (which a flex parent or the user may have grown beyond
+   * the intrinsic text height). Activates whenever the box is taller
+   * than the intrinsic text height. Composes with `textBaselineMode`
+   * (per-line anchor). CSS line-box semantics — `'top'` leaves
+   * half-leading above the first line's cap-top; `'bottom'` leaves
+   * half-leading below the last line's descender.
+   *
+   * @default top
+   */
+  verticalAlign: TextVerticalAlign;
+  /**
+   * Overflow Suffix for text
+   *
+   * @remarks
+   * The suffix to be added when text is cropped due to overflow.
+   * Not yet implemented in the SDF renderer.
+   *
+   * @default "..."
+   */
+  overflowSuffix: string;
+
+  /**
+   * Word Break for text
+   *
+   * @remarks
+   * This property sets how words should break when reaching the end of a line.
+   *
+   * - `'overflow'`: Uses the Css/HTML normal word-break behavior, generally not used in app development.
+   * - `'break-all'`: To prevent overflow, word breaks should happen between any two characters.
+   * - `'break-word'`: To prevent overflow, word breaks should happen between words. If words are too long word breaks happen between any two characters.
+   *
+   * @default "break-word"
+   */
+  wordBreak: 'overflow' | 'break-all' | 'break-word';
+
+  /**
+   * contain mode for text
+   *
+   * @remarks
+   *
+   * This property sets how the text should be contained within its bounding box.
+   *
+   * - 'width': The text is contained within the specified maxWidth, horizontal position of text will adjust according to {@link textAlign}.
+   * - 'height': The text is contained within the specified maxHeight, vertical position of text will adjust according to {@link verticalAlign}.
+   * - 'both': The text is contained within both the specified maxWidth and maxHeight.
+   * - 'none': The text is not contained within any bounding box.
+   *
+   * @default 'none'
+   */
+  contain: 'width' | 'height' | 'both' | 'none';
+}
+
+/**
+ * Number of Float32 entries per glyph in a packed {@link TextLayout.glyphs}
+ * buffer. The per-glyph fields are stored contiguously in this order:
+ *
+ * ```
+ * [0] x            [4] atlasX
+ * [1] y            [5] atlasY
+ * [2] width        [6] atlasWidth
+ * [3] height       [7] atlasHeight
+ * ```
+ *
+ * Glyph `i` occupies `glyphs[i * SDF_GLYPH_STRIDE .. +SDF_GLYPH_STRIDE]`.
+ * A flat typed array (instead of an array of `{x, y, ...}` objects) avoids
+ * allocating one object per glyph on every layout generation.
+ */
+export const SDF_GLYPH_STRIDE = 8;
+
+/**
+ * Complete text layout information for caching
+ */
+export interface TextLayout {
+  /**
+   * Packed glyph layout data — `SDF_GLYPH_STRIDE` floats per glyph.
+   * Valid entries cover the first `glyphCount * SDF_GLYPH_STRIDE` slots; the
+   * backing buffer may be slightly larger when codepoints are skipped during
+   * layout (zero-width spaces, missing glyphs).
+   */
+  glyphs: Float32Array;
+  /**
+   * Number of glyphs packed into {@link glyphs}.
+   */
+  glyphCount: number;
+  /**
+   * Total text width
+   */
+  width: number;
+  /**
+   * Total text height
+   */
+  height: number;
+  /**
+   * Font scale factor
+   */
+  fontScale: number;
+  /**
+   * Line height
+   */
+  lineHeight: number;
+  /**
+   * Font family used
+   */
+  fontFamily: string;
+  /**
+   * distanceRange used
+   */
+  distanceRange: number;
+}
+
+export interface FontLoadOptions {
+  /**
+   * Font family name to register the font under.
+   *
+   * Pass an array to register the same font under several names in a single
+   * load — the atlas/font resource is fetched once and every name resolves to
+   * the same loaded font. The first entry is the primary name; the rest are
+   * aliases. Useful when one physical font is referenced by multiple families
+   * (e.g. `['Roboto', 'Roboto500']`).
+   */
+  fontFamily: string | string[];
+  metrics?: FontMetrics;
+  // For Canvas/traditional font loading
+  fontUrl?: string;
+  // For SDF/atlas-based font loading
+  atlasUrl?: string;
+  atlasDataUrl?: string;
+}
+
+/**
+ * Measure Width of Text function to be defined in font handlers, used in TextLayoutEngine
+ */
+export type MeasureTextFn = (
+  text: string,
+  fontFamily: string,
+  letterSpacing: number,
+) => number;
+
+export interface FontHandler {
+  init: (
+    c: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  ) => void;
+  type: 'canvas' | 'sdf';
+  isFontLoaded: (fontFamily: string) => boolean;
+  loadFont: (stage: Stage, options: FontLoadOptions) => Promise<void>;
+  waitingForFont: (fontFamily: string, CoreTextNode) => void;
+  stopWaitingForFont: (fontFamily: string, CoreTextNode) => void;
+  canRenderFont: (trProps: TrProps) => boolean;
+  getFontMetrics: (
+    fontFamily: string,
+    fontSize: number,
+  ) => NormalizedFontMetrics;
+  measureText: MeasureTextFn;
+}
+
+/**
+ * Cached SDF vertex data for a single text node.
+ * When nothing changes (layout, transform, color, alpha), the pre-transformed
+ * vertex Float32Array can be mem-copied into the shared SDF buffer instead of
+ * re-computing per-glyph matrix transforms each frame.
+ */
+export interface SdfVertexCache {
+  /** Pre-transformed vertex Float32Array (null = cache miss). */
+  vertices: Float32Array | null;
+  /** Number of glyphs in the cached data. */
+  glyphCount: number;
+  /**
+   * RGBA color at the time the cache was built. worldAlpha is deliberately
+   * not tracked: it rides the render op as the u_alpha uniform, so a fade
+   * replays the cached bytes unchanged.
+   */
+  color: number;
+  /**
+   * The 6 relevant components of the global transform the cache was built at,
+   * held as plain fields rather than a `Float32Array`: a typed array costs
+   * ~220 bytes of heap per text node to carry 24 bytes of payload, and these
+   * are only ever read as scalars.
+   */
+  ta: number;
+  tc: number;
+  tb: number;
+  td: number;
+  tx: number;
+  ty: number;
+  /** Reference to the TextLayout the cache was built from. */
+  layoutRef: TextLayout | null;
+  /**
+   * The translation delta this node was drawn with last frame (world
+   * position minus cache base). Cached vertices go to the shared buffer
+   * unmodified and the delta rides the render op as the u_translate uniform,
+   * so equal consecutive non-zero deltas mean the node has stopped moving
+   * away from its base: `SdfTextRenderer.renderQuads` then folds the delta
+   * into the cache once, returning the node to delta zero so it batches with
+   * static text again.
+   */
+  lastDx: number;
+  lastDy: number;
+}
+
+export interface TextRenderProps {
+  fontFamily: string;
+  fontSize: number;
+  color: number;
+  offsetY: number;
+  worldAlpha: number;
+  /**
+   * The node's live global transform — read within the frame, never retained.
+   * It is the node's own matrix, not a snapshot, so it changes under any
+   * holder as soon as the node moves.
+   */
+  globalTransform: Matrix3d;
+  clippingRect: ClipRect;
+  width: number;
+  height: number;
+  stage: Stage;
+  /** Optional SDF vertex cache — passed by CoreTextNode for cache-hit fast path. */
+  sdfCache?: SdfVertexCache;
+}
+
+export interface TextRenderInfo {
+  width: number;
+  height: number;
+  hasRemainingText?: boolean;
+  remainingLines?: number;
+  imageData?: ImageData | null; // Image data for Canvas Text Renderer
+  layout?: TextLayout; // Layout data for SDF renderer caching
+}
+
+export interface TextRenderer {
+  type: 'canvas' | 'sdf';
+  font: FontHandler;
+  renderText: (props: CoreTextNodeProps) => TextRenderInfo;
+  renderQuads: (
+    renderer: CoreRenderer,
+    layout: TextLayout,
+    vertexBuffer: Float32Array,
+    renderProps: TextRenderProps,
+  ) => void | SdfRenderOp | null;
+  init: (stage: Stage) => void;
+  /**
+   * Trim internal caches back down to their configured limits.
+   * Called when the stage goes idle so cache eviction never competes with
+   * active rendering. Backends with no bounded cache may implement this as a
+   * no-op.
+   */
+  cleanup: () => void;
+}
+
+/**
+ * Text line struct for text mapping
+ * 0 - text
+ * 1 - width
+ * 2 - truncated
+ * 3 - line offset x
+ * 4 - line offset y
+ */
+export type TextLineStruct = [string, number, boolean, number, number];
+
+/**
+ * Wrapped lines struct for text mapping
+ * 0 - line structs
+ * 1 - remaining lines
+ * 2 - remaining text
+ */
+export type WrappedLinesStruct = [TextLineStruct[], number, boolean];
+
+/**
+ * Wrapped lines struct for text mapping
+ * 0 - line structs
+ * 1 - remaining lines
+ * 2 - remaining text
+ * 3 - bare line height
+ * 4 - line height pixels
+ * 5 - effective width
+ * 6 - effective height
+ */
+export type TextLayoutStruct = [
+  TextLineStruct[],
+  number,
+  boolean,
+  number,
+  number,
+  number,
+  number,
+];

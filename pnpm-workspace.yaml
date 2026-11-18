@@ -1,2 +1,22 @@
+packages:
+  - 'packages/*'
 onlyBuiltDependencies:
   - esbuild
+# The Roku SDK publishes all of its packages together; exempt the pinned
+# release from the local minimum-release-age policy as the Roku example does.
+minimumReleaseAgeExclude:
+  - '@roku-sdk/ai@2.19.0'
+  - '@roku-sdk/common@2.19.0'
+  - '@roku-sdk/compat@2.19.0'
+  - '@roku-sdk/components@2.19.0'
+  - '@roku-sdk/dev-tools@2.19.0'
+  - '@roku-sdk/interfaces@2.19.0'
+  - '@roku-sdk/native@2.19.0'
+  - '@roku-sdk/navigation@2.19.0'
+  - '@roku-sdk/rsg-ts@2.19.0'
+  - '@roku-sdk/runtime@2.19.0'
+  - '@roku-sdk/sdk-config@2.19.0'
+  - '@roku-sdk/solid@2.19.0'
+  - '@roku-sdk/testing-library@2.19.0'
+  - '@roku-sdk/tooling@2.19.0'
+  - '@roku-sdk/ts-core@2.19.0'

@@ -1,74 +1,70 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for working in this repository.
 
-## What This Is
+## What this is
 
-SolidTV (`@solidtv/solid`) — a SolidJS-based UI framework for building TV applications over WebGL/Canvas (not DOM). Navigation is directional (arrow keys/remote), not pointer-based. UI is built with `<view>`, `<text>`, `<Row>`, `<Column>` — never DOM elements like `<div>`.
+Solid Multiplatform: one SolidJS (universal renderer) scene on Roku, browser TVs (Tizen, webOS, Vizio), Android and Android TV, iOS and tvOS, desktop and web. Native targets do not render HTML. UI is `<view>`, `<text>`, `<Row>`, `<Column>` — never DOM elements.
 
-## Code Writing Rules
+This is a pnpm workspace (Node 24, pnpm via Corepack):
 
-1. Don’t assume. Don’t hide confusion. Surface tradeoffs.
+| Package                         | Path                | Contents                                                                                                                                                                               |
+| ------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@solid-multiplatform/renderer` | `packages/renderer` | `webgl/` (Lightning-derived v2), `canvas/` (v1 Canvas 2D), `roku/` (SceneGraph on the device's Hermes), `contracts.ts`                                                                 |
+| `@solid-multiplatform/platform` | `packages/platform` | `src/core` (ElementNode, layout, focus), `src/primitives`, `src/sdk` (services), `src/hosts` + `hosts/` (per-target hosts), `cli/` (`solid-platform`), `examples/`, `bench/`, `tests/` |
+| `@solid-multiplatform/video`    | `packages/video`    | Optional playback adapters: Media3, AVPlayer, Roku Video node, mpv, web                                                                                                                |
+
+The structure is mid-restructure. The plan and its phase order are in the pull requests titled "Phase N"; hosts and the CLI become their own packages later. Do not add new code to patterns the plan removes: `setXPort` setters, browser-API fallbacks inside `src/sdk`, fake `document`/`window` shims, `.lng` access from primitives.
+
+## Rules
+
+1. Don't assume. Don't hide confusion. Surface tradeoffs.
 2. Minimum code that solves the problem. Nothing speculative.
 3. Touch only what you must. Clean up only your own mess.
 4. Define success criteria. Loop until verified.
+5. TV performance comes first: zero missed frames and no idle scheduling. Nothing may add timers, polling or listeners that run while a scene is idle. Feature code is opt-in.
+6. A feature is "shipped" on a target only with an automated test on that target or recorded device evidence. Otherwise it is preview, or reported `unavailable`.
 
 ## Commands
 
+Run from the repository root:
+
 ```sh
-npm run build          # Clean build (rm -rf dist && tsc + copy jsx-runtime.d.ts)
-npm run tsc            # TypeScript compile only
-npm test               # Run vitest (jsdom, non-watch)
-npm run test:browser   # Run vitest in Playwright/Chromium
-npm run lint           # Prettier check + oxlint
-npm run lint:fix       # Auto-fix both
-npm run release        # release-it (bumps version, tags, publishes to npm, creates GitHub release)
+corepack pnpm install
+corepack pnpm build      # renderer, then platform
+corepack pnpm test       # renderer + platform (vitest, jsdom) + video
+corepack pnpm lint       # prettier check + oxlint (type-aware)
 ```
 
-Run a single test file: `npx vitest tests/flex.spec.ts`
+From `packages/platform`:
 
-## Architecture
+```sh
+npx vitest run tests/contract-flex.test.tsx   # one unit test file
+corepack pnpm test:webgl                      # Playwright Chromium, real WebGL and Canvas
+node tests/visual/run.mjs <out-dir>           # Canvas vs WebGL pixel comparison
+node --test tests/native/*.test.mjs           # after a build
+bash tests/cli/projects-smoke.sh              # pack, init an app, build web/Tizen/Roku
+node bench/run.mjs --arms C --modes time,count --runs 3 --out <dir>
+```
 
-### Rendering Pipeline
+Type-aware lint needs `packages/platform/examples/roku` installed (`corepack pnpm install` there) because its tsconfig extends a Roku SDK file.
 
-- `src/render.ts` — Creates a SolidJS universal renderer (`solid-js/universal`) with custom node operations (`solidOpts.ts`). Exports `Dynamic`, `createRenderer`, and re-exports SolidJS flow components (`For`, `Show`, `Switch`, etc.). The core `<view>` and `<text>` intrinsic elements are registered with the renderer.
-- `src/core/elementNode.ts` — `ElementNode` is the core node abstraction. Manages properties, children, flex layout, focus, states, animations, and syncs to the underlying `@solidtv/renderer` INode.
-- `src/core/focusManager.ts` — Handles keyboard/remote input, focus path traversal, and key mapping. Focus walks the component tree via `onUp`/`onDown`/`onLeft`/`onRight`/`onEnter` handlers.
-- `src/core/config.ts` — Runtime `Config` object (debug flags, animation settings, font defaults, focus state key).
-- `src/core/flex.ts` / `src/core/flexLayout.ts` — Two flex layout implementations; toggled by `VITE_USE_NEW_FLEX` env var.
+## How things fit
 
-### Build-Time Globals
+- `packages/platform/src/render.ts` + `solidOpts.ts`: Solid universal renderer over `ElementNode`.
+- `src/core/elementNode.ts`: forwards props to the backend node, runs flex layout (`flexLayout.ts`; `flex.ts` is being removed), states, transitions.
+- `src/core/focusManager.ts`: key handling and the focus path; takes a key event target.
+- Unit tests run against a DOM renderer in jsdom (`SOLIDTV_DOM_RENDERING` define in `vitest.config.ts`); each test imports `tests/setup.ts` itself. WebGL, Canvas and the Roku backend are covered by `tests/webgl` and the renderer's own tests.
+- The `@solidtv/source` import condition resolves package subpaths to TypeScript sources in tests and dev.
+- `cli/init.mjs` scaffolds an app from `cli/templates` and `examples/*`; `cli/renderer-archive.mjs` packs the workspace renderer for it.
 
-- `SOLIDTV_DOM_RENDERING` — enables DOM renderer instead of WebGL (used in tests)
-- `SOLIDTV_DISABLE_SHADERS` — disables shader processing
-- `__DEV__` — development mode flag
+## Devices and secrets
 
-### Entry Points (package exports)
+Device credentials live in a `.env` outside this repository. Never print or commit them. Do not record device identifiers, addresses or full system traces in the repository.
 
-- `@solidtv/solid` — main: `<view>`/`<text>` intrinsic elements, renderer, core node types
-- `@solidtv/solid/primitives` — layout components (Row, Column, Grid, Virtual, VirtualGrid), focus utilities, announcer, router helpers, Lazy/KeepAlive/Preserve
-- `@solidtv/solid/devtools` — devtools integration
-- `@solidtv/solid/shaders` — shader exports
+## App-author rules (for example and template code)
 
-### Peer Dependencies
-
-- `solid-js` — reactivity and component model
-- `@solidtv/renderer` — WebGL/Canvas rendering engine (INode, ITextNode, animations)
-- `@solidjs/router` — optional, for routing primitives
-
-### Test Setup
-
-Tests use jsdom with `SOLIDTV_DOM_RENDERING: true` (DOM renderer). `tests/setup.ts` creates a renderer with mocked `ResizeObserver`/`MutationObserver`/`document.fonts`. Vitest uses `vite-plugin-solid` with `generate: 'universal'` to compile JSX.
-
-### Custom Condition
-
-The `@solidtv/source` custom import condition resolves to source `.ts` files instead of compiled `.js` — used in vitest and vite configs for dev/test.
-
-## Framework Rules (from AI_CODING_GUIDELINES.md)
-
-- All nodes are `position: absolute` by default. Position with `x`, `y`, `width`, `height`.
-- Colors must be 8-char hex strings (e.g., `"#ff0000ff"`). No named colors.
-- Use `color` not `background`. Use object structures for `border`/`shadow`.
-- No `style={{}}`, no CSS classes, no DOM elements.
-- Flex: `display: "flex"` activates it. Only single `padding` number (no `paddingLeft` etc.). Margins, gap, alignItems, justifyContent all supported.
-- Focus: `onFocusChanged`, `onFocus`, `onBlur`, `onEnter`, `onUp`/`onDown`/`onLeft`/`onRight`. One item should have `autofocus`. `Row`/`Column` manage child focus automatically.
+- Nodes are absolutely positioned unless a parent has `display: "flex"`.
+- Colors are 8-digit hex (`"#ff0000ff"`) or numbers. Use `color`, not `background`.
+- No `style={{}}` objects with CSS, no classes, no DOM elements.
+- One element should have `autofocus`; `Row`/`Column` manage child focus.

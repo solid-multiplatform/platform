@@ -22,6 +22,7 @@ jobs:
       - if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
       - run: pnpm install --frozen-lockfile
+      - run: pnpm build
       - name: Install pinned SDL3 runtime
         run: |
           set -euo pipefail
@@ -43,7 +44,7 @@ jobs:
           fi
       - name: Build generated desktop distribution
         run: |
-          node cli/main.mjs init gallery-app --targets desktop
+          node packages/platform/cli/main.mjs init gallery-app --targets desktop
           cd gallery-app
           corepack pnpm install
           corepack pnpm platform plugin new preview
@@ -62,7 +63,7 @@ jobs:
           mkdir -p "$install_dir"
           tar -xzf gallery-app/targets/desktop/dist/*.tar.gz -C "$install_dir"
           cd "$install_dir"/gallery-app-*
-          cp "$root/tests/cli/desktop-frame-probe.mjs" targets/desktop/work/
+          cp "$root/packages/platform/tests/cli/desktop-frame-probe.mjs" targets/desktop/work/
           if [[ "$RUNNER_OS" == Windows ]]; then
             export SOLID_SDL3_LIBRARY="$(cygpath -w "$PWD/lib/SDL3.dll")"
             export SOLID_DESKTOP_PNG="$(cygpath -w "$RUNNER_TEMP/gallery-desktop.png")"

@@ -24,13 +24,28 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - name: Install the Roku example so its tsconfig resolves for type-aware lint
-        working-directory: examples/roku
+        working-directory: packages/platform/examples/roku
         run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - name: Parse every host, CLI and video module
         run: |
-          git ls-files 'hosts/**/*.mjs' 'cli/**/*.mjs' 'packages/video/*.mjs' |
+          git ls-files 'packages/platform/hosts/**/*.mjs' 'packages/platform/cli/**/*.mjs' 'packages/video/*.mjs' |
             xargs -n1 node --check
+  renderer:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: packages/renderer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - run: npm run build
+      - run: npm test
+      - run: npm pack --dry-run --ignore-scripts
   unit:
     runs-on: ubuntu-24.04
     steps:
@@ -41,14 +56,19 @@ jobs:
       - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: pnpm test
-      - run: node --test tests/cli/variants.test.mjs
-      - run: python tests/performance/test_frame_timeline.py
+      - working-directory: packages/platform
+        run: |
+          npm test
+          node --test tests/cli/variants.test.mjs
+          python tests/performance/test_frame_timeline.py
+          node --test tests/native/*.test.mjs
       - working-directory: packages/video
-        run: npm ci && npm test
-      - run: node --test tests/native/*.test.mjs
+        run: npm test
   browser:
     runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: packages/platform
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -56,7 +76,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build
+      - run: pnpm -w run build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:webgl
       - name: Compare actual Canvas and WebGL pixels
@@ -69,6 +89,9 @@ jobs:
           if-no-files-found: ignore
   projects:
     runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: packages/platform
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -76,8 +99,8 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build
-      - working-directory: examples/roku
+      - run: pnpm -w run build
+      - working-directory: packages/platform/examples/roku
         run: pnpm install --frozen-lockfile && pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - run: bash tests/cli/projects-smoke.sh
@@ -90,6 +113,9 @@ jobs:
     timeout-minutes: 45
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    defaults:
+      run:
+        working-directory: packages/platform
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -97,6 +123,7 @@ jobs:
           node-version: 24
       - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
+      - run: pnpm -w run build
       - name: Build generated Apple plugin project
         timeout-minutes: 20
         run: bash tests/cli/apple-smoke.sh ${{ matrix.target }} build
