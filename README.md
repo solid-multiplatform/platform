@@ -1,5 +1,7 @@
 # Solid Multiplatform
 
+[Download the SDK, starter apps and device evidence for 0.2 preview 4](https://github.com/solid-multiplatform/platform/releases/tag/v0.2.0-preview.4).
+
 Build one Solid JSX scene and let a host supply drawing, input and device lifecycle. This repository owns the universal JSX binding, layout, focus, UI primitives and device startup. The [renderer repository](https://github.com/solid-multiplatform/renderer) owns WebGL, Canvas 2D and Roku SceneGraph.
 
 | Target                                           | Host              | Graphics and verification                                                                                                                                                        |

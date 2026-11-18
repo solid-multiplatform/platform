@@ -45,3 +45,5 @@ The gallery animates for 300 ms and rests for 200 ms. Short multi-refresh interv
 [Device report and presentation timestamps](./onn-visible/summary.json) · [FrameTimeline conventions](https://perfetto.dev/docs/data-sources/frametimeline)
 
 On the same device, a separate interaction run opened the details view with DPAD input, played an eight-second clip, returned with Back and resumed the app from the launcher. The frame timings above cover the gallery. [Physical evidence archive](https://github.com/solid-multiplatform/platform/releases/download/v0.2.0-preview.3/physical-tv-evidence.zip)
+
+The optional dedicated Android TV SurfaceView passed its artwork preflight, and a packaged starter displayed its native plugin result after remote input. The physical device exposed the SurfaceView through the layer latency ring only. The short diagnostic contained 3,670 presentations over 99.25 seconds and 81 intervals of 25–100 ms. TextureView remains the default. [SurfaceView presentation evidence](https://github.com/solid-multiplatform/platform/releases/download/v0.2.0-preview.4/surface-view-diagnostic.json)
