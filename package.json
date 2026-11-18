@@ -352,6 +352,34 @@
         "types": "./dist/src/sdk/release.d.ts",
         "default": "./dist/src/sdk/release.js"
       }
+    },
+    "./pwa": {
+      "@solidtv/source": "./src/sdk/pwa.ts",
+      "import": {
+        "types": "./dist/src/sdk/pwa.d.ts",
+        "default": "./dist/src/sdk/pwa.js"
+      }
+    },
+    "./download": {
+      "@solidtv/source": "./src/sdk/download.ts",
+      "import": {
+        "types": "./dist/src/sdk/download.d.ts",
+        "default": "./dist/src/sdk/download.js"
+      }
+    },
+    "./menus": {
+      "@solidtv/source": "./src/sdk/menus.ts",
+      "import": {
+        "types": "./dist/src/sdk/menus.d.ts",
+        "default": "./dist/src/sdk/menus.js"
+      }
+    },
+    "./window-state": {
+      "@solidtv/source": "./src/sdk/window-state.ts",
+      "import": {
+        "types": "./dist/src/sdk/window-state.d.ts",
+        "default": "./dist/src/sdk/window-state.js"
+      }
     }
   },
   "sideEffects": false,

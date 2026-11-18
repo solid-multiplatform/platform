@@ -251,15 +251,15 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ### Web
 
-| Feature                       | Status | Gap                                                  |
-| ----------------------------- | ------ | ---------------------------------------------------- |
-| Pointer/touch/keyboard        | S      | —                                                    |
-| Responsive resize             | S      | —                                                    |
-| History/routing               | S      | `createBrowserNavigation` (History API)              |
-| PWA/offline                   | P      | Offline queue exists; no service-worker contract yet |
-| Clipboard/share/notifications | S      | Device services + browser Notification API           |
-| File input/download           | P      | `pickFiles`/files port; download helper not exposed  |
-| Browser TV (Chromium 85)      | S      | Tizen/webOS/Vizio generated builds verified          |
+| Feature                       | Status | Gap                                                                                        |
+| ----------------------------- | ------ | ------------------------------------------------------------------------------------------ |
+| Pointer/touch/keyboard        | S      | —                                                                                          |
+| Responsive resize             | S      | —                                                                                          |
+| History/routing               | S      | `createBrowserNavigation` (History API)                                                    |
+| PWA/offline                   | S      | Manifest + service worker precache, registration/update and install prompt + offline queue |
+| Clipboard/share/notifications | S      | Device services + browser Notification API                                                 |
+| File input/download           | S      | `pickFiles`, `downloadFile`/`downloadText`/`downloadBytes`/`downloadUrl`                   |
+| Browser TV (Chromium 85)      | S      | Tizen/webOS/Vizio generated builds verified                                                |
 
 ### Android phone / tablet
 
@@ -296,17 +296,17 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ### Desktop (Linux / Windows / macOS)
 
-| Feature                                | Status | Gap                                                        |
-| -------------------------------------- | ------ | ---------------------------------------------------------- |
-| SDL3 window, GL, text, resize          | S      | Linux/X11 + CI Windows/macOS first frame                   |
-| Keyboard and IME                       | S      | —                                                          |
-| Scene mouse hover/press/click/drag     | S      | `useMouse` + SDL pointer/mouse forwarding                  |
-| Native menus/tray                      | M      | No API                                                     |
-| File dialogs / drag-drop files         | S      | `pickFiles` + `bindFileDrop`                               |
-| Window state persistence               | M      | No API                                                     |
-| Single instance / deep links / updater | P      | Update check + deep links; single-instance/menu host-owned |
-| Accessibility (AccessKit)              | P      | Bridge exists; audit pending                               |
-| Keyboard shortcuts/accelerators        | S      | `createShortcuts`                                          |
+| Feature                                | Status | Gap                                                                          |
+| -------------------------------------- | ------ | ---------------------------------------------------------------------------- |
+| SDL3 window, GL, text, resize          | S      | Linux/X11 + CI Windows/macOS first frame                                     |
+| Keyboard and IME                       | S      | —                                                                            |
+| Scene mouse hover/press/click/drag     | S      | `useMouse` + SDL pointer/mouse forwarding                                    |
+| Native menus/tray                      | P      | `MenusPort`/menu model/accelerators; native provider app-owned               |
+| File dialogs / drag-drop files         | S      | `pickFiles` + `bindFileDrop`                                                 |
+| Window state persistence               | S      | Desktop host saves/restores x/y/size through SDL and `normalizeWindowBounds` |
+| Single instance / deep links / updater | P      | Update check + deep links; single-instance/menu host-owned                   |
+| Accessibility (AccessKit)              | P      | Bridge exists; audit pending                                                 |
+| Keyboard shortcuts/accelerators        | S      | `createShortcuts`                                                            |
 
 ### Roku
 
@@ -322,7 +322,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ## 12. Implementation phases
 
-Progress: Phases 0–6 and 8 are implemented, including theme/capabilities/insets, keyboard/forms, modal/presentation primitives, tabs/guards/history/restoration, pointer drag/wheel/cursors, data/query/offline persistence, lists and a11y/i18n. Phase 7 media covers playback state/bookmarks, media sessions, fullscreen/PiP, thumbnails, audio and DRM reporting. Phase 5 services cover clipboard/share/haptics, files/pickers, geolocation, biometrics, notifications/jobs ports, keep-awake, orientation, system bars, updates and app review. Every core matrix row is now shipped at the framework level. Remaining work is platform/app-owned: signing certificates and store credentials, the native installer for OTA delivery, and native contacts/calendar/sensor/map providers behind the new ports.
+Progress: Phases 0–6 and 8 are implemented, including theme/capabilities/insets, keyboard/forms, modal/presentation primitives, tabs/guards/history/restoration, pointer drag/wheel/cursors, data/query/offline persistence, lists and a11y/i18n. Phase 7 media covers playback state/bookmarks, media sessions, fullscreen/PiP, thumbnails, audio and DRM reporting. Phase 5 services cover clipboard/share/haptics, files/pickers, geolocation, biometrics, notifications/jobs ports, keep-awake, orientation, system bars, updates and app review. Every core matrix row is now shipped at the framework level. Platform tables additionally cover Web PWA/offline and downloads, and desktop window-state persistence; native menu/tray providers, signing/store credentials, the native OTA installer, and device-dependent Apple/Roku checks remain host/app-owned.
 
 ### Phase 0 — Contracts and theme foundation
 

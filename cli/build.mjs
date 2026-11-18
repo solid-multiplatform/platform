@@ -7,6 +7,7 @@ import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import {
   command,
   copy,
+  framework,
   json,
   project,
   targets,
@@ -166,6 +167,25 @@ function buildTarget(root, target, dev, legacy) {
 
     return;
   }
+  if (target === 'web') {
+    const publicDir = path.join(dir, 'public');
+    const appName = project(root).name;
+    if (!existsSync(path.join(publicDir, 'sw.js')))
+      copy(
+        path.join(framework, 'cli/templates/web/sw.js'),
+        path.join(publicDir, 'sw.js'),
+      );
+    if (!existsSync(path.join(publicDir, 'manifest.webmanifest')))
+      write(
+        path.join(publicDir, 'manifest.webmanifest'),
+        template('web/manifest.webmanifest', { APP_NAME: appName }),
+      );
+    if (!existsSync(path.join(publicDir, 'icon.png')))
+      copy(
+        path.join(framework, 'cli/templates/web/icon.png'),
+        path.join(publicDir, 'icon.png'),
+      );
+  }
   const browser = target === 'web' || browserTVs.includes(target);
   const fonts =
     target === 'roku' || legacy
@@ -175,7 +195,7 @@ function buildTarget(root, target, dev, legacy) {
         : "'file:///app/fonts'";
   write(
     path.join(work, 'main.ts'),
-    `${target === 'web' ? "import { browserSemantics } from '@solid-multiplatform/platform/semantics'; import { bindBrowserViewport } from '@solid-multiplatform/platform/viewport/web'; import {createInputScope,bindPointerEvents} from '@solid-multiplatform/platform/input';" : ''}
+    `${target === 'web' ? "import { browserSemantics } from '@solid-multiplatform/platform/semantics'; import { bindBrowserViewport } from '@solid-multiplatform/platform/viewport/web'; import {createInputScope,bindPointerEvents} from '@solid-multiplatform/platform/input'; import { registerServiceWorker } from '@solid-multiplatform/platform/pwa';" : ''}
 ${browserTVs.includes(target) ? "import { bindBrowserTV, bindTVViewport } from '@solid-multiplatform/platform/browser-tv/input';" : ''}
 ${legacy ? "import {useCanvas} from '@solid-multiplatform/platform/browser-tv/canvas'; useCanvas();" : ''}
 import { mount as start } from './src/app';
@@ -191,7 +211,7 @@ export function mount(host = { target: '${target}' }) {
     return () => { try { dispose?.(); } finally { detach(); ${target === 'web' ? 'stopPointer(); input.dispose(); host.semantics.dispose();stopViewport();' : browserTVs.includes(target) ? 'tv.dispose();display.dispose();' : ''} } };
   } catch (error) { detach(); ${target === 'web' ? 'stopPointer(); input.dispose(); host.semantics.dispose();stopViewport();' : browserTVs.includes(target) ? 'tv.dispose();display.dispose();' : ''} throw error; }
 }
-` + (browser ? 'mount();\n' : ''),
+` + (browser ? 'mount();\n' + (target === 'web' ? "if (import.meta.env.PROD && 'serviceWorker' in navigator) void registerServiceWorker({ url: './sw.js' });\n" : '') : ''),
   );
   if (target !== 'roku')
     copy(

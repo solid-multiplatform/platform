@@ -44,6 +44,9 @@ const position = fn(
   'bool SDL_GetWindowPosition(void *, _Out_ int *, _Out_ int *)',
 );
 const size = fn('bool SDL_GetWindowSize(void *, _Out_ int *, _Out_ int *)');
+const setPosition = fn('bool SDL_SetWindowPosition(void *,int,int)');
+const setSize = fn('bool SDL_SetWindowSize(void *,int,int)');
+const maximize = fn('bool SDL_MaximizeWindow(void *)');
 const pixels = fn(
   'bool SDL_GetWindowSizeInPixels(void *, _Out_ int *, _Out_ int *)',
 );
@@ -154,6 +157,12 @@ export function openWindow(title) {
     textInput(enabled) {
       return enabled ? textStart(handle) : textStop(handle);
     },
+    setGeometry({ x, y, width, height, maximized } = {}) {
+      if (width && height) setSize(handle, Math.round(width), Math.round(height));
+      if (x !== undefined && y !== undefined)
+        setPosition(handle, Math.round(x), Math.round(y));
+      if (maximized) maximize(handle);
+    },
     geometry() {
       const w = [0],
         h = [0],
@@ -181,7 +190,8 @@ export function openWindow(title) {
           send('close');
           return;
         }
-        if (type === 0x206 || type === 0x207 || type === 0x214) send('resize');
+        if (type === 0x205) send('move');
+        else if (type === 0x206 || type === 0x207 || type === 0x214) send('resize');
         else if (type === 0x204) send('expose');
         else if (type === 0x20f) send('blur');
         else if (type === 0x20e) send('focus');

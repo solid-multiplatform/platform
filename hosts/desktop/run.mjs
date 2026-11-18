@@ -4,6 +4,9 @@ import { desktopSemantics } from './semantics.mjs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { readFile } from 'node:fs/promises';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import { normalizeWindowBounds } from '@solid-multiplatform/platform/window-state';
 import { createGraphics } from './graphics.mjs';
 import { channel } from 'node:diagnostics_channel';
 import sharp from 'sharp';
@@ -13,6 +16,36 @@ setCapabilities('desktop');
 const windowHost = openWindow(
   process.env.SOLID_APP_TITLE ?? 'Solid Multiplatform',
 );
+const stateFile =
+  process.env.SOLID_WINDOW_STATE ??
+  path.join(
+    process.env.SOLID_APP_DATA ??
+      path.join(
+        process.env.XDG_CONFIG_HOME ?? path.join(os.homedir(), '.config'),
+        'solid-multiplatform',
+      ),
+    'window-state.json',
+  );
+function loadWindowState() {
+  try {
+    return normalizeWindowBounds(
+      JSON.parse(readFileSync(stateFile, 'utf8')),
+      { width: 960, height: 600 },
+    );
+  } catch {
+    return normalizeWindowBounds(undefined, { width: 960, height: 600 });
+  }
+}
+function saveWindowState() {
+  try {
+    mkdirSync(path.dirname(stateFile), { recursive: true });
+    const { x, y, width, height } = windowHost.geometry();
+    writeFileSync(stateFile, JSON.stringify({ x, y, width, height }));
+  } catch {
+    // A read-only app directory must not break shutdown.
+  }
+}
+windowHost.setGeometry(loadWindowState());
 const work = path.dirname(fileURLToPath(import.meta.url));
 function event(name, values = {}) {
   return Object.assign(new Event(name, { cancelable: true }), values);
@@ -104,6 +137,7 @@ function shutdown() {
   try {
     dispose?.();
   } finally {
+    saveWindowState();
     editors?.dispose();
     semantics?.dispose();
     windowHost.close();
@@ -189,9 +223,12 @@ try {
       semantics.dispatch(),
       windowHost.events((name, values) => {
         if (name === 'close') return shutdown();
-        if (name === 'resize') {
-          semantics.resize();
-          boot.resize(windowHost.geometry());
+        if (name === 'resize' || name === 'move') {
+          if (name === 'resize') {
+            semantics.resize();
+            boot.resize(windowHost.geometry());
+          }
+          saveWindowState();
           return;
         }
         if (name === 'expose') {

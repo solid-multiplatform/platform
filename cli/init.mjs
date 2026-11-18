@@ -253,7 +253,7 @@ export function init(destination, selected) {
           path.join(dest, 'pnpm-workspace.yaml'),
           'onlyBuiltDependencies:\n  - esbuild\n',
         );
-        for (const file of ['index.html', 'vite.config.mjs'])
+        for (const file of ['index.html', 'vite.config.mjs', 'manifest.webmanifest'])
           write(
             path.join(dest, file),
             template(
@@ -264,11 +264,14 @@ export function init(destination, selected) {
               { APP_NAME: name, TARGET: target },
             ),
           );
-        if (browserTVs.includes(target))
-          copy(
-            path.join(framework, 'cli/templates/web/icon.png'),
-            path.join(dest, 'public/icon.png'),
-          );
+        copy(
+          path.join(framework, 'cli/templates/web/icon.png'),
+          path.join(dest, 'public/icon.png'),
+        );
+        copy(
+          path.join(framework, 'cli/templates/web/sw.js'),
+          path.join(dest, 'public/sw.js'),
+        );
       } else device(root, target, dependencies);
     }
   });

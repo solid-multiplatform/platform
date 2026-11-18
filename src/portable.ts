@@ -57,3 +57,7 @@ export * from './sdk/calendar.js';
 export * from './sdk/sensors.js';
 export * from './sdk/maps.js';
 export * from './sdk/release.js';
+export * from './sdk/pwa.js';
+export * from './sdk/download.js';
+export * from './sdk/menus.js';
+export * from './sdk/window-state.js';

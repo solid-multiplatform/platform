@@ -32,12 +32,13 @@ const rowFor = (label: string) =>
 
 v.describe('Checkbox', () => {
   v.it('toggles through Enter and pointer activation', async () => {
+    const label = `Wi-Fi-${Math.random()}`;
     const [checked, setChecked] = createSignal(false);
     const changes: boolean[] = [];
     const dispose = renderer.render(() => (
       <view width={400} height={300}>
         <Checkbox
-          label="Wi-Fi"
+          label={label}
           checked={checked}
           onChange={(next) => {
             changes.push(next);
@@ -61,6 +62,7 @@ v.describe('Checkbox', () => {
   });
 
   v.it('ignores activation when disabled', async () => {
+    const label = `Locked-${Math.random()}`;
     let changes = 0;
     const dispose = renderer.render(() => (
       <view width={400} height={300}>
