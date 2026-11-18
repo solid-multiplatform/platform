@@ -31,7 +31,7 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 | Structured logging and tracing              | Expo/Flutter logging                               | S      | `createLogger` levels, child fields, spans; `configureLogging`             | —     |
 | Crash reporting hook                        | Sentry/Crashlytics integration point               | S      | `setCrashReporter`/`reportCrash`; `AppErrorBoundary` reports render errors | —     |
 | Release signing/notarization hooks          | Tauri/Expo build profiles                          | P      | Manual per platform; documented in workflows                               | 10    |
-| OTA/update channel                          | Tauri updater, Expo Updates                        | M      | No API                                                                     | 5     |
+| OTA/update channel                          | Tauri updater, Expo Updates                        | P      | `createUpdateChecker`; download/apply is host-owned                        | 5     |
 
 ## 2. Layout, rendering and visual system
 
@@ -251,37 +251,37 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ### Web
 
-| Feature                       | Status | Gap                                         |
-| ----------------------------- | ------ | ------------------------------------------- |
-| Pointer/touch/keyboard        | S      | —                                           |
-| Responsive resize             | S      | —                                           |
-| History/routing               | S      | `createBrowserNavigation` (History API)     |
-| PWA/offline                   | M      | No service-worker/offline contract          |
-| Clipboard/share/notifications | P      | Browser services partially exposed          |
-| File input/download           | M      | No API                                      |
-| Browser TV (Chromium 85)      | S      | Tizen/webOS/Vizio generated builds verified |
+| Feature                       | Status | Gap                                                  |
+| ----------------------------- | ------ | ---------------------------------------------------- |
+| Pointer/touch/keyboard        | S      | —                                                    |
+| Responsive resize             | S      | —                                                    |
+| History/routing               | S      | `createBrowserNavigation` (History API)              |
+| PWA/offline                   | P      | Offline queue exists; no service-worker contract yet |
+| Clipboard/share/notifications | S      | Device services + browser Notification API           |
+| File input/download           | P      | `pickFiles`/files port; download helper not exposed  |
+| Browser TV (Chromium 85)      | S      | Tizen/webOS/Vizio generated builds verified          |
 
 ### Android phone / tablet
 
-| Feature                          | Status | Gap                       |
-| -------------------------------- | ------ | ------------------------- |
-| Touch, lifecycle, insets         | S      | —                         |
-| Native editor, password autofill | S      | —                         |
-| Status/navigation bars           | P      | No background color       |
-| Rotation/reflow                  | S      | Regression test           |
-| Back gesture                     | P      | App-wide contract missing |
-| Permissions/notifications        | S      | Ports exist               |
-| Camera/file/biometrics           | M      | No app API                |
+| Feature                          | Status | Gap                                             |
+| -------------------------------- | ------ | ----------------------------------------------- |
+| Touch, lifecycle, insets         | S      | —                                               |
+| Native editor, password autofill | S      | —                                               |
+| Status/navigation bars           | S      | `applySystemBarStyle` host port                 |
+| Rotation/reflow                  | S      | Regression test                                 |
+| Back gesture                     | S      | `createBackDispatcher` + `bindBackKey`          |
+| Permissions/notifications        | S      | Ports exist                                     |
+| Camera/file/biometrics           | S      | `capturePhoto`/`pickFiles`/`authenticate` ports |
 
 ### Android TV
 
-| Feature                           | Status | Gap                       |
-| --------------------------------- | ------ | ------------------------- |
-| D-pad focus, overscan, 10-foot UI | S      | —                         |
-| Media keys, playback              | S      | Video module              |
-| Frame pacing gate                 | S      | Zero-miss passes recorded |
-| Ambient mode / keep awake         | P      | Video only                |
-| Deep linking                      | M      | No TV router integration  |
+| Feature                           | Status | Gap                            |
+| --------------------------------- | ------ | ------------------------------ |
+| D-pad focus, overscan, 10-foot UI | S      | —                              |
+| Media keys, playback              | S      | Video module                   |
+| Frame pacing gate                 | S      | Zero-miss passes recorded      |
+| Ambient mode / keep awake         | S      | `keepAwake` API                |
+| Deep linking                      | S      | `bindDeepLinks` + typed routes |
 
 ### Apple (iOS / iPadOS / tvOS)
 
@@ -296,17 +296,17 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 
 ### Desktop (Linux / Windows / macOS)
 
-| Feature                                | Status | Gap                                           |
-| -------------------------------------- | ------ | --------------------------------------------- |
-| SDL3 window, GL, text, resize          | S      | Linux/X11 + CI Windows/macOS first frame      |
-| Keyboard and IME                       | S      | —                                             |
-| Scene mouse hover/press/click/drag     | M      | Pointer events reach host but not scene nodes |
-| Native menus/tray                      | M      | No API                                        |
-| File dialogs / drag-drop files         | M      | No API                                        |
-| Window state persistence               | M      | No API                                        |
-| Single instance / deep links / updater | M      | No API                                        |
-| Accessibility (AccessKit)              | P      | Bridge exists; audit pending                  |
-| Keyboard shortcuts/accelerators        | M      | No API                                        |
+| Feature                                | Status | Gap                                                        |
+| -------------------------------------- | ------ | ---------------------------------------------------------- |
+| SDL3 window, GL, text, resize          | S      | Linux/X11 + CI Windows/macOS first frame                   |
+| Keyboard and IME                       | S      | —                                                          |
+| Scene mouse hover/press/click/drag     | S      | `useMouse` + SDL pointer/mouse forwarding                  |
+| Native menus/tray                      | M      | No API                                                     |
+| File dialogs / drag-drop files         | S      | `pickFiles` + `bindFileDrop`                               |
+| Window state persistence               | M      | No API                                                     |
+| Single instance / deep links / updater | P      | Update check + deep links; single-instance/menu host-owned |
+| Accessibility (AccessKit)              | P      | Bridge exists; audit pending                               |
+| Keyboard shortcuts/accelerators        | S      | `createShortcuts`                                          |
 
 ### Roku
 
@@ -316,13 +316,13 @@ Status: **S** shipped and exercised, **P** partial, **M** missing.
 | BrighterScript plugin preset                                   | S      | CLI template                     |
 | Registry/storage/tasks                                         | S      | `roku/storage`, `roku/tasks`     |
 | Video/captions/trick play                                      | P      | Video node integration partial   |
-| Deep linking / roInputEvent                                    | M      | No router integration            |
+| Deep linking / roInputEvent                                    | S      | `bindDeepLinks` + typed routes   |
 | Voice keyboard/PIN                                             | P      | Native text dialog bridge exists |
 | Certification budgets (15s launch, 3s scenes, 250ms keys, 4MB) | P      | No automated gate                |
 
 ## 12. Implementation phases
 
-Progress: Phase 0 is implemented (theme tokens, colour scheme, capability registry, extended inset contract). Phase 1 is implemented for `useKeyboard`, `KeyboardAvoidingView`, `SafeArea`, `revealAboveKeyboard`, `keyboardAwareBounds`, `createForm` validation/touched/errors/submitting, and the keyboard-aware mobile template. Remaining: a rendered FormField component and automatic wiring of native editors. Desktop scene pointer hover/press/click is implemented (`useMouse` plus SDL pointer/mouse forwarding), along with `dragToScroll`, `wheelToScroll`, and pointer cursor styles (`cursorStyle`, `useCursor`). Phase 2 now has `Modal` with a real focus trap and restore, `Sheet`, `Toast`, `Popover`, `Menu`, `Tooltip` and `Alert`, plus tab navigation, guards, snapshot/restore and browser history. Remaining in Phase 2: drawer, route transitions, focus/scroll restoration on back, and deep-link router integration. Phase 4 data primitives are in place: `createQuery` (cache/retry/invalidation), `createPersistentStore` and `createOfflineQueue`. Device services now cover clipboard, share, haptics, device/battery info, keep-awake, orientation and external opening, and `bindDeepLinks` connects the links port to navigation. Internationalization covers translations, plurals, RTL, text scaling, high contrast and locale-aware formatting; `auditSemantics` and reading-order helpers cover the accessibility gate. Phase 6 is implemented: paged loading, pull-to-refresh, selection, standard list states, section flattening/sticky headers, swipe actions and reordering. Phase 2 also has `Drawer`, and crash reporting is wired through `AppErrorBoundary`. Forms have checkbox/radio controls, and media has persisted resume bookmarks, now-playing metadata/transport handlers, fullscreen/PiP and thumbnails. Platform services now include geolocation, biometrics, files/pickers and update checks; shortcuts and the app-wide back dispatcher cover keyboard/back input. Logging/tracing, environment injection and low-memory detection are also in place. Navigation restoration now captures focus/scroll state on leave and restores it on back, and `useTransition` provides enter/exit values. Select/search/multiline controls, camera/microphone capture, system-bar styling, app review and hardware media keys are implemented. Gamepad snapshots/edges, file drop, image fit and typed routes are also in place. Audio playback, DRM/codec reporting and modal semantics isolation are implemented. A `DatePicker` covers calendar/time selection. Remaining items are platform/tooling work (release signing, OTA delivery) and deferred layout/media primitives (aspect ratio, rich-text spans, SVG, pinch gestures, form Tab grouping, contacts/sensors/maps, gesture alternatives).
+Progress: Phases 0–6 and 8 are implemented, including theme/capabilities/insets, keyboard/forms, modal/presentation primitives, tabs/guards/history/restoration, pointer drag/wheel/cursors, data/query/offline persistence, lists and a11y/i18n. Phase 7 media covers playback state/bookmarks, media sessions, fullscreen/PiP, thumbnails, audio and DRM reporting. Phase 5 services cover clipboard/share/haptics, files/pickers, geolocation, biometrics, notifications/jobs ports, keep-awake, orientation, system bars, updates and app review. Remaining work is platform delivery (signing/notarization and OTA installation) and deferred renderer/app primitives: aspect ratio, rich-text spans, SVG, form Tab grouping, gesture alternatives, and the optional contacts/sensors/maps integrations.
 
 ### Phase 0 — Contracts and theme foundation
 
