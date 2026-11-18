@@ -111,8 +111,8 @@ export class Stage {
    * so these two numbers fully describe the fallback visible region used by
    * `CoreNode.checkRenderBounds` when no clipping ancestor applies.
    */
-  public readonly viewportW: number;
-  public readonly viewportH: number;
+  public viewportW: number;
+  public viewportH: number;
   public readonly defaultTexture: Texture | null = null;
   /**
    * Physical × logical device pixel ratio. Fixed at construction (app size and
@@ -120,13 +120,13 @@ export class Stage {
    * `EDGE_WIDTH` and fold it into cached uniforms, which would go stale if it
    * could change.
    */
-  public readonly pixelRatio: number;
+  public pixelRatio: number;
   /**
    * Canvas height in device pixels, read once: the canvas is sized before the
    * stage is created and never resized. Used to flip scissor boxes to GL's
    * bottom-left origin.
    */
-  public readonly canvasH: number;
+  public canvasH: number;
   public readonly platform: Platform | WebPlatform;
   public readonly calculateTextureCoord: boolean;
 

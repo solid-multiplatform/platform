@@ -49,6 +49,7 @@ import {
  * headless the stand-in of `headlessHost`.
  */
 export interface ProgramHost {
+  readonly resizable?: boolean;
   /** viewportGlsl for the canvas: what source functions compile in. */
   readonly viewport: string;
   /** Compile and link; throws when that fails. `name` is for developer tools. */
@@ -205,7 +206,8 @@ export class ShaderRegistry {
 
   private readonly nodes: NodeStore;
   private readonly owner: ShaderClock;
-  private readonly pixelRatio: number;
+  private pixelRatio: number;
+  private readonly resizeContexts: UpdateContext[] = [];
   private readonly writer: UniformWriter;
   private readonly byName: Record<string, TypeRecord> = Object.create(
     null,
@@ -496,6 +498,20 @@ export class ShaderRegistry {
   }
 
   /** Mark every node using `shader` for a repack (a prop changed). */
+  setPixelRatio(value: number): void {
+    if (this.pixelRatio === value) return;
+    this.pixelRatio = value;
+    this.writer.pixelRatio = value;
+    for (const context of this.resizeContexts) context.stage.pixelRatio=value;
+    for (let id = 0; id < this.users.length; id++) {
+      if (this.users[id]) {
+        this.unset(id);
+        this.nodes.markDirty(id, DIRTY_SHADER);
+      }
+    }
+    this.dropIdle();
+  }
+
   markUsers(shader: ShaderNode): void {
     const nodes = this.nodes;
     const next = this.next;
@@ -624,6 +640,7 @@ export class ShaderRegistry {
     if (pack === null && update !== undefined) {
       // 1.10: `this` offers the props and the uniform* calls, `node` its size.
       const context = new UpdateContext(this.pixelRatio);
+      if(this.host.resizable) this.resizeContexts.push(context);
       const node: UpdateNode = { w: 0, h: 0, width: 0, height: 0 };
       pack = (values, w, h, u) => {
         context.props = values;
@@ -786,6 +803,7 @@ export class ShaderRegistry {
     const ratio = this.pixelRatio;
     const context: ShaderContext = {
       pixelRatio: ratio,
+      resizable: host.resizable,
       viewport: host.viewport,
       stage: { pixelRatio: ratio },
     };

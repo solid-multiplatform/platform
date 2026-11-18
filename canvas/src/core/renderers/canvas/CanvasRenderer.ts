@@ -16,7 +16,7 @@ import { normalizeCanvasColor } from '../../lib/colorCache.js';
 export class CanvasRenderer extends CoreRenderer {
   private context: CanvasRenderingContext2D;
   private canvas: HTMLCanvasElement;
-  private readonly pixelRatio: number;
+
   private clearColor: string;
   private clearColorAlpha: number;
   // Scratch state for the preallocated shader renderContext callback below —
@@ -34,7 +34,7 @@ export class CanvasRenderer extends CoreRenderer {
     const { canvas } = options;
     this.canvas = canvas as HTMLCanvasElement;
     this.context = canvas.getContext('2d') as CanvasRenderingContext2D;
-    this.pixelRatio = this.stage.pixelRatio;
+
     this.clearColor = normalizeCanvasColor(this.stage.clearColor);
     this.clearColorAlpha = (this.stage.clearColor >>> 24) & 0xff;
   }
@@ -55,7 +55,7 @@ export class CanvasRenderer extends CoreRenderer {
       ctx.fillRect(0, 0, w, h);
     }
 
-    ctx.scale(this.pixelRatio, this.pixelRatio);
+    ctx.scale(this.stage.pixelRatio, this.stage.pixelRatio);
   }
 
   render(): void {
@@ -131,7 +131,7 @@ export class CanvasRenderer extends CoreRenderer {
       // | a  c  e  |
       // | b  d  f  |
       // | 0  0  1  |
-      const scale = this.pixelRatio;
+      const scale = this.stage.pixelRatio;
       ctx.setTransform(ta, tc, tb, td, tx * scale, ty * scale);
       ctx.scale(scale, scale);
       ctx.translate(-tx, -ty);

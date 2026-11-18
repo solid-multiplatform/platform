@@ -123,7 +123,7 @@ export const RadialProgress: ShaderType<RadialProgressProps> = {
       `#define CAP_ROUND ${props.cap}\n` +
       `#define HAS_TRACK ${props.trackColor !== 0 ? 1 : 0}\n` +
       '#define TWO_PI 6.28318530717958647692\n' +
-      edgeWidthDefine(ctx.pixelRatio) +
+      edgeWidthDefine(ctx.pixelRatio, ctx.resizable) +
       // A static arc names no u_time: a uniform its program never reads
       // would still split its ops in the headless host (roadmap risks).
       (animated === true

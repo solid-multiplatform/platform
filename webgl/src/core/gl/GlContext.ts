@@ -106,6 +106,13 @@ export class GlContext {
     gl.blendFunc(ONE, ONE_MINUS_SRC_ALPHA);
   }
 
+  resizeViewport(width: number, height: number): void {
+    this.gl.viewport(0, 0, width, height);
+    // A resized drawing buffer can reset the driver's scissor box.
+    this.sw = -1;
+    this.sh = -1;
+  }
+
   useProgram(program: WebGLProgram): void {
     if (this.program !== program) {
       this.program = program;

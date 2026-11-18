@@ -38,6 +38,7 @@ export interface AdvancedProp<
 
 /** The renderer's constants a source function gets with the props. */
 export interface ShaderContext {
+  readonly resizable?: boolean;
   /** Device pixels per logical pixel. */
   readonly pixelRatio: number;
   /** viewportGlsl for this canvas: PIXEL_RATIO, RESOLUTION and pxToClip. */
@@ -153,7 +154,7 @@ export type WebGlShaderType<P extends object = Record<string, unknown>> =
  */
 export class UniformWriter {
   /** Device pixels per logical pixel (fixed at construction). */
-  readonly pixelRatio: number;
+  pixelRatio: number;
   /**
    * The pack called `alphaUnused`; read before `finish`, which clears it.
    *
@@ -334,7 +335,7 @@ function copy(
  */
 export class UpdateContext<P = Record<string, unknown>> {
   props: P = null as unknown as P;
-  readonly stage: { readonly pixelRatio: number };
+  readonly stage: { pixelRatio: number };
   u: UniformWriter = null as unknown as UniformWriter;
 
   constructor(pixelRatio: number) {

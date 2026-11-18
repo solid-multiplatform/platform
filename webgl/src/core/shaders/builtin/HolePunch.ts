@@ -39,7 +39,7 @@ export const HolePunch: ShaderType<HolePunchProps> = {
     ),
   fragment: (ctx) =>
     PRECISION +
-    edgeWidthDefine(ctx.pixelRatio) +
+    edgeWidthDefine(ctx.pixelRatio, ctx.resizable) +
     'uniform sampler2D u_texture;uniform vec4 u_params[3];' +
     'varying vec4 v_color;varying vec2 v_textureCoords;varying vec2 v_hole;\n' +
     'void main(){vec4 color=texture2D(u_texture,v_textureCoords)*v_color;vec2 p=v_hole;' +

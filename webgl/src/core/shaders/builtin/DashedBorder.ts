@@ -68,7 +68,7 @@ export const DashedBorder: ShaderType<DashedBorderProps> = {
   fragment: (ctx) =>
     PRECISION +
     '#define HALF_PI 1.5707963\n' +
-    edgeWidthDefine(ctx.pixelRatio) +
+    edgeWidthDefine(ctx.pixelRatio, ctx.resizable) +
     'uniform float u_alpha;uniform sampler2D u_texture;\n' +
     ROWS +
     'varying vec4 v_color;varying vec2 v_textureCoords;varying vec2 v_p;\n' +

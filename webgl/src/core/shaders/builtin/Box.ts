@@ -213,7 +213,7 @@ const boxType = <P extends object>(
   return {
     props: props as ShaderType<P>['props'],
     vertex: (ctx) => head(ctx) + vertex,
-    fragment: (ctx) => head(ctx) + edgeWidthDefine(ctx.pixelRatio) + fragment,
+    fragment: (ctx) => head(ctx) + edgeWidthDefine(ctx.pixelRatio, ctx.resizable) + fragment,
     pack,
   };
 };

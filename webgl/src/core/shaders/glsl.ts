@@ -54,7 +54,8 @@ export const defaultVertex = (
  * `clamp(0.5 - d * INV_EDGE_WIDTH, 0.0, 1.0)`: a linear ramp one device
  * pixel wide, 50% on the true edge.
  */
-export const edgeWidthDefine = (pixelRatio: number): string =>
+export const edgeWidthDefine = (pixelRatio: number, resizable = false): string =>
+  resizable ? '#ifndef SMP_PIXEL_RATIO_UNIFORM\n#define SMP_PIXEL_RATIO_UNIFORM\nuniform float u_pixelRatio;\n#endif\n#define EDGE_WIDTH (1.0/u_pixelRatio)\n#define INV_EDGE_WIDTH u_pixelRatio\n' :
   `#define EDGE_WIDTH ${(1 / pixelRatio).toFixed(8)}\n` +
   `#define INV_EDGE_WIDTH ${pixelRatio.toFixed(8)}\n`;
 

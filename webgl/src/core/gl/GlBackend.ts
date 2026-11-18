@@ -31,6 +31,7 @@ import {
 } from './VertexStream.js';
 
 export interface GlBackendSettings {
+  resizable?: boolean;
   forceWebGL2: boolean;
   disableVertexArrayObject: boolean;
   powerPreference: WebGLPowerPreference;
@@ -80,7 +81,7 @@ export class GlBackend {
 
   private readonly canvas: HTMLCanvasElement;
   /** Device pixels per logical pixel: u_pixelRatio for a custom shader. */
-  private readonly pixelRatio: number;
+  private pixelRatio: number;
   private readonly textures: (WebGLTexture | null)[] = [];
   /** Texture 0: an op whose texture has no GL texture yet binds it. */
   private readonly white: WebGLTexture;
@@ -108,7 +109,9 @@ export class GlBackend {
     ctx.clearColor(settings.clearColor);
     // A lost context answers null (getCapabilities): 0, no limit known.
     this.maxTextureSize = ctx.parameter(MAX_TEXTURE_SIZE) ?? 0;
-    this.viewport = viewportGlsl(
+    this.viewport = settings.resizable
+      ? 'uniform vec2 u_resolution;\n#ifndef SMP_PIXEL_RATIO_UNIFORM\n#define SMP_PIXEL_RATIO_UNIFORM\nuniform float u_pixelRatio;\n#endif\n#define PIXEL_RATIO u_pixelRatio\n#define RESOLUTION u_resolution\nvec4 pxToClip(vec2 p){return vec4((p*PIXEL_RATIO/RESOLUTION*2.0-1.0)*vec2(1.0,-1.0),0.0,1.0);}'
+      : viewportGlsl(
       settings.pixelRatio,
       canvas.width,
       canvas.height,
@@ -270,6 +273,20 @@ export class GlBackend {
       }
     }
     const program = new Program(ctx, vertex, fragment, name);
+    this.setViewportUniforms(program);
+    const programs = this.programs;
+    programs.push(program);
+    return programs.length - 1;
+  }
+
+  resize(pixelRatio: number): void {
+    this.pixelRatio = pixelRatio;
+    this.ctx.resizeViewport(this.canvas.width, this.canvas.height);
+    for (const program of this.programs) this.setViewportUniforms(program);
+  }
+
+  private setViewportUniforms(program: Program): void {
+    const ctx = this.ctx;
     const resolution = program.system[U_RESOLUTION]!;
     const ratio = program.system[U_PIXEL_RATIO]!;
     if (resolution !== null || ratio !== null) {
@@ -281,9 +298,7 @@ export class GlBackend {
         ctx.uniform1f(ratio, this.pixelRatio);
       }
     }
-    const programs = this.programs;
-    programs.push(program);
-    return programs.length - 1;
+
   }
 
   /**

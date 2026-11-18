@@ -109,6 +109,7 @@ export class Loader {
   private readonly platform: Platform;
   private readonly store: TextureStore;
   private readonly settings: LoaderSettings;
+  setPixelRatio(value: number): void { this.settings.pixelRatio = value; }
   private ctx: SourceContext | null = null;
   private destroyed = false;
   private readonly onLoaded = (rec: number, loaded: LoadedImage): void => {

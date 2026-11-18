@@ -79,7 +79,7 @@ export class SceneGraphRenderer extends Events implements HostRenderer<RokuNode>
     this.unsubscribeFonts = subscribeFontChanges(() => this.onFontVersionChanged());
     // The renderer root is the app group. The host already inserted it into the
     // scene (usually inside a Scene with a solid background).
-    this.root = new RokuNode(this, { w: APP_W, h: APP_H }, this.nativeRoot || undefined, false);
+    this.root = new RokuNode(this, { w: settings?.appWidth ?? APP_W, h: settings?.appHeight ?? APP_H }, this.nativeRoot || undefined, false);
     this.root.parent = null;
     if (this.host.debug) {
       this.perfBox = new RokuNode(this, { w: 330, h: 66, x: 1580, y: 266, zIndex: 10001, color: 0x000000ff }, undefined, false);
@@ -134,6 +134,14 @@ export class SceneGraphRenderer extends Events implements HostRenderer<RokuNode>
       .then((monitor) => { this.memMonitor = monitor; })
       .catch((err) => { console.warn('ROKU_MEMORY_MONITOR unavailable: ' + err); });
     console.log('ROKU_RENDERER ready ' + APP_W + 'x' + APP_H);
+  }
+
+  resize(width: number, height: number) {
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) throw new RangeError('Invalid viewport size');
+    if (this.root.w === width && this.root.h === height) return;
+    this.root.w = width;
+    this.root.h = height;
+    this.requestRender();
   }
 
   getFontRoot() {

@@ -1440,6 +1440,26 @@ export class RendererMain extends EventEmitter {
     this.inspector.createNodes(this.root as unknown as CoreNode);
   }
 
+  /** Change the Canvas 2D drawing buffer without replacing the scene or its textures. */
+  resize(width: number, height: number, dpr = this.stage.options.devicePhysicalPixelRatio): void {
+    if (this.stage.renderer.mode !== 'canvas') throw new Error('Resizable WebGL is available through the v2 backend.');
+    if (![width, height, dpr].every(n => Number.isFinite(n) && n > 0)) throw new RangeError('Invalid viewport size');
+    const stage = this.stage;
+    const o = stage.options;
+    if(width === stage.viewportW && height === stage.viewportH && dpr === o.devicePhysicalPixelRatio) return;
+    const logical = o.deviceLogicalPixelRatio;
+    stage.platform.sizeCanvas(this.canvas, Math.round(width*logical*dpr),Math.round(height*logical*dpr),width*logical,height*logical);
+    stage.viewportW = o.appWidth = width;
+    stage.viewportH = o.appHeight = height;
+    o.devicePhysicalPixelRatio = dpr;
+    stage.pixelRatio = logical*dpr;
+    stage.canvasH = this.canvas.height;
+    this.root.w = width;
+    this.root.h = height;
+    stage.updateViewportBounds();
+    stage.requestRender();
+  }
+
   get settings(): Readonly<StageOptions> {
     return this.stage.options;
   }

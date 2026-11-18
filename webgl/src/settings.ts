@@ -81,6 +81,8 @@ export interface RendererSettings
   premultiplyAlphaHonored: boolean | 'auto';
   maxRetryCount: number;
   enableContextSpy: boolean;
+  /** Compile viewport uniforms for hosts with live resizing. */
+  resizable: boolean;
   forceWebGL2: boolean;
   disableVertexArrayObject: boolean;
   powerPreference: WebGLPowerPreference;
@@ -258,6 +260,7 @@ export function resolveSettings(
     premultiplyAlphaHonored: s.premultiplyAlphaHonored ?? true,
     maxRetryCount: s.maxRetryCount ?? 5,
     enableContextSpy: s.enableContextSpy ?? false,
+    resizable: s.resizable ?? false,
     forceWebGL2: s.forceWebGL2 ?? false,
     disableVertexArrayObject: s.disableVertexArrayObject ?? false,
     powerPreference: s.powerPreference ?? 'default',

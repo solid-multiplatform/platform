@@ -144,6 +144,7 @@ export class Renderer extends RendererCore {
     // a fractional size (1.10 Stage.canvasH).
     this.view.canvasH = canvas.height;
     const backend = new GlBackend(canvas, {
+      resizable: s.resizable,
       forceWebGL2: s.forceWebGL2,
       disableVertexArrayObject: s.disableVertexArrayObject,
       powerPreference: s.powerPreference,
@@ -160,6 +161,7 @@ export class Renderer extends RendererCore {
     const shaders = this.shaders;
     shaders.host = {
       viewport: backend.viewport,
+      resizable: s.resizable,
       register: (vertex, fragment, extensions, table, time, name) => {
         const id = backend.registerProgram(vertex, fragment, extensions, name);
         const program = backend.programs[id]!;
@@ -696,6 +698,27 @@ export class Renderer extends RendererCore {
   }
 
   /** The backend and device limits; reads GL parameters, so call it once. */
+  resize(width: number, height: number, dpr = this.settings.devicePhysicalPixelRatio): void {
+    if (!this.settings.resizable) throw new Error('Enable resizable when creating the renderer.');
+    if (![width, height, dpr].every(n => Number.isFinite(n) && n > 0)) throw new RangeError('Invalid viewport size');
+    const s = this.settings;
+    if (width === s.appWidth && height === s.appHeight && dpr === s.devicePhysicalPixelRatio) return;
+    const logical = s.deviceLogicalPixelRatio;
+    this.platform.sizeCanvas(this.canvas, Math.round(width * logical * dpr), Math.round(height * logical * dpr), width * logical, height * logical);
+    s.appWidth = this.view.w = width;
+    s.appHeight = this.view.h = height;
+    s.devicePhysicalPixelRatio = dpr;
+    const ratio = this.view.pixelRatio = logical * dpr;
+    this.view.canvasH = this.canvas.height;
+    this.backend.resize(ratio);
+    this.shaders.setPixelRatio(ratio);
+    this.loader.setPixelRatio(ratio);
+    this.root.w = width;
+    this.root.h = height;
+    this.nodes.markDirty(this.root.id, DIRTY_INHERITED);
+    this.requestRender();
+  }
+
   getCapabilities(): RendererCapabilities {
     return this.backend.getCapabilities();
   }
