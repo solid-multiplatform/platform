@@ -394,6 +394,10 @@ function Tile(props: {
 }
 
 export function ContainersScreen() {
+  // Four 132-wide cells need 528 units; a phone fits fewer, so the grid
+  // reflows and the box grows by a row rather than clipping.
+  const columns = () =>
+    Math.max(1, Math.min(4, Math.floor(contentWidth() / 132)));
   return (
     <Screen title="Row, Column, Grid">
       <Caption>Row: Left and Right</Caption>
@@ -406,11 +410,15 @@ export function ContainersScreen() {
           {(i) => <Tile label={`Column ${i + 1}`} width={220} />}
         </For>
       </Column>
-      <Caption>Grid: four columns, all four arrows</Caption>
-      <view height={136} width={contentWidth()} forwardFocus={0}>
+      <Caption>{`Grid: ${columns()} columns, all four arrows`}</Caption>
+      <view
+        height={Math.ceil(8 / columns()) * 68}
+        width={contentWidth()}
+        forwardFocus={0}
+      >
         <Grid
           items={numbers(8)}
-          columns={4}
+          columns={columns()}
           itemWidth={132}
           itemHeight={68}
           scroll="none"

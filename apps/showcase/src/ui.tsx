@@ -4,6 +4,7 @@ import type { ElementNode, NodeStyles } from '@solid-multiplatform/platform';
 import { Column } from '@solid-multiplatform/platform/primitives';
 import { viewport } from '@solid-multiplatform/platform/viewport';
 import { useShowcase } from './env';
+import { metricsFor } from './layout';
 
 export const BACKGROUND = 0x0b1118ff;
 export const PANEL = 0x142235ff;
@@ -11,9 +12,12 @@ export const TEXT = 0xf2f6faff;
 export const MUTED = 0x9fb0c3ff;
 export const ACCENT = 0x4fb3ffff;
 
-export const MARGIN = 32;
+/** The window class and its numbers, from the reactive viewport. */
+export const metrics = () => metricsFor(viewport().width);
+
 /** Width of a screen's content. */
-export const contentWidth = () => Math.max(320, viewport().width - 2 * MARGIN);
+export const contentWidth = () =>
+  Math.max(280, viewport().width - 2 * metrics().margin);
 
 /** Focus from the remote, hover and press from a pointer: no plumbing. */
 export const interactive: NodeStyles = {
@@ -34,10 +38,16 @@ export function Button(props: {
   onBlur?: () => void;
   ref?: (node: ElementNode) => void;
 }) {
+  // On a phone a button fills the column unless it asked for less.
+  const width = () =>
+    Math.min(
+      props.width ?? (metrics().layout === 'mobile' ? contentWidth() : 280),
+      contentWidth(),
+    );
   return (
     <view
       ref={(node: ElementNode) => props.ref?.(node)}
-      width={props.width ?? 280}
+      width={width()}
       height={48}
       style={interactive}
       autofocus={props.autofocus}
@@ -81,16 +91,23 @@ export function Screen(props: {
   children?: JSX.Element;
 }) {
   const showcase = useShowcase();
+  // The header condenses on a phone: a smaller title nearer the top, and the
+  // content column starts higher.
   return (
     <view width={viewport().width} height={viewport().height}>
-      <text x={MARGIN} y={18} fontSize={34} color={TEXT}>
+      <text
+        x={metrics().margin}
+        y={metrics().titleY}
+        fontSize={metrics().titleSize}
+        color={TEXT}
+      >
         {props.title}
       </text>
       <Column
-        x={MARGIN}
-        y={76}
+        x={metrics().margin}
+        y={metrics().screenBodyY}
         width={contentWidth()}
-        gap={props.gap ?? 12}
+        gap={props.gap ?? (metrics().layout === 'mobile' ? 10 : 12)}
         scroll="none"
         autofocus
       >

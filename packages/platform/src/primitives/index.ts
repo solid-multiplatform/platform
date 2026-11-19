@@ -61,5 +61,7 @@ export * from './Select.jsx';
 export * from './DatePicker.jsx';
 export * from './FocusGroup.jsx';
 export * from './RichText.jsx';
+export * from './SelectableText.jsx';
+export * from './selectionModel.js';
 export * from './Svg.jsx';
 export * from './GestureAlternatives.jsx';

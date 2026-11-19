@@ -1,5 +1,193 @@
-import { type NodeProps, RendererMain } from '@solid-multiplatform/platform';
-import { createSignal } from 'solid-js';
+/**
+ * A frame-rate and frame-time meter, and the telemetry-backed counter the
+ * primitives shipped with.
+ *
+ * The meter samples the renderer's own `frameTick` — a frame the renderer
+ * was already drawing — so it never schedules a frame itself. It attaches
+ * its listener when it is mounted and removes it when it is unmounted
+ * (`App` renders it only while the person has asked for it, off by default):
+ * hidden, it has no timer, no listener and no cost.
+ *
+ * The readout is published at most once every three frames. A publish
+ * changes a signal, which asks for one frame; needing three frames since the
+ * last publish keeps that one induced frame from publishing again, so an idle
+ * scene reaches zero frames with the meter open, as it does with it closed.
+ */
+import {
+  getRenderer,
+  type NodeProps,
+  RendererMain,
+} from '@solid-multiplatform/platform';
+import { createSignal, onCleanup, onMount } from 'solid-js';
+import { viewport } from '../sdk/viewport.js';
+
+// ---- The meter
+
+/** Frames that must arrive before the readout is published again. */
+const REPAINT_FRAMES = 3;
+/** The averaging window, in milliseconds of frame time. */
+const WINDOW_MS = 1000;
+
+interface FrameSource {
+  on?(event: string, listener: (target: unknown, data?: unknown) => void): void;
+  off?(
+    event: string,
+    listener: (target: unknown, data?: unknown) => void,
+  ): void;
+}
+
+/** Read-only counters `RendererCore` keeps for its own last update. */
+interface RenderCounters {
+  flushedOps?: number;
+  ops?: { length?: number };
+  scene?: { quads?: number };
+}
+
+interface FrameTickPayload {
+  time?: number;
+  delta?: number;
+}
+
+export interface FPSReadout {
+  /** Frames per second implied by the last frame's delta. */
+  instant: number;
+  /** Frames divided by the time they took, over the last second. */
+  average: number;
+  /** The last frame's time in milliseconds. */
+  last: number;
+  /** Median and 99th-percentile frame time over the window, in ms. */
+  p50: number;
+  p99: number;
+  /** Ops drawn by the renderer's last update, when it reports them. */
+  draws: number | undefined;
+  /** Quads in the last update, when the renderer reports them. */
+  quads: number | undefined;
+  /** False until the first frames are sampled. */
+  sampled: boolean;
+}
+
+const EMPTY: FPSReadout = {
+  instant: 0,
+  average: 0,
+  last: 0,
+  p50: 0,
+  p99: 0,
+  draws: undefined,
+  quads: undefined,
+  sampled: false,
+};
+
+const percentile = (sorted: number[], fraction: number): number =>
+  sorted[
+    Math.min(
+      sorted.length - 1,
+      Math.max(0, Math.ceil(fraction * sorted.length) - 1),
+    )
+  ]!;
+
+export const FPSCounter = (props: NodeProps) => {
+  const [readout, setReadout] = createSignal<FPSReadout>(EMPTY);
+
+  onMount(() => {
+    const renderer = getRenderer() as unknown as
+      | (FrameSource & RenderCounters)
+      | undefined;
+    if (typeof renderer?.on !== 'function') return;
+
+    // Frame times inside the window, with the running clock they end at.
+    const window: { delta: number; at: number }[] = [];
+    let clock = 0;
+    let frames = 0;
+    let published = 0;
+
+    const listener = (_target: unknown, payload?: unknown) => {
+      const delta = (payload as FrameTickPayload | undefined)?.delta;
+      if (typeof delta !== 'number' || !(delta > 0) || !isFinite(delta)) return;
+      frames++;
+      clock += delta;
+      window.push({ delta, at: clock });
+      while (window.length > 1 && clock - window[0]!.at > WINDOW_MS)
+        window.shift();
+      // A publish asks for one frame. Requiring several since the previous
+      // one means that induced frame cannot publish in turn.
+      if (frames - published < REPAINT_FRAMES) return;
+      published = frames;
+
+      const recent = window.map((sample) => sample.delta);
+      const total = recent.reduce((sum, value) => sum + value, 0);
+      const sorted = [...recent].sort((a, b) => a - b);
+      const draws = renderer.flushedOps;
+      setReadout({
+        instant: 1000 / delta,
+        average: total > 0 ? (recent.length * 1000) / total : 0,
+        last: delta,
+        p50: percentile(sorted, 0.5),
+        p99: percentile(sorted, 0.99),
+        draws:
+          typeof draws === 'number'
+            ? draws + (renderer.ops?.length ?? 0)
+            : undefined,
+        quads: renderer.scene?.quads,
+        sampled: true,
+      });
+    };
+
+    renderer.on('frameTick', listener);
+    onCleanup(() => renderer.off?.('frameTick', listener));
+  });
+
+  // A phone-sized panel leaves a margin; on a television the same panel sits
+  // in the corner. It is a scene node like any other, drawn over the screen.
+  const width = () => Math.min(320, viewport().width - 24);
+  const x = () => viewport().width - width() - 12;
+  const ms = (value: number) =>
+    value < 10 ? value.toFixed(1) : String(Math.round(value));
+  const fps = (value: number) => (value > 0 ? String(Math.round(value)) : '–');
+  const label = () => {
+    const r = readout();
+    if (!r.sampled) return 'Frames per second: measuring';
+    return `Frames per second: ${fps(r.instant)}, average ${fps(r.average)} over 1 s. Frame ${ms(r.last)} ms, p50 ${ms(r.p50)}, p99 ${ms(r.p99)}. ${
+      r.draws === undefined ? 'Draw count unavailable' : `${r.draws} draws`
+    }${r.quads === undefined ? '' : `, ${r.quads} quads`}.`;
+  };
+
+  return (
+    <view
+      {...props}
+      x={x()}
+      y={12}
+      width={width()}
+      height={96}
+      color={0x000000dd}
+      borderRadius={8}
+      zIndex={100}
+      role="status"
+      ariaLabel={label()}
+    >
+      <text x={12} y={8} fontSize={20} color={0xf6f6f6ff}>
+        {`FPS ${fps(readout().instant)}`}
+      </text>
+      <text x={130} y={11} fontSize={14} color={0x9fb0c3ff}>
+        {`avg ${fps(readout().average)} / 1 s`}
+      </text>
+      <text x={12} y={36} fontSize={14} color={0xd5dee8ff}>
+        {readout().sampled
+          ? `frame ${ms(readout().last)} ms  p50 ${ms(readout().p50)}  p99 ${ms(readout().p99)}`
+          : 'frame time: measuring'}
+      </text>
+      <text x={12} y={56} fontSize={14} color={0xd5dee8ff}>
+        {readout().draws === undefined
+          ? 'draws: not reported by this backend'
+          : `draws ${readout().draws}${readout().quads === undefined ? '' : `  quads ${readout().quads}`}`}
+      </text>
+      <text x={12} y={76} fontSize={12} color={0x9fb0c3ff}>
+        F closes
+      </text>
+    </view>
+  );
+};
+
+// ---- The telemetry-backed counter (setupFPS)
 
 const fpsStyle = {
   color: 0x000000ff,
@@ -106,7 +294,14 @@ export function setupFPS(root: any) {
   );
 }
 
-export const FPSCounter = (props: NodeProps) => {
+/**
+ * The telemetry panel: it reads the renderer's `fpsUpdate` and
+ * `renderUpdate` events, which exist only while `fpsUpdateInterval` is
+ * above 0. Call `setupFPS(root)` first; the renderer then owns a sampler
+ * timer, so this panel is not part of the idle scene. The `FPSCounter`
+ * above is the one the showcase uses.
+ */
+export const TelemetryCounter = (props: NodeProps) => {
   return (
     <view {...props} style={fpsStyle}>
       <view y={6}>
