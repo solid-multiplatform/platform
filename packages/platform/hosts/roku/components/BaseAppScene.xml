@@ -11,6 +11,12 @@ SPDX-License-Identifier: MIT
         <field id="exitApp" type="boolean" value="false" />
     </interface>
     <children>
+        <!--
+        The video layer is the scene's own, below the app: the SolidApp tree
+        (and only its opaque regions) composites over it. The app's video
+        adapter drives it through the SolidApp anchor's videocommand field.
+        -->
+        <Video id="videoLayer" translation="[0,0]" width="1920" height="1080" visible="false" enableUI="false" notificationInterval="1" />
         <SolidApp id="solidApp" />
     </children>
     <script type="text/brightscript" uri="BaseAppScene.brs" />

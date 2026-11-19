@@ -195,6 +195,7 @@ Notes:
 
 Notes:
 
+- Playback adapter (`packages/video`), roku: packages/platform/tests/roku-device/run-video.mjs; on the TCL 50S435 (OS 16.0.4) the app opens the clip but the Video node stays buffering and the TV makes no HTTP request to the LAN server (2026-11-18).
 - Playback adapter (`packages/video`), android-tv: CI checks that the APK contains the Media3 player; nothing plays in CI.
 
 ## CLI commands
