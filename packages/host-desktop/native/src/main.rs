@@ -13,6 +13,7 @@ mod gl;
 mod http;
 mod images;
 mod input;
+mod intl;
 mod keys;
 mod napi;
 #[cfg(all(feature = "connectivity", target_os = "linux"))]
@@ -226,6 +227,7 @@ fn main() {
         system::install(env, host);
         storage::install(env, host);
         http::install(env, host);
+        intl::install(env, host);
         #[cfg(all(feature = "notifications", target_os = "linux"))]
         notify::install(env, host);
         #[cfg(all(feature = "connectivity", target_os = "linux"))]

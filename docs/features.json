@@ -1503,6 +1503,38 @@
       ]
     },
     {
+      "title": "Internationalization",
+      "rows": [
+        {
+          "id": "intl-formatters",
+          "feature": "`Intl` (plural rules, number, date/time, relative time, list and collation)",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/web/intl.ts (desktop-runtime.yml: the host suite runs it headless in the Rust + Hermes runtime)"
+            },
+            "desktop-windows,desktop-macos": {
+              "status": "preview",
+              "note": "The same ICU4X formatters; neither is built with a window in CI."
+            },
+            "web,tizen,webos,vizio": {
+              "status": "preview",
+              "note": "The browser's own `Intl`; the SDK's formatting is not asserted on these targets."
+            },
+            "roku": {
+              "status": "unavailable",
+              "note": "The device's Hermes has no `Intl`; `sdk/i18n.ts` falls back to `en`."
+            },
+            "android,android-tv,ios,apple-tv": {
+              "status": "preview",
+              "note": "The engine's own `Intl`; no target test asserts formatting."
+            }
+          }
+        }
+      ]
+    },
+    {
       "title": "In open pull requests",
       "note": "Work that is not on main. Nothing in this group is available yet.",
       "rows": [

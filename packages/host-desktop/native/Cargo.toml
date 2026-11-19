@@ -77,3 +77,23 @@ unicode-segmentation = "1"
 # TLS is rustls with ring and Mozilla's roots, so nothing of the system's is
 # linked; gzip because servers send it. Cookies, JSON, proxies' extras off.
 ureq = { version = "3", default-features = false, features = ["rustls", "gzip"] }
+
+# `Intl` (src/intl.rs). ICU4X with its data compiled into the executable, so
+# an app ships no data file and every CLDR locale is available at run time.
+# `icu_experimental` carries relative time, percent and currency formatting;
+# it is the only crate here with a large inherent surface (display names,
+# transliteration and units that the runtime never calls).
+icu_calendar = { version = "2.4", features = ["compiled_data"] }
+icu_collator = { version = "2.4", features = ["compiled_data"] }
+icu_datetime = { version = "2.4", features = ["compiled_data"] }
+icu_decimal = { version = "2.4", features = ["compiled_data"] }
+icu_list = { version = "2.4", features = ["compiled_data"] }
+icu_locale = "2.4"
+icu_plurals = { version = "2.4", features = ["compiled_data"] }
+icu_time = { version = "2.4", features = ["compiled_data"] }
+icu_experimental = { version = "0.7", default-features = false, features = ["compiled_data"] }
+fixed_decimal = "0.7"
+writeable = "0.6"
+# The IANA zone's offset for `Intl.DateTimeFormat`: the platform's tzdata,
+# through `localtime_r` with `TZ` set for the call.
+libc = "0.2"

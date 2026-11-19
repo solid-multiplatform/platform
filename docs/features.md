@@ -12,30 +12,30 @@ A cell says `tested` only when an automated test in this repository runs that fe
 
 ## Counts
 
-924 cells: 77 features on 12 targets.
+936 cells: 78 features on 12 targets.
 
 | Status      | Cells |
 | ----------- | ----- |
-| tested      | 110   |
+| tested      | 111   |
 | device      | 70    |
-| preview     | 366   |
+| preview     | 376   |
 | in progress | 3     |
-| no          | 375   |
+| no          | 376   |
 
 | Target            | tested | device | preview | in progress | no  |
 | ----------------- | ------ | ------ | ------- | ----------- | --- |
-| `web`             | 32     | 0      | 29      | 0           | 16  |
-| `tizen`           | 5      | 0      | 52      | 0           | 20  |
-| `webos`           | 6      | 0      | 51      | 0           | 20  |
-| `vizio`           | 5      | 0      | 51      | 0           | 21  |
-| `roku`            | 6      | 17     | 10      | 0           | 44  |
-| `android`         | 0      | 32     | 26      | 0           | 19  |
-| `android-tv`      | 5      | 21     | 18      | 0           | 33  |
-| `ios`             | 28     | 0      | 20      | 0           | 29  |
-| `apple-tv`        | 20     | 0      | 16      | 0           | 41  |
-| `desktop-linux`   | 3      | 0      | 29      | 1           | 44  |
-| `desktop-windows` | 0      | 0      | 32      | 1           | 44  |
-| `desktop-macos`   | 0      | 0      | 32      | 1           | 44  |
+| `web`             | 32     | 0      | 30      | 0           | 16  |
+| `tizen`           | 5      | 0      | 53      | 0           | 20  |
+| `webos`           | 6      | 0      | 52      | 0           | 20  |
+| `vizio`           | 5      | 0      | 52      | 0           | 21  |
+| `roku`            | 6      | 17     | 10      | 0           | 45  |
+| `android`         | 0      | 32     | 27      | 0           | 19  |
+| `android-tv`      | 5      | 21     | 19      | 0           | 33  |
+| `ios`             | 28     | 0      | 21      | 0           | 29  |
+| `apple-tv`        | 20     | 0      | 17      | 0           | 41  |
+| `desktop-linux`   | 4      | 0      | 29      | 1           | 44  |
+| `desktop-windows` | 0      | 0      | 33      | 1           | 44  |
+| `desktop-macos`   | 0      | 0      | 33      | 1           | 44  |
 
 ## Rendering backends
 
@@ -244,6 +244,19 @@ Notes:
 - Browser TV package (Tizen `.wgt`, webOS `.ipk`), vizio: The build output is a hosted web app; there is no package step.
 - Desktop archive (`.tar.gz` with runtime), desktop-linux, desktop-windows, desktop-macos: Copies the Rust runtime and Hermes bytecode into a relocatable directory; `packages/host-desktop/tests/package` unpacks it and runs it. Windows and macOS packaging is not implemented.
 
+## Internationalization
+
+| Feature                                                                     | web     | tizen   | webos   | vizio   | roku | android | android-tv | ios     | apple-tv | desktop-linux | desktop-windows | desktop-macos |
+| --------------------------------------------------------------------------- | ------- | ------- | ------- | ------- | ---- | ------- | ---------- | ------- | -------- | ------------- | --------------- | ------------- |
+| `Intl` (plural rules, number, date/time, relative time, list and collation) | preview | preview | preview | preview | no   | preview | preview    | preview | preview  | tested        | preview         | preview       |
+
+Notes:
+
+- `Intl` (plural rules, number, date/time, relative time, list and collation), web, tizen, webos, vizio: The browser's own `Intl`; the SDK's formatting is not asserted on these targets.
+- `Intl` (plural rules, number, date/time, relative time, list and collation), roku: The device's Hermes has no `Intl`; `sdk/i18n.ts` falls back to `en`.
+- `Intl` (plural rules, number, date/time, relative time, list and collation), android, android-tv, ios, apple-tv: The engine's own `Intl`; no target test asserts formatting.
+- `Intl` (plural rules, number, date/time, relative time, list and collation), desktop-windows, desktop-macos: The same ICU4X formatters; neither is built with a window in CI.
+
 ## In open pull requests
 
 Work that is not on main. Nothing in this group is available yet.
@@ -351,6 +364,7 @@ A `tested` cell names the test file that covers it, the workflow and job that ru
 - Roku channel zip, roku: packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; opens the zip and asserts its components)
 - Android debug APK, android-tv: packages/platform/tests/cli/android-smoke.sh (android.yml: android; asserts the APK and its three ABI slices; not installed on a device in CI)
 - Apple simulator app, ios, apple-tv: packages/platform/tests/cli/apple-smoke.sh (test.yml: apple; installed and launched in a simulator)
+- `Intl` (plural rules, number, date/time, relative time, list and collation), desktop-linux: packages/host-desktop/tests/web/intl.ts (desktop-runtime.yml: the host suite runs it headless in the Rust + Hermes runtime)
 
 ### Device runs
 
