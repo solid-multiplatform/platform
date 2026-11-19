@@ -4,6 +4,7 @@
  * switching to Chat and back keeps every offset and every loaded poster.
  */
 import { createSignal } from 'solid-js';
+import { scrollDebug } from './config';
 import {
   apiEnabled,
   apiRail,
@@ -35,12 +36,13 @@ export function createDiscoverState(
   cardWidth: () => number,
   gap: () => number,
 ) {
-  const page = createScroller({ axis: 'y' });
+  const page = createScroller({ axis: 'y', debug: scrollDebug });
   const railScrollers = RAILS.reduce(
     (out, rail) => {
       out[rail.key] = createScroller({
         axis: 'x',
         snap: () => cardWidth() + gap(),
+        debug: scrollDebug,
         onSettle: () => {
           const index = RAILS.findIndex((entry) => entry.key === rail.key);
           kick(index + 1);
@@ -134,7 +136,7 @@ const REPLIES = [
 ];
 
 export function createChatState() {
-  const scroller = createScroller({ axis: 'y' });
+  const scroller = createScroller({ axis: 'y', debug: scrollDebug });
   const [messages, setMessages] = createSignal<ChatItem[]>(generateChat(10000));
   const [typing, setTyping] = createSignal(false);
   const [draft, setDraft] = createSignal('');

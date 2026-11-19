@@ -1,6 +1,7 @@
 /** A title's details: backdrop, poster, overview, cast and a similar rail. */
 import { createEffect, createMemo, on, Show } from 'solid-js';
 import { Image, Text } from '@solid-multiplatform/platform/app';
+import { scrollDebug } from '../config';
 import { similarTo, type Title } from '../catalog';
 import { createScroller } from '../scroller';
 import { C, initials, type Metrics } from '../theme';
@@ -25,10 +26,11 @@ export function Details(props: {
   onClose: () => void;
   onOpen: (title: Title) => void;
 }) {
-  const scroller = createScroller({ axis: 'y' });
+  const scroller = createScroller({ axis: 'y', debug: scrollDebug });
   const similarScroller = createScroller({
     axis: 'x',
     snap: () => props.metrics.cardW + props.metrics.cardGap,
+    debug: scrollDebug,
   });
   const backdropH = () =>
     Math.round(Math.min(360, props.metrics.height * 0.33));

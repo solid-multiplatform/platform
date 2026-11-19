@@ -40,11 +40,34 @@ Committed measurements, at 1080 × 2400 physical / 540 × 1200 logical (density 
 
 ## How it works
 
-- **Scrolling** (`src/scroller.ts`): one offset signal per scroller. Drag follows the finger with a rubber edge, release projects velocity (`px/ms × 170`), then a cubic settle; rails snap to `card + gutter`, the page and chat do not. `requestAnimationFrame` runs only during a fling/settle, so an idle scene schedules nothing.
-- **Rails**: each rail mounts only the cards intersecting the viewport plus one on each side; only those `Image` nodes exist, so only their textures load. A drag that starts on a card picks one axis after the first few units — horizontal moves the rail, vertical moves the page.
+- **Scrolling** (`src/scroller.ts`): one offset signal per scroller, with the physics of iOS `UIScrollView` — the real constants, not a guess. Details and sources under "Scrolling" below. `requestAnimationFrame` runs only during a drag's flight, so an idle scene schedules nothing.
+- **Rails**: each rail mounts only the cards intersecting the viewport plus one on each side; only those `Image` nodes exist, so only their textures load. A drag that starts on a card picks its axes after 10 units of movement: near-horizontal moves the rail, near-vertical moves the page, and a diagonal moves both, the way nested scroll views do on iOS.
 - **Chat**: `layoutChat` estimates conservative heights (wider than Lato's average glyph), builds a prefix layout once, and a binary search finds the first visible row each frame. Only ~12 rows are mounted for 10,000 messages. The scrollbar's thumb is derived from offset and content height; "Latest" appears when the offset leaves the bottom.
 - **Skeletons**: fixed-size card blocks with one sweeping highlight per card. The highlight is an `animate(..., { loop: true })` on a node that is destroyed when the rail's data arrives, so no shimmer survives the load. Rails load in sequence: the next fetch starts only when the previous rail settles.
 - **Images**: TMDB URL tiers are chosen at the call site (`w342` for cards, `w780` for backdrops); `Image` mounts lazily with the card window. This version of the framework has no `loadWidth` prop (see gaps).
+
+## Scrolling
+
+The touch scroller reproduces the physics of `UIScrollView` on iOS, using constants recovered from public reverse engineering of UIKit, not guesses. This is the **touch/iOS model** — it does not describe TV focus navigation or desktop wheel scrolling, which follow different platform conventions.
+
+**The model** (all in logical pixels; iOS points ≈ this app's units at density 2):
+
+- **Deceleration** is exponential **per millisecond**, `v(t) = v0 · 0.998^t` (`UIScrollViewDecelerationRateNormal = 0.998`; `0.99` is the "fast" rate), integrated per frame as `dx = v · rate · (1 − rate^dt) / (1 − rate)`, so a release travels `v0 · rate / (1 − rate) ≈ 499 · v0` px in total.
+- **Release velocity** is derived the way `UIPanGestureRecognizer` does: per-move finite differences blended `0.2·current + 0.8·previous` while dragging, then a guarded low-pass at release, `0.75·previous + 0.25·latest`. A drag that stops before release therefore has no fling. A release below **0.25 px/ms** does not decelerate at all.
+- **Rubber band**: dragging past an edge follows `(1 − 1/(x·c/d + 1)) · d` with **c = 0.55** and `d` the visible dimension — the content can never be dragged more than one viewport past an edge, moving at 55% of the finger immediately past the bound.
+- **Bounce**: the release-from-overscroll spring is a fixed **0.99/ms** contraction of the overshoot (independent of the deceleration rate) that carries the velocity term and settles within 0.5 px of the bound; a fling that reaches an edge mid-flight integrates to the edge and hands the frame remainder to the same spring.
+- **Paging/snap**: a rail release lands on the snap slot **nearest the projected landing point** — `projected = v0/|ln(0.998)|` with a 0.01 px/ms velocity floor, the number `scrollViewWillEndDragging:withVelocity:targetContentOffset:` reports — and decelerates into it on the same exponential curve, at the rate that lands exactly on the slot. The content end counts as a slot, so the last card lands flush right.
+- **Axis lock** for a horizontal rail inside a vertical page: 10 pt of movement before a direction is chosen (Apple's pan hysteresis); within 20° of an axis it locks, in between both axes scroll, as nested scroll views do on iOS.
+
+**Sources:**
+
+- [Telegram-iOS UIKit scroll physics analysis](https://github.com/TelegramMessenger/Telegram-iOS/blob/master/submodules/TelegramUI/Components/CoreList/docs/plans/2026-05-22-uikit-scrollview-physics-analysis.md) — instruction-level disassembly of UIKitCore (iOS 26.2, arm64e) with the per-constant addresses, validated against recorded scroll trajectories. The decay law, the release-velocity blends, the bounce spring (`ln(0.99)` literal) and the edge-crossing hand-off are all decoded here, with a reference implementation in [`CoreListDemo/ScrollPhysics`](https://github.com/TelegramMessenger/Telegram-iOS/tree/master/submodules/TelegramUI/Components/CoreList/CoreListDemo/ScrollPhysics).
+- [`UIScrollView.h` SDK header](https://github.com/theos/sdks/blob/master/iPhoneOS12.4.sdk/System/Library/Frameworks/UIKit.framework/Headers/UIScrollView.h) — `UIScrollViewDecelerationRateNormal = 0.998`, `...Fast = 0.99`; the iOS 7 and iOS 10 class dumps list the private selectors (`_getStandardDecelerationOffset:...`, `_getBouncingDecelerationOffset:...`, `_rubberBandContentOffsetForOffset:...`).
+- The rubber-band formula and c = 0.55: first published by Grant Paul ([@chpwn](https://twitter.com/chpwn/status/291794740553338880)), spread as ["Analysis of Apple's rubber band scrolling"](http://web.archive.org/web/20150101182221/http://squareb.wordpress.com:80/2013/01/06/31/) and on Stack Overflow, since validated against the disassembly.
+- WWDC 2018, [Designing Fluid Interfaces (session 803)](https://developer.apple.com/videos/play/wwdc2018/803/) — Apple's own description of projection and the "imperceptible stop"; [reference implementations](https://github.com/nathangitter/fluid-interfaces).
+- Apple HIG, [Scroll views](https://developer.apple.com/design/human-interface-guidelines/scroll-views): support the default scrolling gestures; elastic, expected indicator behaviour; make scrollability apparent (the peeking rail does this); a horizontal scroll view inside a vertical one is fine — never the same orientation; page-by-page scrolling with an optional unit of overlap subtracted from the page size; a page control and a scroll indicator must not share an axis. The local copy of the page and the UIKit references are in `handoff/apple-docs/` (Apple copyright — cited, not pasted).
+
+**Debugging**: each gesture logs its release velocity, target and settle time to logcat under the tag `ScrollDemo` (the Android release bundle strips `console.*`, so the scroller writes through `android.util.Log`). `SCROLL_DEBUG=0 node build.mjs` builds without it. Physics tests: `pnpm test` in this directory (`node --test src/scroller.test.ts`, 12 tests: velocity blends, decay distance, rubber band, bounce, snap targets, no frames at rest).
 
 ## Framework gaps hit
 

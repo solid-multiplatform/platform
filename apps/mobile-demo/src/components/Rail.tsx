@@ -1,10 +1,21 @@
 /** A horizontal poster rail: drag with momentum, snap to card + gutter. */
-import { For } from 'solid-js';
+import { createEffect, For } from 'solid-js';
 import type { Title } from '../catalog';
 import type { Scroller } from '../scroller';
 import type { Metrics } from '../theme';
 import { PosterCard } from './PosterCard';
 import { SkeletonRail } from './Skeleton';
+
+/**
+ * Apple's pan hysteresis: 10 pt of movement before a direction is chosen.
+ * The lock angles are UIKit's own (decoded from the iOS 26.2 binary): a
+ * pan within 20 degrees of an axis locks to it; between the two, a nested
+ * scroll view lets both axes scroll at once, so a diagonal drag moves the
+ * rail horizontally and the page vertically.
+ */
+const AXIS_SLOP = 10;
+const LOCK_HORIZONTAL = Math.tan((20 * Math.PI) / 180);
+const LOCK_VERTICAL = Math.tan((70 * Math.PI) / 180);
 
 export function Rail(props: {
   x: number;
@@ -23,9 +34,20 @@ export function Rail(props: {
   const count = () => Math.ceil(props.width / slot()) + 3;
   const visible = () => (props.items ?? []).slice(first(), first() + count());
 
-  // A drag that starts on a card picks one axis after the first few units:
-  // horizontal moves the rail, vertical moves the page underneath.
-  let mode: 'h' | 'v' | null = null;
+  // The rail's content extent: every card at its slot, no trailing gutter.
+  createEffect(() => {
+    const items = props.items ?? [];
+    const content =
+      items.length > 0
+        ? items.length * slot() - props.metrics.cardGap
+        : props.width;
+    props.scroller.layout(Math.max(props.width, content), props.width);
+  });
+
+  // A drag that starts on a card picks its axes after 10 units of movement:
+  // horizontal moves the rail, vertical moves the page underneath, and a
+  // diagonal moves both, the way nested scroll views do on iOS.
+  let mode: 'h' | 'v' | 'both' | null = null;
   let originX = 0;
   let originY = 0;
   const onDrag = (
@@ -40,21 +62,21 @@ export function Rail(props: {
       return;
     }
     if (mode === null && phase === 'move') {
-      const dx = Math.abs(point.x - originX);
-      const dy = Math.abs(point.y - originY);
-      if (dx < 2 && dy < 2) return;
-      mode = dx >= dy ? 'h' : 'v';
-      if (mode === 'h') {
+      const dx = point.x - originX;
+      const dy = point.y - originY;
+      if (dx * dx + dy * dy < AXIS_SLOP * AXIS_SLOP) return;
+      const ratio = Math.abs(dy) / Math.max(1e-6, Math.abs(dx));
+      mode =
+        ratio <= LOCK_HORIZONTAL ? 'h' : ratio >= LOCK_VERTICAL ? 'v' : 'both';
+      // The drag began at the finger's origin, not where the slop ended.
+      if (mode === 'h' || mode === 'both')
         props.scroller.dragAxis('start', originX);
-        props.scroller.dragAxis('move', point.x);
-      } else {
+      if (mode === 'v' || mode === 'both')
         props.page.dragAxis('start', originY);
-        props.page.dragAxis('move', point.y);
-      }
-      return;
     }
-    if (mode === 'h') props.scroller.dragAxis(phase, point.x);
-    else if (mode === 'v') props.page.dragAxis(phase, point.y);
+    if (mode === 'h' || mode === 'both')
+      props.scroller.dragAxis(phase, point.x);
+    if (mode === 'v' || mode === 'both') props.page.dragAxis(phase, point.y);
   };
 
   return (

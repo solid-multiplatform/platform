@@ -309,7 +309,9 @@ export function Chat(props: { chat: ChatState; metrics: Metrics }) {
         </Show>
       </view>
 
-      {/* A visible scrollbar, drawn from offset and content height. */}
+      {/* A visible scrollbar, drawn from offset and content height. The HIG
+          has it appear once scrolling begins, so it shows only while the
+          list is moving and hides at rest. */}
       <view
         x={m().width - 5}
         y={listTop()}
@@ -317,6 +319,7 @@ export function Chat(props: { chat: ChatState; metrics: Metrics }) {
         height={viewH()}
         color={0xffffff10}
         borderRadius={2}
+        alpha={props.chat.scroller.settled() ? 0 : 1}
       />
       <view
         x={m().width - 5}
@@ -325,6 +328,7 @@ export function Chat(props: { chat: ChatState; metrics: Metrics }) {
         height={thumbH()}
         color={0x4a4a52ff}
         borderRadius={2}
+        alpha={props.chat.scroller.settled() ? 0 : 1}
       />
 
       <Show when={away()}>

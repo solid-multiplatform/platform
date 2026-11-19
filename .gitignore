@@ -30,3 +30,7 @@ packages/platform/examples/**/hooks/
 packages/platform/examples/**/.ns*
 packages/platform/examples/**/dist-*/
 packages/platform/examples/**/.artifacts/
+
+# Apple HIG and UIKit pages fetched by scripts/apple-docs.mjs (Apple
+# copyright: local reference only, never committed).
+.apple-docs/

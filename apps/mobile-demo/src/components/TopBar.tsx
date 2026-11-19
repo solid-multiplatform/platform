@@ -24,6 +24,19 @@ export function TopBar(props: {
       width={props.metrics.width}
       height={props.metrics.barY + props.metrics.barH + 8}
     >
+      {/* The HIG's scroll edge effect (automatic style): content scrolls
+          under these floating pills, so a soft scrim from the background
+          keeps them legible, hard behind the bar and gone below it. */}
+      <view
+        width={props.metrics.width}
+        height={props.metrics.barY + props.metrics.barH + 26}
+        color={0x00000000}
+        linearGradient={{
+          colors: [0x0a0a0bd9, 0x0a0a0b00],
+          angle: 0,
+          stops: [0, 1],
+        }}
+      />
       <view
         x={props.metrics.margin}
         y={props.metrics.barY}
