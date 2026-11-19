@@ -25,6 +25,8 @@ export interface ThemeColors {
   onPrimary: number;
   border: number;
   focus: number;
+  /** Behind selected text. */
+  selection: number;
   danger: number;
   success: number;
   warning: number;
@@ -66,6 +68,7 @@ export const lightTheme: Theme = {
     onPrimary: 0xffffffff,
     border: 0xd6dee8ff,
     focus: 0x2563ebff,
+    selection: 0x2563eb55,
     danger: 0xdc2626ff,
     success: 0x15803dff,
     warning: 0xb45309ff,
@@ -87,6 +90,7 @@ export const darkTheme: Theme = {
     onPrimary: 0x06121fff,
     border: 0x2f3d4eff,
     focus: 0x60a5faff,
+    selection: 0x60a5fa66,
     danger: 0xf87171ff,
     success: 0x4ade80ff,
     warning: 0xfbbf24ff,
@@ -151,6 +155,7 @@ export const highContrastLightTheme: Theme = {
     onPrimary: 0xffffffff,
     border: 0x000000ff,
     focus: 0x0000ccff,
+    selection: 0x0000cc55,
     danger: 0xa8001aff,
     success: 0x005a00ff,
     warning: 0x6b4200ff,
@@ -171,6 +176,7 @@ export const highContrastDarkTheme: Theme = {
     onPrimary: 0x000000ff,
     border: 0xffffffff,
     focus: 0xffff00ff,
+    selection: 0xffff0055,
     danger: 0xff9a9aff,
     success: 0x7dff7dff,
     warning: 0xffd84dff,
