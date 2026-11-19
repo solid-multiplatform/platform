@@ -16,12 +16,6 @@ export interface ShowcaseEnv {
   launch: LaunchParams;
   /** Hands the probe result to whoever drives the device. */
   report(result: ProbeResult): void;
-  /**
-   * Raises a key on the host's key target, as the remote would. Absent on a
-   * host whose entry does not tap its keys; the UI assertions are then
-   * `unverified`.
-   */
-  pressKey?(key: string): void;
   /** Native text fields, where the host has them. */
   controls?: ControlSurface;
 }

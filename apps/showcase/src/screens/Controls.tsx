@@ -134,12 +134,18 @@ export function ControlsScreen() {
           setEditing(env.controls !== undefined);
         }}
       />
-      <text skipFocus fontSize={20} color={MUTED}>
+      <text
+        skipFocus
+        role="status"
+        ariaLabel={`Subtitles ${subtitles() ? 'on' : 'off'}, ${quality()}, ${language()}. Last: ${last()}`}
+        fontSize={20}
+        color={MUTED}
+      >
         {`Subtitles ${subtitles() ? 'on' : 'off'}, ${quality()}, ${language()}. Last: ${last()}`}
       </text>
       <text skipFocus fontSize={16} color={MUTED}>
-        Select and Menu: Enter opens and Back closes; today their items answer a
-        pointer only.
+        Select and Menu: Enter opens on the current choice, Up and Down move,
+        Enter chooses, Back closes.
       </text>
     </Screen>
   );

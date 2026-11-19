@@ -1,7 +1,23 @@
 import type { JSX } from 'solid-js';
 import type { ElementNode } from '../core/elementNode.js';
+import type { ForwardFocusHandler } from '../core/focusKeyTypes.js';
+import { isElementNode } from '../core/utils.js';
 import { viewport } from '../sdk/viewport.js';
 import { Modal } from './Modal.jsx';
+
+// Focus on the sheet goes to the first of the app's children that takes it
+// (the panel's second child holds them); with none that view keeps it.
+const focusContent: ForwardFocusHandler = function () {
+  const children = this.children;
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i];
+    if (isElementNode(child) && !child.skipFocus) {
+      child.setFocus();
+      return true;
+    }
+  }
+  return false;
+};
 
 export interface SheetProps {
   visible: boolean | (() => boolean);
@@ -42,11 +58,18 @@ export function Sheet(props: SheetProps): JSX.Element {
         width={viewport().width}
         height={height()}
         color={0x1d2937ff}
+        forwardFocus={1}
       >
-        <text x={28} y={24} fontSize={30} color={0xf2f6faff}>
+        <text skipFocus x={28} y={24} fontSize={30} color={0xf2f6faff}>
           {props.title ?? props.label}
         </text>
-        <view x={24} y={82} width={viewport().width - 48} height={height() - 106}>
+        <view
+          x={24}
+          y={82}
+          width={viewport().width - 48}
+          height={height() - 106}
+          forwardFocus={focusContent}
+        >
           {props.children}
         </view>
       </view>

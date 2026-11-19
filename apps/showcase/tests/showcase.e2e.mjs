@@ -159,6 +159,12 @@ async function newPage(browser) {
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(error));
+  // A shape whose shader the host did not register draws nothing and says
+  // so: rounded corners, borders and gradients (the Effects screen) must not.
+  page.on('console', (message) => {
+    if (/Shader type .* is not registered/.test(message.text()))
+      errors.push(new Error(message.text()));
+  });
   return { page, errors };
 }
 
@@ -184,6 +190,21 @@ async function expectFocus(page, expected, what) {
   assert.fail(`${what}: focus is on ${name}, expected ${expected}`);
 }
 
+/** The screen's result line, which the ARIA mirror carries as a status. */
+async function expectStatus(page, expected, what) {
+  let lines;
+  for (let attempt = 0; attempt < 60; attempt++) {
+    lines = await page.evaluate(() =>
+      [...document.querySelectorAll('[role="status"]')].map((el) =>
+        el.getAttribute('aria-label'),
+      ),
+    );
+    if (lines.some((line) => expected.test(line ?? ''))) return;
+    await sleep(50);
+  }
+  assert.fail(`${what}: status is ${JSON.stringify(lines)}, expected ${expected}`);
+}
+
 async function shot(page, name) {
   if (shots) await page.screenshot({ path: path.join(shots, name + '.png') });
 }
@@ -203,17 +224,40 @@ async function settle(page, where, rounds = 5) {
   assert.equal(quiet, rounds, `${where}: the scene never settled`);
 }
 
-/**
- * A real mouse click, once the scene has drawn what the last keys changed.
- *
- * Without the wait, a click on Back sent some tens of milliseconds after the
- * Controls screen opened (straight after two key presses) activated the
- * column's last row instead, in 3 runs of 25; with 300 ms before the click,
- * in none of 25. The cause is not established (see the README's known gaps).
- */
-async function click(page, point, where) {
-  await settle(page, where, 2);
+/** A real mouse click, sent at once: the scene is not waited for. */
+async function click(page, point) {
   await page.mouse.click(point.x, point.y);
+}
+
+/**
+ * A click on Back sent the moment the Controls screen opens. A screen's
+ * column places its rows once its text lines have been measured, a frame or
+ * more after it mounts; until then every row is at the column's origin, and
+ * the click used to activate the last one (the text field). Now it either
+ * arrives before the rows are placed and does nothing, or lands on Back:
+ * never on another row.
+ */
+async function clickBackWhileOpening(page) {
+  await expectFocus(page, 'button:Controls', 'home, on the Controls tile');
+  await page.keyboard.press('Enter');
+  await page.mouse.click(backButton.x, backButton.y);
+  await sleep(300);
+  // A click that reached no node leaves the browser's focus on the page
+  // body (null here): the scene's focus has not moved from Back.
+  const name = await focusedName(page);
+  assert.ok(
+    name === null || name === 'button:Back' || name === 'button:Controls',
+    `a click while the screen opened put focus on ${name}`,
+  );
+  assert.equal(
+    await page.evaluate(() => document.querySelectorAll('input').length),
+    0,
+    'a click while the screen opened started the text field',
+  );
+  if (name === 'button:Controls') return 'back';
+  await page.mouse.click(backButton.x, backButton.y);
+  await expectFocus(page, 'button:Controls', 'the click on Back');
+  return 'none';
 }
 
 /** (c) Waits for the scene to settle, then requires two seconds without a frame. */
@@ -271,11 +315,70 @@ async function interactive(browser) {
   );
   await shot(page, '2-controls');
 
+  // Select and Menu with the keyboard only: Enter opens on the current
+  // choice, arrows move, Enter chooses and focus returns to the opener.
+  for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowDown');
+  await expectFocus(page, 'button:Language', 'Down to the select');
+  await page.keyboard.press('Enter');
+  await expectFocus(page, 'menuitem:English', 'the select opens on its value');
+  await shot(page, '2a-select');
+  await page.keyboard.press('ArrowDown');
+  await expectFocus(page, 'menuitem:French', 'Down in the select');
+  await page.keyboard.press('Enter');
+  await expectFocus(page, 'button:Language', 'focus returns to the select');
+  assert.equal(
+    await page.evaluate(() =>
+      document.activeElement.getAttribute('aria-valuetext'),
+    ),
+    'French',
+  );
+  await expectStatus(page, /, fr\. Last: nothing yet$/, 'select result');
+  // Back closes the select and keeps the value.
+  await page.keyboard.press('Enter');
+  await expectFocus(page, 'menuitem:French', 'the select reopens on French');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Escape');
+  await expectFocus(page, 'button:Language', 'Back closes the select');
+  await expectStatus(page, /, fr\. Last: nothing yet$/, 'select after Back');
+
+  await page.keyboard.press('ArrowDown');
+  await expectFocus(page, 'button:Open menu', 'Down to the menu button');
+  await page.keyboard.press('Enter');
+  await expectFocus(page, 'menuitem:Rename', 'the menu opens on its first item');
+  await shot(page, '2b-menu');
+  await page.keyboard.press('ArrowDown');
+  await expectFocus(page, 'menuitem:Share', 'Down in the menu');
+  // Delete is disabled: Down stays on Share.
+  await page.keyboard.press('ArrowDown');
+  await expectFocus(page, 'menuitem:Share', 'Down at the last enabled item');
+  await page.keyboard.press('Enter');
+  await expectFocus(page, 'button:Open menu', 'focus returns to the opener');
+  await expectStatus(page, /Last: menu: Share$/, 'menu result');
+
+  // The text field: the browser's own input while it is open; when it
+  // closes, the browser's focus is back on the button that opened it.
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await expectFocus(page, 'button:Text field: empty', 'Down to the text field');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(
+    () => document.activeElement?.tagName === 'INPUT',
+    undefined,
+    { polling: 50, timeout: 3000 },
+  );
+  await page.keyboard.type('ab');
+  await page.keyboard.press('Enter');
+  await expectFocus(page, 'button:Text field: ab', 'the text field closed');
+
   // The mouse: Back, then the Services tile. Focus returns to the tile left.
-  await click(page, backButton, 'before the click on Back');
+  await click(page, backButton);
   await expectFocus(page, 'button:Controls', 'mouse click on Back');
+  const early = [];
+  for (let i = 0; i < 5; i++) early.push(await clickBackWhileOpening(page));
+  console.log(`ok  clicks on Back while Controls opened: ${early.join(', ')}`);
   const services = homeTile(SECTIONS.indexOf('Services'));
-  await click(page, services, 'before the click on the Services tile');
+  await click(page, services);
   await expectFocus(page, 'button:Back', 'mouse click on the Services tile');
   await page
     .getByRole('button', { name: 'Run every unattended probe' })
@@ -299,9 +402,94 @@ async function interactive(browser) {
   await expectFocus(page, 'button:Services', 'Back key');
   await expectIdle(page, 'home screen');
 
+  // Alert and DatePicker with the keyboard only.
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowLeft');
+  await expectFocus(page, 'button:Dialogs', 'Left, Left');
+  await page.keyboard.press('Enter');
+  await expectFocus(page, 'button:Back', 'dialogs screen');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await expectFocus(page, 'button:Open alert', 'Down to the alert button');
+  await page.keyboard.press('Enter');
+  await expectFocus(page, 'button:OK', 'the alert opens on its confirm action');
+  await shot(page, '3a-alert');
+  await page.keyboard.press('ArrowLeft');
+  await expectFocus(page, 'button:Cancel', 'Left in the alert');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowRight');
+  await expectFocus(page, 'button:OK', 'Right in the alert');
+  await page.keyboard.press('Enter');
+  await expectFocus(page, 'button:Open alert', 'focus returns from the alert');
+  await expectStatus(page, /^Last result: alert: confirmed$/, 'alert result');
+  await page.keyboard.press('Enter');
+  await expectFocus(page, 'button:OK', 'the alert opens again');
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('Enter');
+  await expectFocus(page, 'button:Open alert', 'focus returns from Cancel');
+  await expectStatus(page, /^Last result: alert: cancelled$/, 'alert cancel');
+
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await expectFocus(page, 'button:Pick a date', 'Down to the date button');
+  await page.keyboard.press('Enter');
+  // The picker opens on today; Right is tomorrow, in the next month if today
+  // is the last day of this one.
+  const { today, tomorrow, result } = await page.evaluate(() => {
+    const now = new Date();
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    return {
+      today: now.getDate(),
+      tomorrow: next.getDate(),
+      result: `${next.getFullYear()}-${next.getMonth() + 1}-${next.getDate()}`,
+    };
+  });
+  await expectFocus(page, `button:${today}`, 'the picker opens on today');
+  await shot(page, '3b-date');
+  await page.keyboard.press('ArrowRight');
+  await expectFocus(page, `button:${tomorrow}`, 'Right in the calendar');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(
+    () => document.activeElement?.getAttribute('aria-selected') === 'true',
+    undefined,
+    { polling: 50, timeout: 3000 },
+  );
+  // Down the weeks, then past the last one to the actions: Done.
+  for (let i = 0; i < 6; i++) {
+    if ((await focusedName(page)) === 'button:Done') break;
+    await page.keyboard.press('ArrowDown');
+    await sleep(100);
+  }
+  await expectFocus(page, 'button:Done', 'Down to the actions');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await expectFocus(page, 'button:Previous month', 'Up to the month row');
+  await page.keyboard.press('ArrowRight');
+  await expectFocus(page, 'button:Next month', 'Right in the month row');
+  for (let i = 0; i < 8; i++) {
+    if ((await focusedName(page)) === 'button:Done') break;
+    await page.keyboard.press('ArrowDown');
+    await sleep(100);
+  }
+  await expectFocus(page, 'button:Done', 'Down to the actions again');
+  await page.keyboard.press('Enter');
+  await expectFocus(page, 'button:Pick a date', 'focus returns from the picker');
+  await expectStatus(
+    page,
+    new RegExp(`^Last result: date: ${result}$`),
+    'date result',
+  );
+  await page.keyboard.press('Backspace');
+  await expectFocus(page, 'button:Dialogs', 'Back from the dialogs screen');
+
   // (c) on every screen: opened by mouse, left alone, closed by the Back key.
   for (const [index, name] of SECTIONS.entries()) {
-    await click(page, homeTile(index), `before the click on ${name}`);
+    await click(page, homeTile(index));
     await expectFocus(page, 'button:Back', `mouse click on ${name}`);
     await expectIdle(page, `${name} screen`);
     await page.keyboard.press('Backspace');
