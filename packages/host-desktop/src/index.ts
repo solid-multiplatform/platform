@@ -8,6 +8,7 @@
 //
 // Importing this module installs the web-standard globals the engine lacks
 // (./standard.ts); it does nothing else until an app starts.
+/// <reference path="./native.d.ts" />
 import './standard.js';
 import { launchDesktop } from './host.js';
 

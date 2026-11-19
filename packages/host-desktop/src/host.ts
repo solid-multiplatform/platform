@@ -8,6 +8,9 @@ import {
 import { setDefaultPlatform } from '@solid-multiplatform/renderer/platform';
 import type { SceneRenderer } from '@solid-multiplatform/renderer/contracts';
 import { bindColorScheme, getRenderer } from '@solid-multiplatform/platform';
+// The WebGL backend's default effects (rounded corners, borders, shadows,
+// gradients) are shaders an app must otherwise register itself.
+import { registerDefaultShaders } from '@solid-multiplatform/platform/shaders';
 import type { KeyEventTarget } from '@solid-multiplatform/platform';
 import type {
   Disposer,
@@ -167,10 +170,16 @@ export function launchDesktop(
       pointer: desktopPointers(),
       text: editors,
       ...(semantics === undefined ? {} : { semantics }),
-      createRenderer: (settings) =>
+      createRenderer: (settings) => {
         // The second argument names a page element on the web; the adapter
         // draws in the window whatever it is.
-        new RendererMain(settings as RendererMainSettings, 'app'),
+        const renderer = new RendererMain(
+          settings as RendererMainSettings,
+          'app',
+        );
+        registerDefaultShaders(renderer);
+        return renderer;
+      },
     });
   } catch (error) {
     stopped = true;
