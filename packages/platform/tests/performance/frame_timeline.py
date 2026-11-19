@@ -38,6 +38,17 @@ def is_flagged(row):
     )
 
 
+def present_unknown(row):
+    """Whether Android had no valid present time for this frame's display frame.
+
+    SurfaceFlinger marks such a display frame "Unspecified Present" (jank
+    "Display HAL") and stamps it, and the app frames in it, with its own end
+    time. Their Early/On-time/Late class then says nothing about when the
+    frame reached the screen, so is_flagged() cannot call them on time.
+    """
+    return row.get("display_present_type") == "Unspecified Present"
+
+
 def split_layers(rows, package):
     window = re.compile(
         r"(?:TX - )?"

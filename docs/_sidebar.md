@@ -1,6 +1,7 @@
 - Start
   - [Introduction](/README.md)
   - [Getting started](/getting-started.md)
+  - [The app API](/app-api.md)
   - [Architecture](/architecture.md)
   - [Feature matrix](/features.md)
   - [Migrating from the old names](/migrate.md)

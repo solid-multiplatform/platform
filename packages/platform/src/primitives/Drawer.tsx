@@ -1,8 +1,24 @@
 import type { JSX } from 'solid-js';
 import type { ElementNode } from '../core/elementNode.js';
+import type { ForwardFocusHandler } from '../core/focusKeyTypes.js';
+import { isElementNode } from '../core/utils.js';
 import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
 import { Modal } from './Modal.jsx';
+
+// Focus on the drawer goes to the first of the app's children that takes it
+// (the panel's third child holds them); with none that view keeps it.
+const focusContent: ForwardFocusHandler = function () {
+  const children = this.children;
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i];
+    if (isElementNode(child) && !child.skipFocus) {
+      child.setFocus();
+      return true;
+    }
+  }
+  return false;
+};
 
 export interface DrawerProps {
   visible: boolean | (() => boolean);
@@ -45,10 +61,12 @@ export function Drawer(props: DrawerProps): JSX.Element {
         height={viewport().height - safe().top - safe().bottom}
         color={theme().colors.surface}
         role="none"
+        forwardFocus={2}
         onMouseClick={() => true}
         onEnter={() => true}
       >
         <text
+          skipFocus
           x={24}
           y={24}
           width={width() - 96}
@@ -78,7 +96,7 @@ export function Drawer(props: DrawerProps): JSX.Element {
             fontSize={theme().typography.label}
             color={theme().colors.text}
           >
-            ×
+            x
           </text>
         </view>
         <view
@@ -86,6 +104,7 @@ export function Drawer(props: DrawerProps): JSX.Element {
           y={88}
           width={width() - 48}
           height={viewport().height - safe().top - safe().bottom - 112}
+          forwardFocus={focusContent}
         >
           {props.children}
         </view>

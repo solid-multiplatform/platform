@@ -44,34 +44,71 @@ corepack pnpm build web
 corepack pnpm dev web
 ```
 
+## The app
+
+The whole starter is `src/app.tsx`: one component, default-exported.
+
+```tsx
+import {
+  Button,
+  List,
+  Screen,
+  Text,
+  createSignal,
+  usePlugins,
+} from '@solid-multiplatform/platform/app';
+
+export default function App() {
+  const plugins = usePlugins<{ run(): Promise<string> }>();
+  const [message, setMessage] = createSignal('living-room');
+  const [count, setCount] = createSignal(0);
+  const run = (name: string) =>
+    void plugins[name]!.run().then(setMessage, (error) =>
+      setMessage(String(error)),
+    );
+  return (
+    <Screen>
+      <Text size="title">{message()}</Text>
+      <Button onPress={() => setCount(count() + 1)}>
+        {`Pressed ${count()} times`}
+      </Button>
+      <List each={Object.keys(plugins)} onSelect={run}>
+        {(name) => <Button>{name}</Button>}
+      </List>
+    </Screen>
+  );
+}
+```
+
+- `Screen` fills the viewport, keeps its children inside the safe area and stacks them. No coordinates and no viewport arithmetic: the same file runs on a TV, in a browser window and on a phone.
+- `Button` is as wide as its label. A remote's OK key, Enter, a mouse click and a tap all call `onPress`, and a screen reader sees a button with that label.
+- `List` moves focus through its items with the arrow keys and reports the one that was activated.
+- `usePlugins` gives the plugins of the target being built. Nothing is passed into `App`.
+
+There is no `mount` function. The CLI generates each target's entry in `targets/<target>/work`, and that entry starts the component on the target's host with the fonts, design size and theme from `solid-platform.config.json`. [The app API](/app-api.md) lists every component, hook and setting.
+
 ## Project layout
 
 ```text
 living-room/
-  solid-platform.json     app name and target list
-  package.json            scripts: platform, check, build, dev
-  tsconfig.json           jsxImportSource: @solid-multiplatform/platform
+  solid-platform.config.json  name, targets, and the app's fonts, design size and theme
+  package.json                scripts: platform, check, build, dev
+  tsconfig.json               jsxImportSource: @solid-multiplatform/platform
   src/
-    app.tsx               exports mount(); creates the renderer and renders
-    screen.ts             the props every Home screen variant receives
-    screens/
-      Home.tsx            shared screen
-      Home.tv.tsx         chosen for TV targets
-      Home.mobile.tsx     chosen for android and ios
-      Home.desktop.tsx    chosen for desktop
-  assets/fonts/           the Lato MSDF font the starter loads
-  plugins/                created by "plugin new"
-  vendor/                 the packed platform and renderer archives
+    app.tsx                   the app: a default-exported component
+  assets/fonts/               the Lato MSDF font; every atlas here is loaded
+  plugins/                    created by "plugin new"
+  vendor/                     the packed platform and renderer archives
   targets/
-    web/                  package.json, index.html, vite.config.mjs, public/
-    <target>/work/        generated on every build; do not edit
+    web/                      package.json, index.html, vite.config.mjs, public/
+    <target>/work/            generated on every build; do not edit
 ```
 
 You write code in `src/` and `plugins/`. Each `targets/<target>` directory is a small project of its own with its own install. The CLI regenerates `targets/<target>/work` on every build and refuses to delete a `work` directory it did not create.
 
-### Screen variants
+### Target variants
 
-Import `./screens/Home` as usual. Before a build, the CLI copies `src/` into the target's `work/src` and picks one file per module by suffix:
+One adaptive screen is the default. When a target needs its own layout, add a file with a suffix next to the shared one, such as `app.tv.tsx` beside `app.tsx`, or `screens/Home.mobile.tsx` beside `screens/Home.tsx`, and import the module as usual (`./screens/Home`). Before a build, the CLI copies `src/` into the target's `work/src` and picks one file per module by suffix:
 
 - the exact target first (`Home.roku.tsx`),
 - then its family: `tv` for `roku`, `apple-tv`, `android-tv`, `tizen`, `webos` and `vizio`; `mobile` for `android` and `ios`; `desktop` for a desktop build,
@@ -80,14 +117,14 @@ Import `./screens/Home` as usual. Before a build, the CLI copies `src/` into the
 `web` has no family: it takes `Home.web.tsx` or the file without a suffix. Ask the CLI which file a target gets:
 
 ```sh
-corepack pnpm platform explain roku screens/Home
+corepack pnpm platform explain roku app
 ```
 
 `corepack pnpm check` type-checks the selected sources of every configured target. `corepack pnpm check roku` checks one.
 
 ## Build a target
 
-Run `corepack pnpm build <target>` from the app directory. The target must be listed in `solid-platform.json`.
+Run `corepack pnpm build <target>` from the app directory. The target must be listed in `solid-platform.config.json`.
 
 - `web` runs `vite build` in `targets/web`. Output: `targets/web/dist`.
 - `tizen`, `webos`, `vizio` run the same Vite build, then package it. Tizen gets a `config.xml`; when `TIZEN_SECURITY_PROFILE` names a signing profile, the Tizen CLI produces a signed WGT. webOS gets an `appinfo.json` and `ares-package` writes an IPK to `dist-package`. Vizio output is the web assets in `dist`.
@@ -117,10 +154,11 @@ A plugin is app-owned native code behind a named command, one implementation per
 corepack pnpm platform plugin new greeting
 ```
 
-This creates `plugins/greeting` with an implementation for each configured target. Use `--targets` to limit the list, and `--android-kind kotlin|sidecar|service|jni` to choose the Android flavour. The starter's `mount()` receives the plugins of the target being built.
+This creates `plugins/greeting` with an implementation for each configured target. Use `--targets` to limit the list, and `--android-kind kotlin|sidecar|service|jni` to choose the Android flavour. The app reads the plugins of the target being built with `usePlugins()`, or one of them with `usePlugin('greeting')`; the starter shows a button for each.
 
 ## Next
 
+- [The app API](/app-api.md): components, hooks, services and settings on one page.
 - [Architecture](/architecture.md): how the pieces fit.
 - [Layout](/flow/layout.md) and [Styling](/essentials/styling.md): writing UI.
 - [Services](/services.md): calling device features.

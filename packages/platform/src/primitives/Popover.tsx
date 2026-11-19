@@ -1,8 +1,25 @@
 import type { JSX } from 'solid-js';
+import type { ElementNode } from '../core/elementNode.js';
+import type { ForwardFocusHandler } from '../core/focusKeyTypes.js';
+import { isElementNode } from '../core/utils.js';
 import type { Rect } from '../sdk/input.js';
 import type { SemanticsRole } from '../sdk/semantics.js';
 import { viewport } from '../sdk/viewport.js';
 import { Modal } from './Modal.jsx';
+
+// Focus on the panel goes to the first of its children that takes it; with
+// none the panel keeps it.
+const focusContent: ForwardFocusHandler = function () {
+  const children = this.children;
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i];
+    if (isElementNode(child) && !child.skipFocus) {
+      child.setFocus();
+      return true;
+    }
+  }
+  return false;
+};
 
 export type PopoverPlacement = 'bottom' | 'top' | 'left' | 'right';
 
@@ -16,6 +33,8 @@ export interface PopoverProps {
   role?: SemanticsRole;
   width?: number;
   height?: number;
+  /** Element to focus when the popover opens; defaults to the dialog. */
+  initialFocus?: ElementNode | (() => ElementNode | undefined);
   onRequestClose?(): void;
   children?: JSX.Element;
 }
@@ -60,12 +79,14 @@ export function Popover(props: PopoverProps): JSX.Element {
       onRequestClose={props.onRequestClose}
       label={props.label}
       transparent
+      initialFocus={props.initialFocus}
     >
       <view
         {...rect()}
         color={0x1d2937ff}
         role={props.role ?? 'none'}
         ariaLabel={props.role ? props.label : undefined}
+        forwardFocus={focusContent}
         onMouseClick={() => true}
         onEnter={() => true}
       >

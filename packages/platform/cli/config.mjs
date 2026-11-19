@@ -23,7 +23,10 @@ const known = new Set([
   'deepLinks',
   'services',
   'signing',
+  'app',
 ]);
+const appKeys = ['fonts', 'designSize', 'theme'];
+const themes = ['system', 'light', 'dark'];
 // A value under one of these keys would be a credential written into the
 // project. Signing settings name environment variables instead.
 const inlineSecret = /pass(word|wd)?$|secret$|token$/i;
@@ -138,7 +141,46 @@ export function validateConfig(raw, source = 'config', allowed = available) {
     }
   }
 
+  const app = config.app ?? {};
+  if (!isObject(app)) fail('app', 'expected { fonts, designSize, theme }');
+  for (const key of Object.keys(app))
+    if (!appKeys.includes(key))
+      fail('app.' + key, 'unknown key (known: ' + appKeys.join(', ') + ')');
+  if (app.fonts !== undefined) {
+    if (!Array.isArray(app.fonts)) fail('app.fonts', 'expected an array');
+    app.fonts.forEach((/** @type {unknown} */ font, /** @type {number} */ i) => {
+      const key = `app.fonts[${i}]`;
+      if (!isObject(font)) fail(key, 'expected { family, atlas, file }');
+      const entry = /** @type {Record<string, unknown>} */ (font);
+      for (const name of Object.keys(entry))
+        if (!['family', 'atlas', 'file'].includes(name))
+          fail(`${key}.${name}`, 'unknown key (known: family, atlas, file)');
+      if (typeof entry.family !== 'string' || !entry.family)
+        fail(key + '.family', 'required string');
+      for (const name of ['atlas', 'file']) {
+        const value = entry[name];
+        if (value === undefined) continue;
+        if (typeof value !== 'string' || !value || /[\\/]/.test(value))
+          fail(`${key}.${name}`, 'expected a file name without a directory');
+      }
+      if (entry.atlas === undefined && entry.file === undefined)
+        fail(key, 'needs an atlas (assets/fonts) or a file (targets/roku/fonts)');
+    });
+  }
+  if (app.designSize !== undefined) {
+    const size = app.designSize;
+    if (
+      !isObject(size) ||
+      Object.keys(size).sort().join() !== 'height,width' ||
+      ![size.width, size.height].every((n) => Number.isFinite(n) && n > 0)
+    )
+      fail('app.designSize', 'expected { width, height } with positive numbers');
+  }
+  if (app.theme !== undefined && !themes.includes(app.theme))
+    fail('app.theme', 'expected one of ' + themes.join(', '));
+
   return {
+    app: { fonts: app.fonts, designSize: app.designSize, theme: app.theme },
     id: config.id,
     name: config.name,
     version: config.version,

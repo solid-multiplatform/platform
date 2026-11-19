@@ -126,12 +126,18 @@ export function DialogsScreen() {
       <Button label="Open alert" onEnter={() => setOpen('alert')} />
       <Button label="Open drawer" onEnter={() => setOpen('drawer')} />
       <Button label="Pick a date" onEnter={() => setOpen('date')} />
-      <text skipFocus fontSize={22} color={MUTED}>
+      <text
+        skipFocus
+        role="status"
+        ariaLabel={`Last result: ${last()}`}
+        fontSize={22}
+        color={MUTED}
+      >
         {`Last result: ${last()}`}
       </text>
       <text skipFocus fontSize={16} color={MUTED}>
-        Modal and Drawer take every key. Alert and DatePicker: Back closes them;
-        today their own buttons answer a pointer only.
+        Every surface takes the arrows and Enter, keeps focus inside while it is
+        open, closes on Back and hands focus back to its button.
       </text>
     </Screen>
   );
