@@ -212,7 +212,7 @@ export function init(destination, selected) {
     );
     write(
       path.join(root, 'README.md'),
-      `# ${name}\n\nInstall with \`corepack pnpm install\`. Create an extension with \`corepack pnpm platform plugin new my-plugin\`. Build a target with \`corepack pnpm build ${selected[0]}\`. App code lives in src, extensions in plugins, and native projects in targets. The CLI regenerates each target's work directory on build.\n\nTargets: ${selected.join(', ')}. Desktop uses SDL3 and the native WebGL renderer.\n`,
+      `# ${name}\n\nInstall with \`corepack pnpm install\`. Create an extension with \`corepack pnpm platform plugin new my-plugin\`. Build a target with \`corepack pnpm build ${selected[0]}\`. App code lives in src, extensions in plugins, and native projects in targets. The CLI regenerates each target's work directory on build.\n\nTargets: ${selected.join(', ')}.\n`,
     );
     for (const target of selected) {
       const dest = path.join(root, 'targets', target);

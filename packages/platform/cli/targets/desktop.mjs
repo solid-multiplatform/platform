@@ -1,7 +1,6 @@
 // @ts-check
-// Desktop today runs on Node with an SDL3 window (hosts/desktop). When the
-// Rust and Hermes runtime is in the workspace (packages/host-desktop/native),
-// doctor checks that toolchain instead.
+// The desktop target. Doctor checks the toolchain of whichever desktop host
+// the workspace has (packages/host-desktop/native when present).
 import path from 'node:path';
 import { CliError } from '../context.mjs';
 import { packageDesktop } from '../desktop-package.mjs';

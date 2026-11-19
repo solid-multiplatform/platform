@@ -448,15 +448,15 @@
   "author": "Chris Lorenzo",
   "license": "Apache-2.0",
   "dependencies": {
-    "@solid-primitives/event-listener": "^2.4.5",
     "@solid-primitives/list": "^0.1.2",
-    "@solid-primitives/mouse": "^2.1.6",
     "@solid-primitives/scheduled": "^1.5.3"
   },
   "devDependencies": {
     "@lightningtv/vite-hex-transform": "^1.1.0",
     "@nativescript/types": "9.1.1",
     "@solid-devtools/debugger": "^0.28.1",
+    "@solid-primitives/event-listener": "^2.4.5",
+    "@solid-primitives/mouse": "^2.1.6",
     "@solidjs/testing-library": "^0.8.10",
     "@vitest/browser-playwright": "^4.1.6",
     "jsdom": "^26.1.0",
@@ -474,9 +474,17 @@
     "@solid-multiplatform/renderer": "0.2.0-preview.2",
     "solid-js": "*",
     "@nativescript/secure-storage": "^4.0.2",
-    "@nativescript/local-notifications": "^7.0.0"
+    "@nativescript/local-notifications": "^7.0.0",
+    "@solid-devtools/debugger": "^0.28.1",
+    "vite": ">=5"
   },
   "peerDependenciesMeta": {
+    "@solid-devtools/debugger": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    },
     "@nativescript/secure-storage": {
       "optional": true
     },

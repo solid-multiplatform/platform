@@ -830,9 +830,7 @@ v.describe('Row and Column: scroll modes', () => {
       let col!: lng.ElementNode;
       dispose = await mount(() => (
         <view width={1920} height={1080}>
-          {/* 'bounded' is accepted by withScrolling but missing from the
-            public `scroll` type. */}
-          <Column ref={col} autofocus scroll={'bounded' as 'auto'} upCount={3}>
+          <Column ref={col} autofocus scroll="bounded" upCount={3}>
             {items(8)}
           </Column>
         </view>

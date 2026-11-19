@@ -57,15 +57,9 @@ importers:
       '@nativescript/secure-storage':
         specifier: ^4.0.2
         version: 4.0.2
-      '@solid-primitives/event-listener':
-        specifier: ^2.4.5
-        version: 2.4.5(solid-js@1.9.17)
       '@solid-primitives/list':
         specifier: ^0.1.2
         version: 0.1.2(solid-js@1.9.17)
-      '@solid-primitives/mouse':
-        specifier: ^2.1.6
-        version: 2.1.6(solid-js@1.9.17)
       '@solid-primitives/scheduled':
         specifier: ^1.5.3
         version: 1.5.3(solid-js@1.9.17)
@@ -85,6 +79,12 @@ importers:
       '@solid-multiplatform/renderer':
         specifier: workspace:*
         version: link:../renderer
+      '@solid-primitives/event-listener':
+        specifier: ^2.4.5
+        version: 2.4.5(solid-js@1.9.17)
+      '@solid-primitives/mouse':
+        specifier: ^2.1.6
+        version: 2.1.6(solid-js@1.9.17)
       '@solidjs/testing-library':
         specifier: ^0.8.10
         version: 0.8.10(@solidjs/router@0.16.1(solid-js@1.9.17))(solid-js@1.9.17)

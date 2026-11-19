@@ -10,11 +10,11 @@ import { contactsPermission, requirePermission } from './permission.js';
 import { queryRows } from './query.js';
 import type { AndroidApp } from './runtime.js';
 
-/** Android can continue a listing after the last contact of the one before. */
-export interface AndroidContactQuery extends ContactQuery {
-  /** The `id` of the last contact already listed. */
-  after?: string;
-}
+/**
+ * Android continues a listing after the last contact of the one before:
+ * its `after` cursor is that contact's `id`.
+ */
+export type AndroidContactQuery = ContactQuery;
 
 /** Contacts fetched per round trip to the provider. */
 const PAGE = 200;
@@ -149,6 +149,20 @@ export function contacts(
         after = Number(batch[batch.length - 1]!.id);
       }
       return all;
+    },
+    async page(query: ContactQuery = {}) {
+      await requirePermission(permission, 'Contacts');
+      const size = Math.min(PAGE, Math.max(0, query.limit ?? PAGE));
+      if (size === 0) return { contacts: [] };
+      const contacts: Contact[] = await page(
+        query.search,
+        Number(query.after ?? 0) || 0,
+        size,
+      );
+      // A full page may have more behind it; a short one is the last.
+      return contacts.length < size
+        ? { contacts }
+        : { contacts, next: contacts[contacts.length - 1]!.id };
     },
   };
 }

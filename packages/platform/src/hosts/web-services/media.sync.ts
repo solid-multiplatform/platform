@@ -11,8 +11,12 @@
  *   first `await`, so the call happens in the same turn as the app's.
  * - The media session, which the synchronous `configureMediaSession` reads.
  */
-import type { AudioPort } from '../../sdk/audio.js';
-import type { CameraPort, MicrophonePort } from '../../sdk/capture.js';
+import type { AudioPlaybackState, AudioPort } from '../../sdk/audio.js';
+import type {
+  CameraPort,
+  MicrophonePort,
+  Recording,
+} from '../../sdk/capture.js';
 import type { DownloadData, DownloadPort } from '../../sdk/download.js';
 import { pickedFileFromWeb, type FilePickerPort } from '../../sdk/files.js';
 import type { FullscreenPort, MediaSessionPort } from '../../sdk/media.js';
@@ -42,7 +46,11 @@ export const mediaSession: MediaSessionPort = {
   },
   setActionHandler(action, handler) {
     try {
-      session()?.setActionHandler(action, handler ?? null);
+      // The browser calls a `seekto` handler with `{ seekTime }` in seconds.
+      session()?.setActionHandler(
+        action,
+        (handler as MediaSessionActionHandler | undefined) ?? null,
+      );
     } catch {
       // A browser may not support every action.
     }
@@ -148,14 +156,52 @@ export const camera: CameraPort = {
   },
 };
 
+/**
+ * Web only: the live microphone stream, for an app that processes audio
+ * itself (a level meter, WebRTC). The app stops its tracks. Host-neutral
+ * code records with the SDK's `startRecording` instead.
+ */
+export function openMicrophoneStream(): Promise<MediaStream> {
+  const devices = mediaDevices();
+  if (!devices?.getUserMedia)
+    return Promise.reject(new CapabilityError('microphone'));
+  return devices.getUserMedia({ audio: true });
+}
+
+/** Records the microphone with `MediaRecorder` into a `Blob`. */
 export const microphone: MicrophonePort = {
-  async start() {
-    const devices = mediaDevices();
-    if (!devices?.getUserMedia) throw new CapabilityError('microphone');
-    return devices.getUserMedia({ audio: true });
-  },
-  stop(stream) {
-    for (const track of stream?.getTracks() ?? []) track.stop();
+  async start(options) {
+    if (typeof MediaRecorder !== 'function')
+      throw new CapabilityError('microphone');
+    const stream = await openMicrophoneStream();
+    const preferred = options.mimeType;
+    const recorder =
+      preferred && MediaRecorder.isTypeSupported?.(preferred)
+        ? new MediaRecorder(stream, { mimeType: preferred })
+        : new MediaRecorder(stream);
+    const chunks: Blob[] = [];
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) chunks.push(event.data);
+    };
+    const started = Date.now();
+    recorder.start();
+    let recording: Promise<Recording> | undefined;
+    return {
+      stop: () =>
+        (recording ??= new Promise((resolve, reject) => {
+          recorder.onerror = () => reject(new Error('Recording failed'));
+          recorder.onstop = () => {
+            for (const track of stream.getTracks()) track.stop();
+            const mimeType = recorder.mimeType || preferred || 'audio/webm';
+            resolve({
+              mimeType,
+              blob: new Blob(chunks, { type: mimeType }),
+              durationMs: Date.now() - started,
+            });
+          };
+          recorder.stop();
+        })),
+    };
   },
 };
 
@@ -195,18 +241,35 @@ export const filePicker: FilePickerPort = {
 function createAudio(): AudioPort {
   let element: HTMLAudioElement | undefined;
   let volume = 1;
+  // Whether the next `pause` event is one this port asked for. Any other is
+  // the browser's or the system's doing: reported as `interrupted`.
+  let asked = false;
+  const listeners = new Set<(state: AudioPlaybackState) => void>();
+  const emit = (state: AudioPlaybackState) => {
+    for (const listener of listeners) listener(state);
+  };
   const ensure = () => {
     if (!element) {
       if (typeof Audio === 'undefined') throw new CapabilityError('audio');
-      element = new Audio();
-      element.preload = 'metadata';
-      element.volume = volume;
+      const created = (element = new Audio());
+      created.preload = 'metadata';
+      created.volume = volume;
+      // Media events only: nothing here runs while the element is silent.
+      created.addEventListener('playing', () => emit('playing'));
+      created.addEventListener('ended', () => emit('ended'));
+      created.addEventListener('pause', () => {
+        const mine = asked;
+        asked = false;
+        // The end of a track also pauses it; `ended` reports that.
+        if (!created.ended) emit(mine ? 'paused' : 'interrupted');
+      });
     }
     return element;
   };
   return {
     async play(track, options = {}) {
       const player = ensure();
+      asked = false;
       player.src = track.url;
       if (options.volume !== undefined) {
         volume = Math.min(1, Math.max(0, options.volume));
@@ -216,13 +279,16 @@ function createAudio(): AudioPort {
       await player.play();
     },
     async pause() {
-      element?.pause();
+      if (!element || element.paused) return;
+      asked = true;
+      element.pause();
     },
     async resume() {
       await element?.play();
     },
     async stop() {
       if (!element) return;
+      asked = !element.paused;
       element.pause();
       element.removeAttribute('src');
       element.load();
@@ -233,6 +299,10 @@ function createAudio(): AudioPort {
     setVolume(next) {
       volume = Math.min(1, Math.max(0, next));
       if (element) element.volume = volume;
+    },
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     },
   };
 }

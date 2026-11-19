@@ -24,9 +24,6 @@ export function hashParser(str: string) {
 }
 
 export type HashRouterProps = BaseRouterProps & {
-  actionBase?: string;
-  explicitLinks?: boolean;
-  preload?: boolean;
   forceProxy?: boolean;
   queryParams?: string[];
 };

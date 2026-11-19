@@ -443,7 +443,8 @@ const propagateKeyPress = (
       const eventHandler = elm[eventHandlerKey];
       if (isFunction(eventHandler)) {
         lastHandlerSeen = elm;
-        handled = eventHandler.call(elm, e, elm, finalFocusElm) === true;
+        handled =
+          eventHandler.call(elm, e, elm, finalFocusElm, mappedEvent) === true;
       }
     }
     if (!handled && !isUp) {
