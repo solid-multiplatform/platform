@@ -67,6 +67,8 @@
   - [Recorded Android TV measurements](/beta/README.md)
 - Tooling
   - [JSX locator](/tools/jsx_locator.md)
+- Reference
+  - [Apple guidance (HIG, UIKit)](/reference/apple-hig.md)
 - Project
   - [Contributing](/contributing.md)
   - [Releasing](/releasing.md)
