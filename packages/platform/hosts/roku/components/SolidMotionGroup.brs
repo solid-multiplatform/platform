@@ -1,6 +1,9 @@
+' One Animation + FloatFieldInterpolator per animated axis, created the first
+' time the axis is asked for. The id the interpolators address is written by
+' the host (`setProp(dom, "id", ...)`) before any request arrives; init stays
+' free of work so a screen full of nodes does not pay for motion it never uses.
 sub init()
     m.channels = {}
-    m.top.id = "solid-motion-" + createObject("roDeviceInfo").GetRandomUUID()
 end sub
 
 sub onXValue()
@@ -60,8 +63,11 @@ sub requestMotion(key as string, request as object)
     action = request.action
     if action = "start" then
         writeValue(key, value)
-        channel.interp.keyValue = [value, request.to]
+        ' Stop before re-arming (as the SDK's tween shim does): a keyValue
+        ' written while the previous run is still running may not be picked
+        ' up by the restarted Animation, which then never reaches "stopped".
         channel.anim.control = "stop"
+        channel.interp.keyValue = [value, request.to]
         channel.anim.duration = request.duration
         channel.anim.easeFunction = request.easing
         if request.duration <= 0 or abs(value - request.to) < 0.0001 then

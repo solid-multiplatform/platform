@@ -199,7 +199,15 @@ export class RokuNode extends Events {
     this.renderer = renderer;
     this.stage = renderer;
     this._isText = text;
-    this.dom = existingRoot || createElement(props.compositorHolder ? 'SolidMotionGroup' : 'group');
+    // A motion root is a `SolidMotionGroup`: the component owns one
+    // SceneGraph Animation per axis and copies the animated float into
+    // `translation`/`opacity` on the render thread. Nodes are motion roots
+    // only when the host can run native animations.
+    const nativeMotion = !!this.renderer.host?.createNativeAnimation;
+    this.nativeMotionRoot = !existingRoot && (nativeMotion || !!props.compositorHolder || !!props.nativeMotionRoot);
+    this.dom = existingRoot || createElement(this.nativeMotionRoot ? 'SolidMotionGroup' : 'group');
+    // The component's interpolators address the group by id.
+    if (this.nativeMotionRoot) setProp(this.dom, 'id', 's' + this.uid);
     const p = props || {};
     this._color = p.color !== undefined ? p.color : 0xffffffff;
     // A missing corner on a gradient view is transparent on the web. Keep
@@ -1279,6 +1287,24 @@ export class RokuNode extends Events {
   }
   get animations() { return this._anims || new Map(); }
   setAnimationValue(name: string, value: any) { (this as any)[name] = value; }
+
+  /**
+   * Marks a property as driven by a SceneGraph animation on the render
+   * thread: the JS flush must not write it until the animation releases it,
+   * or the write would fight the interpolator. The other axis of a translation
+   * is snapped through its request field instead (see `writeTransform`).
+   */
+  holdNativeMotion(key: string) {
+    if (!this.nativeMotionOwned) this.nativeMotionOwned = new Set();
+    this.nativeMotionOwned.add(key);
+  }
+
+  /** Hands a property back to the JS flush, which writes its final value. */
+  releaseNativeMotion(key: string) {
+    if (!this.nativeMotionOwned?.delete(key)) return;
+    if (this.nativeMotionOwned.size === 0) this.nativeMotionOwned = undefined;
+    this.markTransform(key === 'alpha' ? 'alpha' : 'position');
+  }
   stopAnimation(name: string) {
     const animation = this.animation(name);
     if (animation) animation.stop();
