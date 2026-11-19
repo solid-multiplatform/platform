@@ -55,7 +55,7 @@ sub releaseAnimation(channel as object)
     if parent <> invalid then parent.removeChild(channel.anim)
     channel.anim = invalid
     channel.interp = invalid
-end function
+end sub
 
 ' A fresh Animation + FloatFieldInterpolator for one run of `key`, observed.
 sub armAnimation(key as string, channel as object)
