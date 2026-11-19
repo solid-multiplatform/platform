@@ -131,3 +131,27 @@ export function mountComponent(settings, hasOptions, pointer = 'host.input') {
       entry.options,
     );`;
 }
+
+/** The NativeScript form each native target starts its host with. */
+export const NATIVE_FORMS = {
+  android: 'phone',
+  'android-tv': 'tv',
+  ios: 'ios',
+  'apple-tv': 'tvOS',
+};
+
+/**
+ * The body of a generated `mount(host)` for a component app on a
+ * NativeScript target: one `HostDefinition` per form, started through
+ * `startApp` like every other host. `host` is the surface the target's
+ * bootstrap already made (Canvas, key bridge, touch scope, editor host);
+ * the host adopts it, so the app and the host both keep working.
+ */
+export function nativeComponent(settings, hasOptions, form) {
+  return `const entry = appEntry(App, plugins, ${settings}${hasOptions ? ', options' : ''});
+    const stop = startApp(
+      nativeHost({ form: ${JSON.stringify(form)}, host }),
+      () => entry.root(),
+      entry.options,
+    );`;
+}

@@ -727,6 +727,7 @@ v.describe('package.json exports', () => {
       './apple-tv',
       './android-tv',
       './nativescript',
+      './nativescript/host',
       './nativescript/webpack',
       './browser-tv',
       './browser-tv/canvas',

@@ -7,6 +7,7 @@ import {
   installShims,
   KeyBridge,
 } from '@solid-multiplatform/platform/nativescript';
+import { nativeEditorHost } from './editors.mjs';
 
 /**
  * Reports a start-up failure where a release build can see it. Android release
@@ -44,7 +45,9 @@ export function runNativeApp(
         const platform = await import('@solid-multiplatform/platform');
         platform.Config.preventDefaultOnHandledKeys = true;
         platform.setCapabilities(target);
-        const bridge = new KeyBridge({ target: document });
+        // The bridge is the app's key source: no target, so nothing is
+        // dispatched to a fake `document`. The focus manager listens on it.
+        const bridge = new KeyBridge();
         const binding = bindDevice(canvas, bridge, platform, root);
         const lifecycle = bindLifecycle(
           () => platform.renderer,
@@ -96,6 +99,8 @@ export function runNativeApp(
             target,
             root,
             canvas,
+            keys: bridge,
+            text: nativeEditorHost(root, target),
             input: binding.input,
           });
           if (active) dispose = app.mount();

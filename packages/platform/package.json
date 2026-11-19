@@ -61,6 +61,7 @@
     "./apple-tv": "./hosts/apple-tv/index.mjs",
     "./android-tv": "./hosts/android-tv/index.mjs",
     "./nativescript": "./dist/src/hosts/nativescript/index.js",
+    "./nativescript/host": "./hosts/nativescript/host.mjs",
     "./nativescript/webpack": "./hosts/nativescript/webpack.cjs",
     "./browser-tv": "./dist/src/hosts/browser-tv.js",
     "./browser-tv/canvas": "./dist/src/hosts/canvas.js",
