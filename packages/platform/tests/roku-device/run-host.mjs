@@ -117,6 +117,24 @@ async function exited(ms = 8000) {
     if ((await activeApp(device)) !== 'dev') return true;
   return false;
 }
+/**
+ * At the root, Back must exit the channel. A key sent while the channel is
+ * still resuming can be dropped by the firmware, so first prove the app takes
+ * keys (Play and its handler print) and allow one retry; the detail says so
+ * when a retry was needed.
+ */
+async function exitAtRoot() {
+  const mark = notes.length;
+  await keypress(device, 'Play');
+  const reachable = (await waitFor(/^HOST KEY PlayPause/, 5000, mark)) !== undefined;
+  await keypress(device, 'Back');
+  if (await exited(6000)) return { ok: true, detail: '' };
+  if (!reachable) return { ok: false, detail: 'the app did not take a key before Back' };
+  await keypress(device, 'Back');
+  return (await exited(8000))
+    ? { ok: true, detail: 'needed a second Back (the first was dropped)' }
+    : { ok: false, detail: 'the app stayed in front after two Backs' };
+}
 
 // ---- probes ----------------------------------------------------------------------
 
@@ -259,8 +277,8 @@ try {
   check('no false repeat and no stray release around the keyboard', reopened !== undefined && stray.length === 0, stray.join(' | '));
   check('the app is still in front', (await activeApp(device)) === 'dev');
 
-  await keypress(device, 'Back');
-  check('Back at the root exits the channel', await exited());
+  const rootExit = await exitAtRoot();
+  check('Back at the root exits the channel', rootExit.ok, rootExit.detail);
 
   // ---- relaunch with a deep link ----
   let from = notes.length;
@@ -298,12 +316,16 @@ try {
   }
 
   // ---- an app that throws while starting ----
-  await keypress(device, 'Back');
-  check('Back at the root exits again', await exited());
+  const againExit = await exitAtRoot();
+  check('Back at the root exits again', againExit.ok, againExit.detail);
   from = notes.length;
   await launch(device, 'dev', { contentId: 'boot-error', mediaType: 'movie' });
   const failure = await waitFor(/^ROKU_BOOT_ERROR .*deliberate boot error/, 30_000, from);
-  check('boot error is on the console', failure !== undefined);
+  check(
+    'boot error is on the console',
+    failure !== undefined,
+    failure ? '' : 'the throw did not reach the host; start ' + (line(/^HOST START/, from) ? 'ran' : 'did not run'),
+  );
   await sleep(2000);
   image = await shoot('boot-error');
   const corner = pixel(image, 1800, 1000);
