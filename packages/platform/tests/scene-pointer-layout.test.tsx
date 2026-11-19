@@ -59,14 +59,17 @@ v.test('a click before flex layout hits no row; after it, the row under the poin
   label.width = 0;
   label.height = 0;
 
-  // The same tick as the mount, and after the layout microtask: the text is
-  // unmeasured, so nothing is placed and nothing may be hit.
+  // The same tick as the mount, and after the layout microtask: the rows are
+  // placed at their provisional positions (the text is the last child, so its
+  // unmeasured height does not move them), but a container whose text is
+  // unmeasured is not hit, so an early click does nothing rather than risk
+  // the wrong row.
   click(20, 20);
   await microtask();
   click(20, 20);
   await task();
   click(20, 20);
-  v.expect(rows()).toEqual([0, 0, 0]);
+  v.expect(rows()).toEqual([0, 50, 100]);
   v.expect(entered).toEqual([]);
 
   // The text is measured: the column lays out, and each row is where it is.
