@@ -49,6 +49,28 @@ importers:
         specifier: ^2.11.12
         version: 2.11.12(solid-js@1.9.17)(vite@8.0.13(@types/node@22.14.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.8.4))
 
+  packages/host-desktop:
+    dependencies:
+      '@solid-multiplatform/platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@solid-multiplatform/renderer':
+        specifier: workspace:*
+        version: link:../renderer
+      solid-js:
+        specifier: 1.9.17
+        version: 1.9.17
+    devDependencies:
+      '@babel/core':
+        specifier: ^7.26.10
+        version: 7.26.10
+      babel-preset-solid:
+        specifier: ^1.9.5
+        version: 1.9.5(@babel/core@7.26.10)
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
+
   packages/platform:
     dependencies:
       '@nativescript/local-notifications':

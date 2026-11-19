@@ -1,0 +1,79 @@
+[package]
+name = "solid-desktop"
+version = "0.0.0"
+edition = "2021"
+publish = false
+description = "Solid Multiplatform desktop runtime: Hermes, SDL3 and a GL scene surface in one executable"
+license = "Apache-2.0"
+
+[[bin]]
+name = "solid-desktop"
+path = "src/main.rs"
+
+[build-dependencies]
+cc = "1"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[features]
+# Accessibility is on unless asked otherwise (--no-default-features): an app
+# nobody with a screen reader can use is not finished, and it costs nothing
+# at run time until an app describes its scene. It costs 2.6 MB of the
+# executable, most of it the D-Bus client.
+default = ["accessibility", "notifications", "connectivity"]
+# Whether the machine is connected, from NetworkManager's signal on the
+# system bus. The same D-Bus client again.
+connectivity = ["dep:zbus", "dep:blocking"]
+# The desktop's notification service, over the session bus. It shares the
+# D-Bus client with accessibility, so beside it it costs little.
+notifications = ["dep:zbus", "dep:blocking"]
+# SDL compiled from source into the executable, for packaged apps: nothing of
+# SDL has to be installed where the app runs. Off by default because it adds
+# a CMake build of SDL to every build of the runtime.
+static-sdl = [
+    "sdl3-sys/build-from-source-static",
+    # The parts of SDL nothing here calls are left out of that build: sound,
+    # its own renderers, cameras, game controllers, sensors, the tray.
+    "sdl3-sys/no-sdl-audio",
+    "sdl3-sys/no-sdl-gpu",
+    "sdl3-sys/no-sdl-render",
+    "sdl3-sys/no-sdl-camera",
+    "sdl3-sys/no-sdl-joystick",
+    "sdl3-sys/no-sdl-haptic",
+    "sdl3-sys/no-sdl-hidapi",
+    "sdl3-sys/no-sdl-sensor",
+    "sdl3-sys/no-sdl-tray",
+]
+
+# The scene's semantics for screen readers and other assistive technology
+# (AT-SPI over D-Bus, through AccessKit). Linux only so far.
+accessibility = ["dep:accesskit", "dep:accesskit_unix", "dep:blocking"]
+
+[dependencies]
+sdl3-sys = "0.7.3"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+accesskit = { version = "0.25", optional = true }
+accesskit_unix = { version = "0.24", optional = true }
+# Not used here: this pins the thread pool the D-Bus client takes its helper
+# threads from. In 1.7.0 an idle thread of that pool never ends and wakes
+# twice a second for as long as the process lives; in 1.6.2 it ends after
+# half a second without work. tests/a11y/run.mjs fails when a thread keeps
+# waking, so it says when this pin can go.
+blocking = { version = "=1.6.2", optional = true }
+# The D-Bus client AccessKit's adapter brings, with its blocking calls too.
+zbus = { version = "5.19", optional = true, default-features = false, features = ["async-io", "blocking-api"] }
+# Decoders only, all in Rust: no encoders, no C libraries.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+# Where one user-perceived character ends and the next begins, for the caret
+# of a text field: tables only, no dependencies.
+unicode-segmentation = "1"
+# HTTP(S) on a blocking socket, one thread per request: no async runtime.
+# TLS is rustls with ring and Mozilla's roots, so nothing of the system's is
+# linked; gzip because servers send it. Cookies, JSON, proxies' extras off.
+ureq = { version = "3", default-features = false, features = ["rustls", "gzip"] }
