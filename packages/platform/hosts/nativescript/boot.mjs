@@ -9,6 +9,19 @@ import {
 } from '@solid-multiplatform/platform/nativescript';
 import { nativeEditorHost } from './editors.mjs';
 
+/**
+ * Reports a start-up failure where a release build can see it. Android release
+ * bundling strips `console.*`, so an app that failed to start used to be a
+ * black screen with nothing in logcat.
+ */
+function reportStartupFailure(message, error) {
+  const detail = String(error?.stack ?? error?.message ?? error);
+  const log = globalThis.android?.util?.Log;
+  if (typeof log?.e === 'function')
+    log.e('SolidMultiplatform', message + ': ' + detail);
+  else console.error(message, error);
+}
+
 export function runNativeApp(
   target,
   loadApp,
@@ -93,14 +106,14 @@ export function runNativeApp(
           if (active) dispose = app.mount();
         } catch (error) {
           cleanup();
-          console.error('Native app startup failed', error);
+          reportStartupFailure('Native app startup failed', error);
         }
       };
       // A failure before the app loader runs (host module evaluation, input
       // binding) would otherwise disappear with the rejected handler promise.
       canvas.once('ready', () => {
         start().catch((error) =>
-          console.error('Native host startup failed', error),
+          reportStartupFailure('Native host startup failed', error),
         );
       });
       root.addChild(canvas);

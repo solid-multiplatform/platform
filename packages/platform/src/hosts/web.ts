@@ -10,6 +10,7 @@ import {
   type RendererMainSettings,
 } from '@solid-multiplatform/renderer';
 import type { SceneRenderer } from '@solid-multiplatform/renderer/contracts';
+import { registerDefaultShaders } from '../core/shaders.js';
 import type {
   HostContext,
   HostDefinition,
@@ -147,9 +148,16 @@ export function createWebHost(
 export function webHost(
   options: WebHostOptions = {},
 ): HostDefinition<HTMLElement> {
-  return createWebHost(
-    options,
-    (settings, surface) =>
-      new RendererMain(settings as RendererMainSettings, surface),
-  );
+  return createWebHost(options, (settings, surface) => {
+    const renderer = new RendererMain(
+      settings as RendererMainSettings,
+      surface,
+    );
+    // Rounded corners, borders, shadows and gradients are shaders of the
+    // WebGL backend: an app started on this host draws them without asking.
+    // Only `webHost` reaches this module's shader import; `createWebHost`
+    // with another backend leaves it to the bundler to drop.
+    registerDefaultShaders(renderer);
+    return renderer;
+  });
 }

@@ -1,4 +1,5 @@
 import { createSignal, type JSX } from 'solid-js';
+import type { ElementNode } from '../core/elementNode.js';
 import { useTheme } from '../sdk/theme.jsx';
 import { Menu } from './Menu.jsx';
 
@@ -32,26 +33,47 @@ export interface SelectProps<T> {
 export function Select<T>(props: SelectProps<T>): JSX.Element {
   const theme = () => useTheme();
   const [open, setOpen] = createSignal(false);
+  const [focused, setFocused] = createSignal(false);
   const width = () => props.width ?? 280;
   const height = () => props.height ?? 48;
   const selected = () =>
     props.options.find((option) => Object.is(option.value, valueOf(props.value)));
-  const anchor = () => ({
-    x: props.x ?? 0,
-    y: props.y ?? 0,
-    width: width(),
-    height: height(),
-  });
+  let trigger: ElementNode | undefined;
+  // Where the trigger is in the scene, whatever it is nested in: the bounds
+  // a pointer is tested against, read when the menu opens. `Popover` keeps
+  // the menu inside the viewport.
+  const anchor = () =>
+    open() && trigger !== undefined
+      ? {
+          x: trigger.absX || 0,
+          y: trigger.absY || 0,
+          width: width(),
+          height: height(),
+        }
+      : { x: props.x ?? 0, y: props.y ?? 0, width: width(), height: height() };
+  const selectedIndex = () => {
+    const value = valueOf(props.value);
+    return Math.max(
+      0,
+      props.options.findIndex((option) => Object.is(option.value, value)),
+    );
+  };
 
   return (
     <>
       <view
+        ref={(node) => {
+          trigger = node as ElementNode;
+        }}
         x={props.x ?? 0}
         y={props.y ?? 0}
         width={width()}
         height={height()}
         color={theme().colors.surfaceRaised}
         borderRadius={theme().radius.small}
+        border={{ width: focused() ? 3 : 0, color: theme().colors.focus }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         ariaLabel={props.label}
         ariaValueText={props.label ? selected()?.label : undefined}
         ariaExpanded={open()}
@@ -71,22 +93,30 @@ export function Select<T>(props: SelectProps<T>): JSX.Element {
         >
           {selected()?.label ?? props.placeholder ?? 'Select'}
         </text>
-        <text
-          x={width() - 32}
-          y={(height() - 18) / 2}
-          width={24}
-          contain="width"
-          textAlign="center"
-          fontSize={18}
+        {/* The arrow is two bars, not a glyph: no font has to carry it. */}
+        <view
+          skipFocus
+          x={width() - 31}
+          y={height() / 2 - 1}
+          width={10}
+          height={2}
+          rotation={Math.PI / 4}
           color={theme().colors.textMuted}
-          ariaHidden
-        >
-          ▾
-        </text>
+        />
+        <view
+          skipFocus
+          x={width() - 25}
+          y={height() / 2 - 1}
+          width={10}
+          height={2}
+          rotation={-Math.PI / 4}
+          color={theme().colors.textMuted}
+        />
       </view>
       <Menu
         visible={open}
-        anchor={anchor()}
+        anchor={anchor}
+        selected={selectedIndex()}
         label={props.label ?? 'Select'}
         items={props.options.map((option) => ({
           label: option.label,
