@@ -28,6 +28,7 @@ import { rokuEditorHost } from './editor';
 import { createKeySource } from './keys';
 import { createNativeTextEntry } from './native-text-entry';
 import { reportError } from './report';
+import { createRokuMotionHost } from './native-motion';
 import { rokuServices, signalLaunchComplete } from './services';
 import { setTaskRoot } from './worker-task';
 
@@ -39,6 +40,11 @@ export interface RokuHostOptions {
    * The registry section this app's settings live in. Defaults to `app`.
    */
   namespace?: string;
+  /**
+   * Run `x`, `y` and `alpha` animations on SceneGraph's render thread.
+   * Defaults to true; `false` keeps every property on the JS clock.
+   */
+  nativeMotion?: boolean;
 }
 
 /** The app failed to start: say so on screen instead of leaving it black. */
@@ -121,7 +127,15 @@ export function createAnchor(
               reportError('ROKU_EDITOR', reason),
             ),
             createRenderer: (settings) =>
-              (scene = new SceneGraphRenderer(settings, root)),
+              (scene = new SceneGraphRenderer(
+                settings,
+                root,
+                // Native motion is on unless the app turns it off; a host
+                // without it falls back to the JS clock for every property.
+                options.nativeMotion === false
+                  ? {}
+                  : createRokuMotionHost(),
+              )),
             // Each font file the app imported is registered with the scene.
             // An entry for another backend (an SDF atlas) has no file here.
             loadFonts: (fonts) =>

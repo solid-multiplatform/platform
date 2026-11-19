@@ -45,7 +45,18 @@ export class CompositorAnimation extends Events {
   }
   private begin(target: number, duration: number): this {
     this.target = target;this.state = 'running';this.sink.prepare?.();
-    this.value = target;this.publish(target);
+    if (duration <= 0) {
+      // An immediate run is over before the render thread can report it; write
+      // the value now so callers observe it synchronously, and let the sink
+      // apply the same value on the render thread.
+      this.value = target;this.publish(target);
+      this.send('start', 0);this.emit('start');
+      this.state = 'stopped';this.emit('finish');
+      return this;
+    }
+    // The JS node keeps the value it started from while the render thread
+    // animates; the component reports the final value when it stops. Publishing
+    // the target here would make layout and hit-testing jump to the end.
     this.send('start', duration);this.emit('start');
     return this;
   }
@@ -62,7 +73,7 @@ export class CompositorAnimation extends Events {
     });
   }
   pause(): this { if (this.running) { this.state = 'paused';this.send('pause'); } return this; }
-  resume(): this { if (!this.removed && this.state === 'paused') { this.state = 'running';this.publish(this.target);this.send('resume'); } return this; }
+  resume(): this { if (!this.removed && this.state === 'paused') { this.state = 'running';this.send('resume'); } return this; }
   stop(): this {
     if (this.done) return this;
     this.state = 'stopped';this.send('stop');this.emit('stop');return this;
