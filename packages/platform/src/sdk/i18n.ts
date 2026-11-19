@@ -57,6 +57,12 @@ export interface LocalePort {
   applyTextScale?(scale: number): void;
   /** The app turned the high-contrast palette on or off. */
   applyHighContrast?(enabled: boolean): void;
+  /**
+   * Calls `listener` when the user's preferred locale changed; `current()`
+   * then gives the new one. Returns the function that stops listening. A
+   * host that cannot tell leaves this out.
+   */
+  subscribe?(listener: () => void): () => void;
 }
 
 declare module './registry.js' {
@@ -267,16 +273,31 @@ export function createI18n(options: I18nOptions = {}): I18n {
 }
 
 let active: I18n | undefined;
+// Stops the default instance following the host's locale.
+let unfollow: (() => void) | undefined;
 
 /** Install the application's locale and message tables. */
 export function setupI18n(options: I18nOptions): I18n {
+  // The app's own instance has the locale the app gave it.
+  unfollow?.();
+  unfollow = undefined;
   active = createI18n(options);
   return active;
 }
 
 // Created on first use so that importing the SDK never touches the host
-// (its locale service) before the app asks for a translation.
-const current = (): I18n => (active ??= createI18n());
+// (its locale service) before the app asks for a translation. The default
+// instance has the user's locale, so it follows the host's changes to it,
+// from that first use until `setupI18n` replaces it.
+const current = (): I18n => {
+  if (active === undefined) {
+    const instance = (active = createI18n());
+    unfollow = peekService('locale')?.subscribe?.(() =>
+      instance.setLocale(defaultLocale()),
+    );
+  }
+  return active;
+};
 
 /** The active i18n instance. */
 export function useI18n(): I18n {

@@ -1,4 +1,4 @@
-import { peekService, withService } from './registry.js';
+import { withService } from './registry.js';
 
 export interface CameraOptions {
   facingMode?: 'user' | 'environment';
@@ -17,10 +17,32 @@ export interface CameraPort {
   capture(options: CameraOptions): Promise<CapturedPhoto>;
 }
 
+export interface RecordingOptions {
+  /**
+   * The preferred container and codec (`audio/webm`, `audio/mp4`). A host
+   * that cannot record it uses its own: read `Recording.mimeType`.
+   */
+  mimeType?: string;
+}
+
+/**
+ * A finished recording. A host gives the audio as `blob` (web), as the
+ * `path` of a file it wrote (native hosts), or both.
+ */
+export interface Recording {
+  mimeType: string;
+  blob?: Blob;
+  path?: string;
+  durationMs?: number;
+}
+
+/** A recording in progress. `stop` ends it and releases the microphone. */
+export interface RecordingSession {
+  stop(): Promise<Recording>;
+}
+
 export interface MicrophonePort {
-  start(): Promise<MediaStream>;
-  /** Stop recording; `stream` is the one `start` resolved with. */
-  stop(stream?: MediaStream): void;
+  start(options: RecordingOptions): Promise<RecordingSession>;
 }
 
 declare module './registry.js' {
@@ -40,14 +62,15 @@ export async function capturePhoto(
   return withService('camera', (port) => port.capture(options));
 }
 
-/** Open a microphone stream (recording is app-owned). */
-export async function openMicrophone(): Promise<MediaStream> {
-  return withService('microphone', (port) => port.start());
-}
-
-export function stopMicrophone(stream?: MediaStream): void {
-  const port = peekService('microphone');
-  if (port) return port.stop(stream);
-  // No service opened this stream, so ending its tracks is all there is.
-  for (const track of stream?.getTracks() ?? []) track.stop();
+/**
+ * Start recording from the microphone through the host's `microphone`
+ * service. `stop()` on the result ends the recording and resolves with it.
+ * The web host records with `MediaRecorder`; a browser app that needs the
+ * live stream instead uses `openMicrophoneStream` from the `services/web`
+ * entry.
+ */
+export async function startRecording(
+  options: RecordingOptions = {},
+): Promise<RecordingSession> {
+  return withService('microphone', (port) => port.start(options));
 }

@@ -28,12 +28,25 @@ export interface ControlSurface extends EditorHost {
   create(kind: ControlKind): ControlHandle;
 }
 const Surface = createContext<ControlSurface>();
+// Where text fields get their editors: the control surface, or a host's
+// `text` on a host that has native text entry and no other native control.
+const Editors = createContext<EditorHost>();
+/**
+ * Gives the controls below it their host. `surface` serves every control;
+ * `text` (a host context's `text`) is enough for `TextField`, `SearchField`
+ * and `TextArea`, and is used for them when both are given.
+ */
 export function Controls(props: {
-  surface: ControlSurface;
+  surface?: ControlSurface;
+  text?: EditorHost;
   children?: JSXElement;
 }) {
   return (
-    <Surface.Provider value={props.surface}>{props.children}</Surface.Provider>
+    <Surface.Provider value={props.surface}>
+      <Editors.Provider value={props.text ?? props.surface}>
+        {props.children}
+      </Editors.Provider>
+    </Surface.Provider>
   );
 }
 function useSurface() {
@@ -56,7 +69,9 @@ export const Label = (props: ControlProps) => control('label', props);
 export function TextField(
   props: EditorOptions & { bounds: Rect; autofocus?: boolean },
 ) {
-  const editor = useSurface().createEditor(props);
+  const host = useContext(Editors);
+  if (!host) throw new Error('Text fields require a host editor');
+  const editor = host.createEditor(props);
   createEffect(() => editor.setBounds({ ...props.bounds }));
   createEffect(() => {
     if (props.value !== undefined) editor.setValue(props.value);

@@ -70,7 +70,12 @@ export function mount(
   plugins: Record<string, Plugin>,
   fontRoot?: string,
   pointer?: HostWiring['pointer'],
-  host?: { target: string; root?: object; semantics?: HostWiring['semantics'] },
+  host?: {
+    target: string;
+    root?: object;
+    keys?: HostWiring['keys'];
+    semantics?: HostWiring['semantics'];
+  },
 ) {
   return mountApp(
     () => (
@@ -79,7 +84,7 @@ export function mount(
         host={{ target: host?.target ?? '', native: host?.root }}
       />
     ),
-    { pointer, semantics: host?.semantics },
+    { keys: host?.keys, pointer, semantics: host?.semantics },
     appOptions(fontRoot),
   );
 }
