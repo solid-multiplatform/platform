@@ -321,7 +321,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   });
 
   v.test(
-    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 86 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 87 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
@@ -361,6 +361,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'Sheet',
         'Suspense',
         'Svg',
+        'TelemetryCounter',
         'Toast',
         'Tooltip',
         'VirtualColumn',

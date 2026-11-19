@@ -325,7 +325,9 @@ async function expectStatus(page, expected, what) {
     if (lines.some((line) => expected.test(line ?? ''))) return;
     await sleep(50);
   }
-  assert.fail(`${what}: status is ${JSON.stringify(lines)}, expected ${expected}`);
+  assert.fail(
+    `${what}: status is ${JSON.stringify(lines)}, expected ${expected}`,
+  );
 }
 
 async function shot(page, name) {
@@ -467,7 +469,11 @@ async function interactive(browser) {
   await page.keyboard.press('ArrowDown');
   await expectFocus(page, 'button:Open menu', 'Down to the menu button');
   await page.keyboard.press('Enter');
-  await expectFocus(page, 'menuitem:Rename', 'the menu opens on its first item');
+  await expectFocus(
+    page,
+    'menuitem:Rename',
+    'the menu opens on its first item',
+  );
   await shot(page, '2b-menu');
   await page.keyboard.press('ArrowDown');
   await expectFocus(page, 'menuitem:Share', 'Down in the menu');
@@ -601,7 +607,11 @@ async function interactive(browser) {
   }
   await expectFocus(page, 'button:Done', 'Down to the actions again');
   await page.keyboard.press('Enter');
-  await expectFocus(page, 'button:Pick a date', 'focus returns from the picker');
+  await expectFocus(
+    page,
+    'button:Pick a date',
+    'focus returns from the picker',
+  );
   await expectStatus(
     page,
     new RegExp(`^Last result: date: ${result}$`),
@@ -626,6 +636,120 @@ async function interactive(browser) {
   );
   console.log(
     `ok  idle: no frame in 2 s on home and each of ${SECTIONS.length} screens`,
+  );
+}
+
+/** The meter's ARIA status labels: empty while it is closed. */
+const meterLabels = (page) =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('[role="status"]')]
+      .map((el) => el.getAttribute('aria-label') ?? '')
+      .filter((label) => label.startsWith('Frames per second')),
+  );
+
+/**
+ * (d) The window adapts. At 1280 the home grid is four cards to a row; at
+ * phone width the same scene reflows to one full-width card per row, stays
+ * navigable, and reflows back when the window widens. The frame meter opens
+ * on F, is idle when it is open, and leaves no listener or timer when it is
+ * closed.
+ */
+async function responsive(browser) {
+  const { page, errors, consoleLines } = await newPage(browser);
+  await page.goto(origin);
+  await waitForCanvas(page, errors, consoleLines);
+
+  // Desktop window: the second row follows the first.
+  await expectFocus(page, 'button:Layout', 'home autofocus at 1280');
+  await page.keyboard.press('ArrowDown');
+  await expectFocus(page, 'button:States', '1280: Down to the second grid row');
+  await page.keyboard.press('ArrowUp');
+  await expectFocus(page, 'button:Layout', '1280: Up to the first row');
+
+  // Resized to a phone, without a reload: one card per row, full width.
+  await page.setViewportSize({ width: 420, height: 900 });
+  await sleep(300);
+  // Reflowing replaced the rows, so the scene's focus is back on the home
+  // list; one Down lands on the next card in the single column (at 1280 the
+  // same key went to States, the first card of the second row).
+  await page.keyboard.press('ArrowDown');
+  await expectFocus(page, 'button:Text', '420: Down to the next card');
+  await page.keyboard.press('ArrowDown');
+  await expectFocus(page, 'button:Images', '420: Down the single column');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await expectFocus(page, 'button:Layout', '420: Up the single column');
+  await shot(page, '5-mobile-home');
+
+  // A full-width card at the left margin opens its section; Back returns.
+  await click(page, { x: 16 + 388 / 2, y: 70 + 84 / 2 });
+  await expectFocus(page, 'button:Back', '420: a click on the first card');
+  await expectIdle(page, 'phone section');
+  await page.keyboard.press('Backspace');
+  await expectFocus(page, 'button:Layout', '420: Back to the list');
+
+  // The meter: off by default; F opens it; F closes it and the page idles.
+  assert.deepEqual(await meterLabels(page), [], 'the meter starts closed');
+  await page.keyboard.press('f');
+  await page.waitForFunction(
+    () =>
+      [...document.querySelectorAll('[role="status"]')].some((el) =>
+        (el.getAttribute('aria-label') ?? '').startsWith('Frames per second'),
+      ),
+    undefined,
+    { polling: 50, timeout: 3000 },
+  );
+  // Move around the list, so real frames go through the meter and the
+  // readout fills in (it publishes once three frames have arrived).
+  for (const key of [
+    'ArrowDown',
+    'ArrowUp',
+    'ArrowRight',
+    'ArrowLeft',
+    'ArrowDown',
+    'ArrowUp',
+  ]) {
+    await page.keyboard.press(key);
+    // Let the move draw, so the meter sees separate frames rather than one
+    // coalesced frame for the whole burst.
+    await sleep(80);
+  }
+  await page.waitForFunction(
+    () =>
+      [...document.querySelectorAll('[role="status"]')].some((el) =>
+        /average \d+ over 1 s/.test(el.getAttribute('aria-label') ?? ''),
+      ),
+    undefined,
+    { polling: 50, timeout: 5000 },
+  );
+  await shot(page, '6-fps');
+  // The meter is visible and honest: it does not schedule frames of its own.
+  await expectIdle(page, 'the home screen with the meter open');
+  await page.keyboard.press('f');
+  await page.waitForFunction(
+    () =>
+      ![...document.querySelectorAll('[role="status"]')].some((el) =>
+        (el.getAttribute('aria-label') ?? '').startsWith('Frames per second'),
+      ),
+    undefined,
+    { polling: 50, timeout: 3000 },
+  );
+  await expectIdle(page, 'the home screen with the meter closed');
+
+  // Widened again: the desktop grid is back.
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await sleep(300);
+  await page.keyboard.press('ArrowDown');
+  await expectFocus(
+    page,
+    'button:States',
+    '1280 again: Down to the second grid row',
+  );
+
+  assert.deepEqual(errors, [], 'page errors');
+  await page.context().close();
+  console.log(
+    'ok  responsive: 1280 grid, 420 list, resized both ways; monitor idle open and closed',
   );
 }
 
@@ -711,7 +835,10 @@ try {
   );
   // The mouse path is laid out for the web host, where scene units are CSS
   // pixels; a TV host scales a fixed stage, and mirrors no ARIA by default.
-  if (target === 'web') await interactive(browser);
+  if (target === 'web') {
+    await interactive(browser);
+    await responsive(browser);
+  }
   await probe(browser);
 } finally {
   await browser?.close();

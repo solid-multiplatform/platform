@@ -10,9 +10,10 @@
  * Idle rule: no screen owns a timer, an animation or a subscription that runs
  * while nothing is pressed.
  */
-import { createMemo, onMount, Show } from 'solid-js';
+import { createMemo, createSignal, onMount, Show } from 'solid-js';
 import { darkTheme, ThemeProvider } from '@solid-multiplatform/platform';
 import { createNavigation } from '@solid-multiplatform/platform/navigation';
+import { FPSCounter } from '@solid-multiplatform/platform/primitives';
 import { viewport } from '@solid-multiplatform/platform/viewport';
 import { ShowcaseContext, type Showcase, type ShowcaseEnv } from './env';
 import { attachFrameCounter } from './frames';
@@ -30,6 +31,9 @@ export function App(props: { env: ShowcaseEnv }) {
     back: () => nav.back(),
   };
   attachFrameCounter();
+  // The performance meter is off by default: while it is closed it has no
+  // listener and no timer (see `primitives/FPSCounter`).
+  const [meter, setMeter] = createSignal(false);
   const path = createMemo(() => nav.route().path);
   const screen = createMemo(
     () => sections.find((section) => section.path === path())?.screen,
@@ -48,9 +52,19 @@ export function App(props: { env: ShowcaseEnv }) {
           color={BACKGROUND}
           onBack={() => showcase.back()}
           onEscape={() => showcase.back()}
+          onKeyPress={(event: KeyboardEvent) => {
+            // F is not in the key map: every node sees the key, and the
+            // first handler to return true consumes it.
+            if (event.key !== 'f' && event.key !== 'F') return;
+            setMeter((open) => !open);
+            return true;
+          }}
         >
           <Show when={screen()} keyed fallback={<HomeScreen />}>
             {(Current) => <Current />}
+          </Show>
+          <Show when={meter()}>
+            <FPSCounter />
           </Show>
         </view>
       </ThemeProvider>
