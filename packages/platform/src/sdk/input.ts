@@ -21,6 +21,8 @@
  * inside it out; nodes that are not targets let the pointer through to what
  * is behind them; a target with `ariaDisabled` stops the pointer and does
  * nothing. While a focus trap is active (a modal), only the trap is searched.
+ * The children of a flex container that is still waiting for a text to be
+ * measured have no place yet and are not hit.
  *
  * Nothing here runs unless the host calls in: no listeners, no frame work and
  * no polling. The one timer is the hold timeout, set while a press is down on
@@ -37,7 +39,7 @@ import {
   type KeyEventLike,
 } from '../core/focusManager.js';
 import type { DollarString } from '../core/intrinsicTypes.js';
-import { isElementNode, isFunction } from '../core/utils.js';
+import { isElementNode, isElementText, isFunction } from '../core/utils.js';
 import { cursorForElement, type CursorStyle } from './cursor.js';
 
 export interface Rect {
@@ -231,8 +233,27 @@ export function createScenePointer(
     );
   };
 
+  /**
+   * Whether `node` is a flex container that has not placed its children yet.
+   * Flex lays nothing out while a text child is unmeasured (`calculateFlex`
+   * returns early), and a text is measured in a frame of the renderer: until
+   * then the children are where they were created, on top of each other, and
+   * the one under a point is whichever was added last. None of them is hit.
+   */
+  const unplaced = (node: ElementNode): boolean => {
+    if (node.display !== 'flex') return false;
+    const children = node.children;
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i]!;
+      if (isElementText(child) && child.text && !(child.width || child.height))
+        return true;
+    }
+    return false;
+  };
+
   /** The front-most target under the point in `node`, which the point is in. */
   function probe(node: ElementNode): ElementNode | undefined {
+    if (unplaced(node)) return isTarget(node) ? node : undefined;
     const children = node.children;
     const count = children.length;
     // Front to back. Usually every child has the same zIndex, and that is

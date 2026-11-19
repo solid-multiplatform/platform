@@ -82,8 +82,14 @@ export function mediaSession(): MediaSessionPort {
       if (handler)
         targets.set(
           action,
-          remote.addTargetWithHandler(() => {
-            handler();
+          remote.addTargetWithHandler((event: MPRemoteCommandEvent) => {
+            // Only `seekto` takes details; its event carries the position.
+            if (action === 'seekto')
+              handler({
+                seekTime: (event as MPChangePlaybackPositionCommandEvent)
+                  .positionTime,
+              });
+            else handler({ seekTime: 0 });
             return MPRemoteCommandHandlerStatusSuccess;
           }),
         );

@@ -407,6 +407,33 @@ export function browserSemantics(
   let dialogs = 0;
   /** Set while this code moves the browser's focus, which is not the user's doing. */
   let forwarding = false;
+  /** The element of the item the scene's focus is on. */
+  let current: HTMLElement | undefined;
+
+  // An editor in the surface holds the browser's focus while it is open.
+  // When it is removed (a text field closes) the focus falls to the page
+  // body, and the scene's has not moved: give it back to the scene's item.
+  // This runs when a child of the surface is added or removed, and at no
+  // other time.
+  const Observer = doc.defaultView?.MutationObserver;
+  const editors =
+    Observer === undefined
+      ? undefined
+      : new Observer(() => {
+          if (
+            current === undefined ||
+            !current.isConnected ||
+            doc.activeElement !== doc.body
+          )
+            return;
+          forwarding = true;
+          try {
+            current.focus({ preventScroll: true });
+          } finally {
+            forwarding = false;
+          }
+        });
+  editors?.observe(root, { childList: true });
 
   const mask = (entry: Mirrored) => {
     const masked =
@@ -509,13 +536,12 @@ export function browserSemantics(
           update(next);
         },
         focus() {
-          const current = doc.activeElement;
+          current = el;
+          const holder = doc.activeElement;
           // Focus an editor or another page control holds is left alone.
           if (
-            current === el ||
-            (current !== null &&
-              current !== doc.body &&
-              !tree.contains(current))
+            holder === el ||
+            (holder !== null && holder !== doc.body && !tree.contains(holder))
           )
             return;
           forwarding = true;
@@ -527,6 +553,7 @@ export function browserSemantics(
         },
         dispose() {
           if (!registered.delete(entry)) return;
+          if (current === el) current = undefined;
           outer.remove();
           if (isDialog(entry.node.role)) {
             dialogs--;
@@ -538,6 +565,8 @@ export function browserSemantics(
       return handle;
     },
     dispose: () => {
+      editors?.disconnect();
+      current = undefined;
       registered.clear();
       dialogs = 0;
       tree.remove();
