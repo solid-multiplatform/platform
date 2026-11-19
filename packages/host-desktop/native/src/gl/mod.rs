@@ -103,7 +103,17 @@ unsafe fn property_key(env: napi_env, name: &CStr) -> napi_ref {
 /// binding uses.
 pub unsafe fn create_context(window: *mut SDL_Window) -> Result<(), String> {
     if SDL_GL_CreateContext(window).is_null() {
-        return Err(format!("No OpenGL ES 3 context: {}", CStr::from_ptr(SDL_GetError()).to_string_lossy()));
+        let reason = CStr::from_ptr(SDL_GetError()).to_string_lossy();
+        // macOS has no OpenGL ES of its own: SDL reaches it through EGL,
+        // and the system supplies no EGL library. Say what is missing
+        // rather than only what SDL said.
+        let hint = if cfg!(target_os = "macos") {
+            "\nmacOS has no OpenGL ES driver of its own: the scene needs an EGL implementation \
+             (ANGLE) that SDL can load (SDL_VIDEO_EGL_DRIVER). Run --headless for everything but drawing."
+        } else {
+            ""
+        };
+        return Err(format!("No OpenGL ES 3 context: {reason}{hint}"));
     }
     WINDOW.store(window, Ordering::Relaxed);
     table::load(|name| SDL_GL_GetProcAddress(name.as_ptr()).map_or(ptr::null(), |entry| entry as *const c_void))

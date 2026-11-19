@@ -86,8 +86,16 @@ export function findRuntime() {
         `or put one at ${prebuiltRuntime}, or build it from source (${missing.join('; ')})`,
     );
   }
+  // macOS and Windows have no SDL3 development package that `sdl3-sys`
+  // finds by default, so a source build there compiles SDL from the crate's
+  // bundled source into the executable. Linux keeps using the system SDL,
+  // which is quicker and what the tests use.
+  const bundledSdl =
+    process.platform === 'darwin' || process.platform === 'win32'
+      ? ['--features', 'static-sdl']
+      : [];
   // Cargo does nothing when the build is current.
-  execFileSync('cargo', ['build', '--release', '--locked'], {
+  execFileSync('cargo', ['build', '--release', '--locked', ...bundledSdl], {
     cwd: native,
     stdio: ['ignore', process.stderr, 'inherit'],
   });

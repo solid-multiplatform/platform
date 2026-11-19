@@ -32,7 +32,7 @@ mod worker;
 use napi::*;
 use sdl3_sys::everything::*;
 use std::ffi::{c_void, CStr, CString};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::ptr;
 
@@ -78,8 +78,22 @@ unsafe fn diagnostics() -> ! {
 /// the directory this executable is in (`<app>/bin/<name>`). The executable
 /// is found through the system, with links followed, so the app runs from
 /// wherever its directory is put and through a link on the PATH.
+/// A path without Windows' verbatim prefix. `canonicalize` on Windows
+/// answers `\\?\D:\app`, and JavaScript joins such a path with forward
+/// slashes; a verbatim path must use backslashes only, so the prefix is
+/// dropped where it names a plain drive path.
+fn plain(path: PathBuf) -> PathBuf {
+    match path.to_str() {
+        Some(text) => match text.strip_prefix(r"\\?\") {
+            Some(rest) if rest.as_bytes().get(1) == Some(&b':') => PathBuf::from(rest),
+            _ => path,
+        },
+        None => path,
+    }
+}
+
 fn packaged_script() -> Option<String> {
-    let executable = std::env::current_exe().ok()?.canonicalize().ok()?;
+    let executable = plain(std::env::current_exe().ok()?.canonicalize().ok()?);
     let resources = executable.parent()?.parent()?.join("resources");
     ["app.hbc", "app.js"]
         .iter()
@@ -178,6 +192,7 @@ fn main() {
     let directory = Path::new(script)
         .canonicalize()
         .ok()
+        .map(plain)
         .and_then(|path| path.parent().map(|parent| parent.to_string_lossy().into_owned()))
         .unwrap_or_else(|| fail(&format!("Cannot resolve the directory of {script}")));
     unsafe {

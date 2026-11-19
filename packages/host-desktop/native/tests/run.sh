@@ -1,20 +1,34 @@
 #!/usr/bin/env bash
 # Runs the runtime's own tests: scripts it executes and judges itself, plus
 # checks here of what it prints and how it exits. Tests with a window need a
-# display; they run in a virtual framebuffer with software GL unless
-# SOLID_DESKTOP_VIRTUAL=0 asks for the real one.
+# display; on Linux they run in a virtual framebuffer with software GL unless
+# SOLID_DESKTOP_VIRTUAL=0 asks for the real one. SOLID_DESKTOP_HEADLESS_ONLY=1
+# skips them (macOS and Windows CI, where a window needs a GL ES driver).
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
-bin="${1:-$here/../target/release/solid-desktop}"
+# Git Bash and MSYS on Windows report MINGW*/MSYS*; the executable ends .exe.
+system=$(uname -s)
+case "$system" in
+  MINGW*|MSYS*|CYGWIN*) exe=solid-desktop.exe ;;
+  *) exe=solid-desktop ;;
+esac
+bin="${1:-$here/../target/release/$exe}"
 scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
 
 windowed() {
-  if [[ -z "${DISPLAY:-}${WAYLAND_DISPLAY:-}" || "${SOLID_DESKTOP_VIRTUAL:-1}" == 1 ]]; then
-    SDL_VIDEODRIVER=x11 LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1280x720x24" "$@"
-  else
-    "$@"
-  fi
+  case "$system" in
+    Linux*)
+      if [[ -z "${DISPLAY:-}${WAYLAND_DISPLAY:-}" || "${SOLID_DESKTOP_VIRTUAL:-1}" == 1 ]]; then
+        SDL_VIDEODRIVER=x11 LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1280x720x24" "$@"
+      else
+        "$@"
+      fi
+      ;;
+    # macOS and Windows runners have a window server of their own and no
+    # xvfb. CI runs the headless subset there; a window needs a GL ES driver.
+    *) "$@" ;;
+  esac
 }
 fail() {
   echo "FAILED: $1" >&2
@@ -59,6 +73,8 @@ status=0
 "$bin" --compile "$here/run.sh" "$scratch/never.hbc" 2>"$scratch/err" || status=$?
 [[ $status == 1 && ! -e "$scratch/never.hbc" ]] || fail "compiling a file that is not JavaScript did not fail"
 
-windowed "$bin" "$here/first-frame.js"
-windowed "$bin" "$here/gl-binding.js"
+if [[ "${SOLID_DESKTOP_HEADLESS_ONLY:-0}" != 1 ]]; then
+  windowed "$bin" "$here/first-frame.js"
+  windowed "$bin" "$here/gl-binding.js"
+fi
 echo "desktop runtime tests passed"

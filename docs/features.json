@@ -46,7 +46,7 @@
             },
             "desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "The Rust + Hermes runtime (`packages/host-desktop`) builds for both, but no CI job opens a window there."
+              "note": "The Rust + Hermes runtime (`packages/host-desktop`). Linux draws the real scene in the host suite, and `packages/platform/tests/cli/desktop-smoke.sh` proves a generated app's first frame. macOS arm64 and Windows x64 build and run the headless runtime tests in the `desktop-runtime` workflow; no window is opened there, so drawing on those systems is unverified."
             }
           }
         },
@@ -63,7 +63,7 @@
             },
             "desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "The runtime builds for both, but no CI job opens a window there; Windows and macOS packaging is not implemented."
+              "note": "The runtime builds for both and runs its headless tests in CI; no CI job opens a window there, and Windows and macOS app packaging is not implemented."
             }
           }
         },
@@ -143,7 +143,7 @@
             },
             "desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "The runtime builds for both, but no CI job opens a window there."
+              "note": "The generated entry calls `startApp(desktopHost())` and runs in the Rust + Hermes runtime; `packages/host-desktop/tests/host` drives it on Linux. macOS and Windows build the runtime and run the headless tests, not the host suite."
             }
           }
         },
@@ -256,7 +256,7 @@
             },
             "desktop-windows,desktop-macos": {
               "status": "unavailable",
-              "note": "No accessibility adapter is implemented for these systems."
+              "note": "No accessibility adapter is implemented for these systems: the runtime builds and runs its headless tests, but `__solid.a11y` is absent."
             }
           }
         },
@@ -1862,7 +1862,7 @@
             },
             "desktop-windows,desktop-macos": {
               "status": "unavailable",
-              "note": "Windows and macOS packaging is not implemented."
+              "note": "Windows and macOS app packaging is not implemented; the runtime itself is released for all three (`solid-desktop-linux-x64`, `solid-desktop-darwin-arm64`, `solid-desktop-win32-x64`)."
             }
           }
         }

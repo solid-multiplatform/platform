@@ -54,38 +54,33 @@ static-sdl = [
 ]
 
 # The scene's semantics for screen readers and other assistive technology
-# (AT-SPI over D-Bus, through AccessKit). Linux only so far.
+# (AT-SPI over D-Bus, through AccessKit). Linux only so far: on macOS and
+# Windows the feature is accepted but there is no module behind it, and
+# `__solid.a11y` is absent (the host's semantics module treats that as "no
+# assistive technology here").
 accessibility = ["dep:accesskit", "dep:accesskit_unix", "dep:blocking"]
 
 [dependencies]
 sdl3-sys = "0.7.3"
-
-[target.'cfg(target_os = "linux")'.dependencies]
-accesskit = { version = "0.25", optional = true }
-accesskit_unix = { version = "0.24", optional = true }
-# Not used here: this pins the thread pool the D-Bus client takes its helper
-# threads from. In 1.7.0 an idle thread of that pool never ends and wakes
-# twice a second for as long as the process lives; in 1.6.2 it ends after
-# half a second without work. tests/a11y/run.mjs fails when a thread keeps
-# waking, so it says when this pin can go.
-blocking = { version = "=1.6.2", optional = true }
-# The D-Bus client AccessKit's adapter brings, with its blocking calls too.
-zbus = { version = "5.19", optional = true, default-features = false, features = ["async-io", "blocking-api"] }
-# Decoders only, all in Rust: no encoders, no C libraries.
+# Decoders only, all in Rust: no encoders, no C libraries. Needed on every
+# platform (`images.rs`).
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
 # Where one user-perceived character ends and the next begins, for the caret
-# of a text field: tables only, no dependencies.
+# of a text field: tables only, no dependencies. Needed on every platform
+# (`input.rs`).
 unicode-segmentation = "1"
 # HTTP(S) on a blocking socket, one thread per request: no async runtime.
 # TLS is rustls with ring and Mozilla's roots, so nothing of the system's is
 # linked; gzip because servers send it. Cookies, JSON, proxies' extras off.
+# Needed on every platform (`http.rs`).
 ureq = { version = "3", default-features = false, features = ["rustls", "gzip"] }
 
 # `Intl` (src/intl.rs). ICU4X with its data compiled into the executable, so
 # an app ships no data file and every CLDR locale is available at run time.
 # `icu_experimental` carries relative time, percent and currency formatting;
 # it is the only crate here with a large inherent surface (display names,
-# transliteration and units that the runtime never calls).
+# transliteration and units that the runtime never calls). All platforms:
+# the one `libc` call (the platform's tzdata) is in a `#[cfg(unix)]` arm.
 icu_calendar = { version = "2.4", features = ["compiled_data"] }
 icu_collator = { version = "2.4", features = ["compiled_data"] }
 icu_datetime = { version = "2.4", features = ["compiled_data"] }
@@ -97,6 +92,20 @@ icu_time = { version = "2.4", features = ["compiled_data"] }
 icu_experimental = { version = "0.7", default-features = false, features = ["compiled_data"] }
 fixed_decimal = "0.7"
 writeable = "0.6"
-# The IANA zone's offset for `Intl.DateTimeFormat`: the platform's tzdata,
-# through `localtime_r` with `TZ` set for the call.
 libc = "0.2"
+
+# D-Bus is Linux's session and system bus. AccessKit's AT-SPI adapter,
+# notifications and NetworkManager connectivity all speak it, so their
+# dependencies exist only for that target; the modules that use them are
+# gated on `target_os = "linux"` in `main.rs`.
+[target.'cfg(target_os = "linux")'.dependencies]
+accesskit = { version = "0.25", optional = true }
+accesskit_unix = { version = "0.24", optional = true }
+# Not used here: this pins the thread pool the D-Bus client takes its helper
+# threads from. In 1.7.0 an idle thread of that pool never ends and wakes
+# twice a second for as long as the process lives; in 1.6.2 it ends after
+# half a second without work. tests/a11y/run.mjs fails when a thread keeps
+# waking, so it says when this pin can go.
+blocking = { version = "=1.6.2", optional = true }
+# The D-Bus client AccessKit's adapter brings, with its blocking calls too.
+zbus = { version = "5.19", optional = true, default-features = false, features = ["async-io", "blocking-api"] }

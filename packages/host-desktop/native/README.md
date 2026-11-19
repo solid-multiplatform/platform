@@ -2,7 +2,7 @@
 
 One executable for Linux, Windows and macOS: the Hermes JavaScript engine, an SDL3 window and a GL surface for the scene. There is no Node.js and no browser in it.
 
-It runs an app: `solid-desktop app.js` opens a window and draws a Solid scene with the WebGL backend of `@solid-multiplatform/renderer`, unchanged, inside Hermes. Linux is the only system it has been built and tested on.
+It runs an app: `solid-desktop app.js` opens a window and draws a Solid scene with the WebGL backend of `@solid-multiplatform/renderer`, unchanged, inside Hermes. Linux is the only system tested end to end with a window. macOS arm64 and Windows x64 (MSVC) build and pass the headless tests in CI; drawing there is preview (see "Platforms").
 
 ## What it does
 
@@ -23,7 +23,7 @@ Node-API matters beyond the host's own functions: Hermes can load Node-API addon
 
 ## Build
 
-Needs Rust, a C++17 compiler, CMake, Ninja and SDL3 development files.
+Needs Rust, a C++17 compiler, CMake, Ninja and either SDL3 development files or `--features static-sdl` (which compiles the SDL3 release bundled with the `sdl3-sys` crate, so nothing has to be installed).
 
 ```sh
 git clone --depth 1 --branch static_h https://github.com/facebook/hermes
@@ -34,7 +34,21 @@ HERMES_SRC=$PWD/hermes HERMES_BUILD=$PWD/hermes-build cargo build --release
 bash tests/run.sh
 ```
 
-`build.rs` compiles the glue, and Hermes' one-file bytecode compiler entry point, with the flags of a default Release configuration of Hermes; they decide the layout of VM classes, so a differently configured Hermes needs them changed there.
+`build.rs` compiles the glue, and Hermes' one-file bytecode compiler entry point, with the flags of a default Release configuration of Hermes; they decide the layout of VM classes, so a differently configured Hermes needs them changed there. The one platform difference is `HERMESVM_INDIRECT_THREADING`, which Hermes enables only where the compiler has computed goto (GCC and Clang, not MSVC); `build.rs` follows the same rule.
+
+### Platforms
+
+|                | Linux x64                              | macOS arm64                                            | Windows x64                                                                                  |
+| -------------- | -------------------------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| Build          | `cargo build --release --locked`       | `cargo build --release --locked --features static-sdl` | `cargo build --release --locked --features static-sdl` (MSVC, in a Developer Command Prompt) |
+| Link libraries | libstdc++, pthread, dl, m              | libc++, libc++abi, CoreFoundation, Foundation          | msvcprt, winmm, psapi, dbghelp, advapi32, user32, shell32, ole32, ws2_32                     |
+| SDL drivers    | Wayland, X11, KMSDRM, offscreen, dummy | Cocoa                                                  | Win32, WGL, D3D, EGL                                                                         |
+
+The scene asks for an OpenGL ES 3 context on every system. macOS has no OpenGL ES of its own; SDL's Cocoa backend reaches it through EGL, and macOS ships no EGL, so a window needs an EGL implementation (ANGLE) named by `SDL_VIDEO_EGL_DRIVER`. Without one, `--headless` works and a window ends with a message saying what is missing. Windows uses an installed EGL implementation when there is one and the driver's WGL ES profile otherwise.
+
+Accessibility (AccessKit/AT-SPI), notifications and connectivity are D-Bus services and exist only on Linux; on macOS and Windows those features are accepted by Cargo but install nothing, and the host omits `__solid.a11y` and the `notifications` and `connectivity` services. `system.info().osVersion` is absent on Windows.
+
+`tests/run.sh` runs the headless scripts everywhere; the two tests that open a window use `xvfb-run` on Linux. `SOLID_DESKTOP_HEADLESS_ONLY=1` skips them, which is what the macOS and Windows CI jobs do.
 
 ## Run
 
@@ -67,9 +81,11 @@ Without a script named, the runtime runs `../resources/app.hbc` (or `app.js`) be
 
 The directory runs from wherever it is put: nothing in it names a path, and the bytecode records the script as `app.js`. No AppImage is made: that needs `appimagetool` or `mksquashfs` and an AppImage runtime, which would have to be downloaded at build time.
 
-`cargo build --release --features static-sdl` compiles SDL from source (the `sdl3-src` crate, with CMake) into the executable, with the X11 and Wayland drivers and without the parts nothing here calls: 13.3 MB stripped instead of 10.6 MB (10.2 instead of 7.5 without the default features), and nothing of SDL to install where the app runs. CI builds this one, runs a package of it and keeps it as the prebuilt runtime. SDL then opens the system's libX11, libwayland and libEGL when it starts, as the shared library does. Without the feature a package's `README.txt` lists SDL 3 as a requirement.
+`cargo build --release --features static-sdl` compiles SDL from source (the `sdl3-src` crate, with CMake) into the executable, with the X11 and Wayland drivers and without the parts nothing here calls: 13.3 MB stripped instead of 10.6 MB (10.2 instead of 7.5 without the default features), and nothing of SDL to install where the app runs. CI builds this one on every platform, runs a package of it on Linux and keeps the executables as the released runtimes. SDL then opens the system's libX11, libwayland and libEGL when it starts, as the shared library does. Without the feature a package's `README.txt` lists SDL 3 as a requirement.
 
-`../cli/index.mjs` exports `doctorDesktop`, `buildDesktop`, `runDesktop` and `packageDesktop` for the platform's CLI. They find the runtime through `SOLID_DESKTOP_RUNTIME`, then `../prebuilt/<platform>-<arch>/solid-desktop` (CI's artifact), then a build from source when `HERMES_SRC`, `HERMES_BUILD` and cargo are there; so an app developer with a prebuilt runtime needs no compiler.
+The release carries one archive per platform, each with the executable at its root: `solid-desktop-linux-x64.tar.gz`, `solid-desktop-darwin-arm64.tar.gz` and `solid-desktop-win32-x64.tar.gz` (the `.exe` inside). Those names are Node's `<platform>-<arch>`, which is what `solid-platform add desktop none` asks GitHub for and where it puts the result (`prebuilt/<platform>-<arch>/`). Windows 10 1803 and later ship `tar.exe`, which is what the CLI extracts with.
+
+`../cli/index.mjs` exports `doctorDesktop`, `buildDesktop`, `runDesktop` and `packageDesktop` for the platform's CLI. They find the runtime through `SOLID_DESKTOP_RUNTIME`, then `../prebuilt/<platform>-<arch>/solid-desktop` (CI's artifact), then a build from source when `HERMES_SRC`, `HERMES_BUILD` and cargo are there; that build adds `--features static-sdl` on macOS and Windows, so an app developer with a prebuilt runtime needs no compiler and no SDL.
 
 A script that throws while it starts ends the process with status 1. Later errors (in a timer, a frame, a callback, or a promise rejection nothing handled) are written to standard error with their stack and the loop goes on.
 
@@ -137,4 +153,4 @@ Frames are paced by the buffer swap when it waits for the display, and by the cl
 
 ## Not done yet
 
-`Intl` (Hermes has no backend for it on Linux at this commit; one over ICU4X is measured but not wired in), gamepads, unlocking a locked keyring or answering its prompts, notifications' actions, notifications, connectivity and secure storage on Windows and macOS (and connectivity on a Linux without NetworkManager), tray and menus, accessibility on Windows and macOS, losing and recreating the GL context (`renderer.destroy()` leaves its GL objects until the process exits), an AppImage, packaging for Windows and macOS and builds for them, handing a link to an instance that is already running. HTTPS trusts Mozilla's roots compiled in, not the system's store. Response bodies are buffered whole; there are no streams.
+`Intl.DisplayNames` and compact and significant-digit notation, gamepads, unlocking a locked keyring or answering its prompts, notifications' actions, notifications, connectivity and secure storage on Windows and macOS (and connectivity on a Linux without NetworkManager), tray and menus, accessibility on Windows and macOS, losing and recreating the GL context (`renderer.destroy()` leaves its GL objects until the process exits), an AppImage, packaging an app (not the runtime) for Windows and macOS, a Windows GUI subsystem build without the console window, opening a window on macOS without an EGL/ANGLE implementation, handing a link to an instance that is already running. HTTPS trusts Mozilla's roots compiled in, not the system's store. Response bodies are buffered whole; there are no streams.

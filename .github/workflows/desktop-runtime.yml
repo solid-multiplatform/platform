@@ -232,29 +232,234 @@ jobs:
           path: solid-desktop-linux-x64.tar.gz
           if-no-files-found: error
 
+  # macOS arm64. The runner has Xcode's clang, CMake and Ninja, and
+  # `static-sdl` builds SDL (Cocoa, OpenGL through EGL) from source, so
+  # nothing has to be installed. The headless tests run everywhere; a window
+  # is not opened because macOS supplies no OpenGL ES driver of its own (see
+  # docs/targets/desktop.md). Green on run 44474518719.
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          set -euo pipefail
+          command -v cmake ninja clang++ git
+          rustc --version
+          rustup target list --installed | grep aarch64-apple-darwin
+      - name: Hermes build cache
+        id: hermes
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            hermes
+            hermes-build
+          # `macos11`: the deployment target is part of the build, and an
+          # archive made for the runner's own macOS fails the link below.
+          key: hermes-${{ runner.os }}-${{ runner.arch }}-${{ env.HERMES_SHA }}-macos11
+      - name: Build Hermes
+        if: steps.hermes.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          git init -q hermes
+          git -C hermes remote add origin https://github.com/facebook/hermes
+          git -C hermes fetch -q --depth 1 origin "$HERMES_SHA"
+          git -C hermes checkout -q FETCH_HEAD
+          test "$(git -C hermes rev-parse HEAD)" = "$HERMES_SHA"
+          # The same configuration as Linux (`-DHERMES_ENABLE_INTL=OFF`),
+          # for this runner's architecture. The deployment target is the
+          # one Rust targets by default: without it Hermes and SDL objects
+          # are built for the runner's macOS (15.x) and the link against a
+          # binary for 11.0 fails on compiler-rt's availability symbol.
+          export MACOSX_DEPLOYMENT_TARGET=11.0
+          cmake -S hermes -B hermes-build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
+            -DHERMES_ENABLE_INTL=OFF
+          ninja -C hermes-build hermesvm hermesNapi
+      - name: Save the Hermes build
+        if: steps.hermes.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            hermes
+            hermes-build
+          key: ${{ steps.hermes.outputs.cache-primary-key }}
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            packages/host-desktop/native/target
+          # `macos11` keeps SDL and the glue compiled for the same target as
+          # Hermes; a target directory built for 15.x would not be reused.
+          key: desktop-cargo-${{ runner.os }}-${{ runner.arch }}-${{ env.HERMES_SHA }}-static-macos11-${{ hashFiles('packages/host-desktop/native/Cargo.lock') }}
+      - name: Build the runtime
+        working-directory: packages/host-desktop/native
+        run: |
+          set -euo pipefail
+          export HERMES_SRC="$GITHUB_WORKSPACE/hermes" HERMES_BUILD="$GITHUB_WORKSPACE/hermes-build"
+          # The same floor Hermes was built with: the glue, the SDL that
+          # `sdl3-sys` compiles and rustc itself must agree on it, or the
+          # link mixes objects for two macOS versions.
+          export MACOSX_DEPLOYMENT_TARGET=11.0
+          echo "SDK $(xcrun --show-sdk-version) at $(xcrun --show-sdk-path)"
+          cc --version | head -1
+          cc --print-libgcc-file-name
+          # SDL is compiled into the executable: the runner has none.
+          cargo build --release --locked --features static-sdl
+          ./target/release/solid-desktop --diagnostics
+          cargo test --release --locked --features static-sdl
+      - name: Test (headless)
+        run: |
+          set -euo pipefail
+          SOLID_DESKTOP_HEADLESS_ONLY=1 bash packages/host-desktop/native/tests/run.sh
+      - name: Archive the runtime for the release
+        run: |
+          set -euo pipefail
+          tar -czf solid-desktop-darwin-arm64.tar.gz \
+            -C packages/host-desktop/native/target/release solid-desktop
+          mkdir -p "$RUNNER_TEMP/unpacked"
+          tar -xzf solid-desktop-darwin-arm64.tar.gz -C "$RUNNER_TEMP/unpacked"
+          "$RUNNER_TEMP/unpacked/solid-desktop" --diagnostics
+      - uses: actions/upload-artifact@v4
+        with:
+          name: solid-desktop-darwin-arm64
+          path: solid-desktop-darwin-arm64.tar.gz
+          if-no-files-found: error
+
+  # Windows x64 (MSVC). `static-sdl` builds SDL (Win32, D3D, WGL and the EGL
+  # path for OpenGL ES) from source. The headless tests run; a window is not
+  # opened, since a hosted runner has no GPU and no GL ES driver guaranteed.
+  #
+  # Green on run 44478614630: build, headless tests and archive all pass.
+  # Hermes is MSVC-built, but the glue is compiled with clang-cl: cl.exe
+  # 19.44 rejects Hermes' C compound literals with C4576.
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v cl.exe cmake.exe ninja.exe git.exe tar.exe
+          rustc --version
+          rustup target list --installed | grep x86_64-pc-windows-msvc
+      - name: Hermes build cache
+        id: hermes
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            hermes
+            hermes-build
+          key: hermes-${{ runner.os }}-${{ runner.arch }}-${{ env.HERMES_SHA }}-msvc
+      - name: Build Hermes
+        if: steps.hermes.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git init -q hermes
+          git -C hermes remote add origin https://github.com/facebook/hermes
+          git -C hermes fetch -q --depth 1 origin "$HERMES_SHA"
+          git -C hermes checkout -q FETCH_HEAD
+          test "$(git -C hermes rev-parse HEAD)" = "$HERMES_SHA"
+          # At this SHA two Node-API test addons are both named test_exception.
+          # Ninja with MSVC writes every import library into the same binary
+          # directory and refuses to generate two rules for one path, before
+          # it knows which targets will be built. Give each addon's archive a
+          # directory under its own category. Build-system only: no VM code is
+          # touched, and none of these test addons is built or shipped.
+          sed -i 's|^    RUNTIME_OUTPUT_DIRECTORY_RELEASE ${ADDON_OUTPUT_DIR}$|    RUNTIME_OUTPUT_DIRECTORY_RELEASE ${ADDON_OUTPUT_DIR}\n    ARCHIVE_OUTPUT_DIRECTORY ${ADDON_OUTPUT_DIR}|' \
+            hermes/external/node-api-tests/hermes/CMakeLists.txt
+          grep -n "ARCHIVE_OUTPUT_DIRECTORY" hermes/external/node-api-tests/hermes/CMakeLists.txt
+          cmake -S hermes -B hermes-build -G Ninja -DCMAKE_BUILD_TYPE=Release -DHERMES_ENABLE_INTL=OFF
+          ninja -C hermes-build hermesvm hermesNapi
+      - name: Save the Hermes build
+        if: steps.hermes.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            hermes
+            hermes-build
+          key: ${{ steps.hermes.outputs.cache-primary-key }}
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            packages/host-desktop/native/target
+          key: desktop-cargo-${{ runner.os }}-${{ runner.arch }}-${{ env.HERMES_SHA }}-static-${{ hashFiles('packages/host-desktop/native/Cargo.lock') }}
+      - name: Build the runtime
+        working-directory: packages/host-desktop/native
+        shell: bash
+        run: |
+          set -euo pipefail
+          export HERMES_SRC="$GITHUB_WORKSPACE/hermes" HERMES_BUILD="$GITHUB_WORKSPACE/hermes-build"
+          # Git Bash puts its own link.exe (coreutils' hard-link tool) on PATH
+          # ahead of MSVC's, and rustc would run that. Name MSVC's linker,
+          # beside the cl.exe that the MSVC environment step selected.
+          export CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER="$(dirname "$(command -v cl.exe)")/link.exe"
+          cargo build --release --locked --features static-sdl
+          ./target/release/solid-desktop.exe --diagnostics
+          cargo test --release --locked --features static-sdl
+      - name: Test (headless)
+        shell: bash
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          # `-x`: the log shows which command hangs, if one does.
+          SOLID_DESKTOP_HEADLESS_ONLY=1 bash -x packages/host-desktop/native/tests/run.sh
+      - name: Archive the runtime for the release
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Every path is relative: Git Bash's tar reads `D:\` as a remote
+          # host, and the runner's workspace and temp are on D:.
+          tar -czf solid-desktop-win32-x64.tar.gz \
+            -C packages/host-desktop/native/target/release solid-desktop.exe
+          rm -rf unpacked && mkdir unpacked
+          tar -xzf solid-desktop-win32-x64.tar.gz -C unpacked
+          ./unpacked/solid-desktop.exe --diagnostics
+      - uses: actions/upload-artifact@v4
+        with:
+          name: solid-desktop-win32-x64
+          path: solid-desktop-win32-x64.tar.gz
+          if-no-files-found: error
+
   # The release workflow creates the release for the same tag; this job adds
-  # the runtime archive to it. Both workflows start on the tag, so the release
-  # is waited for rather than assumed to exist.
+  # the runtime archives to it. Both workflows start on the tag, so the
+  # release is waited for rather than assumed to exist. A platform that has
+  # not produced its archive yet (a job still failing) is simply missing
+  # from this release; the next one carries it.
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: linux
+    needs: [linux, macos, windows]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: solid-desktop-linux-x64
-      - name: Attach the runtime to the release
+          pattern: solid-desktop-*
+          path: assets
+          merge-multiple: true
+      - name: Attach the runtimes to the release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
+          ls -l assets
           for attempt in $(seq 1 60); do
             if gh release view "$TAG" >/dev/null 2>&1; then break; fi
             sleep 10
           done
           gh release view "$TAG" >/dev/null
-          gh release upload "$TAG" solid-desktop-linux-x64.tar.gz --clobber
+          gh release upload "$TAG" assets/*.tar.gz --clobber
