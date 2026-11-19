@@ -118,6 +118,39 @@ function roku(work, plugins, dir) {
   );
 }
 
+// Browser targets start through startApp on the web host; browser TVs wrap it
+// for the fixed stage and the remote, and --legacy draws with Canvas 2D.
+function browserEntry(target, legacy, name, fonts) {
+  const tv = browserTVs.includes(target);
+  const options = `{ target: '${target}', namespace: ${JSON.stringify(name)} }`;
+  const base = legacy ? 'canvasHost' : 'webHost';
+  return `import { onCleanup } from 'solid-js';
+import { createComponent } from '@solid-multiplatform/platform';
+import { startApp } from '@solid-multiplatform/platform/host';
+${
+  legacy
+    ? "import { canvasHost } from '@solid-multiplatform/platform/browser-tv/canvas';"
+    : "import { webHost } from '@solid-multiplatform/platform/host/web';"
+}
+${tv ? "import { tvHost } from '@solid-multiplatform/platform/browser-tv/input';" : "import { registerServiceWorker } from '@solid-multiplatform/platform/pwa';"}
+import { attachPlugins } from '@solid-multiplatform/platform/plugins';
+import { App, appOptions } from './src/app';
+import { plugins } from './plugins.mjs';
+export function mount(host = { target: '${target}' }) {
+  return startApp(
+    ${tv ? `tvHost(${base}, ${options})` : `${base}(${options})`},
+    (context) => {
+      // Plugins attach once the host's services exist and detach before they go.
+      onCleanup(attachPlugins(plugins, host));
+      return createComponent(App, { plugins, host: context });
+    },
+    appOptions(${fonts}),
+  );
+}
+mount();
+${tv ? '' : "if (import.meta.env.PROD && 'serviceWorker' in navigator) void registerServiceWorker({ url: './sw.js' });\n"}`;
+}
+
 function buildTarget(root, target, dev, legacy) {
   if (dev && !['web', 'desktop'].includes(target))
     throw new Error(
@@ -202,27 +235,21 @@ function buildTarget(root, target, dev, legacy) {
         : "'file:///app/fonts'";
   write(
     path.join(work, 'main.ts'),
-    `${target === 'web' ? "import { browserSemantics } from '@solid-multiplatform/platform/semantics'; import { bindBrowserViewport } from '@solid-multiplatform/platform/viewport/web'; import {createInputScope,bindPointerEvents} from '@solid-multiplatform/platform/input'; import { registerServiceWorker } from '@solid-multiplatform/platform/pwa';" : ''}
-${browserTVs.includes(target) ? "import { bindBrowserTV, bindTVViewport } from '@solid-multiplatform/platform/browser-tv/input';" : ''}
-${browser ? "import { installServices } from '@solid-multiplatform/platform/services'; import { webAppServices, webServices } from '@solid-multiplatform/platform/services/web';" : ''}
-${legacy ? "import {useCanvas} from '@solid-multiplatform/platform/browser-tv/canvas'; useCanvas();" : ''}
-${rokuFont ? "import { loadFonts } from '@solid-multiplatform/platform'; import lato from '../fonts/Lato-Regular.ttf';" : ''}
+    browser
+      ? browserEntry(target, legacy, project(root).name, fonts)
+      : `${rokuFont ? "import { loadFonts } from '@solid-multiplatform/platform'; import lato from '../fonts/Lato-Regular.ttf';" : ''}
 import { mount as start } from './src/app';
 import { attachPlugins } from '@solid-multiplatform/platform/plugins';
 import { plugins } from './plugins.mjs';
 export function mount(host = { target: '${target}' }) {
-  ${browser ? `const removeServices = installServices({ ...webServices, ...webAppServices(${JSON.stringify(project(root).name)}) });` : 'const removeServices = () => {};'}
-  ${target === 'web' ? "const el=document.getElementById('app');const stopViewport=bindBrowserViewport(el);host.semantics=browserSemantics(el); const input=host.input=createInputScope();const stopPointer=bindPointerEvents(el,input,(x,y)=>{const r=el.getBoundingClientRect();return {x:x-r.left,y:y-r.top};});" : ''}
-  ${browserTVs.includes(target) ? "const el=document.getElementById('app'); const display=bindTVViewport(el); const tv=bindBrowserTV(host.target,el,display.point);host.input=tv.input;" : ''}
   const detach = attachPlugins(plugins, host);
   ${rokuFont ? "void loadFonts([{ fontFamily: 'Lato', fontUrl: lato }]).catch((error) => console.error(error));" : ''}
   try {
     const dispose = start(plugins, ${fonts}, host.input, host);
-    ${browserTVs.includes(target) ? 'display.attach();' : ''}
-    return () => { try { dispose?.(); } finally { detach(); removeServices(); ${target === 'web' ? 'stopPointer(); input.dispose(); host.semantics.dispose();stopViewport();' : browserTVs.includes(target) ? 'tv.dispose();display.dispose();' : ''} } };
-  } catch (error) { detach(); removeServices(); ${target === 'web' ? 'stopPointer(); input.dispose(); host.semantics.dispose();stopViewport();' : browserTVs.includes(target) ? 'tv.dispose();display.dispose();' : ''} throw error; }
+    return () => { try { dispose?.(); } finally { detach(); } };
+  } catch (error) { detach(); throw error; }
 }
-` + (browser ? 'mount();\n' + (target === 'web' ? "if (import.meta.env.PROD && 'serviceWorker' in navigator) void registerServiceWorker({ url: './sw.js' });\n" : '') : ''),
+`,
   );
   if (target !== 'roku')
     copy(
@@ -296,7 +323,7 @@ export function mount(host = { target: '${target}' }) {
       dir,
     );
     if (!dev && browserTVs.includes(target))
-      packageTV(dir, target, project(root).name, legacy);
+      packageTV(dir, target, project(root).name, legacy, project(root));
   }
 }
 

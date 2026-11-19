@@ -1,41 +1,49 @@
-# `borderBox`
+# borderBox
 
-A SolidTV directive that adds a visual border component to an element when it receives focus.
-
-### Usage
+`borderBox` is a Solid directive. It draws a border around an element while
+the element has focus.
 
 ```tsx
-import { borderBox } from '@solidtv/solid/primitives';
+import { borderBox } from '@solid-multiplatform/platform/primitives';
 
-// Simple usage
-<view use:borderBox={true} />
+// Keeps the import: directives are referenced only through `use:`.
+void borderBox;
 
-// Usage with custom border space
-<view use:borderBox={{ borderSpace: 10 }} />
-
-// Usage with custom border color (passed via NodeProps)
-<view use:borderBox={{ border: { color: 0xff0000, width: 4 } }} />
+export const Cards = () => (
+  <view>
+    <view use:borderBox={true} width={300} height={170} autofocus />
+    <view
+      use:borderBox={{ borderSpace: 10 }}
+      x={340}
+      width={300}
+      height={170}
+    />
+    <view
+      use:borderBox={{ border: { color: 0xff0000ff, width: 4 } }}
+      x={680}
+      width={300}
+      height={170}
+    />
+  </view>
+);
 ```
 
-### Parameters
+A directive works only on `<view>` and `<text>`, not on components.
 
-The directive accepts `BorderProps | true | undefined` as the value.
+## Value
 
-### BorderProps
+The directive takes `true`, or the props of the border node:
 
-Extends standard [`NodeProps`](/solid/#/primitives/view).
+- `borderSpace` (`number`, default `6`): space between the element and the
+  border.
+- Any `<view>` prop, such as `border` or `borderRadius`.
 
-| Prop          | Type     | Description                                      | Default |
-| ------------- | -------- | ------------------------------------------------ | ------- |
-| `borderSpace` | `number` | The space between the element and the border box | `6`     |
+The defaults are in the exported `BorderBoxStyle`: `borderSpace: 6`,
+`borderRadius: 20`, `border: { color: 0xffffff, width: 2 }` and an `alpha`
+transition of 100 ms.
 
-### Default Styles
+## Behavior
 
-The border box uses `BorderBoxStyle` defaults:
-
-- `borderSpace`: 6
-- `borderRadius`: 20
-- `border`: `{ color: 0xffffff, width: 2 }`
-- `alpha`: 0 (initially, fades in to 1)
-
-When the element gains focus, the border (a `view`) is created, inserted into the element, and `fadeIn` is called. When focus is lost, `fadeOut` is called and then the border is removed.
+When the element gains focus, a border node is created as its child, sized to
+the element plus `borderSpace` on each side. When focus leaves, the border
+fades out and is removed. Nothing exists while the element is not focused.

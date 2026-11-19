@@ -1,36 +1,33 @@
 # createBlurredImage
 
-`createBlurredImage` is a primitive that creates a blurred version of an image. It returns a resource that contains the blurred image as a data URL.
+`createBlurredImage` loads an image, blurs it and returns the result as a data
+URL in a Solid resource.
 
-## Usage
-
-Import the `createBlurredImage` function and use it in your component. It takes an accessor function for the image URL and an optional options object.
+It draws on a 2D canvas created with `document`, so it works only on hosts
+that have a DOM canvas: the web and browser TV targets.
 
 ```tsx
-import { createBlurredImage } from '@solidtv/solid';
-import { Image } from '@solidtv/solid/primitives';
+import {
+  createBlurredImage,
+  Image,
+} from '@solid-multiplatform/platform/primitives';
 
-const MyComponent = () => {
-  const imageUrl = () => 'https://example.com/image.jpg';
-  const blurredImage = createBlurredImage(imageUrl, { radius: 15 });
+export const Backdrop = (props: { url: string }) => {
+  const blurred = createBlurredImage(() => props.url, { radius: 15 });
 
-  return <Image src={blurredImage()} />;
+  return <Image src={blurred() ?? props.url} width={1920} height={1080} />;
 };
 ```
 
+The first argument is an accessor. When it returns `null` or `undefined`,
+nothing is loaded. The resource is `undefined` until the blur is done.
+
 ## Options
 
-The `createBlurredImage` function accepts an optional options object with the following properties:
+- `radius` (`number`, default `10`): blur radius in pixels.
+- `crossOrigin` (`'anonymous' | 'use-credentials' | ''`, default
+  `'anonymous'`): CORS mode for loading the image.
+- `resolution` (`number`, default `1`): scale of the output image.
 
-- `radius` (optional): The blur radius in pixels. Defaults to `10`.
-- `crossOrigin` (optional): The CORS setting for image loading. Defaults to `'anonymous'`.
-- `resolution` (optional): The resolution of the output image in pixels. Defaults to `1`.
-
-## How it Works
-
-The `createBlurredImage` primitive uses a two-step process to create a blurred image:
-
-1.  **Image Loading**: It first loads the image from the provided URL.
-2.  **Gaussian Blur**: It then applies a Gaussian blur to the image data. If the browser supports the `filter` property on the 2D canvas context, it uses that for better performance. Otherwise, it falls back to a manual implementation of the Gaussian blur algorithm.
-
-The result is a data URL representing the blurred image, which can be used as the `src` for an `Image` component.
+The image must be served with CORS headers. Without them the canvas cannot be
+read and the resource fails.

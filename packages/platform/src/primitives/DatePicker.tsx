@@ -139,6 +139,7 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
         height={panelHeight()}
         color={theme().colors.surface}
         borderRadius={theme().radius.medium}
+        role="none"
         onMouseClick={() => true}
         onEnter={() => true}
       >
@@ -160,6 +161,7 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
           height={44}
           color={theme().colors.surfaceRaised}
           borderRadius={theme().radius.small}
+          ariaLabel="Previous month"
           onEnter={() => shiftMonth(-1)}
           onMouseClick={() => shiftMonth(-1)}
           cursorStyle="pointer"
@@ -194,6 +196,7 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
           height={44}
           color={theme().colors.surfaceRaised}
           borderRadius={theme().radius.small}
+          ariaLabel="Next month"
           onEnter={() => shiftMonth(1)}
           onMouseClick={() => shiftMonth(1)}
           cursorStyle="pointer"
@@ -249,6 +252,8 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
                     selected() ? theme().colors.primary : theme().colors.surface
                   }
                   borderRadius={theme().radius.small}
+                  ariaSelected={selected()}
+                  ariaDisabled={isDisabled()}
                   onEnter={() => chooseDay(day())}
                   onMouseClick={() => chooseDay(day())}
                   cursorStyle={isDisabled() ? 'not-allowed' : 'pointer'}
@@ -305,6 +310,7 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
             height={40}
             color={theme().colors.surfaceRaised}
             borderRadius={theme().radius.small}
+            ariaLabel="Add an hour"
             onEnter={() => shiftTime(60)}
             onMouseClick={() => shiftTime(60)}
             cursorStyle="pointer"
@@ -339,6 +345,7 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
             height={40}
             color={theme().colors.surfaceRaised}
             borderRadius={theme().radius.small}
+            ariaLabel="Add 5 minutes"
             onEnter={() => shiftTime(5)}
             onMouseClick={() => shiftTime(5)}
             cursorStyle="pointer"

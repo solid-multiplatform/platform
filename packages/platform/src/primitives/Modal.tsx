@@ -18,6 +18,8 @@ export interface ModalProps {
   useSafeArea?: boolean;
   /** Accessible name for the dialog. */
   label: string;
+  /** `alertdialog` for a message that interrupts. Defaults to `dialog`. */
+  role?: 'dialog' | 'alertdialog';
   /** Element to focus when the modal opens; defaults to the dialog itself. */
   initialFocus?: ElementNode | (() => ElementNode | undefined);
   /** Tapping the backdrop requests close. Defaults to true. */
@@ -94,6 +96,8 @@ export function Modal(props: ModalProps): JSX.Element {
             dialog = node as ElementNode;
             props.ref?.(node as ElementNode);
           }}
+          role={props.role ?? 'dialog'}
+          ariaLabel={props.label}
           width={viewport().width}
           height={viewport().height}
           color={props.transparent ? (props.barrierColor ?? 0x00000000) : (props.barrierColor ?? 0x000000cc)}

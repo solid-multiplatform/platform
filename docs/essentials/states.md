@@ -1,11 +1,13 @@
 # States
 
-In your application, components can exhibit various states, similar to how a button might be enabled, disabled, or focused. These states enable components to dynamically apply different styles, enhancing their visual representation and behavior based on user interaction or application logic.
+A state is a named set of style overrides. A button can be focused, disabled or
+active, and look different in each. State names start with `$` and live in the
+style object.
 
-States are applied from the style object with a matching name and must be prefixed with `$`:
+```tsx
+import type { NodeStyles } from '@solid-multiplatform/platform';
 
-```jsx
-const Button = {
+const button: NodeStyles = {
   width: 386,
   height: 136,
   color: 0x546160ff,
@@ -20,124 +22,137 @@ const Button = {
     color: 0x333333ff,
   },
 };
+
+<view autofocus style={button} />;
 ```
 
-When `Button` is focused via the [useFocusManager](/primitives/useFocusManager.md), the `$focus` state will be added to the button, causing the focus styles to be applied. And when focus is removed, the original styles on the element will be set.
+The focus manager adds `$focus` to the focused element and removes it when
+focus leaves. When a state is removed, each prop it changed goes back to the
+value in the base style.
 
-> Be sure to set defaults on the original styles if applying a new style via state. Example: clipping: false, focus: { clipping: true }
+> Give every prop a state changes a value in the base style too. Without one
+> there is nothing to go back to. Example: `clipping: false` next to
+> `$focus: { clipping: true }`.
 
-States can be added to components declaratively:
+## Setting states
 
-```jsx
-<Button states={{ $active: true, $happy: false, $disabled: false }}>Movies</Button>
-<Button states={'$active'}>Sports</Button>
-<Button states='$happy'>News</Button>
+Declaratively, with a string, an array or an object:
+
+```tsx
+<view style={button} states="$active" />
+<view style={button} states={['$active', '$happy']} />
+<view style={button} states={{ $active: true, $disabled: isDisabled() }} />
 ```
 
-Or imperatively:
+Imperatively, through a ref:
 
-```jsx
-let myButton;
+```tsx
+import type { ElementNode } from '@solid-multiplatform/platform';
 
-createEffect(() => {
-  myButton.states.add('$focus');
+let node!: ElementNode;
 
-  // Check for a state
-  if (myButton.states.has('$focus')) {
-    myButton.states.remove('$focus');
-  }
+function toggle() {
+  node.states.add('$disabled');
+  node.states.has('$disabled'); // true
+  node.states.remove('$disabled');
+  node.states.toggle('$active');
+  node.states.toggle('$active', false); // force off
+}
 
-  myButton.states.add('$disabled');
-  // is and has are identical
-  myButton.states.is('$disabled');
-
-  // toggle disabled on / off
-  myButton.states.toggle('$disabled');
-});
-<view ref={myButton} style={Button} />;
+<view ref={node} style={button} />;
 ```
 
-Note: states always use the values in the style object. If you have a button with a base color, and a disabled and focus state which both change the color, the value applied to the button will be determined from the style object. You won't be able to set the color of the button on the JSX `<Button color={???}>` because as the states change, we need to determine which color to apply. If you need this functionality, you should pass in the color to the style object.
+`is(name)` is `has(name)` for the exact name.
 
-## The `theme` Property
+## States read the style object
 
-To solve the issue mentioned above where setting a custom dynamic property on the JSX is immediately overridden when component states are removed or cleared, you can use the `theme` property:
+A state takes its values from the style object, and removing it restores the
+base style's value. A prop you set in JSX is not remembered. If `$focus`
+changes `color` and you wrote `<view color={...} style={button} />`, the JSX
+color is lost the first time focus leaves.
 
-```jsx
-<Button theme={{ color: 0xff0000ff }} states={{ $focus: true }} />
+Put such values in `theme` instead.
+
+## `theme`
+
+```tsx
+<view style={button} theme={{ color: 0xff0000ff }} />
 ```
 
-Properties defined in the `theme` object act as the baseline values for your component. When rendering initially, those properties are automatically applied to the element. Later, when an active state (e.g. `$focus`) drops, the engine will deterministically look for the fallback value in the `theme` object first, before falling back to the generic `style` object. This allows developers to pass explicit, robust baseline props without state transitions using defaults from style objects.
+`theme` props are applied when the element is created. When a state is removed,
+the element looks in `theme` first and in `style` second for the value to
+restore. Use it for per-instance values that states must respect.
 
-## stateOrder
+## `stateOrder`
 
-When multiple states are active on an element, the order in which they are applied is determined by the `Config.stateOrder` property. This allows you to control which state has higher specificity and overrides styles from other active states.
+When several states are active, later ones override earlier ones.
+`Config.stateOrder` sets the order.
 
-States defined in the `stateOrder` array have higher specificity than states not in the array. Within the `stateOrder` array, states at the end have higher specificity than those at the beginning.
-
-```javascript
-import { Config } from '@solidtv/solid';
+```ts
+import { Config } from '@solid-multiplatform/platform';
 
 Config.stateOrder = ['$disabled', '$active', '$focus'];
 ```
 
-In the example above:
+- States in the list win over states that are not in it.
+- Inside the list, a later entry wins over an earlier one. Here `$focus` beats
+  `$active`, which beats `$disabled`.
 
-1. `$focus` has higher specificity than `$active`.
-2. `$active` has higher specificity than `$disabled`.
-3. All three have higher specificity than any state NOT in the `stateOrder` list (like `$hover`).
+Override the order for one element with the `stateOrder` prop:
 
-If an element is both focused and active, the `$focus` styles will take precedence over `$active` styles for any overlapping properties. Similarly, if `$hover` is also active, both `$focus` and `$active` will override its styles.
-
-You can also override the global `stateOrder` on a per-element basis by using the `stateOrder` attribute:
-
-```jsx
-<view stateOrder={['$active', '$focus']}>...</view>
+```tsx
+<view style={button} stateOrder={['$active', '$focus']} />
 ```
 
-This is useful if you have a specific component that needs a different specificity than the rest of the application.
+## `forwardStates`
 
-## forwardStates
+`forwardStates` copies the parent's states to its children. Use it when a
+child must restyle together with its parent.
 
-When you want the state to also be applied to children elements, you can add the `forwardStates` attribute to the parent element. Any states set on the parent will be added/removed from the children as well. This is useful for functional components where you need to change styles of children as well.
+```tsx
+import type {
+  NodeProps,
+  NodeStyles,
+  TextStyles,
+} from '@solid-multiplatform/platform';
 
-```jsx
-function Button(props) {
-  const ButtonContainer = {
-    width: 386,
-    height: 136,
-    color: 0x000000ff,
-    alpha: 0.3,
-    scale: 1,
-    transition: {
-      scale: { duration: 1500, delay: 200, easing: 'easy-in' },
-      alpha: { duration: 1500, delay: 200, easing: 'easy-in' },
-    },
-    $focus: {
-      color: [0x58807dff, { duration: 2000 }],
-      scale: 1.2,
-      alpha: 1,
-    },
-  };
+const container: NodeStyles = {
+  width: 386,
+  height: 136,
+  color: 0x000000ff,
+  alpha: 0.3,
+  scale: 1,
+  transition: {
+    scale: { duration: 300, easing: 'ease-in' },
+    alpha: { duration: 300, easing: 'ease-in' },
+  },
+  $focus: {
+    color: 0x58807dff,
+    scale: 1.2,
+    alpha: 1,
+  },
+};
 
-  const ButtonText = {
-    fontSize: 32,
-    lineHeight: Button.height,
-    contain: 'width',
-    textAlign: 'center',
-    mountY: -0.35,
-    color: 0xf6f6f9ff,
-    height: Button.height,
-    width: Button.width,
-    $focus: {
-      color: 0xffffffff,
-    },
-  };
+const label: TextStyles = {
+  fontSize: 32,
+  x: 24,
+  y: 48,
+  color: 0xf6f6f9ff,
+  $focus: {
+    color: 0xffffffff,
+  },
+};
 
+function Button(props: NodeProps & { label: string }) {
   return (
-    <view {...props} forwardStates style={ButtonContainer}>
-      <text style={ButtonText}>{props.children}</text>
+    <view {...props} forwardStates style={container}>
+      <text style={label}>{props.label}</text>
     </view>
   );
 }
 ```
+
+## The focus state name
+
+`Config.focusStateKey` names the state the focus manager adds. The default is
+`'$focus'`.

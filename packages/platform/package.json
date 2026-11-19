@@ -427,7 +427,9 @@
   "scripts": {
     "start": "pnpm run watch",
     "bench": "node bench/run.mjs",
-    "test": "vitest run",
+    "test": "vitest run && npm run test:cli",
+    "test:cli": "node --test tests/cli/unit/*.test.mjs",
+    "typecheck:cli": "tsc -p cli/tsconfig.json",
     "build": "rm -rf dist && npm run tsc && cp jsx-runtime.d.ts dist/",
     "tsc": "tsc && tsc -p tests/tsconfig.contract.json",
     "watch": "tsc -w",

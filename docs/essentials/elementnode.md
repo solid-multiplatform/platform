@@ -1,111 +1,107 @@
-# Element Node
+# ElementNode
 
-All JSX code is compiled into `ElementNode` class objects, which extend the SolidTV Renderer nodes.
+Every `<view>` and `<text>` in your JSX becomes an `ElementNode`. It holds your
+props, runs flex layout, states and transitions, and forwards values to the
+backend's node.
 
-<img src="images/SolidElementNode.jpg" alt="SolidTV To Renderer Node Creation">
+```tsx
+import type { ElementNode } from '@solid-multiplatform/platform';
 
-```jsx
-let container;
+let container!: ElementNode;
+
 <view ref={container} width={300} height={100}>
-  <view width={100} height={100} color={'#FF0000'} />;
-  <view width={100} height={100} color={'#00FF00'} />;
-  <view width={100} height={100} color={'#0000FF'} />;
+  <view width={100} height={100} color={0xff0000ff} />
+  <view x={100} width={100} height={100} color={0x00ff00ff} />
+  <view x={200} width={100} height={100} color={0x0000ffff} />
 </view>;
 ```
 
-The above code creates an `ElementNode` with 3 children `ElementNode`s. By using Solid's `ref`, we gain direct access to the underlying node instance, allowing us to control the renderer directly.
+Solid's `ref` gives you the `ElementNode`. You can set props on it directly.
 
-```js
-// You can set any properties directly via the ref
+```ts
 container.width = 500;
-container.color = '#000000';
+container.color = 0x000000ff;
 container.x = 100;
-// ElementNode extends Object, so you can add arbitrary properties.
-// Only renderer-specific properties will be forwarded
-container.customProp = 'SolidTV Rocks';
 ```
 
-Often, you'll want to manipulate the children of the node.
+Children are `ElementNode`s too.
 
-```js
-container.children.forEach((child) => {
-  // Each child is also an ElementNode
-  child.x += 100;
+```ts
+import { isElementNode } from '@solid-multiplatform/platform';
 
-  // or animate properties
-  child.animate({ alpha: 1, scale: 1.1 }, { duration: 500 }).start();
-});
-```
-
-## Understanding Row / Column-like Elements
-
-Continuing with our example, let's add focus management with keypress handling (assuming [useFocusManager](../primitives/useFocusManager.md) is enabled).
-
-```jsx
-let container;
-
-// Full keyhandler typedef, you might not need all the arguments
-function moveLeft(this: ElementNode, e: KeyboardEvent, container: ElementNode, focusedNode: ElementNode) {
-  // Move focus to the left
-  if (container.selected > 0) {
-    container.selected--;
-    container.children[container.selected].setFocus();
+for (const child of container.children) {
+  if (isElementNode(child)) {
+    child.x += 100;
+    child.animate({ alpha: 1, scale: 1.1 }, { duration: 500 }).start();
   }
 }
-
-function moveRight(this: ElementNode, e: KeyboardEvent, container: ElementNode, focusedNode: ElementNode) {
-  // Move focus to the right
-  if (container.selected < container.children.length - 1) {
-    container.selected++;
-    container.children[container.selected].setFocus();
-  }
-}
-
-<view
-  ref={container}
-  width={300}
-  height={100}
-  onLeft={moveLeft}
-  onRight={moveRight}
-  selected={0}
->
-  <view width={100} height={100} color={'#FF0000'} autofocus />;
-  <view width={100} height={100} color={'#00FF00'} />;
-  <view width={100} height={100} color={'#0000FF'} />;
-</view>;
 ```
 
-In the `moveLeft` and `moveRight` functions, we manually update the `selected` property, which tracks the focused child element. The `setFocus` method is used to apply focus to the newly selected child.
+## Useful members
 
-### Styling Focused Blocks
+- `children`: the child nodes.
+- `parent`: the parent `ElementNode`.
+- `states`: the node's states. See [States](/essentials/states.md).
+- `setFocus()`: gives the node focus. See [Focus](/essentials/focus.md).
+- `animate(props, settings)`, `chain(props, settings)`, `start()`: see
+  [Transitions](/essentials/transitions.md).
+- `emit(event, ...args)`: see [Events](/essentials/events.md).
+- `updateLayout()`: runs flex layout again. See [Layout](/flow/layout.md).
+- `getChildById(id)` and `searchChildrenById(id)`: find a child by its `id`.
+- `rendered`: `true` once the backend node exists.
+- `lng`: the backend's node once rendered.
 
-To complete this example, we can style the blocks based on their focus state. Let's add some styling for focus:
+## `lng`
 
-```jsx
-const blockStyle = {
+`ElementNode.lng` is the backend's node, typed by the scene contract
+(`SceneNode` in `@solid-multiplatform/renderer/contracts`). Before the node is
+rendered it is a plain object of the props to create it with.
+
+Writing to `lng` skips states and transitions. Use it only for that purpose,
+and only with members the scene contract declares.
+
+`lng` is a legacy name. It will be renamed before 1.0.
+
+## Handling keys yourself
+
+`Row` and `Column` move focus between children for you. This is what they do,
+written by hand.
+
+```tsx
+import { isElementNode, type ElementNode } from '@solid-multiplatform/platform';
+
+function move(container: ElementNode, offset: number): boolean {
+  const next = (container.selected ?? 0) + offset;
+  const child = container.children[next];
+  if (!isElementNode(child)) return false;
+  container.selected = next;
+  child.setFocus();
+  return true;
+}
+
+const block = {
   width: 100,
   height: 100,
-  alpha: 0.3, // Default opacity
-  focus: {
-    alpha: 1, // Full opacity when focused
-  },
-  transition: {
-    alpha: true, // Enable smooth transition for alpha
-  },
-};
+  alpha: 0.3,
+  $focus: { alpha: 1 },
+  transition: { alpha: true },
+} as const;
 
 <view
-  ref={container}
   width={300}
   height={100}
-  onLeft={moveLeft}
-  onRight={moveRight}
   selected={0}
+  onLeft={(event, container) => move(container, -1)}
+  onRight={(event, container) => move(container, 1)}
 >
-  <view style={blockStyle} color={'#FF0000'} autofocus />;
-  <view style={blockStyle} color={'#00FF00'} />;
-  <view style={blockStyle} color={'#0000FF'} />;
+  <view style={block} color={0xff0000ff} autofocus />
+  <view style={block} x={100} color={0x00ff00ff} />
+  <view style={block} x={200} color={0x0000ffff} />
 </view>;
 ```
 
-Now, when a block gains focus, its `alpha` value will animate smoothly from 0.3 to 1. Read more about [states](./states.md).
+A key handler receives the key event, then the element the handler is on, then
+the focused element. Return `true` to stop the key from bubbling to the parent.
+
+When a block gains focus it gets the `$focus` state, and `alpha` animates from
+0.3 to 1.

@@ -34,6 +34,7 @@ const onRight = handleNavigation('right');
 export const Row: Component<RowProps> = (props) => {
   return (
     <view
+      role="list"
       transitionLeft={defaultTransitionBack}
       transitionRight={defaultTransitionForward}
       {...props}

@@ -734,6 +734,22 @@ const dispatchKeyUp = (): void => {
   }
 };
 
+/**
+ * Sends one mapped key through the focus path as a key press from the host
+ * would, then releases it: `pressKey('Enter', …)` runs the same capture,
+ * `onEnter` and `onKeyPress` handlers, throttling included. It is how input
+ * that is not a key acts as one: a pointer click, a wheel step, an action
+ * from assistive technology. Returns whether a handler took the press.
+ */
+export const pressKey = (mapped: string, event: KeyEventLike): boolean => {
+  let handled = false;
+  _signalWrapper(() => {
+    handled = propagateKeyPress(event as KeyboardEvent, mapped);
+    propagateKeyPress(event as KeyboardEvent, mapped, true);
+  });
+  return handled;
+};
+
 export const useFocusManager = (
   userKeyMap?: Partial<KeyMap>,
   target?: KeyEventTarget,

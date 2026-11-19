@@ -1,319 +1,142 @@
-# Styling / Supported Properties
+# Styling
 
-You can add styles to your JSX components using object notation or applying the properties directly to the JSX or via a ref:
+There is no CSS. You style a node with props. Set them in JSX, in a `style`
+object, or on the node through a ref.
 
-```jsx
-import { createEffect, createSignal } from 'solid-js';
+```tsx
+import { createSignal } from 'solid-js';
+import type { ElementNode, NodeStyles } from '@solid-multiplatform/platform';
 
-let columnRef;
-const Column = {
+const column: NodeStyles = {
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'flexStart',
   width: 1760,
   height: 500,
   gap: 50,
-  y: 200,
   x: 80,
-  color: '00000000',
+  y: 200,
+  color: 0x00000000,
 };
 
-createEffect(() => {
-  columnRef.x = 200;
-});
-
+let node!: ElementNode;
 const [alpha, setAlpha] = createSignal(1);
 
-<view ref={columnRef} alpha={alpha()} y={90} style={Column}>
-  // ...add some children
-</view>;
+function shift() {
+  node.x = 200;
+}
+
+<view ref={node} alpha={alpha()} y={90} style={column} />;
 ```
 
-The `style` attribute accepts an object of properties that are passed to the SolidTV Renderer when the component is initially created. Once set, the `style` object remains **read-only** and will not be reapplied if it changes after the initial creation. This read-only nature allows the `style` object to be reused across multiple components. However, properties specified directly in the JSX will take precedence over those in the `style` object, enabling you to override styles for individual components. After the component is created, you can update properties via signals or imperatively using a reference to the component.
+## How `style` works
 
-For UI component libraries, you can also pass an array (including nested arrays) to the `style` attribute, facilitating easy chaining of styles. Note that this does not perform a deep merge, so any state-specific styles will be overridden by the top-level style. Additionally, styles are applied in the order they appear in the array, meaning `props.style` will override `styles.Container`.
+- `style` is read once, when the element is created. Changing the object later
+  does nothing.
+- A prop set in JSX wins over the same prop in `style`. Here `y` is 90.
+- After creation, change props with signals in JSX or through the ref.
+- Keys that start with `$` are [states](/essentials/states.md).
 
-```jsx
-import { combineStyles } from '@solidtv/solid';
-const Top: Component<TopProps> = (props: TopProps) => {
-  // Need the createMemo otherwise it creates a new array each time
-  const compStyles = combineStyles(props.style, styles.Container);
-  return (
-    <ChildComp
-      {...props}
-      style={compStyles}
-      onSelectedChanged={/* @once */ chainFunctions(props.onSelectedChanged, withScrolling(props.y as number))}
-    />
-  );
-};
+Because `style` is read-only, define style objects outside components and share
+them between instances.
+
+`combineStyles(a, b)` from `@solid-multiplatform/platform` merges two style
+objects. Props in `a` win. Use it when a component takes a `style` prop and has
+defaults of its own. The merge is shallow: a state in `a` replaces the whole
+state in `b`.
+
+```tsx
+import {
+  combineStyles,
+  type NodeProps,
+  type NodeStyles,
+} from '@solid-multiplatform/platform';
+
+const defaults: NodeStyles = { width: 400, height: 200, color: 0x253040ff };
+
+function Card(props: NodeProps) {
+  return <view {...props} style={combineStyles(props.style, defaults)} />;
+}
 ```
 
-## Style Patterns to Avoid
+## Patterns to avoid
 
-Style objects should remain read-only and should not be created or modified inline within components. Below are some anti-patterns to avoid and examples of how to do it the right way.
+Do not build style objects in the render path. Each one is a new allocation per
+instance, and the element ignores a second `style` anyway.
 
-### 1. Avoid Spreading Style Objects
+```tsx
+// Avoid: a new object for every instance.
+<view {...props} style={{ ...styles }} />
+<view {...props} style={{ ...otherStyles, ...styles }} />
 
-**Don’t do this:**
+// Do: one shared object, made once at module level.
+const combined = { ...otherStyles, ...styles };
+<view {...props} style={combined} />
 
-```jsx
-return (
-  <ChildComp
-    {...props}
-    // No reason to create new style objects, avoid spreading
-    style={{ ...styles }}
-  />
-);
+// Do: a single prop goes in JSX, not in a copied style.
+<view {...props} style={styles} width={props.width} />
 ```
 
-**Do this instead:**
+## Colors
 
-- Pass the style object directly without creating a new object:
+Colors are numbers in `0xRRGGBBAA` form. `0xff0000ff` is opaque red.
 
-```jsx
-return (
-  <ChildComp
-    {...props}
-    style={styles} // Use styles directly
-  />
-);
-```
+- `hexColor('#c0ffee')` from `@solid-multiplatform/platform` converts a string
+  at run time. It accepts `#RRGGBB`, `#RRGGBBAA`, `0x...` and bare hex. A
+  6-digit value gets `ff` alpha.
+- `hexColorTransform` from `@solid-multiplatform/platform/devtools` is a Vite
+  plugin that rewrites `'#RRGGBB'` and `'#RRGGBBAA'` string literals to numbers
+  at build time.
+- A `<view>` with no `color` and no `src` is transparent. If you set its `src`
+  later, set `color` to `0xffffffff` too.
 
-### 2. Avoid Combining Multiple Styles Inline
+## Node props
 
-**Don’t do this:**
+Position and size:
 
-```jsx
-return (
-  <ChildComp
-    {...props}
-    // Don't combine two styles inline, store this as a const outside the function and pass a single object
-    style={{ ...otherStyles, ...styles }}
-  />
-);
-```
+- `x`, `y`: position relative to the parent. Default `0`.
+- `width`, `height`: size in pixels. `w` and `h` are the same props.
+- `right`, `bottom`: distance from the parent's right or bottom edge. They set
+  `mountX` or `mountY` to 1.
+- `center`, `centerX`, `centerY`: center the node in its parent.
+- `mount`, `mountX`, `mountY`: which point of the node sits at `x`, `y`. `0` is
+  top-left, `0.5` the center, `1` bottom-right. Default `0`.
+- `zIndex`: stacking order.
 
-**Do this instead:**
+A `<view>` without a width or height takes the parent's size minus its own `x`
+or `y`. A `<text>` needs neither.
 
-- Combine the styles once outside the component render function:
+Appearance:
 
-```jsx
-// Ideally don't do this inside of a component definition as it will create this for each instance
-const combinedStyles = { ...otherStyles, ...styles };
+- `alpha`: opacity from 0 to 1. Default `1`.
+- `hidden`: `true` sets `alpha` to 0.
+- `color`, and `colorTop`, `colorBottom`, `colorLeft`, `colorRight`, `colorTl`,
+  `colorTr`, `colorBl`, `colorBr` for edge and corner gradients.
+- `clipping`: do not draw children outside the node's bounds.
+- `src`, `texture`, `textureOptions`, `autosize`: see
+  [Images](/essentials/images.md).
+- `border`, `borderRadius`, `shadow`, `linearGradient`, `radialGradient`,
+  `shader`, `effects`: see [Effects](/essentials/effects.md).
 
-return (
-  <ChildComp
-    {...props}
-    style={combinedStyles} // Use the combined styles from outside
-  />
-);
-```
+Transform:
 
-### 3. Avoid Overriding Single Style Props Inline
+- `scale`, `scaleX`, `scaleY`: default `1`.
+- `rotation`: in radians.
+- `pivot`, `pivotX`, `pivotY`: the point scale and rotation turn around.
+  Default `0.5`, the center.
 
-**Don’t do this:**
+Layout, for flex containers and their items: see
+[Layout](/flow/layout.md).
 
-```jsx
-return (
-  <ChildComp
-    {...props}
-    // Any single props can be specified as an attribute on the component, don't override style
-    style={{...styles, props.width}}
-  />
-);
-```
+Behaviour:
 
-**Do this instead:**
+- `states`, `stateOrder`, `forwardStates`, `theme`: see
+  [States](/essentials/states.md).
+- `transition`, `animationSettings`, `onAnimation`: see
+  [Transitions](/essentials/transitions.md).
+- `autofocus`, `forwardFocus`, `skipFocus`, `throttleInput`, key and focus
+  handlers: see [Focus and keys](/essentials/focus.md).
+- `onCreate`, `onRender`, `onRemove`, `onDestroy`, `onLayout`, `onEvent`: see
+  [Events](/essentials/events.md).
 
-- Define the individual style as a prop and pass it separately:
-
-```jsx
-return (
-  <ChildComp
-    {...props}
-    style={styles} // Pass the main style object
-    // Additionally, this isn't needed since we're spreading {...props}
-    width={props.width} // Pass individual styles separately as props
-  />
-);
-```
-
-By following these best practices, you’ll keep style objects immutable, improve performance, and ensure more predictable rendering behavior.
-
-## List of Properties
-
-These are found in the Renderer and applicable to all nodes:
-
-- `x`: The x coordinate of the Node's Mount Point, default is `0`.
-- `y`: The y coordinate of the Node's Mount Point, default is `0`.
-- `width`: The width of the Node, default is `0`.
-- `height`: The height of the Node, default is `0`.
-- `alpha`: The alpha opacity of the Node, ranging from `0` (transparent) to `1` (opaque), default is `1`.
-- `autosize`: When enabled, the Node resizes to the intrinsic dimensions of its texture once that texture loads, default is `false`. It only applies to nodes with a texture (`src`) — it does not size a container to its children, and it is a no-op on `<text>` nodes. Use flex to size containers.
-- `clipping`: Prevents drawing outside the Node's bounds, default is `false`.
-- `color`: The color of the Node in 0xRRGGBBAA format, default is `0xffffffff` (opaque white).
-- `colorTop`: The color of the Node's top edge for gradient rendering.
-- `colorBottom`: The color of the Node's bottom edge for gradient rendering.
-- `colorLeft`: The color of the Node's left edge for gradient rendering.
-- `colorRight`: The color of the Node's right edge for gradient rendering.
-- `colorTl`: The color of the Node's top-left corner for gradient rendering.
-- `colorTr`: The color of the Node's top-right corner for gradient rendering.
-- `colorBr`: The color of the Node's bottom-right corner for gradient rendering.
-- `colorBl`: The color of the Node's bottom-left corner for gradient rendering.
-- `parent`: The Node's parent Node, `null` if it has no parent, default is `null`.
-- `zIndex`: The Node's z-index.
-- `texture`: The Node's Texture, `null` if not set.
-- `shader`: The Node's Shader, `null` if not set.
-- `src`: Image URL to set the Node's texture.
-- `zIndexLocked`: The Node's locked z-index.
-- `scale`: Scale to render the Node at, default is `1.0`.
-- `scaleX`: Scale to render the Node at (X-Axis), default is `1.0`.
-- `scaleY`: Scale to render the Node at (Y-Axis), default is `1.0`.
-- `mount`: Combined position of the Node's Mount Point, default is `0` (top-left).
-- `mountX`: X position of the Node's Mount Point, default is `0`.
-- `mountY`: Y position of the Node's Mount Point, default is `0`.
-- `pivot`: Combined position of the Node's Pivot Point, default is `0.5` (center).
-- `pivotX`: X position of the Node's Pivot Point, default is `0.5`.
-- `pivotY`: Y position of the Node's Pivot Point, default is `0.5`.
-- `rotation`: Rotation of the Node in radians.
-
-> **Renderer 1.8 breaking change:** the `rtt` (render-to-texture) prop and the
-> per-node `boundsMargin` prop were removed. There is no replacement for `rtt`;
-> flatten the subtree into a pre-rendered image if you need the effect.
-> `boundsMargin` is now a stage-wide renderer setting only.
-
-### SDF Text Nodes
-
-Text node properties available from the Renderer
-
-- `text`: string
-- `textAlign`: `'left' | 'center' | 'right'`
-- `color`: number
-- `x`: number
-- `y`: number
-- `contain`: `'none' | 'width' | 'both'`
-- `width`: number
-- `height`: number
-- `scrollable`: boolean
-- `scrollY`: number
-- `offsetY`: number
-- `letterSpacing`: number
-- `lineHeight`: number
-- `maxLines`: number
-- `textBaseline`: TextBaseline
-- `verticalAlign`: TextVerticalAlign
-- `overflowSuffix`: string
-
-### SolidTV Shortcuts
-
-The following props are aliases to help with layout and ShaderEffects:
-
-- `alignItems`: 'flexStart' | 'flexEnd' | 'center'
-- `alignSelf`: 'flexStart' | 'flexEnd' | 'center'
-- `border`: BorderStyle
-- `borderBottom`: BorderStyle
-- `borderLeft`: BorderStyle
-- `borderRadius`: number | number[]
-- `borderRight`: BorderStyle
-- `borderTop`: BorderStyle
-- `bottom`: number
-- `center`: boolean
-- `centerX`: boolean
-- `centerY`: boolean
-- `columnGap`: number
-- `display`: 'flex' | 'block'
-- `effects`: any
-- `flexBoundary`: 'contain' | 'fixed'
-- `flexCrossBoundary`: 'contain' | 'fixed'
-- `flexDirection`: 'row' | 'column' | 'row-reverse' | 'column-reverse'
-- `flexItem`: boolean
-- `flexOrder`: number
-- `flexGrow`: number
-- `flexShrink`: number
-- `flexBasis`: number | string
-- `flexWrap`: 'nowrap' | 'wrap' | 'wrap-reverse'
-- `gap`: number
-- `justifyContent`: 'flexStart' | 'flexEnd' | 'center' | 'spaceBetween' | 'spaceEvenly'
-- `linearGradient`: LinearGradientEffectProps
-- `radialGradient`: RadialGradientEffectProps
-- `radialProgress`: RadialProgressEffectProps
-- `margin`: number | [number, number] | [number, number, number] | [number, number, number, number]
-- `marginBottom`: number
-- `marginLeft`: number
-- `marginRight`: number
-- `marginTop`: number
-- `padding`: number | [number, number] | [number, number, number] | [number, number, number, number]
-- `paddingTop`: number
-- `paddingRight`: number
-- `paddingBottom`: number
-- `paddingLeft`: number
-- `right`: number
-- `rowGap`: number
-- `shadow`: ShadowProps
-- `transition`: Record<string, AnimationSettings> | true
-
-### Component Defaults
-
-`<view>` elements without specified width and height values will inherit the dimensions of their parent, adjusted by their `x` and `y` values. If `x` and `y` are not specified, they default to 0, 0. The `<text>` element does not require any properties. When placed inside a flex container, the `<text>` element will automatically update its width and height upon loading.
-
-### Colors
-
-RGBA number 0xRRGGBBAA and hex are fully supported with the [Vite Hex Plugin](https://github.com/solid-tv/vite-hex-transform). If you have dynamic colors being set after transpile you'll need to use `hexColor`, `import { hexColor } from '@solidtv/solid'` and do `hexColor('#c0ffee')` to convert colors to RGBA. Please know all hex colors are #RRGGBB so they are easy to convert to 0xRRGGBBAA and usually AA is ff for full alpha. By default, every node without a src attribute will have their color set to `0x00000000` making it transparent. If you have an element which sets it's src attribute after creation, you need to update color to `0xffffffff` so it's not transparent.
-
-## Effects
-
-## Border and borderRadius
-
-`border` and `borderRadius` are special props which create effects for the DynamicShader found in the SolidTV Renderer. These props can be set on the JSX or style object. The order in which you set the props determine how they are applied in the shader. Meaning you probably want to set borderRadius first. You can also set individual borders via `borderLeft`, `borderRight`, `borderTop`, `borderBottom`. These properties do not support animations.
-
-```js
-const style = {
-  borderRadius: 30,
-  border: { width: 10, color: 0x000000ff },
-};
-
-// or
-
-const style = {
-  borderLeft: { width: 10, color: 0x000000ff },
-  borderRight: { width: 10, color: 0x000000ff },
-};
-```
-
-## Linear Gradient & Radial Gradient
-
-`linearGradient` and `radialGradient` are effects that can be used by setting the effects prop.
-
-```jsx
-import { deg2Rad } from '@solidtv/solid';
-
-<view
-  effects={{
-    linearGradient: {
-      angle: deg2Rad(225),
-      width: 300,
-      height: 300,
-      stops: [0.1, 0.5],
-      colors: [0xff0000ff, 0x00000000],
-    },
-  }}
-/>;
-```
-
-```jsx
-<view
-  width={300}
-  height={300}
-  effects={{
-    radialGradient: {
-      pivot: [225],
-      width: 300,
-      height: 300,
-      stops: [0.1, 0.5],
-      colors: [0xff0000ff, 0x00000000],
-    },
-  }}
-/>
-```
-
-You can have as many stops or colors as you like.
+Text props are listed in [Text](/essentials/text.md).

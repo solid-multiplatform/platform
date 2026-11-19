@@ -58,6 +58,11 @@ import {
   FocusNode,
 } from './focusManager.js';
 import { initClickInspector } from './clickInspector.js';
+import {
+  ACCESSIBILITY_PROPS,
+  semanticsHook,
+  type AccessibilityProps,
+} from './accessibility.js';
 
 // Unified post-mutation scheduler.
 //
@@ -372,7 +377,6 @@ const LightningRendererNonAnimatingProps = [
   'srcWidth',
   'srcX',
   'srcY',
-  'text',
   'textAlign',
   'textBaseline',
   'texture',
@@ -403,7 +407,8 @@ export type RendererNode = AddColorString<
   >
 >;
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface ElementNode extends RendererNode, FocusNode {
+export interface ElementNode
+  extends RendererNode, FocusNode, AccessibilityProps {
   [key: string]: unknown;
 
   // Properties
@@ -419,6 +424,10 @@ export interface ElementNode extends RendererNode, FocusNode {
   _animationRunning?: boolean;
   _animationSettings?: AnimationSettings;
   _aspectRatio?: number;
+  /** The accessibility props set on this node. */
+  _a11y?: AccessibilityProps;
+  /** What `hidden` was last set to; alpha alone does not say (a fade). */
+  _hidden?: boolean;
   _autofocus?: any;
   _containsFlexGrow?: boolean | null;
   /** Main-axis size flex grow/shrink last wrote to this child, and its own size before that. */
@@ -851,14 +860,39 @@ export interface ElementNode extends RendererNode, FocusNode {
   onEvent?: OnEvent;
 
   /**
-   * Callback event for when the element is clicked with a mouse.
-   * Triggered when `useMouse` is running.
+   * Called when a pointer clicks or taps the element, with where in scene
+   * coordinates. It replaces the default for a click, which is to focus the
+   * element and press Enter on it (`onEnter`).
    */
   onMouseClick?: (
     this: ElementNode,
-    event: MouseEvent,
+    event: ScenePoint,
     node: ElementNode,
   ) => void;
+  /** Called once a press has stayed on the element for the hold time. */
+  onPointerHold?: (this: ElementNode, node: ElementNode) => void;
+  /**
+   * Called while a press that started on the element moves: `start` once it
+   * has left the tap slop, then `move`, then `end` or `cancel`. A drag is not
+   * a click. `dragToScroll` adapts it to a scroll axis.
+   */
+  onPointerDrag?: (
+    this: ElementNode,
+    phase: 'start' | 'move' | 'end' | 'cancel',
+    point: ScenePoint,
+    origin: ScenePoint,
+    node: ElementNode,
+  ) => void;
+  /**
+   * Called for a wheel or trackpad scroll over the element or anything inside
+   * it, innermost handler first. Returning `false` passes the scroll on to
+   * the next handler out. `wheelToScroll` adapts it to a scroll axis.
+   */
+  onPointerScroll?: (
+    this: ElementNode,
+    event: { deltaX: number; deltaY: number },
+    node: ElementNode,
+  ) => boolean | void;
 
   /**
    * The individual padding on each side of an element, acting as an override to the `padding` array property.
@@ -876,6 +910,12 @@ export interface ElementNode extends RendererNode, FocusNode {
    * Overrides the global `Config.stateOrder`.
    */
   stateOrder?: DollarString[];
+}
+
+/** A position in scene coordinates. */
+export interface ScenePoint {
+  x: number;
+  y: number;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -909,6 +949,8 @@ export class ElementNode {
     this._animationRunning = undefined;
     this._animationSettings = undefined;
     this._aspectRatio = undefined;
+    this._a11y = undefined;
+    this._hidden = undefined;
     this._autofocus = undefined;
     this._calcWidth = undefined;
     this._calcHeight = undefined;
@@ -1152,6 +1194,7 @@ export class ElementNode {
         if (this.rendered && isElementNode(node)) {
           node.render(true);
           this.placeRenderedChild(node, index + 1);
+          if (semanticsHook !== undefined) semanticsHook(node);
         }
         return;
       }
@@ -1161,13 +1204,15 @@ export class ElementNode {
     if (this.rendered && isElementNode(node)) {
       node.render(true);
       if (movingHere) this.placeRenderedChild(node, this.children.length);
+      if (semanticsHook !== undefined) semanticsHook(node);
     }
   }
 
   removeChild(node: ElementNode | ElementText | TextNode) {
     if (removeItem(this.children, node as ElementNode) > -1) {
-      if (isElementNode(node) && node.onRemove) {
-        node.onRemove.call(node, node);
+      if (isElementNode(node)) {
+        if (node.onRemove) node.onRemove.call(node, node);
+        if (semanticsHook !== undefined && this.rendered) semanticsHook(node);
       }
 
       if (this.requiresLayout()) {
@@ -1487,6 +1532,10 @@ export class ElementNode {
 
   set hidden(val: boolean) {
     this.alpha = val ? 0 : 1;
+    // Kept apart from alpha, which a fade leaves at 0 for a while: `hidden`
+    // is what takes a node out of the accessibility tree.
+    this._hidden = val;
+    if (semanticsHook !== undefined && this.rendered) semanticsHook(this);
   }
 
   get hidden() {
@@ -1993,6 +2042,32 @@ LightningRendererNonAnimatingProps.forEach((key) => {
     },
     set(v: unknown) {
       this.lng[key] = v;
+    },
+  });
+});
+
+// `text` is forwarded like the props above; a change also renames whatever
+// is labelled by that text.
+Object.defineProperty(ElementNode.prototype, 'text', {
+  get(this: ElementNode): unknown {
+    return (this.lng as { text?: string }).text;
+  },
+  set(this: ElementNode, v: string) {
+    (this.lng as { text?: string }).text = v;
+    if (semanticsHook !== undefined && this.rendered) semanticsHook(this);
+  },
+});
+
+// Accessibility props are kept on the node; a semantics host, when one is
+// attached, hears of each change to a rendered node.
+ACCESSIBILITY_PROPS.forEach((key) => {
+  Object.defineProperty(ElementNode.prototype, key, {
+    get(this: ElementNode): unknown {
+      return this._a11y === undefined ? undefined : this._a11y[key];
+    },
+    set(this: ElementNode, v: never) {
+      (this._a11y ??= {})[key] = v;
+      if (semanticsHook !== undefined && this.rendered) semanticsHook(this);
     },
   });
 });

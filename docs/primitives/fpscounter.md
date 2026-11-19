@@ -1,43 +1,36 @@
-### FPS Counter Component
+# FPSCounter
 
-This component displays the current frames per second (FPS) of the application.
+`FPSCounter` is a development overlay. It shows the current, average, minimum
+and maximum frames per second, the quad and render-op counts, and texture
+memory.
 
-To use, import FPSCounter and add it to your component tree. import { setupFPS } from '@solidtv/solid'; On your canvas element add renderer option: fpsUpdateInterval: 200 and ref={(root) => setupFPS(root)}
+The numbers come from the renderer's `fpsUpdate` and `renderUpdate` events and
+from its `memoryInfo()`. The WebGL backend raises `fpsUpdate` only when the
+renderer setting `fpsUpdateInterval` is set. `memoryInfo()` is optional in the
+scene contract, so use the counter with a backend that has it.
 
-`fpsUpdateInterval` is required — since renderer 1.9 it is the single switch for
-both the `fpsUpdate` and `renderUpdate` events, and it works in production
-builds. The `__calculateFps__` build flag that used to gate them is gone.
+```tsx
+import { renderer } from '@solid-multiplatform/platform';
+import { FPSCounter, setupFPS } from '@solid-multiplatform/platform/primitives';
 
-```jsx
-import { FPSCounter, setupFPS } from '@solidtv/solid/primitives';
-import { renderer } from '@solidtv/solid';
+export const App = () => {
+  setupFPS({ renderer });
 
-//inside App component
-
-setupFPS({ renderer });
-
-<FPSCounter mountX={1} x={1910} y={10} />;
+  return (
+    <view>
+      <FPSCounter mountX={1} x={1910} y={10} />
+    </view>
+  );
+};
 ```
 
-## Reading the numbers
+- `setupFPS(root)`: subscribes to the events of `root.renderer`. Call it once,
+  after the renderer exists.
+- `FPSCounter`: accepts every `<view>` prop.
+- `resetCounter()`: clears the average and the minimum.
 
-Renderer 1.8 reworked the `fpsUpdate` payload:
+Samples of 5 fps or less are ignored. They occur while a page loads.
 
-- `fps` now measures **rendering only** and is `0` when the interval was
-  entirely idle, so a quiet screen reads as 0 rather than as a stall. Read
-  `idleTicks` alongside it to tell the two apart. `FPSCounter` ignores samples
-  at or below 5 fps for this reason.
-- `capabilities` was removed from the payload. Call `renderer.getCapabilities()`
-  once at startup instead; the `RendererCapabilities` type is exported from
-  `@solidtv/renderer`.
-- `frameTick.time` now comes from `performance.now()`, measured from page load
-  rather than the Unix epoch.
-- New fields worth having: `animatedFps` (the rate over frames where something
-  was actually moving), `frameTimeBuckets` and `maxFrameTime` for percentiles,
-  and `updateMs` / `renderMs` / `uploadMs` to attribute a regression to a phase.
-  `renderer.setTelemetrySegment('home')` labels a sample so an interval never
-  spans two screens.
-
-FPS series recorded from production builds before renderer 1.8 are not
-comparable with these numbers: production builds used to sample the idle poll
-cadence and report a meaningless constant around 60-70.
+Do not leave the counter in a production build. With `fpsUpdateInterval` set,
+the renderer reports on an interval, which breaks the rule that an idle scene
+schedules nothing.

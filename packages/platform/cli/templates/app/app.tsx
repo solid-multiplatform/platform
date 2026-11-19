@@ -1,128 +1,85 @@
 import { createSignal, onCleanup } from 'solid-js';
+import { Config } from '@solid-multiplatform/platform';
 import {
-  Config,
-  createRenderer,
-  activeElement,
-  loadFonts,
-  type ElementNode,
-} from '@solid-multiplatform/platform';
-import { useFocusManager } from '@solid-multiplatform/platform/focusManager';
-import { viewport } from '@solid-multiplatform/platform/viewport';
+  mountApp,
+  type AppOptions,
+  type HostWiring,
+} from '@solid-multiplatform/platform/host';
 import { Home } from './screens/Home';
+
 export interface Plugin {
   run(): Promise<string>;
 }
-export function mount(
-  plugins: Record<string, Plugin>,
-  fontRoot?: string,
-  pointer?: import('@solid-multiplatform/platform/input').InputScope,
-  host?: import('./screen').ScreenHost,
-) {
-  const fonts =
-    fontRoot &&
-    loadFonts([
+
+/** What the app runs on: the target's name and, on native targets, its root view. */
+export interface AppHost {
+  target: string;
+  native?: unknown;
+}
+
+/** The fonts the app loads, from where the target serves its font files. */
+export function appOptions(fontRoot?: string): AppOptions {
+  if (!fontRoot) return {};
+  Config.fontSettings = { fontFamily: 'Lato', fontSize: 32 };
+  return {
+    fonts: [
       {
         type: 'msdf',
         fontFamily: 'Lato',
         atlasUrl: fontRoot + '/Lato-Regular.msdf.png',
         atlasDataUrl: fontRoot + '/Lato-Regular.msdf.json',
       },
-    ]);
-  if (fontRoot) Config.fontSettings = { fontFamily: 'Lato', fontSize: 32 };
-  const { render } = createRenderer();
-  if (fonts) void fonts.catch((e) => console.error(e));
-  const names = Object.keys(plugins);
-  let root!: ElementNode;
-  const dispose = render(() => {
-    useFocusManager();
-    const [message, setMessage] = createSignal('__APP_NAME__');
-    const rows = new Map<string, ElementNode>();
-    let active = true,
-      generation = 0;
-    onCleanup(() => {
-      active = false;
-    });
-    function activate(name: string): true {
-      const n = ++generation;
-      void Promise.resolve()
-        .then(() => plugins[name]!.run())
-        .then(
-          (v) => {
-            if (active && n === generation) setMessage(v);
-          },
-          (e) => {
-            if (active && n === generation) setMessage(String(e));
-          },
-        );
-      return true;
-    }
-    function register(name: string, node: ElementNode) {
-      rows.set(name, node);
-      const semantics = host?.semantics?.register({
-        bounds: () => ({
-          x: node.lng?.absX ?? 0,
-          y: node.lng?.absY ?? 0,
-          width: node.width ?? 0,
-          height: node.height ?? 0,
-        }),
-        role: 'button',
-        label: name,
-        focus: () => node.setFocus(),
-        activate: () => activate(name),
-      });
-
-      if (semantics?.focus) node.onFocus = () => semantics.focus?.();
-      const remove = pointer?.register({
-        bounds: () => ({
-          x: node.lng.absX ?? 0,
-          y: node.lng.absY ?? 0,
-          width: node.width,
-          height: node.height,
-        }),
-        activate: () => activate(name),
-        focus: () => node.setFocus(),
-        hover: (v) =>
-          v ? node.states.add('$hover') : node.states.remove('$hover'),
-        pressed: (v) =>
-          v ? node.states.add('$pressed') : node.states.remove('$pressed'),
-      });
-      onCleanup(() => {
-        remove?.();
-        semantics?.dispose();
-        if (rows.get(name) === node) rows.delete(name);
-      });
-    }
-    function next(offset: number): true {
-      const i = names.findIndex((name) => rows.get(name) === activeElement());
-      rows
-        .get(
-          names[
-            (Math.max(0, i) + (offset % names.length) + names.length) %
-              names.length
-          ]!,
-        )
-        ?.setFocus();
-      return true;
-    }
-    return (
-      <view ref={root} width={viewport().width} height={viewport().height}>
-        <Home
-          host={host}
-          names={names}
-          message={message}
-          viewport={viewport}
-          register={register}
-          activate={activate}
-          next={next}
-        />
-      </view>
-    );
-  });
-  return () => {
-    dispose();
-    if (root.parent) {
-      root.parent.removeChild(root);
-      root.destroy();
-    }
+    ],
   };
+}
+
+export function App(props: { plugins: Record<string, Plugin>; host: AppHost }) {
+  const [message, setMessage] = createSignal('__APP_NAME__');
+  let active = true,
+    latest = 0;
+  onCleanup(() => {
+    active = false;
+  });
+  // Shows what the plugin returns; a slower earlier run does not overwrite it.
+  function run(name: string) {
+    const call = ++latest;
+    const show = (value: unknown) => {
+      if (active && call === latest) setMessage(String(value));
+    };
+    void Promise.resolve()
+      .then(() => props.plugins[name]!.run())
+      .then(show, show);
+  }
+  return (
+    <Home
+      names={Object.keys(props.plugins)}
+      message={message()}
+      onRun={run}
+      target={props.host.target}
+      native={props.host.native as object | undefined}
+    />
+  );
+}
+
+/**
+ * The entry of the targets that do not start through `startApp` yet (Roku,
+ * Android, iOS, tvOS, desktop): each one's generated entry calls it with what
+ * its host has. Browser targets start `App` with `startApp`.
+ */
+export function mount(
+  plugins: Record<string, Plugin>,
+  fontRoot?: string,
+  pointer?: HostWiring['pointer'],
+  host?: { target: string; root?: object; semantics?: HostWiring['semantics'] },
+) {
+  return mountApp(
+    () => (
+      <App
+        plugins={plugins}
+        host={{ target: host?.target ?? '', native: host?.root }}
+      />
+    ),
+    { pointer, semantics: host?.semantics },
+    appOptions(fontRoot),
+  );
 }
