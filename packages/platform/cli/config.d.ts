@@ -68,9 +68,23 @@ export interface AppConfig {
   theme?: 'system' | 'light' | 'dark';
 }
 
+/** The desktop window's chrome, fixed when the runtime creates the window. */
+export interface DesktopConfig {
+  /**
+   * `native` (the default) keeps the window system's title bar. `custom`
+   * makes a borderless window whose scene draws `<TitleBar>`; `hidden` makes
+   * a borderless window with no automatic chrome. Startup-only: the runtime
+   * creates the window before the app runs. A build's `--title-bar` flag
+   * wins over the packaged `resources/app.json` this becomes.
+   */
+  titleBar?: 'native' | 'custom' | 'hidden';
+}
+
 export interface SolidPlatformConfig {
   /** Fonts, design size and theme of the app. */
   app?: AppConfig;
+  /** The desktop window's chrome. */
+  desktop?: DesktopConfig;
   /**
    * Reverse-DNS application id, such as `com.example.app`. Used for the webOS
    * app id and to start the app on Android. Native projects keep the id that
@@ -102,6 +116,7 @@ export interface SolidPlatformConfig {
 /** What targets receive as `ctx.config`: validated, with the optional lists filled in. */
 export interface ResolvedConfig extends SolidPlatformConfig {
   app: AppConfig;
+  desktop: DesktopConfig;
   deepLinks: { schemes: string[]; hosts: string[] };
   services: string[];
   signing: Partial<Record<TargetName, SigningSettings>>;

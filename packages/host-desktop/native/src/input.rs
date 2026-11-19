@@ -23,7 +23,8 @@
 //!   the content's end as in the DOM.
 //! - `resize` (size or scale changed: read `window.size()`), `expose` (the
 //!   contents were lost), `focus`, `blur`, `windowstate` (minimised, restored,
-//!   occluded, shown or hidden: read `window.state()`), `close` (the user or
+//!   maximised, fullscreen entered or left, occluded, shown or hidden: read
+//!   `window.state()` and `window.chrome().state()`), `close` (the user or
 //!   the system asked the app to end), `theme`, `locale`.
 //! - `dropfile` (`path`), `droptext` (`text`), each with `x` and `y`.
 //!
@@ -273,6 +274,8 @@ impl Input {
             SDL_EVENT_WINDOW_MINIMIZED
             | SDL_EVENT_WINDOW_RESTORED
             | SDL_EVENT_WINDOW_MAXIMIZED
+            | SDL_EVENT_WINDOW_ENTER_FULLSCREEN
+            | SDL_EVENT_WINDOW_LEAVE_FULLSCREEN
             | SDL_EVENT_WINDOW_OCCLUDED
             | SDL_EVENT_WINDOW_SHOWN
             | SDL_EVENT_WINDOW_HIDDEN => self.once(N::windowstate),

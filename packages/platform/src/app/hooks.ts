@@ -10,6 +10,7 @@ import {
   type PlatformTarget,
 } from '../sdk/capabilities.js';
 import type { BatteryState } from '../sdk/device.js';
+import type { WindowChrome } from '../sdk/chrome.js';
 import { locale } from '../sdk/i18n.js';
 import {
   loadService,
@@ -35,6 +36,8 @@ export interface HostInfo {
   readonly capabilities: PlatformCapabilities;
   /** The host's native root (a view, a window), where the target has one. */
   readonly native: unknown;
+  /** The window's title bar, where the host has one: the desktop target. */
+  readonly chrome?: WindowChrome;
 }
 
 /** The host the app runs on. */
@@ -48,6 +51,9 @@ export function useHost(): HostInfo {
       return useCapabilities();
     },
     native: scope?.native,
+    get chrome() {
+      return scope?.chrome;
+    },
   };
 }
 

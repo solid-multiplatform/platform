@@ -18,6 +18,7 @@ const known = new Set([
   'name',
   'version',
   'targets',
+  'desktop',
   'icons',
   'splash',
   'deepLinks',
@@ -121,6 +122,18 @@ export function validateConfig(raw, source = 'config', allowed = available) {
   const hosts = strings('deepLinks.hosts', config.deepLinks?.hosts);
   const services = strings('services', config.services);
 
+  // The desktop window's chrome is chosen at startup: the runtime builds the
+  // window before the app runs, so it cannot be an option of `desktopHost`.
+  const titleBars = ['native', 'custom', 'hidden'];
+  const desktop = config.desktop ?? {};
+  if (!isObject(desktop))
+    fail('desktop', 'expected { titleBar }');
+  for (const key of Object.keys(desktop))
+    if (key !== 'titleBar')
+      fail('desktop.' + key, 'unknown key (known: titleBar)');
+  if (desktop.titleBar !== undefined && !titleBars.includes(desktop.titleBar))
+    fail('desktop.titleBar', 'expected one of ' + titleBars.join(', '));
+
   if (config.signing !== undefined && !isObject(config.signing))
     fail('signing', 'expected an object keyed by target');
   for (const [target, settings] of Object.entries(config.signing ?? {})) {
@@ -185,6 +198,7 @@ export function validateConfig(raw, source = 'config', allowed = available) {
     name: config.name,
     version: config.version,
     targets: [...config.targets],
+    desktop: { titleBar: desktop.titleBar },
     icons: config.icons,
     splash: config.splash,
     deepLinks: { schemes, hosts },

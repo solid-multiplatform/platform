@@ -325,6 +325,7 @@ pub unsafe fn run(env: napi_env) -> i32 {
         while pending {
             #[cfg(all(feature = "accessibility", target_os = "linux"))]
             crate::a11y::observe(&event);
+            crate::chrome::observe(&event);
             input::collect(&event);
             pending = SDL_PollEvent(&mut event);
         }

@@ -70,6 +70,13 @@
     "./cli/variants": "./cli/variants.mjs",
     "./android": "./hosts/android/index.mjs",
     "./viewport": "./dist/src/sdk/viewport.js",
+    "./chrome": {
+      "@solidtv/source": "./src/sdk/chrome.ts",
+      "import": {
+        "types": "./dist/src/sdk/chrome.d.ts",
+        "default": "./dist/src/sdk/chrome.js"
+      }
+    },
     "./viewport/web": "./dist/src/sdk/browser-viewport.js",
     "./input": "./dist/src/sdk/input.js",
     "./editor": "./dist/src/sdk/editor.js",

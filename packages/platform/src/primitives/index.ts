@@ -65,3 +65,4 @@ export * from './SelectableText.jsx';
 export * from './selectionModel.js';
 export * from './Svg.jsx';
 export * from './GestureAlternatives.jsx';
+export * from './TitleBar.jsx';

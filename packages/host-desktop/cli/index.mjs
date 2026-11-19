@@ -75,7 +75,7 @@ export function doctorDesktop() {
         name: 'runtime',
         ok: true,
         required: true,
-        detail: `${runtime} (${located.source}): solid-desktop ${made.version}, SDL ${made.sdl} ${made.sdlLinkage}, video drivers ${made.videoDrivers.join(' ')}`,
+        detail: `${runtime} (${located.source}): solid-desktop ${made.version}, SDL ${made.sdl} ${made.sdlLinkage}, video drivers ${made.videoDrivers.join(' ')}, title bar ${made.titleBar}, video driver ${made.videoDriver}, hit testing ${made.hitTesting}`,
       });
     } else if (source.possible) {
       runtime = builtRuntime;
@@ -190,6 +190,8 @@ export async function buildDesktop(options) {
  * @property {string[]} [assets] With `entry`: see `buildDesktop`.
  * @property {string[]} [args] The app's arguments (a URL to open it with).
  * @property {boolean} [headless] No window and no GL.
+ * @property {'native' | 'custom' | 'hidden'} [titleBar] The window's chrome,
+ *   fixed when the runtime creates the window. The default is native.
  * @property {NodeJS.ProcessEnv} [env]
  * @property {import('node:child_process').StdioOptions} [stdio] Default
  *   `inherit`.
@@ -229,7 +231,16 @@ export async function runDesktop(options) {
   }
   const child = spawn(
     runtime,
-    [...(headless ? ['--headless'] : []), '--script', script, '--', ...args],
+    [
+      ...(headless ? ['--headless'] : []),
+      ...(options.titleBar === undefined
+        ? []
+        : [`--title-bar=${options.titleBar}`]),
+      '--script',
+      script,
+      '--',
+      ...args,
+    ],
     { stdio, env: options.env ?? process.env, signal: options.signal },
   );
   const exit = new Promise((resolve, reject) => {
@@ -276,6 +287,12 @@ if (invokedDirectly()) {
     for (let one; (one = value(name)) !== undefined; ) all.push(one);
     return all;
   };
+  // `--title-bar=custom`, the form the platform CLI passes through.
+  const prefixed = (name) => {
+    const prefix = `${name}=`;
+    const at = args.findIndex((arg) => arg.startsWith(prefix));
+    return at === -1 ? undefined : args.splice(at, 1)[0].slice(prefix.length);
+  };
   const usage = () => {
     console.error(
       'usage: index.mjs doctor\n' +
@@ -313,6 +330,7 @@ if (invokedDirectly()) {
         headless: flag('--headless'),
         assets: values('--assets'),
         args: appArgs,
+        titleBar: prefixed('--title-bar'),
       };
       if (args.length !== 1) usage();
       const built = /\.(hbc|[cm]?js)$/.test(args[0]);

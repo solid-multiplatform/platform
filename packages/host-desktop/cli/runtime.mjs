@@ -124,6 +124,12 @@ export function runtimeDiagnostics(runtime) {
     sdl: lines.sdl?.[0] ?? '',
     sdlLinkage: lines.sdl?.[1] === 'static' ? 'static' : 'dynamic',
     videoDrivers: lines['video-drivers'] ?? [],
+    // The chrome the next run would ask for, the driver video starts on, and
+    // whether a run installs the scene's hit test (`not-installed` here:
+    // diagnostics opens no window).
+    titleBar: lines['title-bar']?.[0] ?? 'native',
+    videoDriver: lines['video-driver']?.[0] ?? 'none',
+    hitTesting: lines['hit-testing']?.[0] ?? 'not-installed',
     // `at-spi` where the scene's semantics reach assistive technology.
     accessibility: lines.accessibility?.[0] ?? 'none',
     // `dbus` where the desktop's notification service can be reached.

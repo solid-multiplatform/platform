@@ -9,6 +9,7 @@ use crate::input::leak;
 use crate::napi::*;
 use crate::window;
 use sdl3_sys::everything::*;
+use std::ptr;
 
 unsafe fn push(mut event: SDL_Event) {
     SDL_PushEvent(&mut event);
@@ -169,6 +170,38 @@ unsafe extern "C" fn set_scale(env: napi_env, info: napi_callback_info) -> napi_
     undefined(env)
 }
 
+/// `test.hitTest(x, y)`: what the resolver answers at a point in scene
+/// units, as SDL's own names (`draggable`, `resize-top`, `normal`, ...).
+/// This is the classifier the window system asks, not a simulation of its
+/// move or resize.
+unsafe extern "C" fn hit_test(env: napi_env, info: napi_callback_info) -> napi_value {
+    let [x, y] = arguments::<2>(env, info);
+    let (x, y) = (number_or(env, x, f64::NAN), number_or(env, y, f64::NAN));
+    if !x.is_finite() || !y.is_finite() {
+        return throw(env, "test.hitTest: the position must be two numbers");
+    }
+    string(env, crate::chrome::query(x, y))
+}
+
+/// `test.regions()`: the scene's published hit-test regions, in scene units,
+/// as `{ x, y, width, height, drag }`. For checking what the primitives
+/// measured, not for the window system.
+unsafe extern "C" fn regions(env: napi_env, _info: napi_callback_info) -> napi_value {
+    let mut array = ptr::null_mut();
+    napi_create_array(env, &mut array);
+    for (index, (x, y, width, height, drag)) in crate::chrome::scene_regions().into_iter().enumerate() {
+        let mut entry = ptr::null_mut();
+        napi_create_object(env, &mut entry);
+        napi_set_named_property(env, entry, c"x".as_ptr(), number(env, x));
+        napi_set_named_property(env, entry, c"y".as_ptr(), number(env, y));
+        napi_set_named_property(env, entry, c"width".as_ptr(), number(env, width));
+        napi_set_named_property(env, entry, c"height".as_ptr(), number(env, height));
+        napi_set_named_property(env, entry, c"drag".as_ptr(), boolean(env, drag));
+        napi_set_element(env, array, index as u32, entry);
+    }
+    array
+}
+
 pub unsafe fn install(env: napi_env, host: napi_value) {
     let test = define_object(env, host, c"test");
     define_function(env, test, c"key", key);
@@ -178,4 +211,6 @@ pub unsafe fn install(env: napi_env, host: napi_value) {
     define_function(env, test, c"window", window_event);
     define_function(env, test, c"drop", drop_event);
     define_function(env, test, c"setScale", set_scale);
+    define_function(env, test, c"hitTest", hit_test);
+    define_function(env, test, c"regions", regions);
 }

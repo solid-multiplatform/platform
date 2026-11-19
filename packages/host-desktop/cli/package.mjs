@@ -17,6 +17,7 @@
 //   node cli/package.mjs <entry> --app-id <id> --name <name> --version <v>
 //                        --out <dir> [--icon <file>] [--assets <path>]...
 //                        [--scheme <scheme>] [--title <text>] [--no-bytecode]
+//                        [--title-bar native|custom|hidden]
 //                        [--runtime <solid-desktop>]
 import path from 'node:path';
 import {
@@ -55,6 +56,9 @@ import { findRuntime, platformName, runtimeDiagnostics } from './runtime.mjs';
  *   service.
  * @property {boolean} [bytecode] Compile to Hermes bytecode. Default true.
  * @property {boolean} [minify] Default true.
+ * @property {'native' | 'custom' | 'hidden'} [titleBar] The window's chrome,
+ *   written to `resources/app.json` for the runtime to read before SDL
+ *   starts. A `--title-bar` flag at run time still wins.
  * @property {string} [runtime] The runtime to package; found as
  *   `runtime.mjs` describes when absent.
  *
@@ -92,6 +96,7 @@ export async function packageDesktop(options) {
     icon,
     assets = [],
     scheme,
+    titleBar = 'native',
     bytecode = true,
     minify = true,
   } = options;
@@ -124,6 +129,11 @@ export async function packageDesktop(options) {
   if (scheme !== undefined && !SCHEME.test(scheme)) {
     throw new Error(`packageDesktop: "${scheme}" is not a URL scheme`);
   }
+  if (!['native', 'custom', 'hidden'].includes(titleBar)) {
+    throw new Error(
+      'packageDesktop: titleBar must be native, custom or hidden',
+    );
+  }
   const iconType = icon === undefined ? '' : path.extname(icon).toLowerCase();
   if (icon !== undefined && !['.png', '.svg'].includes(iconType)) {
     throw new Error('packageDesktop: the icon must be a .png or .svg file');
@@ -148,6 +158,12 @@ export async function packageDesktop(options) {
   mkdirSync(path.join(directory, 'bin'), { recursive: true });
   mkdirSync(resources, { recursive: true });
 
+  // Read by the runtime before SDL starts, which is why it is a file and not
+  // an option of the app. A run-time `--title-bar` flag still wins.
+  writeFileSync(
+    path.join(resources, 'app.json'),
+    JSON.stringify({ titleBar }, null, 2) + '\n',
+  );
   const script = path.join(resources, 'app.js');
   await bundle({ entry, outfile: script, bytecode, minify, runtime });
   // The bytecode is the app; its source does not ship beside it.
@@ -276,7 +292,12 @@ if (invokedDirectly()) {
   };
   const value = (name) => {
     const at = args.indexOf(name);
-    return at === -1 ? undefined : args.splice(at, 2)[1];
+    if (at !== -1) return args.splice(at, 2)[1];
+    // `--title-bar=custom` as the platform CLI writes it.
+    const prefixed = args.findIndex((arg) => arg.startsWith(`${name}=`));
+    return prefixed === -1
+      ? undefined
+      : args.splice(prefixed, 1)[0].slice(name.length + 1);
   };
   const assets = [];
   for (let asset; (asset = value('--assets')) !== undefined; ) {
@@ -290,6 +311,7 @@ if (invokedDirectly()) {
     version: value('--version'),
     outDir: value('--out'),
     title: value('--title'),
+    titleBar: value('--title-bar'),
     icon: resolved(value('--icon')),
     scheme: value('--scheme'),
     runtime: resolved(value('--runtime')),

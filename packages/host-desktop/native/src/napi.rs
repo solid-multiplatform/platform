@@ -155,6 +155,7 @@ extern "C" {
         value: napi_value,
     ) -> napi_status;
     pub fn napi_get_property(env: napi_env, object: napi_value, key: napi_value, result: *mut napi_value) -> napi_status;
+    pub fn napi_get_named_property(env: napi_env, object: napi_value, key: *const c_char, result: *mut napi_value) -> napi_status;
     pub fn napi_set_property(env: napi_env, object: napi_value, key: napi_value, value: napi_value) -> napi_status;
     pub fn napi_create_array(env: napi_env, result: *mut napi_value) -> napi_status;
     pub fn napi_set_element(env: napi_env, object: napi_value, index: u32, value: napi_value) -> napi_status;

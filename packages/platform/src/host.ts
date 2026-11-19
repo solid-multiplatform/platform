@@ -38,8 +38,14 @@ import {
   type ScenePointerOptions,
 } from './sdk/input.js';
 import { attachSemantics, type SemanticsSink } from './sdk/semantics.js';
+import type {
+  TitleBarMode,
+  WindowChrome,
+  WindowChromeState,
+} from './sdk/chrome.js';
 
 export type Disposer = () => void;
+export type { TitleBarMode, WindowChrome, WindowChromeState };
 
 export type { HistoryLocation, HistorySource } from './core/history.js';
 export { createMemoryHistory } from './core/history.js';
@@ -79,6 +85,11 @@ export interface HostContext<Surface = unknown> {
    * available, and only on the web.
    */
   readonly history?: HistorySource;
+  /**
+   * The window's title bar, where the host has one: its mode, state and
+   * controls. A target without a window omits it.
+   */
+  readonly chrome?: WindowChrome;
   /**
    * The host's one Back dispatcher. Roku Back, Android hardware Back, a
    * browser TV's Back key and the PS4 cancel button all deliver through it;
@@ -138,6 +149,7 @@ export type HostWiring = Partial<
     | 'native'
     | 'text'
     | 'history'
+    | 'chrome'
     | 'back'
     | 'exit'
   >
