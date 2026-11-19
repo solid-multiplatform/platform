@@ -64,16 +64,29 @@ export const share: SharePort = {
   share(options) {
     if (typeof navigator.share !== 'function')
       throw new CapabilityError('share');
-    return navigator
-      .share({ title: options.title, text: options.text, url: options.url })
-      .then(
-        () => 'shared',
-        (error: unknown) => {
-          if ((error as { name?: string }).name === 'AbortError')
-            return 'dismissed';
-          throw error;
-        },
-      );
+    const data: ShareData = {
+      title: options.title,
+      text: options.text,
+      url: options.url,
+    };
+    // Blobs become Files, shared only where the browser says it can.
+    if (options.files?.length && typeof File === 'function') {
+      const files: File[] = [];
+      for (const file of options.files) {
+        if (!file.blob) continue;
+        const type = file.mimeType ?? file.blob.type;
+        files.push(new File([file.blob], file.name ?? 'file', { type }));
+      }
+      if (files.length && navigator.canShare?.({ files })) data.files = files;
+    }
+    return navigator.share(data).then(
+      () => 'shared',
+      (error: unknown) => {
+        if ((error as { name?: string }).name === 'AbortError')
+          return 'dismissed';
+        throw error;
+      },
+    );
   },
 };
 
@@ -209,6 +222,10 @@ export const locale: LocalePort = {
   },
   applyHighContrast(enabled) {
     document.documentElement.classList.toggle('high-contrast', enabled);
+  },
+  subscribe(listener) {
+    window.addEventListener('languagechange', listener);
+    return () => window.removeEventListener('languagechange', listener);
   },
 };
 

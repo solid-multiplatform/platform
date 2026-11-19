@@ -19,8 +19,9 @@ export interface NavigableProps extends NodeProps {
    * always - focus remains at index 0, scroll until the final item is at index 0
    * center - selected element will be centered to the screen
    * none - disable scrolling behavior, focus shifts as expected
+   * bounded - like always, but scrolling stops for the last `upCount` items
    * in both `auto` and `edge` items will only scroll until the last item is on screen */
-  scroll?: 'always' | 'none' | 'edge' | 'auto' | 'center';
+  scroll?: 'always' | 'none' | 'edge' | 'auto' | 'center' | 'bounded';
 
   /** When auto scrolling, item index at which scrolling begins */
   scrollIndex?: number;

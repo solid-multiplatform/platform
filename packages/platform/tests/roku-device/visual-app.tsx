@@ -3,7 +3,12 @@
 // screenshot and probes the pixels. Each case mounts on its own, so one that
 // throws is reported on the console and the rest still draw.
 import { createSignal, type JSXElement } from 'solid-js';
-import { createRenderer, loadFonts } from '@solid-multiplatform/platform';
+import {
+  createRenderer,
+  loadFonts,
+  setRendererFactory,
+} from '@solid-multiplatform/platform';
+import { rokuHost } from '@solid-multiplatform/platform/roku';
 import robotoRegular from './fonts/Roboto-Regular.ttf';
 import {
   BG,
@@ -328,7 +333,19 @@ function linear(c: {
  * drawing effects (see visual-app-assets.tsx); without it the backend picks
  * by what the device reports.
  */
-export function mountWith(effectTier?: 'native' | 'assets'): () => void {
+export function launchWith(effectTier?: 'native' | 'assets'): void {
+  // Each case renders on its own, so the test takes the host's renderer and
+  // calls createRenderer itself.
+  rokuHost().launch((context) => {
+    setRendererFactory(
+      (settings) => context.createRenderer(settings),
+      context.loadFonts,
+    );
+    return mountWith(effectTier);
+  });
+}
+
+function mountWith(effectTier?: 'native' | 'assets'): () => void {
   console.log('VISUAL START');
   void loadFonts([{ fontFamily: 'Roboto', fontUrl: robotoRegular }]).catch(
     (error) => console.log('VISUAL FONT ' + String(error)),
@@ -368,9 +385,4 @@ export function mountWith(effectTier?: 'native' | 'assets'): () => void {
   // above has ended by then.
   setTimeout(() => console.log('VISUAL READY'), 3000);
   return () => {};
-}
-
-/** The Roku host calls this once the scene exists. */
-export function mount(): () => void {
-  return mountWith();
 }

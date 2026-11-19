@@ -1,4 +1,7 @@
-import type { AudioPort } from '../../../../src/sdk/audio.js';
+import type {
+  AudioPlaybackState,
+  AudioPort,
+} from '../../../../src/sdk/audio.js';
 import { mainHandler, sdk, type AndroidApp } from './runtime.js';
 
 /**
@@ -23,18 +26,26 @@ export function audio(app: AndroidApp): AudioPort {
     | undefined;
   let interrupted = false;
   let volume = 1;
+  const listeners = new Set<(state: AudioPlaybackState) => void>();
+  const emit = (state: AudioPlaybackState): void => {
+    for (const each of listeners) each(state);
+  };
 
   const listener = (): android.media.AudioManager.OnAudioFocusChangeListener =>
     (focusListener ??= new AudioManager.OnAudioFocusChangeListener({
       onAudioFocusChange(change) {
         if (!player) return;
         if (change === AudioManager.AUDIOFOCUS_GAIN) {
-          if (interrupted) player.start();
+          if (interrupted) {
+            player.start();
+            emit('playing');
+          }
           interrupted = false;
         } else if (player.isPlaying()) {
           // Lost for good or for a moment: stop sounding either way.
           interrupted = change !== AudioManager.AUDIOFOCUS_LOSS;
           player.pause();
+          emit('interrupted');
         }
       },
     }));
@@ -100,7 +111,9 @@ export function audio(app: AndroidApp): AudioPort {
         next.setOnCompletionListener(
           new android.media.MediaPlayer.OnCompletionListener({
             onCompletion() {
-              if (player === next) release();
+              if (player !== next) return;
+              release();
+              emit('ended');
             },
           }),
         );
@@ -133,6 +146,12 @@ export function audio(app: AndroidApp): AudioPort {
     setVolume(next) {
       volume = next;
       player?.setVolume(next, next);
+    },
+    // Only what the app did not do itself: losing and regaining audio focus,
+    // and the track's end.
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     },
   };
 }

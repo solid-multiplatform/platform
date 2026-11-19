@@ -243,7 +243,7 @@ function buildTarget(root, target, dev, legacy) {
     : undefined;
   write(
     path.join(work, 'main.ts'),
-    browser
+    (browser
       ? browserEntry(
           target,
           legacy,
@@ -256,6 +256,7 @@ function buildTarget(root, target, dev, legacy) {
         ? // The app is a component: the entry wires it to the host. The same
           // text on Roku, Android, Android TV, iOS and tvOS.
           `${settings.imports}
+${target === 'roku' ? "import { setRendererFactory } from '@solid-multiplatform/platform'; import { rokuHost } from '@solid-multiplatform/platform/roku';" : ''}
 import App${app.options ? ', { options }' : ''} from './src/app';
 import { appEntry } from '@solid-multiplatform/platform/app/entry';
 import { mountApp } from '@solid-multiplatform/platform/host';
@@ -270,6 +271,7 @@ export function mount(host = { target: '${target}' }) {
 }
 `
         : `${rokuFont ? "import { loadFonts } from '@solid-multiplatform/platform'; import lato from '../fonts/Lato-Regular.ttf';" : ''}
+${target === 'roku' ? "import { setRendererFactory } from '@solid-multiplatform/platform'; import { rokuHost } from '@solid-multiplatform/platform/roku';" : ''}
 import { mount as start } from './src/app';
 import { attachPlugins } from '@solid-multiplatform/platform/plugins';
 import { plugins } from './plugins.mjs';
@@ -281,7 +283,12 @@ export function mount(host = { target: '${target}' }) {
     return () => { try { dispose?.(); } finally { detach(); } };
   } catch (error) { detach(); throw error; }
 }
-`,
+`) +
+      (target === 'roku'
+        ? // The Roku host starts the app when its scene exists; the app's
+          // own mount() builds the renderer the host supplies.
+          `rokuHost({ namespace: ${JSON.stringify(project(root).name)} }).launch((context) => { setRendererFactory((settings) => context.createRenderer(settings), context.loadFonts); return mount({ target: 'roku', ...context }); });\n`
+        : ''),
   );
   if (target !== 'roku')
     copy(

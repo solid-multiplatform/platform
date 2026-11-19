@@ -99,7 +99,7 @@ export function mountComponent(settings, hasOptions, pointer = 'host.input') {
   return `const entry = appEntry(App, plugins, ${settings}${hasOptions ? ', options' : ''});
     const dispose = mountApp(
       entry.root,
-      { pointer: ${pointer}, semantics: host.semantics, target: host.target, native: host.root },
+      { keys: host.keys, pointer: ${pointer}, semantics: host.semantics, target: host.target, native: host.root },
       entry.options,
     );`;
 }
