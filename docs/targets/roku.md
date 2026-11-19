@@ -7,7 +7,7 @@ Roku does not run a browser. The scene runs on the device's JavaScript engine an
 ## What it is built from
 
 - Backend: `packages/renderer/roku` (`@solid-multiplatform/renderer/roku`). `SceneGraphRenderer` maps scene nodes to SceneGraph nodes, with its own animation, text layout, font and effect code.
-- Host: `packages/platform/hosts/roku`. `rokuHost({ namespace })` is a `HostDefinition`, so the generated entry is `startApp(rokuHost(...), App, options)`; `rokuKeyMap` supplies the media keys. `rokuConfig({ title, entry, assets })` from `@solid-multiplatform/platform/roku/preset` configures the Roku SDK build. `@solid-multiplatform/platform/roku` is the channel entry.
+- Host: `packages/platform/hosts/roku`. `rokuHost({ namespace })` is a `HostDefinition`, so the generated entry is `startApp(rokuHost(...), App, options)`; `rokuKeyMap` supplies the media keys. The host supplies router history in memory, so the router no longer reads a shimmed `window.history`. `rokuConfig({ title, entry, assets })` from `@solid-multiplatform/platform/roku/preset` configures the Roku SDK build. `@solid-multiplatform/platform/roku` is the channel entry.
 - Services: the host installs `settings`, encrypted `secureStorage`, `deviceInfo`, `locale`, `links` (launch, running and resume), `lifecycle` with Instant Resume, `request` over the firmware's `fetch`, `keyEvents`, `memory` and `connectivity`. Text entry is `@solid-multiplatform/platform/editor/roku`.
 - CLI target: `targets/roku` with a `roku-config.ts`. Plugins are SceneGraph Tasks written in BrighterScript and compiled with `bsc`.
 
@@ -37,6 +37,8 @@ node packages/platform/tests/roku-device/run-conformance.mjs   # 15/15
 node packages/platform/tests/roku-device/run-visual.mjs       # 26/26, and 26/26 with the forced image tier
 node packages/platform/tests/roku-device/run-text.mjs         # 23/23
 node packages/platform/tests/roku-device/run-host.mjs         # 48/48
+node packages/platform/tests/roku-device/run-motion.mjs       # 9/9 (motion-verify-result.txt)
+node packages/platform/tests/roku-device/run-video.mjs        # 16/16 (handoff/roku-video/2026-11-19-video-result.txt)
 ```
 
 - `node packages/platform/tests/cli/roku-device-check.mjs` reads a device's state over ECP when `ROKU_DEV_IP` is set. It is read-only: it does not install or replace the channel. Without the variable it reports that and exits cleanly.
@@ -46,7 +48,8 @@ Keep device addresses and credentials out of the repository.
 
 ## Not verified
 
-- Animation still runs on the JavaScript thread. Frame pacing during animation has not been measured.
+- Animation of `x`, `y` and `alpha` runs on the SceneGraph render thread through `Animation` + `FloatFieldInterpolator`. Colour, `scale`, delay, loop and unknown easing fall back to the JavaScript clock. Frame pacing during animation has not been measured.
+- The video adapter owns a `Video` node beneath the app surface. DRM was not exercised (no licence server), and per-player volume is not available on SceneGraph (mute only).
 - Clipping children to a rounded shape is not implemented.
 - The image-fallback tier has only been forced on an OpenGL TV, never on a device that needs it.
 - Held keys do not repeat: the firmware sends one press and one release.

@@ -21,7 +21,9 @@
         {
           "id": "backend-webgl",
           "feature": "WebGL backend (`packages/renderer/webgl`)",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -31,21 +33,46 @@
               "status": "preview",
               "note": "Same backend as web. The generated Tizen build is only smoke-run in desktop Chromium; no TV hardware."
             },
-            "roku": { "status": "unavailable" },
+            "roku": {
+              "status": "unavailable"
+            },
             "android,android-tv,ios,apple-tv": {
               "status": "preview",
               "note": "NativeScript canvas host. CI builds the app; no test asserts what it draws."
             },
-            "desktop-linux,desktop-windows,desktop-macos": {
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/scene/run.mjs (desktop-runtime.yml: linux; the shared fixture is rendered in the Rust + Hermes runtime and its pixels compared with Chromium)"
+            },
+            "desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "The Rust + Hermes runtime (`packages/host-desktop`); Linux draws the real scene in the host suite, and `packages/platform/tests/cli/desktop-smoke.sh` proves a generated app's first frame."
+              "note": "The Rust + Hermes runtime (`packages/host-desktop`) builds for both, but no CI job opens a window there."
+            }
+          }
+        },
+        {
+          "id": "runtime-desktop",
+          "feature": "Desktop runtime in Rust embedding Hermes, without Node",
+          "default": {
+            "status": "unavailable"
+          },
+          "cells": {
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/run.sh (desktop-runtime.yml: linux; the runtime opens a window and the host suite runs the scene, input, text fields, services, accessibility, idle and packaging checks)"
+            },
+            "desktop-windows,desktop-macos": {
+              "status": "preview",
+              "note": "The runtime builds for both, but no CI job opens a window there; Windows and macOS packaging is not implemented."
             }
           }
         },
         {
           "id": "backend-canvas",
           "feature": "Canvas 2D backend (`packages/renderer/canvas`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -60,7 +87,9 @@
         {
           "id": "backend-roku",
           "feature": "Roku SceneGraph backend (`packages/renderer/roku`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "roku": {
               "status": "device",
@@ -77,7 +106,9 @@
         {
           "id": "host-contract",
           "feature": "Host contract (`startApp` / `HostDefinition`)",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -92,20 +123,36 @@
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435, Roku OS 16.0.4; HOST RESULT passed=48 failed=0)",
               "note": "The host test starts the app through `startApp(rokuHost())` and finds no browser globals on the device."
             },
-            "android,android-tv,ios,apple-tv": {
-              "status": "preview",
-              "note": "The NativeScript hosts still call a generated `mount`, not `HostDefinition`."
+            "android": {
+              "status": "device",
+              "evidence": "handoff/android-device/starter-phone-firstrun.png (API 36 phone emulator; a generated starter whose entry calls `startApp(nativeHost({ form: 'phone' }), ...)` ran and rendered)",
+              "note": "`nativeHost` supplies `keys` and `text`; accessibility semantics are absent, not stubbed."
             },
-            "desktop-linux,desktop-windows,desktop-macos": {
+            "android-tv": {
+              "status": "device",
+              "evidence": "handoff/android-device/starter-tv-firstrun.png (API 36 TV emulator; a generated starter whose entry calls `startApp(nativeHost({ form: 'tv' }), ...)` ran and rendered)",
+              "note": "`nativeHost` supplies `keys` and `text`; accessibility semantics are absent, not stubbed."
+            },
+            "ios,apple-tv": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple; the generated app starts through `startApp(nativeHost(...))` in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; the generated entry calls `startApp(desktopHost())` and the host suite drives it)"
+            },
+            "desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "The generated entry calls `startApp(desktopHost())` and runs in the Rust + Hermes runtime; `packages/host-desktop/tests/host` drives it."
+              "note": "The runtime builds for both, but no CI job opens a window there."
             }
           }
         },
         {
           "id": "layout-flex",
           "feature": "Flex layout (`src/core/flexLayout.ts`)",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -116,7 +163,9 @@
         {
           "id": "text",
           "feature": "Text rendering",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -126,13 +175,19 @@
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-text-after.txt (TCL 50S435, Roku OS 16.0.4; TEXT RESULT passed=23 failed=0)",
               "note": "Fonts, wrapping, flex text and the device's own metrics were measured on the TV."
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/scene/run.mjs (desktop-runtime.yml: linux; the fixture's glyph pixels and per-cell text map are compared with Chromium's)"
             }
           }
         },
         {
           "id": "focus-keys",
           "feature": "Focus and key handling",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -146,13 +201,19 @@
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435; focus moves, Select activates, Back is consumed, Play maps through `rokuKeyMap`; HOST RESULT passed=48 failed=0)",
               "note": "The host test also checks that a held key is one press and that the keyEvents service raises the key."
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; keys go through SDL's queue and, with xdotool, are real X events; focus moves with Right and Left)"
             }
           }
         },
         {
           "id": "pointer",
           "feature": "Pointer and touch input (`src/sdk/input.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -162,12 +223,18 @@
               "status": "preview",
               "note": "`tests/cli/browser-smoke.mjs --tv` (test.yml: projects) maps clicks through four viewport sizes on the generated Tizen build, but in desktop Chromium. No test runs on a Tizen TV."
             },
-            "webos,vizio": { "status": "preview" },
+            "webos,vizio": {
+              "status": "preview"
+            },
             "android,ios": {
               "status": "preview",
               "note": "Touch through `hosts/nativescript/touch.mjs`."
             },
-            "desktop-linux,desktop-windows,desktop-macos": {
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; a real mouse moves, clicks and scrolls, with xdotool when it is installed)"
+            },
+            "desktop-windows,desktop-macos": {
               "status": "preview"
             }
           }
@@ -175,27 +242,35 @@
         {
           "id": "accessibility",
           "feature": "Accessibility semantics (`src/sdk/semantics.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; a real keyboard walk checks the ARIA mirror at every step in Chromium)"
             },
-            "desktop-linux,desktop-windows,desktop-macos": {
-              "status": "preview",
-              "note": "Linux: the runtime's AT-SPI adapter over AccessKit, checked in `packages/host-desktop/tests/a11y`. Windows and macOS are not implemented."
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/a11y/run.mjs (desktop-runtime.yml: linux; the runtime's AT-SPI adapter over AccessKit is read from a test accessibility bus and its actions are invoked)"
+            },
+            "desktop-windows,desktop-macos": {
+              "status": "unavailable",
+              "note": "No accessibility adapter is implemented for these systems."
             }
           }
         },
         {
           "id": "shapes-effects",
           "feature": "Shapes, borders, gradients and shadows",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "packages/platform/tests/webgl/conformance-webgl.test.tsx (test.yml: browser; shader cases, then `tests/visual/run.mjs` compares Canvas and WebGL pixels)",
-              "note": "Tested through the renderer. `startApp(webHost(...))` registers the default shaders only in open pull request #19."
+              "note": "Tested through the renderer. `startApp(webHost(...))` registers the default shaders."
             },
             "roku": {
               "status": "device",
@@ -210,15 +285,18 @@
         {
           "id": "animation",
           "feature": "Animation (`animateProp`, transitions)",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "packages/platform/tests/webgl/conformance-webgl.test.tsx (test.yml: browser; the shared conformance suite runs `animate` and `animateProp` to their targets)"
             },
             "roku": {
-              "status": "preview",
-              "note": "Animation still runs on the JavaScript thread; frame pacing on the TV has not been measured."
+              "status": "device",
+              "evidence": "handoff/roku-device/motion-verify-result.txt (TCL 50S435, Roku OS 16.0.4; x/y/alpha run on the SceneGraph render thread; PASS paused, move land, interrupt land, paused alpha, restored, chain, no timers while animating or after settling, native run ended after 5036 ms)",
+              "note": "x, y and alpha use SceneGraph `Animation` + `FloatFieldInterpolator`; colour, `scale`, delay, loop and unknown easing fall back to the JavaScript clock. Frame pacing during animation has not been measured."
             }
           }
         }
@@ -231,7 +309,9 @@
         {
           "id": "app-components",
           "feature": "`/app` components the starter uses (`Screen`, `Text`, `Button`)",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -255,7 +335,9 @@
         {
           "id": "app-layout-components",
           "feature": "`/app` layout and overlay components (`List`, `Spacer`, `Row`, `Column`, `Grid`, overlays)",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "preview",
@@ -266,7 +348,9 @@
         {
           "id": "app-hooks",
           "feature": "`/app` hooks (`useHost`, `usePlugin`, `useViewport`, service hooks)",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "preview",
@@ -277,7 +361,9 @@
         {
           "id": "app-starter",
           "feature": "Generated starter app (one component)",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -294,6 +380,10 @@
             "android-tv": {
               "status": "device",
               "evidence": "handoff/android-device/starter-tv-firstrun.png (a freshly generated starter on an API 36 TV emulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/desktop-smoke.sh (init --targets desktop, add desktop <tgz>, build desktop, then the bytecode runs under xvfb and prints \"first frame presented\")"
             }
           }
         }
@@ -306,7 +396,9 @@
         {
           "id": "service-settings",
           "feature": "`settings` (`src/sdk/services.ts`)",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -331,13 +423,19 @@
             "apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe writes and reads back in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; set, get and remove, and the settings file's contents are checked)"
             }
           }
         },
         {
           "id": "service-secureStorage",
           "feature": "`secureStorage` (`src/sdk/services.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "roku": {
               "status": "device",
@@ -368,13 +466,17 @@
         {
           "id": "service-lifecycle",
           "feature": "`lifecycle` (`src/sdk/services.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `lifecycle` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "roku": {
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435; active on start and a suspend/resume pair; HOST RESULT passed=48 failed=0)"
@@ -394,19 +496,27 @@
             "apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe waits for active and subscribes in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; the window is unmapped and mapped and subscribers see inactive then active)"
             }
           }
         },
         {
           "id": "service-connectivity",
           "feature": "`connectivity` (`src/sdk/services.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `connectivity` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "roku": {
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435; reports online; HOST RESULT passed=48 failed=0)"
@@ -426,19 +536,27 @@
             "apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe reads online() and receives a path update in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/services/run.mjs (desktop-runtime.yml: linux; a NetworkManager stand-in reports online, then offline and online again from its signal)"
             }
           }
         },
         {
           "id": "service-links",
           "feature": "`links` (`src/sdk/services.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `links` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "roku": {
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435; launch and running deep links reach the service; HOST RESULT passed=48 failed=0)"
@@ -460,19 +578,27 @@
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe receives the URL the app opens in a simulator)",
               "note": "The in-app open arrives. `simctl openurl` delivery was not delivered in the simulator and stays unverified."
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; the launch URL arrives as the app's first link)"
             }
           }
         },
         {
           "id": "service-notifications",
           "feature": "`notifications` (`src/sdk/services.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: a permission prompt is required."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; posted and seen in `dumpsys notification` after the permission was granted; 35 rows, 0 failed)"
@@ -481,13 +607,19 @@
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (ios); the service probe reads the permission state in a simulator)",
               "note": "The probe reads the permission state; displaying a notification is not verified in the simulator."
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/services/run.mjs (desktop-runtime.yml: linux; three notifications through a stand-in on a test session bus, one replacing another by id)"
             }
           }
         },
         {
           "id": "service-push",
           "feature": "`push` (`src/sdk/services.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
@@ -502,7 +634,9 @@
         {
           "id": "service-jobs",
           "feature": "`jobs` (`src/sdk/services.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
@@ -525,18 +659,26 @@
         {
           "id": "service-request",
           "feature": "`request` (`src/sdk/services.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `request` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "roku": {
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435; a public HTTPS page returns 200 and a missing host fails; HOST RESULT passed=48 failed=0)"
             },
-            "desktop-linux,desktop-windows,desktop-macos": {
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; a fetch over the host's request service)"
+            },
+            "desktop-windows,desktop-macos": {
               "status": "preview"
             }
           }
@@ -544,13 +686,17 @@
         {
           "id": "service-clipboard",
           "feature": "`clipboard` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `clipboard` to report ok with the clipboard permission granted)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; round trip; 35 rows, 0 failed)"
@@ -562,19 +708,27 @@
             "ios": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (ios); the service probe writes and reads back in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; the clipboard round-trips)"
             }
           }
         },
         {
           "id": "service-share",
           "feature": "`share` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it opens the system share sheet."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; the chooser appeared and Back dismissed it; 35 rows, 0 failed)"
@@ -592,13 +746,17 @@
         {
           "id": "service-haptics",
           "feature": "`haptics` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: only a person can feel a vibration."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; vibrator_manager entry; 35 rows, 0 failed)"
@@ -612,13 +770,17 @@
         {
           "id": "service-deviceInfo",
           "feature": "`deviceInfo` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `deviceInfo` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "roku": {
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435; platform, model, OS and app version from the device; HOST RESULT passed=48 failed=0)"
@@ -638,19 +800,27 @@
             "apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe reads platform tv, model and OS version in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; platform desktop, OS linux, app version and the system version)"
             }
           }
         },
         {
           "id": "service-battery",
           "feature": "`battery` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `battery` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; level and charging state, then reset; 35 rows, 0 failed)"
@@ -658,19 +828,27 @@
             "ios": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (ios); the service probe reads the battery state in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; the service agrees with the machine's power state, with or without a battery)"
             }
           }
         },
         {
           "id": "service-memory",
           "feature": "`memory` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `memory` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "roku": {
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435; lowMemory and levels; HOST RESULT passed=48 failed=0)"
@@ -690,19 +868,27 @@
             "apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe reads deviceMemoryGb in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; deviceMemoryGb from the system and an app threshold)"
             }
           }
         },
         {
           "id": "service-keepAwake",
           "feature": "`keepAwake` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports denied: headless Chromium refuses the screen wake lock."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; window flag on and off; 35 rows, 0 failed)"
@@ -718,19 +904,27 @@
             "apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe sets and clears the idle timer in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; the screen saver is inhibited and allowed again)"
             }
           }
         },
         {
           "id": "service-openExternal",
           "feature": "`openExternal` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it opens another application."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; browser activity on top, probe brought back; 35 rows, 0 failed)"
@@ -746,19 +940,27 @@
             "apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe opens the app's own URL scheme in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; an https URL reaches xdg-open, while file and program schemes are refused)"
             }
           }
         },
         {
           "id": "service-orientation",
           "feature": "`orientation` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it rotates the screen."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; landscape, portrait and released; 35 rows, 0 failed)"
@@ -772,13 +974,17 @@
         {
           "id": "service-systemBars",
           "feature": "`systemBars` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `systemBars` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; appearance flags set, cleared and restored; 35 rows, 0 failed)"
@@ -788,7 +994,9 @@
         {
           "id": "service-appReview",
           "feature": "`appReview` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "android": {
               "status": "preview",
@@ -803,13 +1011,17 @@
         {
           "id": "service-locale",
           "feature": "`locale` (`src/sdk/i18n.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `locale` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "roku": {
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435; a BCP 47 tag from the device; HOST RESULT passed=48 failed=0)"
@@ -829,19 +1041,27 @@
             "apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe reads a BCP 47 tag in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; the system language fr-FR reaches the service and i18n)"
             }
           }
         },
         {
           "id": "service-colorScheme",
           "feature": "`colorScheme` (`src/sdk/theme.tsx`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `colorScheme` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; dark and light events, none after dispose; 35 rows, 0 failed)"
@@ -858,19 +1078,27 @@
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe reads and subscribes in a simulator)",
               "note": "The service answers. A simulator appearance change was not reported, so live updates stay unverified on tvOS."
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; a theme change reaches subscribers until they stop)"
             }
           }
         },
         {
           "id": "service-keyEvents",
           "feature": "`keyEvents` (`src/sdk/shortcuts.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `keyEvents` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "roku": {
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435; the keyEvents service raises ArrowRight on keyup; HOST RESULT passed=48 failed=0)"
@@ -890,19 +1118,27 @@
             "apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe checks the key target and the primary modifier in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; a shortcut with the system modifier is raised)"
             }
           }
         },
         {
           "id": "service-audio",
           "feature": "`audio` (`src/sdk/audio.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it plays sound."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; focus held while playing and released on stop; 35 rows, 0 failed)"
@@ -916,13 +1152,17 @@
         {
           "id": "service-mediaSession",
           "feature": "`mediaSession` (`src/sdk/media.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it changes the system media controls."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; metadata, a dispatched pause, then released; 35 rows, 0 failed)"
@@ -944,13 +1184,17 @@
         {
           "id": "service-fullscreen",
           "feature": "`fullscreen` (`src/sdk/media.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it needs a user gesture."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; immersive on and off, picture-in-picture entered and left; 35 rows, 0 failed)"
@@ -964,25 +1208,33 @@
         {
           "id": "service-thumbnails",
           "feature": "`thumbnails` (`src/sdk/media.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it needs a video to decode."
             },
-            "tizen,webos,vizio": { "status": "preview" }
+            "tizen,webos,vizio": {
+              "status": "preview"
+            }
           }
         },
         {
           "id": "service-mediaCapabilities",
           "feature": "`mediaCapabilities` (`src/sdk/drm.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `mediaCapabilities` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; 18 decoder types and Widevine/ClearKey; 35 rows, 0 failed)"
@@ -996,13 +1248,17 @@
         {
           "id": "service-camera",
           "feature": "`camera` (`src/sdk/capture.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it asks for the camera."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "preview",
               "note": "Written but not device-verified."
@@ -1012,25 +1268,33 @@
         {
           "id": "service-microphone",
           "feature": "`microphone` (`src/sdk/capture.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it asks for the microphone."
             },
-            "tizen,webos,vizio": { "status": "preview" }
+            "tizen,webos,vizio": {
+              "status": "preview"
+            }
           }
         },
         {
           "id": "service-download",
           "feature": "`download` (`src/sdk/download.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it saves a file."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; save() to Downloads and saveUrl() over adb reverse; 35 rows, 0 failed)"
@@ -1038,29 +1302,43 @@
             "android-tv": {
               "status": "device",
               "evidence": "handoff/android-device/verify-tv-run1.json (API 36 TV emulator; save() to Downloads and saveUrl() over adb reverse; 35 rows, 0 failed)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; text is written where the save dialog said)"
             }
           }
         },
         {
           "id": "service-filePicker",
           "feature": "`filePicker` (`src/sdk/files.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it opens the file picker."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "preview",
               "note": "Written but not device-verified."
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; text and bytes are picked, and cancel returns nothing)"
             }
           }
         },
         {
           "id": "service-fileSystem",
           "feature": "`fileSystem` (`src/sdk/files.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "android": {
               "status": "device",
@@ -1077,19 +1355,27 @@
             "apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe reads, writes, lists, removes and refuses escapes in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; read, write, list, stat and remove, and escaped paths are refused)"
             }
           }
         },
         {
           "id": "service-geolocation",
           "feature": "`geolocation` (`src/sdk/geolocation.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it asks for the location permission."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; a geo fix read once and by a watch; 35 rows, 0 failed)"
@@ -1107,13 +1393,17 @@
         {
           "id": "service-sensors",
           "feature": "`sensors` (`src/sdk/sensors.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `sensors` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; values read and the connection held only while watched; 35 rows, 0 failed)"
@@ -1123,9 +1413,13 @@
         {
           "id": "service-maps",
           "feature": "`maps` (`src/sdk/maps.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
-            "web,tizen,webos,vizio": { "status": "preview" },
+            "web,tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; the geo: intent resolved and the probe was brought back; 35 rows, 0 failed)"
@@ -1135,9 +1429,13 @@
         {
           "id": "service-contacts",
           "feature": "`contacts` (`src/sdk/contacts.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
-            "web,tizen,webos,vizio": { "status": "preview" },
+            "web,tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; 2,000 rows read over 7 frames, pages and search; 35 rows, 0 failed)"
@@ -1147,9 +1445,13 @@
         {
           "id": "service-calendar",
           "feature": "`calendar` (`src/sdk/calendar.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
-            "web,tizen,webos,vizio": { "status": "preview" },
+            "web,tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; events inserted, read in order and removed; 35 rows, 0 failed)"
@@ -1159,7 +1461,9 @@
         {
           "id": "service-biometrics",
           "feature": "`biometrics` (`src/sdk/biometrics.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "android": {
               "status": "preview",
@@ -1175,7 +1479,9 @@
         {
           "id": "service-menus",
           "feature": "`menus` (`src/sdk/menus.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
@@ -1186,7 +1492,9 @@
         {
           "id": "service-updateDelivery",
           "feature": "`updateDelivery` (`src/sdk/update.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
@@ -1197,7 +1505,9 @@
         {
           "id": "service-updateSource",
           "feature": "`updateSource` (`src/sdk/update.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
@@ -1213,7 +1523,9 @@
         {
           "id": "video",
           "feature": "Playback adapter (`packages/video`)",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "ios,apple-tv": {
               "status": "tested",
@@ -1224,8 +1536,9 @@
               "note": "CI checks that the APK contains the Media3 player; nothing plays in CI."
             },
             "roku": {
-              "status": "tested",
-              "evidence": "packages/platform/tests/roku-device/run-video.mjs (TCL 50S435, Roku OS 16.0.4; opens paused at 3 s, plays, pauses/resumes, Fwd seeks, reaches the end, maps a 404 to an error with the firmware code and message, teardown pending=0; VIDEO RESULT passed=16 failed=0, public HTTPS source)"
+              "status": "device",
+              "evidence": "handoff/roku-video/2026-11-19-video-result.txt (TCL 50S435, Roku OS 16.0.4; VIDEO RESULT passed=16 failed=0 -- opens paused at 3 s, plays, pauses/resumes, Fwd seeks, reaches the end, maps a 404 to prepare-failed with the firmware code and message, teardown pending=0; runner packages/platform/tests/roku-device/run-video.mjs, public HTTPS source)",
+              "note": "The adapter owns a SceneGraph Video node beneath the app surface; the player is never stacked above the UI. DRM was not exercised (no licence server); per-player volume is not available (mute only)."
             }
           }
         }
@@ -1238,7 +1551,9 @@
         {
           "id": "cli-init",
           "feature": "`solid-platform init`",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web,tizen,roku,webos,vizio,desktop-linux": {
               "status": "tested",
@@ -1257,7 +1572,9 @@
         {
           "id": "cli-build",
           "feature": "`solid-platform build <target>`",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -1285,14 +1602,16 @@
             },
             "desktop-linux": {
               "status": "preview",
-              "note": "CI runs `plugins run desktop` only, not `build desktop`."
+              "note": "`tests/cli/projects-smoke.sh` builds it only when a runtime is present, and no CI job provides one; `tests/cli/desktop-smoke.sh` builds bytecode and proves a first frame on a machine with a runtime."
             }
           }
         },
         {
           "id": "cli-dev",
           "feature": "`solid-platform dev <web|desktop>`",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
@@ -1307,7 +1626,9 @@
         {
           "id": "cli-doctor",
           "feature": "`solid-platform doctor [target]`",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web,tizen,webos,vizio": {
               "status": "tested",
@@ -1336,7 +1657,9 @@
         {
           "id": "cli-plugin-new",
           "feature": "`solid-platform plugin new`",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -1371,7 +1694,9 @@
         {
           "id": "cli-check",
           "feature": "`solid-platform check [target]`",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web,tizen,roku,webos,vizio,desktop-linux": {
               "status": "tested",
@@ -1391,24 +1716,34 @@
         {
           "id": "cli-package-desktop",
           "feature": "`solid-platform package desktop`",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "The `Desktop packages` workflow runs only when started by hand."
+              "note": "The `solid-platform` command is not run in CI; the host's `packageDesktop` is exercised by `packages/host-desktop/tests/package/run.mjs`, and the `Desktop packages` workflow runs only when started by hand."
             }
           }
         },
         {
           "id": "cli-certify-roku",
           "feature": "`solid-platform certify roku <metrics.json>`",
-          "default": { "status": "unavailable" },
-          "cells": { "roku": { "status": "preview" } }
+          "default": {
+            "status": "unavailable"
+          },
+          "cells": {
+            "roku": {
+              "status": "preview"
+            }
+          }
         },
         {
           "id": "cli-add-video",
           "feature": "`solid-platform add video <release.tgz>`",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "android-tv": {
               "status": "tested",
@@ -1417,6 +1752,19 @@
             "ios,apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple; the added adapter plays a clip in a simulator)"
+            }
+          }
+        },
+        {
+          "id": "cli-add-desktop",
+          "feature": "`solid-platform add desktop [<tarball> | <url> | none]`",
+          "default": {
+            "status": "unavailable"
+          },
+          "cells": {
+            "desktop-linux,desktop-windows,desktop-macos": {
+              "status": "preview",
+              "note": "Installs the host package or downloads a prebuilt runtime. Resolution is unit-tested (`tests/cli/unit/add-desktop.test.mjs`); `tests/cli/projects-smoke.sh` installs it only when a built runtime is present, and no CI job provides one."
             }
           }
         }
@@ -1428,7 +1776,9 @@
         {
           "id": "package-pwa",
           "feature": "Web app with service worker and manifest",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
@@ -1439,7 +1789,9 @@
         {
           "id": "package-browser-tv",
           "feature": "Browser TV package (Tizen `.wgt`, webOS `.ipk`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "tizen": {
               "status": "preview",
@@ -1458,7 +1810,9 @@
         {
           "id": "package-roku",
           "feature": "Roku channel zip",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "roku": {
               "status": "tested",
@@ -1469,9 +1823,13 @@
         {
           "id": "package-android",
           "feature": "Android debug APK",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
-            "android": { "status": "preview" },
+            "android": {
+              "status": "preview"
+            },
             "android-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/android-smoke.sh (android.yml: android; asserts the APK and its three ABI slices; not installed on a device in CI)"
@@ -1481,7 +1839,9 @@
         {
           "id": "package-apple",
           "feature": "Apple simulator app",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "ios,apple-tv": {
               "status": "tested",
@@ -1492,11 +1852,17 @@
         {
           "id": "package-desktop",
           "feature": "Desktop archive (`.tar.gz` with runtime)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
-            "desktop-linux,desktop-windows,desktop-macos": {
-              "status": "preview",
-              "note": "Copies the Rust runtime and Hermes bytecode into a relocatable directory; `packages/host-desktop/tests/package` unpacks it and runs it. Windows and macOS packaging is not implemented."
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/package/run.mjs (desktop-runtime.yml: linux; the archive is unpacked, moved, run and checked for its first frame, idle counters and resources)"
+            },
+            "desktop-windows,desktop-macos": {
+              "status": "unavailable",
+              "note": "Windows and macOS packaging is not implemented."
             }
           }
         }
@@ -1508,7 +1874,9 @@
         {
           "id": "intl-formatters",
           "feature": "`Intl` (plural rules, number, date/time, relative time, list and collation)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "desktop-linux": {
               "status": "tested",
@@ -1529,23 +1897,6 @@
             "android,android-tv,ios,apple-tv": {
               "status": "preview",
               "note": "The engine's own `Intl`; no target test asserts formatting."
-            }
-          }
-        }
-      ]
-    },
-    {
-      "title": "In open pull requests",
-      "note": "Work that is not on main. Nothing in this group is available yet.",
-      "rows": [
-        {
-          "id": "wip-desktop-runtime",
-          "feature": "Desktop runtime in Rust embedding Hermes, without Node",
-          "default": { "status": "unavailable" },
-          "cells": {
-            "desktop-linux,desktop-windows,desktop-macos": {
-              "status": "in-progress",
-              "note": "Renders the scene; input and services are in progress."
             }
           }
         }

@@ -5,8 +5,8 @@ Target name: `web`.
 ## What it is built from
 
 - Backend: WebGL (`@solid-multiplatform/renderer`), drawing on a canvas inside a page element.
-- Host: `webHost` from `@solid-multiplatform/platform/host/web`. It supplies DOM key events, pointer and touch input, native text fields, the browser viewport and the browser service providers.
-- CLI target: a Vite project in `targets/web`. The generated `work/main.ts` installs the services, binds the viewport and pointer input, registers the service worker in production builds and calls your `mount`.
+- Host: `webHost` from `@solid-multiplatform/platform/host/web`. It supplies DOM key events, pointer and touch input, native text fields, the browser viewport, the browser service providers and router history over `window.history` and `location.hash`.
+- CLI target: a Vite project in `targets/web`. The generated `work/main.ts` installs the services, binds the viewport and pointer input, registers the service worker in production builds and starts the app through `startApp(webHost(...))`.
 
 ## Build and run
 
