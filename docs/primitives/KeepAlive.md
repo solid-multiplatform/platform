@@ -1,127 +1,89 @@
 # KeepAlive
 
-The `KeepAlive` and `KeepAliveRoute` components provide a mechanism to cache components and routes, preserving their state even when they are unmounted from the component tree. This is particularly useful for TV applications where you want to maintain the state of a page (like position, focused element, and data) when a user navigates away and then returns.
+`KeepAlive` and `KeepAliveRoute` keep a component's nodes and state after it
+leaves the tree. When it comes back, it is shown as it was: same position, same
+focused element, same data.
 
-## Usage
+Both are exported from `@solid-multiplatform/platform/primitives/router`.
+`KeepAliveRoute` needs `@solidjs/router`.
 
-The primary way to use this feature is with `KeepAliveRoute`, which is a wrapper around the standard `@solidjs/router` `Route` component. It automatically handles caching the route's component.
+## Caching a route
 
-### Caching a Route
+`KeepAliveRoute` wraps the `<Route>` of `@solidjs/router`.
 
-By using `KeepAliveRoute`, you can ensure that when a user navigates back to a previously visited route, it will be displayed in the exact same state as they left it.
+```tsx
+import { Route } from '@solidjs/router';
+import {
+  HashRouter,
+  KeepAliveRoute,
+} from '@solid-multiplatform/platform/primitives/router';
+import { Browse } from './pages/Browse';
+import { Details } from './pages/Details';
 
-```jsx
-import { KeepAliveRoute } from '@solidtv/solid';
-import { Browse, browsePreload } from './pages/Browse';
-
-const AppRoutes = () => {
-  return (
-    <Router>
-      {/* The Browse page will be kept in memory */}
-      <KeepAliveRoute
-        id="browse"
-        path="browse/:filter"
-        component={Browse}
-        preload={browsePreload}
-      />
-      {/* Other routes */}
-    </Router>
-  );
-};
+export const Routes = () => (
+  <HashRouter>
+    <KeepAliveRoute id="browse" path="/browse/:filter" component={Browse} />
+    <Route path="/details/:id" component={Details} />
+  </HashRouter>
+);
 ```
 
-In the example above, the `Browse` component's state will be preserved. When you navigate away and then back to a `/browse/...` URL, the page will render instantly from the cache, showing exactly what was there before.
+When the route is left, the focused element is remembered. When the route is
+shown again, focus returns to that element.
 
-### Suspending Effects for Cached Routes
+## Stopping effects while cached
 
-When a route is cached and hidden (unmounted from view but kept in memory), its reactive SolidTV context remains active. This means any `createEffect` blocks that depend on global signals or stores will continue to run in the background.
+A cached route is hidden but its reactive scope is alive. Effects that read
+global signals keep running. `KeepAliveRoute` passes an `isAlive` accessor to
+the component and to `preload`. Return early when it is `false`.
 
-To prevent background effects from running when the page is inactive, `KeepAliveRoute` injects an `isAlive` accessor into your component's props. You should use `isAlive()` to halt effects early.
+```tsx
+import { createEffect, type Accessor } from 'solid-js';
 
-```jsx
-import { createEffect } from 'solid-js';
-
-const Browse = (props) => {
+export const Browse = (props: { isAlive: Accessor<boolean> }) => {
   createEffect(() => {
-    // Return early to prevent the effect from running in the background when cached
     if (!props.isAlive()) return;
-
-    console.log('Page is active and visible!');
+    console.log('Browse is on screen');
   });
 
-  return <view>...</view>;
+  return <view />;
 };
 ```
 
-### IMPORTANT PRELOAD TIPS
+## Props
 
-If using preload functions with props
+`KeepAliveRoute` takes the `<Route>` props, plus:
 
-```js
-export function browsePreload(props) {
-  let lastFilter = null;
-  return s.createMemo((p) => {
-    const params = props.params;
-    if (p && (!params.filter || lastFilter === params.filter)) {
-      return p;
-    }
-    const provider = browseProvider(params.filter || 'all');
-    provider(1);
-    lastFilter = params.filter || lastFilter;
+- `id` (`string`): the cache key. Defaults to `path`.
+- `shouldDispose` (`(key: string) => boolean`): return `true` to drop the
+  cached copy and build the route again on the next visit.
+- `onRemove`, `onRender`, `transition`: set on the wrapper view. By default the
+  wrapper's `alpha` goes to `0` on removal and to `1` on render.
 
-    return provider;
-  });
-}
-```
+`KeepAliveRoute` reads its props once, the first time it runs for a key. Later
+changes to them are ignored until you call `clearKeepAliveRouteCache()`.
 
-Note that the createMemo will be recalculated when you navigate away as params will change / are reactive. Make sure you don't update your response in those instances or the page will be updated.
+`KeepAlive` caches its children without a route:
 
-### Removing Cached Components
+- `id` (`string`, required): the cache key.
+- `shouldDispose`, `onRemove`, `onRender`, `transition`: as above.
 
-You can manually remove a cached component using the `removeKeepAlive` function. This allows you to clear the cache for a specific route or component programmatically.
+## Removing cached entries
 
-```js
-import { removeKeepAlive } from '@solidtv/solid';
-
-// Remove the cached component with the id 'browse'
-removeKeepAlive('browse');
-```
-
-## API
-
-### `<KeepAliveRoute>`
-
-A wrapper around `@solidjs/router`'s `<Route>` that caches the rendered component.
-
-| prop            | type                        | description                                                                                              |
-| --------------- | --------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `id`            | `string`                    | **Required.** A unique identifier for the cached route.                                                  |
-| `path`          | `string`                    | The path for the route, same as `<Route>`.                                                               |
-| `component`     | `Component`                 | The component to render for the route, same as `<Route>`.                                                |
-| `preload`       | `RoutePreloadFunc`          | The preload function for the route, same as `<Route>`.                                                   |
-| `shouldDispose` | `(key: string) => boolean`  | A function that is called to determine if a cached route should be disposed and recreated on next visit. |
-| `onRemove`      | `ElementNode['onRemove']`   | Custom `onRemove` transition for the wrapper view. Defaults to `alpha = 0`.                              |
-| `onRender`      | `ElementNode['onRender']`   | Custom `onRender` transition for the wrapper view. Defaults to `alpha = 1`.                              |
-| `transition`    | `ElementNode['transition']` | Custom `transition` for the wrapper view. Defaults to `{ alpha: true }`.                                 |
-
-### `<KeepAlive>`
-
-A component that caches its children. `<KeepAliveRoute>` uses this component internally. You can use it directly if you need to cache a component that is not part of a route.
-
-| prop            | type                        | description                                                                                    |
-| --------------- | --------------------------- | ---------------------------------------------------------------------------------------------- |
-| `id`            | `string`                    | **Required.** A unique identifier for the cached component.                                    |
-| `shouldDispose` | `(key: string) => boolean`  | A function that is called to determine if a cached component should be disposed and recreated. |
-| `onRemove`      | `ElementNode['onRemove']`   | Custom `onRemove` transition for the wrapper view. Defaults to `alpha = 0`.                    |
-| `onRender`      | `ElementNode['onRender']`   | Custom `onRender` transition for the wrapper view. Defaults to `alpha = 1`.                    |
-| `transition`    | `ElementNode['transition']` | Custom `transition` for the wrapper view. Defaults to `{ alpha: true }`.                       |
-
-### Functions
-
-#### `removeKeepAlive`
+Routes and plain `KeepAlive` entries are stored separately.
 
 ```ts
-function removeKeepAlive(id: string): void;
+import {
+  removeKeepAlive,
+  removeKeepAliveRoute,
+  clearKeepAlive,
+  clearKeepAliveRoute,
+} from '@solid-multiplatform/platform/primitives/router';
+
+removeKeepAliveRoute('browse'); // one cached route
+removeKeepAlive('player-overlay'); // one <KeepAlive id="player-overlay">
+clearKeepAliveRoute(); // every cached route
+clearKeepAlive(); // every <KeepAlive>
 ```
 
-Manually removes a cached component by its ID.
+Removing an entry destroys its nodes and disposes its reactive scope.

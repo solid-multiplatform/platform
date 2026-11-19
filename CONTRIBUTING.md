@@ -1,13 +1,23 @@
-# How to Contribute
+# Contributing to Solid Multiplatform
 
-Thank you for considering helping out!
+The full guide is [docs/contributing.md](docs/contributing.md). The short version:
 
-1. Fork the project.
-2. Make a feature branch with the name of your change.
-3. Make a change.
-4. Commit your code.
-5. Issue a Pull Request.
+```sh
+corepack pnpm install
+corepack pnpm build
+corepack pnpm test
+corepack pnpm lint
+corepack pnpm docs:check
+```
 
-Once your PR is issued, we will review your work and decide on adding it to the project!
+You need Node 24 and Corepack. Type-aware lint also needs `corepack pnpm install` in `packages/platform/examples/roku`.
 
-For more details about contributing to GitHub projects see [How to use Github: Fork, Branch, Track, Squash and Pull Request](http://gun.io/blog/how-to-github-fork-branch-and-pull-request/)
+Three rules decide most reviews:
+
+1. TV performance comes first: zero missed frames, and nothing scheduled while a scene is idle.
+2. A feature is `tested` on a target only with an automated test that runs it on that target. The [feature matrix](docs/features.md) is generated from `docs/features.json`; change the JSON, run `node scripts/feature-matrix.mjs`, and never edit the Markdown.
+3. Core and primitives use only what the scene contract declares, and SDK functions reach devices only through the service registry.
+
+Do not commit device identifiers, addresses, credentials or full system traces.
+
+Branch from `main`, make the change with its tests, and open a pull request. Releases are described in [docs/releasing.md](docs/releasing.md).

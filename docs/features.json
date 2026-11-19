@@ -1,0 +1,779 @@
+{
+  "comment": "Source of docs/features.md. Render with `node scripts/feature-matrix.mjs`; verify with `--check`. A cell key may list several targets separated by commas. Targets a row does not list take the row's `default` cell. `tested` requires `evidence`: a repository path to an automated test that runs that feature on that target, plus the CI job that runs it.",
+  "targets": [
+    "web",
+    "tizen",
+    "webos",
+    "vizio",
+    "roku",
+    "android",
+    "android-tv",
+    "ios",
+    "apple-tv",
+    "desktop-linux",
+    "desktop-windows",
+    "desktop-macos"
+  ],
+  "groups": [
+    {
+      "title": "Rendering backends",
+      "rows": [
+        {
+          "id": "backend-webgl",
+          "feature": "WebGL backend (`packages/renderer/webgl`)",
+          "default": { "status": "preview" },
+          "cells": {
+            "web": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/webgl/conformance-webgl.test.tsx (test.yml: browser; scene conformance cases in Chromium on real WebGL)"
+            },
+            "tizen,webos,vizio": {
+              "status": "preview",
+              "note": "Same backend as web. The generated Tizen build is only smoke-run in desktop Chromium; no TV hardware."
+            },
+            "roku": { "status": "unavailable" },
+            "android,android-tv,ios,apple-tv": {
+              "status": "preview",
+              "note": "NativeScript canvas host. CI builds the app; no test asserts what it draws."
+            },
+            "desktop-linux,desktop-windows,desktop-macos": {
+              "status": "preview",
+              "note": "Node + FFI host with SDL3, being replaced by the Rust + Hermes runtime."
+            }
+          }
+        },
+        {
+          "id": "backend-canvas",
+          "feature": "Canvas 2D backend (`packages/renderer/canvas`)",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "web": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/webgl/conformance-canvas.test.tsx (test.yml: browser; scene conformance cases in Chromium on Canvas 2D)"
+            },
+            "tizen,webos,vizio": {
+              "status": "preview",
+              "note": "`build <target> --legacy`. The Tizen legacy build is only smoke-run in desktop Chromium."
+            }
+          }
+        },
+        {
+          "id": "backend-roku",
+          "feature": "Roku SceneGraph backend (`packages/renderer/roku`)",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "roku": {
+              "status": "preview",
+              "note": "Passes the conformance cases on an in-browser fake of the Roku SDK (tests/webgl/conformance-roku.test.tsx). A fake is not the target."
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Scene features",
+      "rows": [
+        {
+          "id": "layout-flex",
+          "feature": "Flex layout (`src/core/flexLayout.ts`)",
+          "default": { "status": "preview" },
+          "cells": {
+            "web": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/webgl/flex-text.test.tsx (test.yml: browser; flex rows and columns with measured text in Chromium)"
+            }
+          }
+        },
+        {
+          "id": "text",
+          "feature": "Text rendering",
+          "default": { "status": "preview" },
+          "cells": {
+            "web": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/webgl/flex-text.test.tsx (test.yml: browser; text is laid out and measured by the WebGL backend in Chromium)"
+            },
+            "roku": {
+              "status": "preview",
+              "note": "Fonts on a physical TV are in progress in an open pull request."
+            }
+          }
+        },
+        {
+          "id": "focus-keys",
+          "feature": "Focus and key handling",
+          "default": { "status": "preview" },
+          "cells": {
+            "web": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/browser-smoke.mjs (test.yml: projects, called by tests/cli/projects-smoke.sh; Enter on the focused row of the generated web app in Chromium)"
+            },
+            "tizen": {
+              "status": "preview",
+              "note": "`tests/cli/browser-smoke.mjs --tv` (test.yml: projects) presses Enter on the focused row of the generated Tizen build, but in desktop Chromium. No test runs on a Tizen TV or with its remote."
+            }
+          }
+        },
+        {
+          "id": "pointer",
+          "feature": "Pointer and touch input (`src/sdk/input.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "web": {
+              "status": "preview",
+              "note": "The web host binds pointer events; only jsdom tests cover it."
+            },
+            "tizen": {
+              "status": "preview",
+              "note": "`tests/cli/browser-smoke.mjs --tv` (test.yml: projects) maps clicks through four viewport sizes on the generated Tizen build, but in desktop Chromium. No test runs on a Tizen TV."
+            },
+            "webos,vizio": { "status": "preview" },
+            "android,ios": {
+              "status": "preview",
+              "note": "Touch through `hosts/nativescript/touch.mjs`."
+            },
+            "desktop-linux,desktop-windows,desktop-macos": {
+              "status": "preview"
+            }
+          }
+        },
+        {
+          "id": "accessibility",
+          "feature": "Accessibility semantics (`src/sdk/semantics.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "web": {
+              "status": "preview",
+              "note": "`browserSemantics`; the app registers each node itself."
+            },
+            "desktop-linux,desktop-windows,desktop-macos": {
+              "status": "preview",
+              "note": "`hosts/desktop/semantics.mjs` on the Node + FFI host."
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "SDK services",
+      "note": "One row per port declared on `ServiceProviders` (`src/sdk/registry.ts`). A cell is `preview` when a provider for that port exists on main for that target and `no` when none does. The notes say where the app has to install the provider itself. No service has a test that runs on a target: the SDK functions are unit-tested in jsdom, which is not a target.",
+      "rows": [
+        {
+          "id": "service-settings",
+          "feature": "`settings` (`src/sdk/services.ts`)",
+          "default": { "status": "preview" },
+          "cells": {
+            "roku": {
+              "status": "preview",
+              "note": "The app installs `rokuServices(section)` itself."
+            }
+          }
+        },
+        {
+          "id": "service-secureStorage",
+          "feature": "`secureStorage` (`src/sdk/services.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "android,ios": {
+              "status": "preview",
+              "note": "The app supplies `@nativescript/secure-storage`."
+            },
+            "desktop-linux,desktop-windows,desktop-macos": {
+              "status": "preview",
+              "note": "Only when the app passes a keyring module to `desktopServices`."
+            }
+          }
+        },
+        {
+          "id": "service-lifecycle",
+          "feature": "`lifecycle` (`src/sdk/services.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "web,tizen,webos,vizio": { "status": "preview" },
+            "android,android-tv,ios,apple-tv": { "status": "preview" }
+          }
+        },
+        {
+          "id": "service-connectivity",
+          "feature": "`connectivity` (`src/sdk/services.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "web,tizen,webos,vizio": { "status": "preview" },
+            "android,android-tv,ios,apple-tv": { "status": "preview" }
+          }
+        },
+        {
+          "id": "service-links",
+          "feature": "`links` (`src/sdk/services.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "web,tizen,webos,vizio": { "status": "preview" },
+            "android": {
+              "status": "preview",
+              "note": "The app passes `androidLinks()` to `mobileServices`."
+            },
+            "ios": {
+              "status": "preview",
+              "note": "The app passes `appleLinks()` to `mobileServices`."
+            }
+          }
+        },
+        {
+          "id": "service-notifications",
+          "feature": "`notifications` (`src/sdk/services.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "web,tizen,webos,vizio": { "status": "preview" },
+            "android,ios": {
+              "status": "preview",
+              "note": "The app supplies `@nativescript/local-notifications`."
+            }
+          }
+        },
+        {
+          "id": "service-push",
+          "feature": "`push` (`src/sdk/services.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "web": {
+              "status": "preview",
+              "note": "Only when the app installs `webAppServices(namespace, registration)` with its own service worker. Not verified end to end."
+            },
+            "ios": {
+              "status": "preview",
+              "note": "The app supplies a configured Firebase Messaging instance. Not verified end to end."
+            }
+          }
+        },
+        {
+          "id": "service-jobs",
+          "feature": "`jobs` (`src/sdk/services.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "web": {
+              "status": "preview",
+              "note": "Only with the app's own service worker and Background Sync."
+            },
+            "android": {
+              "status": "preview",
+              "note": "The app passes `androidJobs(registry)`."
+            },
+            "ios": {
+              "status": "preview",
+              "note": "The app passes `appleJobs(identifiers)`."
+            }
+          }
+        },
+        {
+          "id": "service-request",
+          "feature": "`request` (`src/sdk/services.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "web,tizen,webos,vizio": { "status": "preview" },
+            "desktop-linux,desktop-windows,desktop-macos": {
+              "status": "preview"
+            }
+          }
+        },
+        {
+          "id": "service-clipboard",
+          "feature": "`clipboard` (`src/sdk/device.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-share",
+          "feature": "`share` (`src/sdk/device.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-haptics",
+          "feature": "`haptics` (`src/sdk/device.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-deviceInfo",
+          "feature": "`deviceInfo` (`src/sdk/device.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-battery",
+          "feature": "`battery` (`src/sdk/device.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-memory",
+          "feature": "`memory` (`src/sdk/device.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-keepAwake",
+          "feature": "`keepAwake` (`src/sdk/device.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-openExternal",
+          "feature": "`openExternal` (`src/sdk/device.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-orientation",
+          "feature": "`orientation` (`src/sdk/device.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-systemBars",
+          "feature": "`systemBars` (`src/sdk/device.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-appReview",
+          "feature": "`appReview` (`src/sdk/device.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": {}
+        },
+        {
+          "id": "service-locale",
+          "feature": "`locale` (`src/sdk/i18n.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-colorScheme",
+          "feature": "`colorScheme` (`src/sdk/theme.tsx`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-keyEvents",
+          "feature": "`keyEvents` (`src/sdk/shortcuts.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-audio",
+          "feature": "`audio` (`src/sdk/audio.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-mediaSession",
+          "feature": "`mediaSession` (`src/sdk/media.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-fullscreen",
+          "feature": "`fullscreen` (`src/sdk/media.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-thumbnails",
+          "feature": "`thumbnails` (`src/sdk/media.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-mediaCapabilities",
+          "feature": "`mediaCapabilities` (`src/sdk/drm.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-camera",
+          "feature": "`camera` (`src/sdk/capture.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-microphone",
+          "feature": "`microphone` (`src/sdk/capture.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-download",
+          "feature": "`download` (`src/sdk/download.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-filePicker",
+          "feature": "`filePicker` (`src/sdk/files.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-fileSystem",
+          "feature": "`fileSystem` (`src/sdk/files.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": {}
+        },
+        {
+          "id": "service-geolocation",
+          "feature": "`geolocation` (`src/sdk/geolocation.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-sensors",
+          "feature": "`sensors` (`src/sdk/sensors.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": { "web,tizen,webos,vizio": { "status": "preview" } }
+        },
+        {
+          "id": "service-maps",
+          "feature": "`maps` (`src/sdk/maps.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": {}
+        },
+        {
+          "id": "service-contacts",
+          "feature": "`contacts` (`src/sdk/contacts.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": {}
+        },
+        {
+          "id": "service-calendar",
+          "feature": "`calendar` (`src/sdk/calendar.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": {}
+        },
+        {
+          "id": "service-biometrics",
+          "feature": "`biometrics` (`src/sdk/biometrics.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": {}
+        },
+        {
+          "id": "service-menus",
+          "feature": "`menus` (`src/sdk/menus.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "desktop-linux,desktop-windows,desktop-macos": {
+              "status": "preview",
+              "note": "Installed by `hosts/desktop/run.mjs` on the Node + FFI host."
+            }
+          }
+        },
+        {
+          "id": "service-updateDelivery",
+          "feature": "`updateDelivery` (`src/sdk/update.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "desktop-linux,desktop-windows,desktop-macos": {
+              "status": "preview",
+              "note": "`hosts/desktop/updater.mjs`, when the app calls `wire()`."
+            }
+          }
+        },
+        {
+          "id": "service-updateSource",
+          "feature": "`updateSource` (`src/sdk/update.ts`)",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "desktop-linux,desktop-windows,desktop-macos": {
+              "status": "preview",
+              "note": "`hosts/desktop/updater.mjs`, when the app configures a feed."
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Video",
+      "rows": [
+        {
+          "id": "video",
+          "feature": "Playback adapter (`packages/video`)",
+          "default": { "status": "preview" },
+          "cells": {
+            "ios,apple-tv": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple; AVPlayer opens a clip, plays until time advances, pauses and seeks in a simulator, not on a physical device)"
+            },
+            "android-tv": {
+              "status": "preview",
+              "note": "CI checks that the APK contains the Media3 player; nothing plays in CI."
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "CLI commands",
+      "note": "A command is `tested` for a target when a CI job runs it for that target and checks the result.",
+      "rows": [
+        {
+          "id": "cli-init",
+          "feature": "`solid-platform init`",
+          "default": { "status": "preview" },
+          "cells": {
+            "web,tizen,roku,desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; init --targets web,desktop,roku,tizen from the packed package on Linux)"
+            },
+            "android-tv": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/android-smoke.sh (android.yml: android)"
+            },
+            "ios,apple-tv": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple)"
+            }
+          }
+        },
+        {
+          "id": "cli-build",
+          "feature": "`solid-platform build <target>`",
+          "default": { "status": "preview" },
+          "cells": {
+            "web": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; the build is then loaded in Chromium)"
+            },
+            "tizen": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; build and build --legacy, each then loaded in Chromium)"
+            },
+            "roku": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; the channel zip's contents are asserted)"
+            },
+            "android-tv": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/android-smoke.sh (android.yml: android; the debug APK's contents are asserted)"
+            },
+            "ios,apple-tv": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple; simulator build, then launched)"
+            },
+            "desktop-linux": {
+              "status": "preview",
+              "note": "CI runs `plugins run desktop` only, not `build desktop`."
+            }
+          }
+        },
+        {
+          "id": "cli-dev",
+          "feature": "`solid-platform dev <web|desktop>`",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "web": { "status": "preview" },
+            "desktop-linux,desktop-windows,desktop-macos": {
+              "status": "preview"
+            }
+          }
+        },
+        {
+          "id": "cli-plugin-new",
+          "feature": "`solid-platform plugin new`",
+          "default": { "status": "preview" },
+          "cells": {
+            "web": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; the generated plugin is invoked from the built app in Chromium)"
+            },
+            "tizen": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; the generated plugin is invoked from the Tizen build in Chromium)"
+            },
+            "roku": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; the plugin's component is asserted inside the channel zip)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; `plugins run desktop` prints the plugin's result)"
+            },
+            "android-tv": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/android-smoke.sh (android.yml: android; Kotlin, JNI, service and sidecar plugins are asserted inside the APK)"
+            },
+            "ios,apple-tv": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple; the Swift plugin returns its result in a simulator)"
+            }
+          }
+        },
+        {
+          "id": "cli-check",
+          "feature": "`solid-platform check [target]`",
+          "default": { "status": "preview" },
+          "cells": {
+            "web,tizen,roku,desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; `pnpm check` in an app with these four targets)"
+            }
+          }
+        },
+        {
+          "id": "cli-explain",
+          "feature": "`solid-platform explain <target> <module>`",
+          "default": {
+            "status": "preview",
+            "note": "The resolver has a unit test (tests/cli/variants.test.mjs); the command is not run for a target in CI."
+          },
+          "cells": {}
+        },
+        {
+          "id": "cli-package-desktop",
+          "feature": "`solid-platform package desktop`",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "desktop-linux,desktop-windows,desktop-macos": {
+              "status": "preview",
+              "note": "The `Desktop packages` workflow runs only when started by hand."
+            }
+          }
+        },
+        {
+          "id": "cli-certify-roku",
+          "feature": "`solid-platform certify roku <metrics.json>`",
+          "default": { "status": "unavailable" },
+          "cells": { "roku": { "status": "preview" } }
+        },
+        {
+          "id": "cli-add-video",
+          "feature": "`solid-platform add video <release.tgz>`",
+          "default": { "status": "preview" },
+          "cells": {
+            "android-tv": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/android-smoke.sh (android.yml: android; the Media3 player is asserted inside the APK)"
+            },
+            "ios,apple-tv": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple; the added adapter plays a clip in a simulator)"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Packaging",
+      "rows": [
+        {
+          "id": "package-pwa",
+          "feature": "Web app with service worker and manifest",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "web": {
+              "status": "preview",
+              "note": "CI builds it; no test checks the service worker or the manifest."
+            }
+          }
+        },
+        {
+          "id": "package-browser-tv",
+          "feature": "Browser TV package (Tizen `.wgt`, webOS `.ipk`)",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "tizen": {
+              "status": "preview",
+              "note": "The `.wgt` is made only when `TIZEN_SECURITY_PROFILE` is set; CI does not set it."
+            },
+            "webos": {
+              "status": "preview",
+              "note": "`ares-package`; not run in CI."
+            },
+            "vizio": {
+              "status": "unavailable",
+              "note": "The build output is a hosted web app; there is no package step."
+            }
+          }
+        },
+        {
+          "id": "package-roku",
+          "feature": "Roku channel zip",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "roku": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; opens the zip and asserts its components)"
+            }
+          }
+        },
+        {
+          "id": "package-android",
+          "feature": "Android debug APK",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "android": { "status": "preview" },
+            "android-tv": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/android-smoke.sh (android.yml: android; asserts the APK and its three ABI slices; not installed on a device in CI)"
+            }
+          }
+        },
+        {
+          "id": "package-apple",
+          "feature": "Apple simulator app",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "ios,apple-tv": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple; installed and launched in a simulator)"
+            }
+          }
+        },
+        {
+          "id": "package-desktop",
+          "feature": "Desktop archive (`.tar.gz` with runtime)",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "desktop-linux,desktop-windows,desktop-macos": {
+              "status": "preview",
+              "note": "Packages the Node + FFI host that is being replaced."
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "In open pull requests",
+      "note": "Work that is not on main. Nothing in this group is available yet.",
+      "rows": [
+        {
+          "id": "wip-roku-device",
+          "feature": "Roku verified on a physical TV (shapes, gradients, shadows; fonts)",
+          "default": { "status": "unavailable" },
+          "cells": { "roku": { "status": "in-progress" } }
+        },
+        {
+          "id": "wip-desktop-runtime",
+          "feature": "Desktop runtime in Rust embedding Hermes, without Node",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "desktop-linux,desktop-windows,desktop-macos": {
+              "status": "in-progress",
+              "note": "Renders the scene; input and services are in progress."
+            }
+          }
+        },
+        {
+          "id": "wip-pointer-a11y",
+          "feature": "Pointer and accessibility wired by the framework, not by each app",
+          "default": { "status": "in-progress" },
+          "cells": {}
+        },
+        {
+          "id": "wip-android-services",
+          "feature": "Android native providers for more services",
+          "default": { "status": "unavailable" },
+          "cells": { "android,android-tv": { "status": "in-progress" } }
+        }
+      ]
+    }
+  ]
+}
