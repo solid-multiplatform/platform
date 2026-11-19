@@ -10,8 +10,10 @@
  *
  * Which nodes take a pointer (a "pointer target"): a rendered node with any of
  * `onEnter`, `onMouseClick`, `onPointerHold`, `onPointerDrag`,
- * `onPointerScroll`, `onFocus`, `cursorStyle`, or a style for the focus,
- * hover or pressed state (`$focus`, `$hover`, `$pressed`).
+ * `onPointerContext`, `onPointerEnter`, `onPointerLeave`, `onFocus`,
+ * `cursorStyle`, or a style for the focus, hover or pressed state (`$focus`,
+ * `$hover`, `$pressed`). `onPointerScroll` makes a node a target of the wheel
+ * only: clicking a scroll container's empty space stays a click on nothing.
  *
  * Which target is under a point: the front-most one, where a node is in
  * front of its parent and of the siblings painted before it (higher `zIndex`,
@@ -30,6 +32,7 @@
  */
 import { getOwner, runWithOwner } from 'solid-js';
 import { activeElement } from '../core/activeElement.js';
+
 import { Config } from '../core/config.js';
 import type { ElementNode } from '../core/elementNode.js';
 import {
@@ -42,6 +45,28 @@ import {
 import type { DollarString } from '../core/intrinsicTypes.js';
 import { isElementNode, isElementText, isFunction } from '../core/utils.js';
 import { cursorForElement, type CursorStyle } from './cursor.js';
+import { normalizeWheelDelta } from './scroll.js';
+
+declare module '../core/elementNode.js' {
+  interface ElementNode {
+    /**
+     * Called for a secondary click (right click, Control-click, a trackpad's
+     * secondary click) on this element or anything inside it. A handler here
+     * makes the element a pointer target; the nearest handler out from the
+     * point opens the menu. Desktop and iPadOS: a context menu is the
+     * pointer's counterpart of a long press.
+     */
+    onPointerContext?: (
+      this: ElementNode,
+      point: Point,
+      node: ElementNode,
+    ) => void;
+    /** The pointer came over this element; the outermost state owner when one forwards states. */
+    onPointerEnter?: (this: ElementNode, node: ElementNode) => void;
+    /** The pointer left this element, or the scene. */
+    onPointerLeave?: (this: ElementNode, node: ElementNode) => void;
+  }
+}
 
 export interface Rect {
   x: number;
@@ -69,6 +94,11 @@ export interface PointerSink {
   leave(): void;
   /** A wheel or trackpad scroll. True when the scene used it. */
   wheel(point: Point, x: number, y: number): boolean;
+  /**
+   * A secondary click: a context menu request. True when a node handled it.
+   * A host that cannot report one leaves this out.
+   */
+  context?(point: Point): boolean;
 }
 
 /** A host's pointer input: mouse, touch, pen, a pointer remote. */
@@ -207,7 +237,12 @@ export function createScenePointer(
   const owner = getOwner();
   const presses = new Map<number, Press>();
   let hovered: ElementNode | undefined;
+  /** The node the pointer is actually over, for enter/leave handlers. */
+  let hoverTarget: ElementNode | undefined;
   let cursor: CursorStyle | undefined;
+  /** The pointer presses that have become drags; Escape cancels them. */
+  const dragging = new Set<number>();
+  let escapeBound = false;
   let lastWheelStep = -WHEEL_STEP_MS;
   attached.add(root);
 
@@ -215,6 +250,10 @@ export function createScenePointer(
   // arguments and builds nothing.
   let px = 0;
   let py = 0;
+  // The wheel also searches for a node that only handles scrolling. A
+  // scroll container is not a click target: clicking its empty space must
+  // not focus or activate anything.
+  let forScroll = false;
 
   const isTarget = (node: ElementNode): boolean =>
     !!(
@@ -222,12 +261,15 @@ export function createScenePointer(
       node.onMouseClick ||
       node.onPointerHold ||
       node.onPointerDrag ||
-      node.onPointerScroll ||
+      node.onPointerContext ||
+      node.onPointerEnter ||
+      node.onPointerLeave ||
       node.onFocus ||
       node.cursorStyle ||
       node[Config.focusStateKey] ||
       node[hoverState] ||
-      node[pressedState]
+      node[pressedState] ||
+      (forScroll && node.onPointerScroll)
     );
 
   const inside = (node: ElementNode): boolean => {
@@ -336,14 +378,23 @@ export function createScenePointer(
   }
 
   /** The target under a point, disabled or not. */
-  function hit(x: number, y: number): ElementNode | undefined {
+  function hit(
+    x: number,
+    y: number,
+    scrollTargets = false,
+  ): ElementNode | undefined {
     px = x;
     py = y;
+    forScroll = scrollTargets;
     const start = currentFocusTrap() ?? root;
-    if (!start.rendered || start.alpha === 0) return undefined;
-    // The root need not contain the point for its children to be searched.
-    const found = probe(start);
-    return found === start && !inside(start) ? undefined : found;
+    let found: ElementNode | undefined;
+    if (start.rendered && start.alpha !== 0) {
+      // The root need not contain the point for its children to be searched.
+      found = probe(start);
+      if (found === start && !inside(start)) found = undefined;
+    }
+    forScroll = false;
+    return found;
   }
 
   // ---- Hover and cursor.
@@ -355,6 +406,14 @@ export function createScenePointer(
   }
 
   function setHover(node: ElementNode | undefined) {
+    // Enter/leave follow the node under the pointer, not the one that shows
+    // the state: a control that forwards states still wants its own handlers.
+    const targetChanged = node !== hoverTarget;
+    if (targetChanged) {
+      const leaving = hoverTarget;
+      hoverTarget = node;
+      leaving?.onPointerLeave?.call(leaving, leaving);
+    }
     const shown = node === undefined ? undefined : stateOwner(node);
     if (shown === hovered) {
       // A pointer-only host keeps focus under the pointer even when the
@@ -364,6 +423,8 @@ export function createScenePointer(
         selectInParent(shown);
         shown.setFocus();
       }
+      if (targetChanged && node !== undefined)
+        node.onPointerEnter?.call(node, node);
       return;
     }
     hovered?.states.remove(hoverState);
@@ -374,6 +435,7 @@ export function createScenePointer(
       selectInParent(shown);
       shown.setFocus();
     }
+    if (node !== undefined) node.onPointerEnter?.call(node, node);
   }
 
   function hoverAt(x: number, y: number) {
@@ -397,6 +459,26 @@ export function createScenePointer(
     press.shown.states.remove(pressedState);
   }
 
+  // Escape cancels a drag while one is in progress. The listener exists only
+  // between a drag's start and its end: an idle scene has none.
+  const onEscape = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    event.stopPropagation();
+    for (const id of [...dragging]) cancel(id);
+  };
+  function bindEscape() {
+    if (escapeBound || typeof document === 'undefined') return;
+    escapeBound = true;
+    document.addEventListener('keydown', onEscape, true);
+  }
+  function unbindEscape() {
+    if (!escapeBound || dragging.size !== 0) return;
+    escapeBound = false;
+    if (typeof document !== 'undefined')
+      document.removeEventListener('keydown', onEscape, true);
+  }
+
   function cancel(id: number) {
     const press = presses.get(id);
     if (press === undefined) return;
@@ -404,7 +486,9 @@ export function createScenePointer(
     release(press);
     const dragged = press.dragged;
     if (dragged !== undefined) {
+      dragging.delete(id);
       dragged.onPointerDrag!('cancel', press.point, press.origin, dragged);
+      unbindEscape();
     }
   }
 
@@ -489,6 +573,8 @@ export function createScenePointer(
           // The press is a drag now: no hold, no pressed look, no click.
           release(press);
           press.dragged = dragged;
+          dragging.add(argId);
+          bindEscape();
           dragged.onPointerDrag!('start', press.point, press.origin, dragged);
         }
       }
@@ -508,7 +594,9 @@ export function createScenePointer(
     const node = press.node;
     const dragged = press.dragged;
     if (dragged !== undefined) {
+      dragging.delete(argId);
       dragged.onPointerDrag!('end', press.point, press.origin, dragged);
+      unbindEscape();
     } else if (
       !press.held &&
       node.ariaDisabled !== true &&
@@ -525,7 +613,7 @@ export function createScenePointer(
   const onWheel = () => {
     wheelEvent.deltaX = argDeltaX;
     wheelEvent.deltaY = argDeltaY;
-    let node = hit(argX, argY);
+    let node = hit(argX, argY, true);
     while (node !== undefined) {
       const scroll = node.onPointerScroll;
       if (isFunction(scroll) && scroll.call(node, wheelEvent, node) !== false) {
@@ -547,6 +635,23 @@ export function createScenePointer(
     lastWheelStep = now;
     result =
       argDeltaY < 0 ? pressKey('Up', ARROW_UP) : pressKey('Down', ARROW_DOWN);
+  };
+
+  const onContext = () => {
+    let node = hit(argX, argY);
+    result = false;
+    while (node !== undefined) {
+      // A disabled control stops the search: nothing around it handles the
+      // secondary click for it.
+      if (node.ariaDisabled === true) return;
+      const handler = node.onPointerContext;
+      if (isFunction(handler)) {
+        result = true;
+        handler.call(node, { x: argX, y: argY }, node);
+        return;
+      }
+      node = node.parent;
+    }
   };
 
   const onCancelAll = () => {
@@ -599,6 +704,12 @@ export function createScenePointer(
       argDeltaX = x;
       argDeltaY = y;
       runWithOwner(owner, onWheel);
+      return result;
+    },
+    context(point) {
+      argX = point.x;
+      argY = point.y;
+      runWithOwner(owner, onContext);
       return result;
     },
     focusNext(reverse = false) {
@@ -680,6 +791,7 @@ export function createInputScope(options: { hoverFocus?: boolean } = {}) {
     cancelAll,
     wheel: (point: Point, x: number, y: number) =>
       sink?.wheel(point, x, y) ?? false,
+    context: (point: Point) => sink?.context?.(point) ?? false,
     /** Tab and Shift+Tab move focus through the scene; other keys are the focus manager's. */
     key(key: string, down: boolean, _repeat = false, shift = false) {
       if (key !== 'Tab' || !down) return false;
@@ -743,18 +855,60 @@ export function bindPointerEvents(
     opts,
   );
   element.addEventListener('pointerleave', () => sink.leave(), opts);
+  // A secondary click opens the context menu of the node under the pointer.
+  // The browser's own menu is for the page, not an app drawn in a canvas.
+  element.addEventListener(
+    'contextmenu',
+    (e) => {
+      // A host editor's <input> owns its platform menu; a scene needs to
+      // suppress the canvas's document menu.
+      const target = e.target as HTMLElement | null;
+      if (
+        target !== null &&
+        target !== element &&
+        typeof target.closest === 'function' &&
+        target.closest('input, textarea, [contenteditable]') !== null
+      ) {
+        return;
+      }
+      e.preventDefault();
+      sink.context?.(project(e.clientX, e.clientY));
+    },
+    opts,
+  );
+  // The keyboard's context-menu key, and Shift+F10 as on Windows and Linux
+  // (macOS's Full Keyboard Access), opens the menu of the focused control:
+  // a context menu must not be reachable only with a mouse.
+  element.ownerDocument?.addEventListener(
+    'keydown',
+    (e) => {
+      if (e.key !== 'ContextMenu' && !(e.shiftKey && e.key === 'F10')) return;
+      // A native editor's own menu key belongs to the editor.
+      const target = e.target as HTMLElement | null;
+      if (
+        target !== null &&
+        typeof target.closest === 'function' &&
+        target.closest('input, textarea, [contenteditable]') !== null
+      ) {
+        return;
+      }
+      const node = activeElement();
+      if (node === undefined) return;
+      e.preventDefault();
+      sink.context?.({
+        x: (node.absX || 0) + (node.width || 0) / 2,
+        y: (node.absY || 0) + (node.height || 0) / 2,
+      });
+    },
+    opts,
+  );
   element.addEventListener(
     'wheel',
     (e) => {
-      const unit =
-        e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? element.clientHeight : 1;
-      if (
-        sink.wheel(
-          project(e.clientX, e.clientY),
-          e.deltaX * unit,
-          e.deltaY * unit,
-        )
-      )
+      // Pixel, line and page deltas arrive in different units; one wheel
+      // notch is one line where the platform says so.
+      const delta = normalizeWheelDelta(e, element.clientHeight || 800);
+      if (sink.wheel(project(e.clientX, e.clientY), delta.x, delta.y))
         e.preventDefault();
     },
     { ...opts, passive: false },

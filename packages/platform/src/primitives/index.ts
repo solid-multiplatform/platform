@@ -52,6 +52,7 @@ export * from './Sheet.jsx';
 export * from './Alert.jsx';
 export * from './Popover.jsx';
 export * from './Menu.jsx';
+export * from './ContextMenu.jsx';
 export * from './Tooltip.jsx';
 export * from './ListState.jsx';
 export * from './Drawer.jsx';

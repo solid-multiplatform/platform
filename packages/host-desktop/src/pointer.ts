@@ -18,6 +18,8 @@ function feedPointers(sink: PointerSink): () => void {
   const stops = [
     onNative('pointerdown', (e) => {
       if (e.button === 0) sink.down(e.pointerId, e);
+      // The window system's secondary button: the scene's context menu.
+      else if (e.button === 2) sink.context?.(e);
     }),
     onNative('pointermove', (e) =>
       sink.move(e.pointerId, e, e.pointerType !== 'touch'),

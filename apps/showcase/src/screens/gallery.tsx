@@ -4,7 +4,12 @@
  * pointer asks for it.
  */
 import { createSignal, For } from 'solid-js';
-import { Column, Grid, Row } from '@solid-multiplatform/platform/primitives';
+import {
+  Column,
+  Grid,
+  Row,
+  SelectableText,
+} from '@solid-multiplatform/platform/primitives';
 import {
   ACCENT,
   Button,
@@ -169,6 +174,10 @@ export function TextScreen() {
           forty
         </text>
       </view>
+      <SelectableText width={contentWidth()} height={44} size="body">
+        Selectable paragraph: drag to select, then copy with Control+C or
+        Command+C.
+      </SelectableText>
     </Screen>
   );
 }

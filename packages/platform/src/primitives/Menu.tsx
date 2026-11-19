@@ -9,6 +9,8 @@ export interface MenuItem {
   label: string;
   onSelect?(): void;
   disabled?: boolean;
+  /** Drawn in the destructive colour; a context menu puts these last. */
+  destructive?: boolean;
 }
 
 export interface MenuProps {
@@ -87,7 +89,13 @@ export function Menu(props: MenuProps): JSX.Element {
                   x={18}
                   y={16}
                   fontSize={22}
-                  color={item.disabled ? 0x5b6b7cff : 0xf2f6faff}
+                  color={
+                    item.disabled
+                      ? 0x5b6b7cff
+                      : item.destructive
+                        ? 0xf87171ff
+                        : 0xf2f6faff
+                  }
                 >
                   {item.label}
                 </text>
