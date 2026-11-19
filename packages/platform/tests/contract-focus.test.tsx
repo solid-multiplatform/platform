@@ -9,11 +9,18 @@ import {
   Config,
   type ElementNode,
   activeElement as coreActiveElement,
+  resetCapabilities,
   setActiveElement,
+  setCapabilities,
 } from '@solid-multiplatform/platform';
 import { activeElement, focusPath, Row } from '@solid-multiplatform/platform/primitives';
 import { flush, mount, recorder } from './contract-focus-helpers.js';
 import { renderer } from './setup.js';
+
+// These tests pin the focus-state mechanics, which are drawn on a TV: with
+// `focusVisibility: 'always'` a focused element always has its `$focus` state.
+v.beforeEach(() => setCapabilities('roku'));
+v.afterEach(() => resetCapabilities());
 
 // useFocusManager rebinds Config.setActiveElement on every mount; put back
 // whatever the worker had before this file ran.

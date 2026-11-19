@@ -17,6 +17,10 @@ export interface TooltipProps {
  * Non-modal hint. It never takes focus and never blocks the scene; a tooltip
  * is shown from the control's own focus/hover handlers. This matches Flutter
  * `Tooltip` and the HTML title/aria-describedby pattern.
+ *
+ * `skipFocus` keeps the whole overlay out of focus traversal and out of the
+ * pointer's hit test: a click over a tooltip reaches what is behind it, so
+ * the hint cannot become the focused element or swallow a click.
  */
 export function Tooltip(props: TooltipProps): JSX.Element {
   const visible = () =>
@@ -38,6 +42,7 @@ export function Tooltip(props: TooltipProps): JSX.Element {
       <Portal>
         <view
           {...rect()}
+          skipFocus
           color={0x0b1118f2}
           role="tooltip"
           ariaLabel={props.label}

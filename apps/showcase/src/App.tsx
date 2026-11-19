@@ -13,6 +13,7 @@
 import { createMemo, createSignal, onMount, Show } from 'solid-js';
 import { darkTheme, ThemeProvider } from '@solid-multiplatform/platform';
 import { createNavigation } from '@solid-multiplatform/platform/navigation';
+import { focusVisible } from '@solid-multiplatform/platform/focusManager';
 import { FPSCounter } from '@solid-multiplatform/platform/primitives';
 import { viewport } from '@solid-multiplatform/platform/viewport';
 import { ShowcaseContext, type Showcase, type ShowcaseEnv } from './env';
@@ -63,6 +64,20 @@ export function App(props: { env: ShowcaseEnv }) {
           <Show when={screen()} keyed fallback={<HomeScreen />}>
             {(Current) => <Current />}
           </Show>
+          {/* The focus-visibility modality, for the browser walk: out of
+              sight but in the accessibility mirror, where the e2e reads it. */}
+          <text
+            skipFocus
+            alpha={0}
+            role="status"
+            ariaLabel={`Focus ring: ${focusVisible() ? 'visible' : 'hidden'}`}
+            x={0}
+            y={viewport().height - 20}
+            fontSize={14}
+            color={BACKGROUND}
+          >
+            {`Focus ring: ${focusVisible() ? 'visible' : 'hidden'}`}
+          </text>
           <Show when={meter()}>
             <FPSCounter />
           </Show>

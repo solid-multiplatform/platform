@@ -9,12 +9,14 @@ import {
   Modal,
 } from '@solid-multiplatform/platform/primitives';
 import { viewport } from '@solid-multiplatform/platform/viewport';
+import { useTheme } from '@solid-multiplatform/platform/theme';
 import { probeHooks } from '../probe/hooks';
 import { Button, MUTED, PANEL, Screen, TEXT } from '../ui';
 
 type Surface = 'modal' | 'alert' | 'drawer' | 'date' | undefined;
 
 export function DialogsScreen() {
+  const theme = useTheme();
   const [open, setOpen] = createSignal<Surface>();
   const [last, setLast] = createSignal('nothing yet');
   const close = () => setOpen(undefined);
@@ -52,7 +54,8 @@ export function DialogsScreen() {
               width={480}
               height={260}
               color={PANEL}
-              borderRadius={12}
+              // The modal's surface honours the theme radius, like Alert's.
+              borderRadius={theme.radius.medium}
               onMouseClick={() => true}
             >
               <text x={24} y={20} fontSize={28} color={TEXT}>

@@ -251,6 +251,23 @@
           }
         },
         {
+          "id": "focus-visibility",
+          "feature": "Focus visibility policy (`focusVisibility`)",
+          "default": {
+            "status": "preview"
+          },
+          "cells": {
+            "web,desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/focus-visibility.test.tsx (test.yml: unit; a pointer click focuses without the `$focus` state, a key turns it on, and a focused Button follows the policy) and apps/showcase/tests/showcase.e2e.mjs (test.yml: projects; the same keys and pointer drive the built showcase in Chromium)"
+            },
+            "tizen,webos,vizio,roku,android-tv,apple-tv": {
+              "status": "preview",
+              "note": "The policy is `always`: the ring is drawn for every focus, as the existing TV focus tests assert."
+            }
+          }
+        },
+        {
           "id": "pointer",
           "feature": "Pointer and touch input (`src/sdk/input.ts`)",
           "default": {

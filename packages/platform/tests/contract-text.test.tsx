@@ -9,7 +9,7 @@
  * and again after `document.fonts.ready`, when it emits `loaded`.
  * Real-WebGL text-in-flex is covered elsewhere.
  */
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import * as s from 'solid-js';
 import * as lng from '@solid-multiplatform/platform';
 import { renderer, waitForUpdate } from './setup.js';
@@ -46,7 +46,11 @@ const raw = (el: lng.ElementNode) => el.lng as RendererTextNode;
 
 afterEach(() => {
   vi.restoreAllMocks();
+  lng.resetCapabilities();
 });
+
+// The `$focus` style tests assert what a TV always draws.
+beforeEach(() => lng.setCapabilities('roku'));
 
 describe('contract: text children concatenated from several JSX expressions', () => {
   it('static text and several expressions concatenate into el.text and el.lng.text', () => {
