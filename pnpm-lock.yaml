@@ -51,16 +51,6 @@ importers:
 
   packages/host-desktop:
     dependencies:
-      '@solid-multiplatform/platform':
-        specifier: workspace:*
-        version: link:../platform
-      '@solid-multiplatform/renderer':
-        specifier: workspace:*
-        version: link:../renderer
-      solid-js:
-        specifier: 1.9.17
-        version: 1.9.17
-    devDependencies:
       '@babel/core':
         specifier: ^7.26.10
         version: 7.26.10
@@ -70,6 +60,16 @@ importers:
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
+      solid-js:
+        specifier: 1.9.17
+        version: 1.9.17
+    devDependencies:
+      '@solid-multiplatform/platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@solid-multiplatform/renderer':
+        specifier: workspace:*
+        version: link:../renderer
 
   packages/platform:
     dependencies:

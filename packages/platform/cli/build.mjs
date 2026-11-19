@@ -1,6 +1,7 @@
 import { packageTV } from './tv-package.mjs';
-import { buildDesktopUI } from './desktop.mjs';
 import { stageSources, browserTVs } from './variants.mjs';
+import { CliError } from './context.mjs';
+import { requireHostDesktopCli } from './host-desktop.mjs';
 import {
   NATIVE_FORMS,
   appModule,
@@ -45,39 +46,6 @@ function pluginsFor(root, target) {
 
 // The desktop runtime's own build tool, from the app's dependencies or the
 // workspace. Node is the build tool; what runs the app is the Rust binary.
-function hostDesktopCli(root) {
-  return [
-    path.join(
-      root,
-      'node_modules/@solid-multiplatform/host-desktop/cli/index.mjs',
-    ),
-    path.join(framework, '../host-desktop/cli/index.mjs'),
-  ].find((file) => existsSync(file));
-}
-
-function buildDesktop(root, work, plugins, launch) {
-  for (const { name } of plugins) {
-    const dir = path.join(work, 'plugins', name);
-    const src = path.join(dir, 'worker.c');
-    if (!existsSync(src)) continue;
-    if (process.platform === 'win32')
-      command('cl', ['/nologo', '/O2', 'worker.c', '/Fe:worker.exe'], dir);
-    else
-      command(process.env.CC || 'cc', ['-O2', 'worker.c', '-o', 'worker'], dir);
-  }
-  const main = path.join(work, 'src/desktop.mjs');
-  if (existsSync(main)) copy(main, path.join(work, 'desktop.mjs'));
-  else
-    write(
-      path.join(work, 'desktop.mjs'),
-      'export async function main(plugins) { for (const [name, plugin] of Object.entries(plugins)) console.log(name, await plugin.run()); }\n',
-    );
-  write(
-    path.join(work, 'main.mjs'),
-    "import { plugins } from './plugins.mjs';\nimport { main } from './desktop.mjs';\nimport { attachPlugins } from '@solid-multiplatform/platform/plugins';\nconst detach = attachPlugins(plugins, {target:'desktop'});\ntry { await main(plugins); } finally { detach(); }\n",
-  );
-  if (launch) command(process.execPath, ['main.mjs'], work);
-}
 
 function android(root, work, plugins, target) {
   const modules = plugins.map(({ name }) => {
@@ -216,53 +184,70 @@ function buildTarget(root, target, dev, legacy) {
   );
   stageSources(path.join(root, 'src'), path.join(work, 'src'), target);
   if (target === 'desktop') {
-    const cli = hostDesktopCli(root);
-    const app = appModule(work);
-    if (cli && app.component) {
-      // One component, one startApp call: the runtime bundles the entry and
-      // runs it. The old host stays for apps without the package.
-      const settings = appSettings(root, 'desktop', "'./fonts'");
+    // The host package is the build tool and the runtime's launcher, both
+    // from the app's dependencies. Node is never what runs the app.
+    const cli = requireHostDesktopCli(root);
+    const out = path.join(work, 'bundle');
+    const fonts = path.join(work, 'fonts');
+    if (existsSync(path.join(root, 'assets/fonts')))
+      copy(path.join(root, 'assets/fonts'), fonts);
+    const hasFonts = existsSync(fonts);
+    if (dev === 'plugins') {
+      // The plugin command fixture, run by the runtime without a window.
       write(
-        path.join(work, 'entry.tsx'),
-        settings.imports +
-          '\n' +
-          desktopComponent(settings.settings, app.options),
+        path.join(work, 'plugins-entry.mjs'),
+        "import { plugins } from './plugins.mjs';\n(async () => {\n  for (const [name, plugin] of Object.entries(plugins)) console.log(name, await plugin.run());\n  globalThis.__solid.exit(0);\n})();\n",
       );
-      const out = path.join(work, 'bundle');
-      const fonts = path.join(work, 'fonts');
-      const hasFonts = existsSync(fonts);
+      command(
+        process.execPath,
+        [cli, 'build', path.join(work, 'plugins-entry.mjs'), '--out', out],
+        work,
+      );
+      command(
+        process.execPath,
+        [cli, 'run', path.join(out, 'app.js'), '--headless'],
+        work,
+      );
+      return;
+    }
+    const app = appModule(work);
+    if (!app.component)
+      throw new CliError(
+        'The desktop target runs a component app: src/app.tsx must default-export the app component (as the starter does).',
+      );
+    // One component, one startApp call: the runtime bundles the entry and
+    // runs it.
+    const settings = appSettings(root, 'desktop', "'./fonts'");
+    write(
+      path.join(work, 'entry.tsx'),
+      settings.imports +
+        '\n' +
+        desktopComponent(settings.settings, app.options),
+    );
+    command(
+      process.execPath,
+      [
+        cli,
+        'build',
+        path.join(work, 'entry.tsx'),
+        '--out',
+        out,
+        ...(hasFonts ? ['--assets', fonts] : []),
+        ...(dev === true ? [] : ['--bytecode', '--minify']),
+      ],
+      work,
+    );
+    if (dev === true)
       command(
         process.execPath,
         [
           cli,
-          'build',
-          path.join(work, 'entry.tsx'),
-          '--out',
-          out,
+          'run',
+          path.join(out, 'app.hbc'),
           ...(hasFonts ? ['--assets', fonts] : []),
-          ...(dev === true ? [] : ['--bytecode', '--minify']),
         ],
         work,
       );
-      if (dev === true)
-        command(
-          process.execPath,
-          [
-            cli,
-            'run',
-            path.join(out, 'app.hbc'),
-            ...(hasFonts ? ['--assets', fonts] : []),
-          ],
-          work,
-        );
-      return;
-    }
-    const graphical =
-      json(path.join(dir, 'package.json')).solidDesktopWindow &&
-      dev !== 'plugins';
-    buildDesktop(root, work, plugins, dev && !graphical);
-    if (graphical) buildDesktopUI(root, dir, work, dev);
-
     return;
   }
   if (target === 'web') {

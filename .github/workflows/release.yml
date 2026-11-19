@@ -33,6 +33,11 @@ jobs:
       - run: pnpm build
       - run: pnpm test
       - run: node scripts/release.mjs pack release
+      # release/* includes solid-multiplatform-host-desktop-<version>.tgz, the
+      # app-side build tool; the runtime archive is attached by the Desktop
+      # runtime workflow for the same tag.
+      - name: Check the desktop host archive was packed
+        run: test -f release/solid-multiplatform-host-desktop-*.tgz
       - uses: actions/upload-artifact@v4
         with:
           name: packages

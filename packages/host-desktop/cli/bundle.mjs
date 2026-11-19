@@ -9,7 +9,7 @@
 // either. Node is a build tool here only: nothing of it reaches the app.
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -204,7 +204,20 @@ export async function bundle({
   return compiled;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// pnpm installs packages behind symlinks; compare the real paths.
+const invokedDirectly = () => {
+  if (process.argv[1] === undefined) return false;
+  try {
+    return (
+      realpathSync(process.argv[1]) ===
+      realpathSync(fileURLToPath(import.meta.url))
+    );
+  } catch {
+    return false;
+  }
+};
+
+if (invokedDirectly()) {
   const args = process.argv.slice(2);
   const flag = (name) => {
     const at = args.indexOf(name);

@@ -38,7 +38,7 @@
             },
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "Node + FFI host with SDL3, being replaced by the Rust + Hermes runtime."
+              "note": "The Rust + Hermes runtime (`packages/host-desktop`); Linux draws the real scene in the host suite, and `packages/platform/tests/cli/desktop-smoke.sh` proves a generated app's first frame."
             }
           }
         },
@@ -98,7 +98,7 @@
             },
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "The Node + FFI host is being replaced by the Rust + Hermes runtime in an open pull request."
+              "note": "The generated entry calls `startApp(desktopHost())` and runs in the Rust + Hermes runtime; `packages/host-desktop/tests/host` drives it."
             }
           }
         },
@@ -183,7 +183,7 @@
             },
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "`hosts/desktop/semantics.mjs` on the Node + FFI host."
+              "note": "Linux: the runtime's AT-SPI adapter over AccessKit, checked in `packages/host-desktop/tests/a11y`. Windows and macOS are not implemented."
             }
           }
         },
@@ -1179,7 +1179,7 @@
           "cells": {
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "Installed by `hosts/desktop/run.mjs` on the Node + FFI host."
+              "note": "Not provided by the Rust + Hermes host yet."
             }
           }
         },
@@ -1190,7 +1190,7 @@
           "cells": {
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "`hosts/desktop/updater.mjs`, when the app calls `wire()`."
+              "note": "Not provided by the Rust + Hermes host yet."
             }
           }
         },
@@ -1201,7 +1201,7 @@
           "cells": {
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "`hosts/desktop/updater.mjs`, when the app configures a feed."
+              "note": "Not provided by the Rust + Hermes host yet."
             }
           }
         }
@@ -1296,7 +1296,7 @@
             },
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "Implemented for the Node + FFI host; no test runs the dev window."
+              "note": "Builds and starts the app in the Rust + Hermes runtime; no automated test covers the dev window."
             }
           }
         },
@@ -1492,7 +1492,7 @@
           "cells": {
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "Packages the Node + FFI host that is being replaced."
+              "note": "Copies the Rust runtime and Hermes bytecode into a relocatable directory; `packages/host-desktop/tests/package` unpacks it and runs it. Windows and macOS packaging is not implemented."
             }
           }
         }

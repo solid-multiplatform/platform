@@ -1,8 +1,12 @@
-// Release helper. The three packages are versioned together.
+// Release helper. The packages are versioned together.
 //
 //   node scripts/release.mjs set <version>     write <version> to every package
 //   node scripts/release.mjs check <tag>       fail unless every package is at <tag> (vX.Y.Z)
 //   node scripts/release.mjs pack <directory>  pack every package and write SHA256SUMS
+//
+// The desktop host is packed too, as solid-multiplatform-host-desktop-<version>.tgz:
+// it carries the build tool for the native runtime. It is not published to npm
+// (the runtime is a release asset), so only the first three are published.
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -13,6 +17,10 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const packages = ['renderer', 'platform', 'video'].map((name) =>
   path.join(root, 'packages', name),
 );
+const host = path.join(root, 'packages', 'host-desktop');
+// Versioned with the rest, but never published to npm.
+const versioned = [...packages, host];
+const packed = [...packages, host];
 const manifest = (dir) => path.join(dir, 'package.json');
 const read = (dir) => JSON.parse(readFileSync(manifest(dir), 'utf8'));
 const [command, argument] = process.argv.slice(2);
@@ -22,7 +30,7 @@ if (command === 'set') {
     throw new Error(
       'Usage: release.mjs set <version>, for example 0.3.0-beta.1',
     );
-  for (const dir of packages) {
+  for (const dir of versioned) {
     const pkg = read(dir);
     pkg.version = argument;
     // The platform names the exact renderer it was built and tested with.
@@ -33,7 +41,7 @@ if (command === 'set') {
   }
 } else if (command === 'check') {
   const version = (argument ?? '').replace(/^v/, '');
-  const wrong = packages
+  const wrong = versioned
     .map(read)
     .filter((pkg) => pkg.version !== version)
     .map((pkg) => `${pkg.name} is ${pkg.version}`);
@@ -45,7 +53,7 @@ if (command === 'set') {
 } else if (command === 'pack') {
   const out = path.resolve(argument ?? 'release');
   mkdirSync(out, { recursive: true });
-  for (const dir of packages)
+  for (const dir of packed)
     // pnpm rewrites workspace: dependencies to real versions and runs prepack.
     execFileSync('pnpm', ['pack', '--pack-destination', out], {
       cwd: dir,

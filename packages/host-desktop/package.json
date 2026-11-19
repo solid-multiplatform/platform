@@ -5,6 +5,16 @@
   "type": "module",
   "description": "Desktop host: the host definition, services and web-standard globals over the native runtime, and the bundler for it",
   "license": "Apache-2.0",
+  "files": [
+    "src",
+    "cli",
+    "prebuilt",
+    "native/Cargo.toml",
+    "native/Cargo.lock",
+    "native/build.rs",
+    "native/src",
+    "native/README.md"
+  ],
   "exports": {
     ".": "./src/index.ts",
     "./cli": "./cli/index.mjs"
@@ -16,13 +26,17 @@
     "test": "bash tests/run.sh"
   },
   "dependencies": {
-    "@solid-multiplatform/platform": "workspace:*",
-    "@solid-multiplatform/renderer": "workspace:*",
-    "solid-js": "1.9.17"
-  },
-  "devDependencies": {
     "@babel/core": "^7.26.10",
     "babel-preset-solid": "^1.9.5",
-    "esbuild": "^0.28.2"
+    "esbuild": "^0.28.2",
+    "solid-js": "1.9.17"
+  },
+  "peerDependencies": {
+    "@solid-multiplatform/platform": "*",
+    "@solid-multiplatform/renderer": "*"
+  },
+  "devDependencies": {
+    "@solid-multiplatform/platform": "workspace:*",
+    "@solid-multiplatform/renderer": "workspace:*"
   }
 }

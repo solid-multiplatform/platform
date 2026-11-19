@@ -49,7 +49,7 @@ Notes:
 
 - WebGL backend (`packages/renderer/webgl`), tizen, webos, vizio: Same backend as web. The generated Tizen build is only smoke-run in desktop Chromium; no TV hardware.
 - WebGL backend (`packages/renderer/webgl`), android, android-tv, ios, apple-tv: NativeScript canvas host. CI builds the app; no test asserts what it draws.
-- WebGL backend (`packages/renderer/webgl`), desktop-linux, desktop-windows, desktop-macos: Node + FFI host with SDL3, being replaced by the Rust + Hermes runtime.
+- WebGL backend (`packages/renderer/webgl`), desktop-linux, desktop-windows, desktop-macos: The Rust + Hermes runtime (`packages/host-desktop`); Linux draws the real scene in the host suite, and `packages/platform/tests/cli/desktop-smoke.sh` proves a generated app's first frame.
 - Canvas 2D backend (`packages/renderer/canvas`), tizen, webos, vizio: `build <target> --legacy`. The Tizen legacy build is only smoke-run in desktop Chromium.
 - Roku SceneGraph backend (`packages/renderer/roku`), roku: The shared scene conformance suite ran on the TV. The in-browser fake case remains in the `browser` job.
 
@@ -71,13 +71,13 @@ Notes:
 - Host contract (`startApp` / `HostDefinition`), tizen, webos, vizio: Built on `webHost` and `startApp`; the generated build is driven in desktop Chromium, never on a TV.
 - Host contract (`startApp` / `HostDefinition`), roku: The host test starts the app through `startApp(rokuHost())` and finds no browser globals on the device.
 - Host contract (`startApp` / `HostDefinition`), android, android-tv, ios, apple-tv: The NativeScript hosts still call a generated `mount`, not `HostDefinition`.
-- Host contract (`startApp` / `HostDefinition`), desktop-linux, desktop-windows, desktop-macos: The Node + FFI host is being replaced by the Rust + Hermes runtime in an open pull request.
+- Host contract (`startApp` / `HostDefinition`), desktop-linux, desktop-windows, desktop-macos: The generated entry calls `startApp(desktopHost())` and runs in the Rust + Hermes runtime; `packages/host-desktop/tests/host` drives it.
 - Text rendering, roku: Fonts, wrapping, flex text and the device's own metrics were measured on the TV.
 - Focus and key handling, tizen: `tests/cli/browser-smoke.mjs --tv` (test.yml: projects) presses Enter on the focused row of the generated Tizen build, but in desktop Chromium. No test runs on a Tizen TV or with its remote.
 - Focus and key handling, roku: The host test also checks that a held key is one press and that the keyEvents service raises the key.
 - Pointer and touch input (`src/sdk/input.ts`), tizen: `tests/cli/browser-smoke.mjs --tv` (test.yml: projects) maps clicks through four viewport sizes on the generated Tizen build, but in desktop Chromium. No test runs on a Tizen TV.
 - Pointer and touch input (`src/sdk/input.ts`), android, ios: Touch through `hosts/nativescript/touch.mjs`.
-- Accessibility semantics (`src/sdk/semantics.ts`), desktop-linux, desktop-windows, desktop-macos: `hosts/desktop/semantics.mjs` on the Node + FFI host.
+- Accessibility semantics (`src/sdk/semantics.ts`), desktop-linux, desktop-windows, desktop-macos: Linux: the runtime's AT-SPI adapter over AccessKit, checked in `packages/host-desktop/tests/a11y`. Windows and macOS are not implemented.
 - Shapes, borders, gradients and shadows, web: Tested through the renderer. `startApp(webHost(...))` registers the default shaders only in open pull request #19.
 - Shapes, borders, gradients and shadows, roku: Rounded corners, borders, gradients, four-corner colours and shadows; the forced image-fallback tier also passed 26/26.
 - Animation (`animateProp`, transitions), roku: Animation still runs on the JavaScript thread; frame pacing on the TV has not been measured.
@@ -183,9 +183,9 @@ Notes:
 - `geolocation` (`src/sdk/geolocation.ts`), android-tv: The TV probe needs a location fix that was not sent to the shared device.
 - `biometrics` (`src/sdk/biometrics.ts`), android: Written but not device-verified.
 - `biometrics` (`src/sdk/biometrics.ts`), ios: The probe verifies the refusal; a successful authentication needs a person and is not verified.
-- `menus` (`src/sdk/menus.ts`), desktop-linux, desktop-windows, desktop-macos: Installed by `hosts/desktop/run.mjs` on the Node + FFI host.
-- `updateDelivery` (`src/sdk/update.ts`), desktop-linux, desktop-windows, desktop-macos: `hosts/desktop/updater.mjs`, when the app calls `wire()`.
-- `updateSource` (`src/sdk/update.ts`), desktop-linux, desktop-windows, desktop-macos: `hosts/desktop/updater.mjs`, when the app configures a feed.
+- `menus` (`src/sdk/menus.ts`), desktop-linux, desktop-windows, desktop-macos: Not provided by the Rust + Hermes host yet.
+- `updateDelivery` (`src/sdk/update.ts`), desktop-linux, desktop-windows, desktop-macos: Not provided by the Rust + Hermes host yet.
+- `updateSource` (`src/sdk/update.ts`), desktop-linux, desktop-windows, desktop-macos: Not provided by the Rust + Hermes host yet.
 
 ## Video
 
@@ -220,7 +220,7 @@ Notes:
 
 - `solid-platform build <target>`, desktop-linux: CI runs `plugins run desktop` only, not `build desktop`.
 - `solid-platform dev <web|desktop>`, web: Implemented for web; no test runs the dev server.
-- `solid-platform dev <web|desktop>`, desktop-linux, desktop-windows, desktop-macos: Implemented for the Node + FFI host; no test runs the dev window.
+- `solid-platform dev <web|desktop>`, desktop-linux, desktop-windows, desktop-macos: Builds and starts the app in the Rust + Hermes runtime; no automated test covers the dev window.
 - `solid-platform run <target>`, web, tizen, webos, vizio, roku, android, android-tv, ios, apple-tv, desktop-linux, desktop-windows, desktop-macos: Device commands ran against faked tools only; no test installs and launches an app with `run`.
 - `solid-platform devices`, web, tizen, webos, vizio, roku, android, android-tv, ios, apple-tv, desktop-linux, desktop-windows, desktop-macos: Device commands ran against faked tools only; no test lists a real device with this command.
 - `solid-platform explain <target> <module>`, web, tizen, webos, vizio, roku, android, android-tv, ios, apple-tv, desktop-linux, desktop-windows, desktop-macos: The resolver has a unit test (tests/cli/variants.test.mjs); the command is not run for a target in CI.
@@ -242,7 +242,7 @@ Notes:
 - Web app with service worker and manifest, web: CI builds it; no test checks the service worker or the manifest.
 - Browser TV package (Tizen `.wgt`, webOS `.ipk`), tizen: The `.wgt` is made only when `TIZEN_SECURITY_PROFILE` is set; CI does not set it.
 - Browser TV package (Tizen `.wgt`, webOS `.ipk`), vizio: The build output is a hosted web app; there is no package step.
-- Desktop archive (`.tar.gz` with runtime), desktop-linux, desktop-windows, desktop-macos: Packages the Node + FFI host that is being replaced.
+- Desktop archive (`.tar.gz` with runtime), desktop-linux, desktop-windows, desktop-macos: Copies the Rust runtime and Hermes bytecode into a relocatable directory; `packages/host-desktop/tests/package` unpacks it and runs it. Windows and macOS packaging is not implemented.
 
 ## In open pull requests
 

@@ -1,7 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
-import { framework } from '../../../cli/files.mjs';
 import { config, java21, machine } from './helpers.mjs';
 
 const sdk = '/opt/android-sdk';
@@ -52,7 +50,10 @@ test('the wrong JDK is missing, with the fix, and fails the target', async () =>
 test('no SDK fails the build; no adb or NDK only limits device commands', async () => {
   const none = machine({ exec: java21, tools: ['corepack', 'java'] });
   assert.equal(await none.cli('doctor', 'android'), 1);
-  assert.match(line(none, 'android', 'android-sdk'), /^missing .*set ANDROID_SDK_ROOT/);
+  assert.match(
+    line(none, 'android', 'android-sdk'),
+    /^missing .*set ANDROID_SDK_ROOT/,
+  );
 
   const bare = android({ tools: ['corepack'], dirs: { [sdk]: [] } });
   assert.equal(await bare.cli('doctor', 'android'), 0);
@@ -72,7 +73,10 @@ test('adb inside the SDK counts when it is not on PATH', async () => {
 test('an old Node or a missing pnpm fails every target', async () => {
   const old = machine({ nodeVersion: '20.11.0' });
   assert.equal(await old.cli('doctor', 'web'), 1);
-  assert.match(old.out[0], /^missing +all +node +Node 20\.11\.0 found; install Node 24/);
+  assert.match(
+    old.out[0],
+    /^missing +all +node +Node 20\.11\.0 found; install Node 24/,
+  );
 
   const noPnpm = machine({ tools: [] });
   assert.equal(await noPnpm.cli('doctor', 'web', 'vizio'), 1);
@@ -130,7 +134,10 @@ test('Roku reports only whether the device variables are set', async () => {
     },
   });
   assert.equal(await set.cli('doctor', 'roku'), 0);
-  assert.match(line(set, 'roku', 'ROKU_DEV_IP'), /^ok +roku +ROKU_DEV_IP +set$/);
+  assert.match(
+    line(set, 'roku', 'ROKU_DEV_IP'),
+    /^ok +roku +ROKU_DEV_IP +set$/,
+  );
   assert.match(line(set, 'roku', 'ROKU_DEV_PASSWORD'), /^ok .* set$/);
   assert.doesNotMatch(set.text(), /192\.0\.2\.44|sentinel/);
 
@@ -147,7 +154,10 @@ test('the Tizen CLI is needed only when a signing profile is set', async () => {
     config: config({ signing: { tizen: { profile: 'release' } } }),
   });
   assert.equal(await fromConfig.cli('doctor', 'tizen'), 1);
-  assert.match(line(fromConfig, 'tizen', 'tizen-cli'), /^missing .*Tizen Studio/);
+  assert.match(
+    line(fromConfig, 'tizen', 'tizen-cli'),
+    /^missing .*Tizen Studio/,
+  );
 
   const fromEnv = machine({
     env: { TIZEN_SECURITY_PROFILE: 'release' },
@@ -168,32 +178,21 @@ test('webOS finds ares-package in the target once a build installed it', async (
   assert.match(line(after, 'webos', 'webos-cli'), /^ok /);
 });
 
-test('desktop checks the host that is in the workspace', async () => {
-  const node = machine({ tools: ['corepack', 'cc'], files: ['/usr/lib/libSDL3.so.0'] });
-  assert.equal(await node.cli('doctor', 'desktop'), 0);
-  assert.match(line(node, 'desktop', 'sdl3'), /^ok /);
-  assert.match(line(node, 'desktop', 'c-compiler'), /^ok /);
+test('desktop checks the runtime the host package resolves', async () => {
+  const saved = process.env.SOLID_DESKTOP_RUNTIME;
+  try {
+    process.env.SOLID_DESKTOP_RUNTIME = process.execPath;
+    const named = machine();
+    assert.equal(await named.cli('doctor', 'desktop'), 0);
+    assert.match(line(named, 'desktop', 'runtime'), /^ok .*environment/);
+  } finally {
+    if (saved === undefined) delete process.env.SOLID_DESKTOP_RUNTIME;
+    else process.env.SOLID_DESKTOP_RUNTIME = saved;
+  }
 
-  const noSdl = machine();
-  assert.equal(await noSdl.cli('doctor', 'desktop'), 0);
-  assert.match(line(noSdl, 'desktop', 'sdl3'), /^missing .*SOLID_SDL3_LIBRARY/);
-
-  const cargoToml = path.join(framework, '../host-desktop/native/Cargo.toml');
-  const rust = machine({
-    files: [cargoToml],
-    tools: ['corepack', 'cargo'],
-    env: { HERMES_SRC: '/sentinel/hermes', HERMES_BUILD: '/sentinel/hermes-build' },
-  });
-  assert.equal(await rust.cli('doctor', 'desktop'), 0);
-  assert.match(line(rust, 'desktop', 'cargo'), /^ok /);
-  assert.match(line(rust, 'desktop', 'HERMES_SRC'), /^ok .* set$/);
-  assert.equal(line(rust, 'desktop', 'sdl3'), undefined);
-  assert.doesNotMatch(rust.text(), /sentinel/);
-
-  const noHermes = machine({ files: [cargoToml], tools: ['corepack'] });
-  assert.equal(await noHermes.cli('doctor', 'desktop'), 1);
-  assert.match(line(noHermes, 'desktop', 'cargo'), /^missing .*rustup/);
-  assert.match(line(noHermes, 'desktop', 'HERMES_BUILD'), /^missing /);
+  const none = machine();
+  assert.equal(await none.cli('doctor', 'desktop'), 1);
+  assert.match(line(none, 'desktop', 'runtime'), /^missing .*add desktop none/);
 });
 
 test('without arguments doctor checks the app targets, or all targets outside an app', async () => {
@@ -206,8 +205,18 @@ test('without arguments doctor checks the app targets, or all targets outside an
 
   const outside = machine({ tools: ['corepack', 'python3'] });
   await outside.cli('doctor');
-  for (const target of ['roku', 'android', 'android-tv', 'ios', 'apple-tv', 'desktop'])
-    assert.ok(outside.out.some((l) => l.split(/\s+/)[1] === target), target);
+  for (const target of [
+    'roku',
+    'android',
+    'android-tv',
+    'ios',
+    'apple-tv',
+    'desktop',
+  ])
+    assert.ok(
+      outside.out.some((l) => l.split(/\s+/)[1] === target),
+      target,
+    );
 });
 
 test('doctor refuses a target it does not know', async () => {

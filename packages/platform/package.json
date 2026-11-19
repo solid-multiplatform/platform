@@ -102,7 +102,6 @@
     "./controls/native": "./hosts/nativescript/controls.mjs",
     "./browser-tv/input": "./hosts/web-tv/input.mjs",
     "./services/mobile-providers": "./hosts/nativescript/providers.mjs",
-    "./services/desktop": "./hosts/desktop/services.mjs",
     "./services/roku": "./hosts/roku/services.ts",
     "./motion": "./dist/src/sdk/motion.js",
     "./focus": "./dist/src/sdk/focus.js",
@@ -115,13 +114,6 @@
     "./editor/roku": "./hosts/roku/editor.ts",
     "./scroll": "./dist/src/sdk/scroll.js",
     "./network": "./dist/src/sdk/network.js",
-    "./editor/desktop": {
-      "@solidtv/source": "./src/sdk/desktop-field.tsx",
-      "import": {
-        "types": "./dist/src/sdk/desktop-field.d.ts",
-        "default": "./dist/src/sdk/desktop-field.jsx"
-      }
-    },
     "./theme": {
       "@solidtv/source": "./src/sdk/theme.tsx",
       "import": {

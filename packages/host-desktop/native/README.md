@@ -42,6 +42,7 @@ bash tests/run.sh
 solid-desktop app.js              # source, or bytecode: it tells by the file
 solid-desktop --script app.js myapp://open/7   # the same, with the app's arguments
 solid-desktop --headless job.js   # no window, no GL
+solid-desktop --first-frame-exit app.hbc  # prints that a frame was presented, then ends
 solid-desktop --compile app.js app.hbc
 solid-desktop --version
 solid-desktop --diagnostics       # the SDL in it, linked how, with which video drivers

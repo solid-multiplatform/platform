@@ -26,6 +26,7 @@ import {
   existsSync,
   mkdirSync,
   readdirSync,
+  realpathSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -254,7 +255,20 @@ export async function packageDesktop(options) {
   };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// pnpm installs packages behind symlinks; compare the real paths.
+const invokedDirectly = () => {
+  if (process.argv[1] === undefined) return false;
+  try {
+    return (
+      realpathSync(process.argv[1]) ===
+      realpathSync(fileURLToPath(import.meta.url))
+    );
+  } catch {
+    return false;
+  }
+};
+
+if (invokedDirectly()) {
   const args = process.argv.slice(2);
   const flag = (name) => {
     const at = args.indexOf(name);

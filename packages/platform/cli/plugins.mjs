@@ -169,8 +169,10 @@ public final class ${className}: NSObject {
         );
       }
       if (target === 'desktop')
-        for (const f of ['index.mjs', 'worker.c'])
-          write(path.join(dest, f), template('desktop/' + f, values));
+        write(
+          path.join(dest, 'index.mjs'),
+          `export async function run() { return '${name} desktop'; }\n`,
+        );
       if (target === 'roku') {
         write(path.join(dest, 'index.ts'), template('roku/index.ts', values));
         for (const ext of ['xml', 'bs'])

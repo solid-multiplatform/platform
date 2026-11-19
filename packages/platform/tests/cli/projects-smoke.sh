@@ -22,11 +22,32 @@ node --input-type=module -e '
     assert.equal(manifest(file).packageManager, expected);
 '
 corepack pnpm install
+# The desktop target's build tool is the host package, installed into the app
+# as an optional release, and its runtime compiles the bytecode. Both are
+# skipped with one line when this machine has no runtime.
+desktop_runtime=${SOLID_DESKTOP_RUNTIME:-}
+if [[ -z "$desktop_runtime" ]]; then
+  built_runtime=$framework/../host-desktop/native/target/release/solid-desktop
+  if [[ -x "$built_runtime" ]]; then desktop_runtime=$built_runtime; fi
+fi
+desktop=no
+if [[ -n "$desktop_runtime" ]]; then
+  host_scratch=$scratch/host
+  mkdir -p "$host_scratch"
+  (cd "$framework/../host-desktop" && corepack pnpm pack --pack-destination "$host_scratch" >/dev/null)
+  node "$scratch/package/cli/main.mjs" add desktop "$host_scratch"/solid-multiplatform-host-desktop-*.tgz
+  corepack pnpm install --no-frozen-lockfile
+  desktop=yes
+else
+  echo 'desktop build skipped: no runtime (set SOLID_DESKTOP_RUNTIME, or build packages/host-desktop/native)'
+fi
 corepack pnpm platform plugin new greeting
 if corepack pnpm platform plugin new greeting; then exit 1; fi
 corepack pnpm check
-corepack pnpm platform plugins run desktop | tee "$scratch/desktop.log"
-grep -Fx 'greeting greeting desktop' "$scratch/desktop.log"
+if [[ $desktop == yes ]]; then
+  SOLID_DESKTOP_RUNTIME=$desktop_runtime corepack pnpm platform plugins run desktop | tee "$scratch/desktop.log"
+  grep -Fx 'greeting greeting desktop' "$scratch/desktop.log"
+fi
 # Observe a command called by the real starter via keyboard input in Chromium.
 cat > plugins/greeting/web/index.mjs <<'JS'
 export async function run() { document.documentElement.dataset.pluginResult = 'greeting'; return 'greeting'; }
@@ -52,6 +73,12 @@ with ZipFile("targets/roku/dist-roku/solid-multiplatform.zip") as app:
     assert b'pkg:/components/greeting/PGreetingTask.brs' in app.read('components/greeting/PGreetingTask.xml')
     assert b'greeting Roku' in app.read('components/greeting/PGreetingTask.brs')
 PY
+if [[ $desktop == yes ]]; then
+  # Build only: desktop-smoke.sh opens a window and proves a frame.
+  SOLID_DESKTOP_RUNTIME=$desktop_runtime corepack pnpm build desktop
+  test -f targets/desktop/work/bundle/app.hbc
+  test -f targets/desktop/work/bundle/fonts/Lato-Regular.msdf.json
+fi
 # An app created before solid-platform.config.json has only solid-platform.json
 # (name and targets) and must keep building.
 node --input-type=module -e '
