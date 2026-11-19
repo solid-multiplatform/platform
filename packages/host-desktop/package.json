@@ -1,6 +1,6 @@
 {
   "name": "@solid-multiplatform/host-desktop",
-  "version": "0.0.0",
+  "version": "0.3.0-beta.1",
   "private": true,
   "type": "module",
   "description": "Desktop host: the host definition, services and web-standard globals over the native runtime, and the bundler for it",
@@ -33,7 +33,7 @@
   },
   "peerDependencies": {
     "@solid-multiplatform/platform": "*",
-    "@solid-multiplatform/renderer": "*"
+    "@solid-multiplatform/renderer": "0.3.0-beta.1"
   },
   "devDependencies": {
     "@solid-multiplatform/platform": "workspace:*",
