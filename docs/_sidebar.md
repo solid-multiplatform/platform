@@ -55,6 +55,7 @@
   - [Overview and CI jobs](/targets/README.md)
   - [Web](/targets/web.md)
   - [Browser TVs](/targets/browser-tv.md)
+  - [PlayStation 4](/targets/ps4.md)
   - [Roku](/targets/roku.md)
   - [Android and Android TV](/targets/android.md)
   - [iOS and tvOS](/targets/apple.md)

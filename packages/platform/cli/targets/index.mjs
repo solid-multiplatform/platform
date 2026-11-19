@@ -5,6 +5,7 @@ import web from './web.mjs';
 import tizen from './tizen.mjs';
 import webos from './webos.mjs';
 import vizio from './vizio.mjs';
+import ps4 from './ps4.mjs';
 import roku from './roku.mjs';
 import android from './android.mjs';
 import androidTV from './android-tv.mjs';
@@ -18,6 +19,7 @@ export const targets = Object.freeze([
   tizen,
   webos,
   vizio,
+  ps4,
   roku,
   android,
   androidTV,

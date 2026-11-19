@@ -29,7 +29,7 @@ import { webAppServices, webServices } from './web-services/index.js';
 export interface WebHostOptions {
   /** The element to draw in, or its id. Defaults to `app`. */
   root?: string | HTMLElement;
-  target?: Extract<PlatformTarget, 'web' | 'tizen' | 'webos' | 'vizio'>;
+  target?: Extract<PlatformTarget, 'web' | 'tizen' | 'webos' | 'vizio' | 'ps4'>;
   /**
    * Keeps this app's settings apart from other apps on the same origin.
    * Defaults to `app`.

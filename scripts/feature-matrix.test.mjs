@@ -162,7 +162,7 @@ test('docs/features.json is valid and every cell is counted', () => {
     statuses.reduce((sum, s) => sum + total[s], 0),
     rows * expanded.targets.length,
   );
-  assert.equal(expanded.targets.length, 12);
+  assert.equal(expanded.targets.length, 13);
 });
 
 test('docs/features.md is up to date', () => {

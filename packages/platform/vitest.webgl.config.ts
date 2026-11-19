@@ -37,7 +37,13 @@ function engine(name: 'chromium' | 'firefox' | 'webkit') {
         // does not, and would litter the tree with __screenshots__.
         screenshotFailures: false,
         // https://vitest.dev/guide/browser/playwright
-        provider: playwright({ launchOptions: launch(name) }),
+        provider: playwright({
+          launchOptions: launch(name),
+          // The PS4 test is pointer-only: no touch, as the console's browser
+          // reports a mouse. A desktop context is the same by default; this
+          // makes it explicit for every engine.
+          contextOptions: { hasTouch: false },
+        }),
         instances: [{ browser: name }],
       },
     },

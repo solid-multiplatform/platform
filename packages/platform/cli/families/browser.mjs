@@ -25,7 +25,7 @@ export const tizenProfile = (/** @type {TargetContext} */ ctx) => {
 };
 
 /**
- * @param {'web' | 'tizen' | 'webos' | 'vizio'} name
+ * @param {'web' | 'tizen' | 'webos' | 'vizio' | 'ps4'} name
  * @param {string} summary
  * @returns {import('../types.d.ts').TargetDefinition}
  */

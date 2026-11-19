@@ -9,6 +9,7 @@ export type TargetName =
   | 'tizen'
   | 'webos'
   | 'vizio'
+  | 'ps4'
   | 'roku'
   | 'android'
   | 'android-tv'

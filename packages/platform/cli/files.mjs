@@ -19,6 +19,7 @@ export const available = [
   'tizen',
   'webos',
   'vizio',
+  'ps4',
   'android',
   'roku',
   'android-tv',

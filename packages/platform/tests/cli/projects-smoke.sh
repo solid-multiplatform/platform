@@ -5,7 +5,7 @@ scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
 corepack pnpm pack --pack-destination "$scratch"
 tar -xzf "$scratch"/solid-multiplatform-platform-*.tgz -C "$scratch"
-node "$scratch/package/cli/main.mjs" init "$scratch/smoke-app" --targets web,desktop,roku,tizen,webos,vizio
+node "$scratch/package/cli/main.mjs" init "$scratch/smoke-app" --targets web,desktop,roku,tizen,webos,vizio,ps4
 cd "$scratch/smoke-app"
 test -f solid-platform.config.json
 # A command a target does not implement is refused with exit code 2.
@@ -64,6 +64,10 @@ for tv in webos vizio; do
   corepack pnpm build "$tv"
   node "$framework/tests/cli/browser-smoke.mjs" "targets/$tv/dist" --tv
 done
+# The PS4's empty-space click is Select, not a no-op.
+cp plugins/greeting/web/index.mjs plugins/greeting/ps4/index.mjs
+corepack pnpm build ps4
+node "$framework/tests/cli/browser-smoke.mjs" targets/ps4/dist --tv --empty-selects
 # The webOS build ends in an .ipk named by the id and version in the config.
 test -f targets/webos/dist-package/dev.solidapp.asmokeapp_0.1.0_all.ipk
 corepack pnpm build roku

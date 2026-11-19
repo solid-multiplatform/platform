@@ -12,15 +12,15 @@ A cell says `tested` only when an automated test in this repository runs that fe
 
 ## Counts
 
-948 cells: 79 features on 12 targets.
+1027 cells: 79 features on 13 targets.
 
 | Status      | Cells |
 | ----------- | ----- |
-| tested      | 140   |
+| tested      | 146   |
 | device      | 74    |
-| preview     | 359   |
+| preview     | 377   |
 | in progress | 0     |
-| no          | 375   |
+| no          | 430   |
 
 | Target            | tested | device | preview | in progress | no  |
 | ----------------- | ------ | ------ | ------- | ----------- | --- |
@@ -28,6 +28,7 @@ A cell says `tested` only when an automated test in this repository runs that fe
 | `tizen`           | 5      | 0      | 53      | 0           | 21  |
 | `webos`           | 6      | 0      | 52      | 0           | 21  |
 | `vizio`           | 5      | 0      | 52      | 0           | 22  |
+| `ps4`             | 6      | 0      | 18      | 0           | 55  |
 | `roku`            | 5      | 19     | 9       | 0           | 46  |
 | `android`         | 0      | 33     | 26      | 0           | 20  |
 | `android-tv`      | 5      | 22     | 18      | 0           | 34  |
@@ -39,12 +40,12 @@ A cell says `tested` only when an automated test in this repository runs that fe
 
 ## Rendering backends
 
-| Feature                                                | web    | tizen   | webos   | vizio   | roku   | android | android-tv | ios     | apple-tv | desktop-linux | desktop-windows | desktop-macos |
-| ------------------------------------------------------ | ------ | ------- | ------- | ------- | ------ | ------- | ---------- | ------- | -------- | ------------- | --------------- | ------------- |
-| WebGL backend (`packages/renderer/webgl`)              | tested | preview | preview | preview | no     | preview | preview    | preview | preview  | tested        | preview         | preview       |
-| Desktop runtime in Rust embedding Hermes, without Node | no     | no      | no      | no      | no     | no      | no         | no      | no       | tested        | preview         | preview       |
-| Canvas 2D backend (`packages/renderer/canvas`)         | tested | preview | preview | preview | no     | no      | no         | no      | no       | no            | no              | no            |
-| Roku SceneGraph backend (`packages/renderer/roku`)     | no     | no      | no      | no      | device | no      | no         | no      | no       | no            | no              | no            |
+| Feature                                                | web    | tizen   | webos   | vizio   | ps4     | roku   | android | android-tv | ios     | apple-tv | desktop-linux | desktop-windows | desktop-macos |
+| ------------------------------------------------------ | ------ | ------- | ------- | ------- | ------- | ------ | ------- | ---------- | ------- | -------- | ------------- | --------------- | ------------- |
+| WebGL backend (`packages/renderer/webgl`)              | tested | preview | preview | preview | tested  | no     | preview | preview    | preview | preview  | tested        | preview         | preview       |
+| Desktop runtime in Rust embedding Hermes, without Node | no     | no      | no      | no      | no      | no     | no      | no         | no      | no       | tested        | preview         | preview       |
+| Canvas 2D backend (`packages/renderer/canvas`)         | tested | preview | preview | preview | preview | no     | no      | no         | no      | no       | no            | no              | no            |
+| Roku SceneGraph backend (`packages/renderer/roku`)     | no     | no      | no      | no      | no      | device | no      | no         | no      | no       | no            | no              | no            |
 
 Notes:
 
@@ -53,20 +54,21 @@ Notes:
 - WebGL backend (`packages/renderer/webgl`), desktop-windows, desktop-macos: The Rust + Hermes runtime (`packages/host-desktop`). Linux draws the real scene in the host suite, and `packages/platform/tests/cli/desktop-smoke.sh` proves a generated app's first frame. macOS arm64 and Windows x64 build and run the headless runtime tests in the `desktop-runtime` workflow; no window is opened there, so drawing on those systems is unverified.
 - Desktop runtime in Rust embedding Hermes, without Node, desktop-windows, desktop-macos: The runtime builds for both and runs its headless tests in CI; no CI job opens a window there, and Windows and macOS app packaging is not implemented.
 - Canvas 2D backend (`packages/renderer/canvas`), tizen, webos, vizio: `build <target> --legacy`. The Tizen legacy build is only smoke-run in desktop Chromium.
+- Canvas 2D backend (`packages/renderer/canvas`), ps4: `build ps4 --legacy` produces the Canvas 2D variant. No test drives a generated PS4 legacy build; the backend itself is tested on web.
 - Roku SceneGraph backend (`packages/renderer/roku`), roku: The shared scene conformance suite ran on the TV. The in-browser fake case remains in the `browser` job.
 
 ## Scene features
 
-| Feature                                          | web    | tizen   | webos   | vizio   | roku    | android | android-tv | ios     | apple-tv | desktop-linux | desktop-windows | desktop-macos |
-| ------------------------------------------------ | ------ | ------- | ------- | ------- | ------- | ------- | ---------- | ------- | -------- | ------------- | --------------- | ------------- |
-| Host contract (`startApp` / `HostDefinition`)    | tested | preview | preview | preview | device  | device  | device     | tested  | tested   | tested        | preview         | preview       |
-| Flex layout (`src/core/flexLayout.ts`)           | tested | preview | preview | preview | preview | preview | preview    | preview | preview  | preview       | preview         | preview       |
-| Text rendering                                   | tested | preview | preview | preview | device  | preview | preview    | preview | preview  | tested        | preview         | preview       |
-| Focus and key handling                           | tested | preview | preview | preview | device  | preview | preview    | preview | preview  | tested        | preview         | preview       |
-| Pointer and touch input (`src/sdk/input.ts`)     | tested | preview | preview | preview | no      | preview | no         | preview | no       | tested        | preview         | preview       |
-| Accessibility semantics (`src/sdk/semantics.ts`) | tested | no      | no      | no      | no      | no      | no         | no      | no       | tested        | no              | no            |
-| Shapes, borders, gradients and shadows           | tested | preview | preview | preview | device  | preview | preview    | preview | preview  | preview       | preview         | preview       |
-| Animation (`animateProp`, transitions)           | tested | preview | preview | preview | device  | preview | preview    | preview | preview  | preview       | preview         | preview       |
+| Feature                                          | web    | tizen   | webos   | vizio   | ps4     | roku    | android | android-tv | ios     | apple-tv | desktop-linux | desktop-windows | desktop-macos |
+| ------------------------------------------------ | ------ | ------- | ------- | ------- | ------- | ------- | ------- | ---------- | ------- | -------- | ------------- | --------------- | ------------- |
+| Host contract (`startApp` / `HostDefinition`)    | tested | preview | preview | preview | tested  | device  | device  | device     | tested  | tested   | tested        | preview         | preview       |
+| Flex layout (`src/core/flexLayout.ts`)           | tested | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | preview       | preview         | preview       |
+| Text rendering                                   | tested | preview | preview | preview | preview | device  | preview | preview    | preview | preview  | tested        | preview         | preview       |
+| Focus and key handling                           | tested | preview | preview | preview | tested  | device  | preview | preview    | preview | preview  | tested        | preview         | preview       |
+| Pointer and touch input (`src/sdk/input.ts`)     | tested | preview | preview | preview | tested  | no      | preview | no         | preview | no       | tested        | preview         | preview       |
+| Accessibility semantics (`src/sdk/semantics.ts`) | tested | no      | no      | no      | no      | no      | no      | no         | no      | no       | tested        | no              | no            |
+| Shapes, borders, gradients and shadows           | tested | preview | preview | preview | preview | device  | preview | preview    | preview | preview  | preview       | preview         | preview       |
+| Animation (`animateProp`, transitions)           | tested | preview | preview | preview | preview | device  | preview | preview    | preview | preview  | preview       | preview         | preview       |
 
 Notes:
 
@@ -88,12 +90,12 @@ Notes:
 
 The `/app` entry is the one import an app needs. A cell is `tested` when an automated test builds and drives that surface on the target, and `device` when a recorded run on a device or emulator shows it working.
 
-| Feature                                                                                    | web     | tizen   | webos   | vizio   | roku    | android | android-tv | ios     | apple-tv | desktop-linux | desktop-windows | desktop-macos |
-| ------------------------------------------------------------------------------------------ | ------- | ------- | ------- | ------- | ------- | ------- | ---------- | ------- | -------- | ------------- | --------------- | ------------- |
-| `/app` components the starter uses (`Screen`, `Text`, `Button`)                            | tested  | preview | preview | preview | device  | device  | device     | preview | preview  | preview       | preview         | preview       |
-| `/app` layout and overlay components (`List`, `Spacer`, `Row`, `Column`, `Grid`, overlays) | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | preview       | preview         | preview       |
-| `/app` hooks (`useHost`, `usePlugin`, `useViewport`, service hooks)                        | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | preview       | preview         | preview       |
-| Generated starter app (one component)                                                      | tested  | preview | preview | preview | device  | device  | device     | preview | preview  | tested        | preview         | preview       |
+| Feature                                                                                    | web     | tizen   | webos   | vizio   | ps4     | roku    | android | android-tv | ios     | apple-tv | desktop-linux | desktop-windows | desktop-macos |
+| ------------------------------------------------------------------------------------------ | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ---------- | ------- | -------- | ------------- | --------------- | ------------- |
+| `/app` components the starter uses (`Screen`, `Text`, `Button`)                            | tested  | preview | preview | preview | preview | device  | device  | device     | preview | preview  | preview       | preview         | preview       |
+| `/app` layout and overlay components (`List`, `Spacer`, `Row`, `Column`, `Grid`, overlays) | preview | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | preview       | preview         | preview       |
+| `/app` hooks (`useHost`, `usePlugin`, `useViewport`, service hooks)                        | preview | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | preview       | preview         | preview       |
+| Generated starter app (one component)                                                      | tested  | preview | preview | preview | preview | device  | device  | device     | preview | preview  | tested        | preview         | preview       |
 
 Notes:
 
@@ -105,50 +107,50 @@ Notes:
 
 One row per port declared on `ServiceProviders` (`src/sdk/registry.ts`). `tested` is an automated test on that target, `device` a recorded run on a device or emulator, `preview` a provider on main with neither, and `no` no provider. The notes say where the app has to install the provider itself. Unit tests in jsdom are not a target and are not counted. Browser TV cells are `preview`: their generated builds run in desktop Chromium, never on TV hardware.
 
-| Feature                                  | web     | tizen   | webos   | vizio   | roku   | android | android-tv | ios     | apple-tv | desktop-linux | desktop-windows | desktop-macos |
-| ---------------------------------------- | ------- | ------- | ------- | ------- | ------ | ------- | ---------- | ------- | -------- | ------------- | --------------- | ------------- |
-| `settings` (`src/sdk/services.ts`)       | tested  | preview | preview | preview | device | device  | device     | tested  | tested   | tested        | preview         | preview       |
-| `secureStorage` (`src/sdk/services.ts`)  | no      | no      | no      | no      | device | device  | device     | tested  | tested   | tested        | no              | no            |
-| `lifecycle` (`src/sdk/services.ts`)      | tested  | preview | preview | preview | device | device  | device     | tested  | tested   | tested        | no              | no            |
-| `connectivity` (`src/sdk/services.ts`)   | tested  | preview | preview | preview | device | device  | device     | tested  | tested   | tested        | no              | no            |
-| `links` (`src/sdk/services.ts`)          | tested  | preview | preview | preview | device | device  | device     | tested  | tested   | tested        | no              | no            |
-| `notifications` (`src/sdk/services.ts`)  | preview | preview | preview | preview | no     | device  | no         | tested  | no       | tested        | no              | no            |
-| `push` (`src/sdk/services.ts`)           | preview | no      | no      | no      | no     | no      | no         | preview | no       | no            | no              | no            |
-| `jobs` (`src/sdk/services.ts`)           | preview | no      | no      | no      | no     | device  | device     | preview | no       | no            | no              | no            |
-| `request` (`src/sdk/services.ts`)        | tested  | preview | preview | preview | device | no      | no         | no      | no       | tested        | preview         | preview       |
-| `clipboard` (`src/sdk/device.ts`)        | tested  | preview | preview | preview | no     | device  | device     | tested  | no       | tested        | no              | no            |
-| `share` (`src/sdk/device.ts`)            | preview | preview | preview | preview | no     | device  | device     | preview | no       | no            | no              | no            |
-| `haptics` (`src/sdk/device.ts`)          | preview | preview | preview | preview | no     | device  | no         | tested  | no       | no            | no              | no            |
-| `deviceInfo` (`src/sdk/device.ts`)       | tested  | preview | preview | preview | device | device  | device     | tested  | tested   | tested        | no              | no            |
-| `battery` (`src/sdk/device.ts`)          | tested  | preview | preview | preview | no     | device  | no         | tested  | no       | tested        | no              | no            |
-| `memory` (`src/sdk/device.ts`)           | tested  | preview | preview | preview | device | device  | device     | tested  | tested   | tested        | no              | no            |
-| `keepAwake` (`src/sdk/device.ts`)        | preview | preview | preview | preview | no     | device  | device     | tested  | tested   | tested        | no              | no            |
-| `openExternal` (`src/sdk/device.ts`)     | preview | preview | preview | preview | no     | device  | device     | tested  | tested   | tested        | no              | no            |
-| `orientation` (`src/sdk/device.ts`)      | preview | preview | preview | preview | no     | device  | no         | tested  | no       | no            | no              | no            |
-| `systemBars` (`src/sdk/device.ts`)       | tested  | preview | preview | preview | no     | device  | no         | no      | no       | no            | no              | no            |
-| `appReview` (`src/sdk/device.ts`)        | no      | no      | no      | no      | no     | preview | no         | tested  | no       | no            | no              | no            |
-| `locale` (`src/sdk/i18n.ts`)             | tested  | preview | preview | preview | device | device  | device     | tested  | tested   | tested        | no              | no            |
-| `colorScheme` (`src/sdk/theme.tsx`)      | tested  | preview | preview | preview | no     | device  | device     | tested  | tested   | tested        | no              | no            |
-| `keyEvents` (`src/sdk/shortcuts.ts`)     | tested  | preview | preview | preview | device | preview | preview    | tested  | tested   | tested        | no              | no            |
-| `audio` (`src/sdk/audio.ts`)             | preview | preview | preview | preview | no     | device  | device     | no      | no       | no            | no              | no            |
-| `mediaSession` (`src/sdk/media.ts`)      | preview | preview | preview | preview | no     | device  | device     | tested  | tested   | no            | no              | no            |
-| `fullscreen` (`src/sdk/media.ts`)        | preview | preview | preview | preview | no     | device  | preview    | no      | no       | no            | no              | no            |
-| `thumbnails` (`src/sdk/media.ts`)        | preview | preview | preview | preview | no     | no      | no         | no      | no       | no            | no              | no            |
-| `mediaCapabilities` (`src/sdk/drm.ts`)   | tested  | preview | preview | preview | no     | device  | device     | no      | no       | no            | no              | no            |
-| `camera` (`src/sdk/capture.ts`)          | preview | preview | preview | preview | no     | preview | no         | no      | no       | no            | no              | no            |
-| `microphone` (`src/sdk/capture.ts`)      | preview | preview | preview | preview | no     | no      | no         | no      | no       | no            | no              | no            |
-| `download` (`src/sdk/download.ts`)       | preview | preview | preview | preview | no     | device  | device     | no      | no       | tested        | no              | no            |
-| `filePicker` (`src/sdk/files.ts`)        | preview | preview | preview | preview | no     | preview | no         | no      | no       | tested        | no              | no            |
-| `fileSystem` (`src/sdk/files.ts`)        | no      | no      | no      | no      | no     | device  | device     | tested  | tested   | tested        | no              | no            |
-| `geolocation` (`src/sdk/geolocation.ts`) | preview | preview | preview | preview | no     | device  | preview    | tested  | no       | no            | no              | no            |
-| `sensors` (`src/sdk/sensors.ts`)         | tested  | preview | preview | preview | no     | device  | no         | no      | no       | no            | no              | no            |
-| `maps` (`src/sdk/maps.ts`)               | preview | preview | preview | preview | no     | device  | no         | no      | no       | no            | no              | no            |
-| `contacts` (`src/sdk/contacts.ts`)       | preview | preview | preview | preview | no     | device  | no         | no      | no       | no            | no              | no            |
-| `calendar` (`src/sdk/calendar.ts`)       | preview | preview | preview | preview | no     | device  | no         | no      | no       | no            | no              | no            |
-| `biometrics` (`src/sdk/biometrics.ts`)   | no      | no      | no      | no      | no     | preview | no         | tested  | no       | no            | no              | no            |
-| `menus` (`src/sdk/menus.ts`)             | no      | no      | no      | no      | no     | no      | no         | no      | no       | preview       | preview         | preview       |
-| `updateDelivery` (`src/sdk/update.ts`)   | no      | no      | no      | no      | no     | no      | no         | no      | no       | preview       | preview         | preview       |
-| `updateSource` (`src/sdk/update.ts`)     | no      | no      | no      | no      | no     | no      | no         | no      | no       | preview       | preview         | preview       |
+| Feature                                  | web     | tizen   | webos   | vizio   | ps4     | roku   | android | android-tv | ios     | apple-tv | desktop-linux | desktop-windows | desktop-macos |
+| ---------------------------------------- | ------- | ------- | ------- | ------- | ------- | ------ | ------- | ---------- | ------- | -------- | ------------- | --------------- | ------------- |
+| `settings` (`src/sdk/services.ts`)       | tested  | preview | preview | preview | preview | device | device  | device     | tested  | tested   | tested        | preview         | preview       |
+| `secureStorage` (`src/sdk/services.ts`)  | no      | no      | no      | no      | no      | device | device  | device     | tested  | tested   | tested        | no              | no            |
+| `lifecycle` (`src/sdk/services.ts`)      | tested  | preview | preview | preview | no      | device | device  | device     | tested  | tested   | tested        | no              | no            |
+| `connectivity` (`src/sdk/services.ts`)   | tested  | preview | preview | preview | no      | device | device  | device     | tested  | tested   | tested        | no              | no            |
+| `links` (`src/sdk/services.ts`)          | tested  | preview | preview | preview | no      | device | device  | device     | tested  | tested   | tested        | no              | no            |
+| `notifications` (`src/sdk/services.ts`)  | preview | preview | preview | preview | no      | no     | device  | no         | tested  | no       | tested        | no              | no            |
+| `push` (`src/sdk/services.ts`)           | preview | no      | no      | no      | no      | no     | no      | no         | preview | no       | no            | no              | no            |
+| `jobs` (`src/sdk/services.ts`)           | preview | no      | no      | no      | no      | no     | device  | device     | preview | no       | no            | no              | no            |
+| `request` (`src/sdk/services.ts`)        | tested  | preview | preview | preview | no      | device | no      | no         | no      | no       | tested        | preview         | preview       |
+| `clipboard` (`src/sdk/device.ts`)        | tested  | preview | preview | preview | no      | no     | device  | device     | tested  | no       | tested        | no              | no            |
+| `share` (`src/sdk/device.ts`)            | preview | preview | preview | preview | no      | no     | device  | device     | preview | no       | no            | no              | no            |
+| `haptics` (`src/sdk/device.ts`)          | preview | preview | preview | preview | no      | no     | device  | no         | tested  | no       | no            | no              | no            |
+| `deviceInfo` (`src/sdk/device.ts`)       | tested  | preview | preview | preview | no      | device | device  | device     | tested  | tested   | tested        | no              | no            |
+| `battery` (`src/sdk/device.ts`)          | tested  | preview | preview | preview | no      | no     | device  | no         | tested  | no       | tested        | no              | no            |
+| `memory` (`src/sdk/device.ts`)           | tested  | preview | preview | preview | no      | device | device  | device     | tested  | tested   | tested        | no              | no            |
+| `keepAwake` (`src/sdk/device.ts`)        | preview | preview | preview | preview | no      | no     | device  | device     | tested  | tested   | tested        | no              | no            |
+| `openExternal` (`src/sdk/device.ts`)     | preview | preview | preview | preview | no      | no     | device  | device     | tested  | tested   | tested        | no              | no            |
+| `orientation` (`src/sdk/device.ts`)      | preview | preview | preview | preview | no      | no     | device  | no         | tested  | no       | no            | no              | no            |
+| `systemBars` (`src/sdk/device.ts`)       | tested  | preview | preview | preview | no      | no     | device  | no         | no      | no       | no            | no              | no            |
+| `appReview` (`src/sdk/device.ts`)        | no      | no      | no      | no      | no      | no     | preview | no         | tested  | no       | no            | no              | no            |
+| `locale` (`src/sdk/i18n.ts`)             | tested  | preview | preview | preview | no      | device | device  | device     | tested  | tested   | tested        | no              | no            |
+| `colorScheme` (`src/sdk/theme.tsx`)      | tested  | preview | preview | preview | no      | no     | device  | device     | tested  | tested   | tested        | no              | no            |
+| `keyEvents` (`src/sdk/shortcuts.ts`)     | tested  | preview | preview | preview | no      | device | preview | preview    | tested  | tested   | tested        | no              | no            |
+| `audio` (`src/sdk/audio.ts`)             | preview | preview | preview | preview | no      | no     | device  | device     | no      | no       | no            | no              | no            |
+| `mediaSession` (`src/sdk/media.ts`)      | preview | preview | preview | preview | no      | no     | device  | device     | tested  | tested   | no            | no              | no            |
+| `fullscreen` (`src/sdk/media.ts`)        | preview | preview | preview | preview | no      | no     | device  | preview    | no      | no       | no            | no              | no            |
+| `thumbnails` (`src/sdk/media.ts`)        | preview | preview | preview | preview | no      | no     | no      | no         | no      | no       | no            | no              | no            |
+| `mediaCapabilities` (`src/sdk/drm.ts`)   | tested  | preview | preview | preview | no      | no     | device  | device     | no      | no       | no            | no              | no            |
+| `camera` (`src/sdk/capture.ts`)          | preview | preview | preview | preview | no      | no     | preview | no         | no      | no       | no            | no              | no            |
+| `microphone` (`src/sdk/capture.ts`)      | preview | preview | preview | preview | no      | no     | no      | no         | no      | no       | no            | no              | no            |
+| `download` (`src/sdk/download.ts`)       | preview | preview | preview | preview | no      | no     | device  | device     | no      | no       | tested        | no              | no            |
+| `filePicker` (`src/sdk/files.ts`)        | preview | preview | preview | preview | no      | no     | preview | no         | no      | no       | tested        | no              | no            |
+| `fileSystem` (`src/sdk/files.ts`)        | no      | no      | no      | no      | no      | no     | device  | device     | tested  | tested   | tested        | no              | no            |
+| `geolocation` (`src/sdk/geolocation.ts`) | preview | preview | preview | preview | no      | no     | device  | preview    | tested  | no       | no            | no              | no            |
+| `sensors` (`src/sdk/sensors.ts`)         | tested  | preview | preview | preview | no      | no     | device  | no         | no      | no       | no            | no              | no            |
+| `maps` (`src/sdk/maps.ts`)               | preview | preview | preview | preview | no      | no     | device  | no         | no      | no       | no            | no              | no            |
+| `contacts` (`src/sdk/contacts.ts`)       | preview | preview | preview | preview | no      | no     | device  | no         | no      | no       | no            | no              | no            |
+| `calendar` (`src/sdk/calendar.ts`)       | preview | preview | preview | preview | no      | no     | device  | no         | no      | no       | no            | no              | no            |
+| `biometrics` (`src/sdk/biometrics.ts`)   | no      | no      | no      | no      | no      | no     | preview | no         | tested  | no       | no            | no              | no            |
+| `menus` (`src/sdk/menus.ts`)             | no      | no      | no      | no      | no      | no     | no      | no         | no      | no       | preview       | preview         | preview       |
+| `updateDelivery` (`src/sdk/update.ts`)   | no      | no      | no      | no      | no      | no     | no      | no         | no      | no       | preview       | preview         | preview       |
+| `updateSource` (`src/sdk/update.ts`)     | no      | no      | no      | no      | no      | no     | no      | no         | no      | no       | preview       | preview         | preview       |
 
 Notes:
 
@@ -190,9 +192,9 @@ Notes:
 
 ## Video
 
-| Feature                             | web     | tizen   | webos   | vizio   | roku   | android | android-tv | ios    | apple-tv | desktop-linux | desktop-windows | desktop-macos |
-| ----------------------------------- | ------- | ------- | ------- | ------- | ------ | ------- | ---------- | ------ | -------- | ------------- | --------------- | ------------- |
-| Playback adapter (`packages/video`) | preview | preview | preview | preview | device | preview | preview    | tested | tested   | preview       | preview         | preview       |
+| Feature                             | web     | tizen   | webos   | vizio   | ps4     | roku   | android | android-tv | ios    | apple-tv | desktop-linux | desktop-windows | desktop-macos |
+| ----------------------------------- | ------- | ------- | ------- | ------- | ------- | ------ | ------- | ---------- | ------ | -------- | ------------- | --------------- | ------------- |
+| Playback adapter (`packages/video`) | preview | preview | preview | preview | preview | device | preview | preview    | tested | tested   | preview       | preview         | preview       |
 
 Notes:
 
@@ -203,43 +205,43 @@ Notes:
 
 A command is `tested` for a target when a CI job runs it for that target and checks the result.
 
-| Feature                                                   | web     | tizen   | webos   | vizio   | roku    | android | android-tv | ios     | apple-tv | desktop-linux | desktop-windows | desktop-macos |
-| --------------------------------------------------------- | ------- | ------- | ------- | ------- | ------- | ------- | ---------- | ------- | -------- | ------------- | --------------- | ------------- |
-| `solid-platform init`                                     | tested  | tested  | tested  | tested  | tested  | preview | tested     | tested  | tested   | tested        | preview         | preview       |
-| `solid-platform build <target>`                           | tested  | tested  | tested  | tested  | tested  | preview | tested     | tested  | tested   | preview       | preview         | preview       |
-| `solid-platform dev <web\|desktop>`                       | preview | no      | no      | no      | no      | no      | no         | no      | no       | preview       | preview         | preview       |
-| `solid-platform doctor [target]`                          | tested  | tested  | tested  | tested  | preview | preview | preview    | preview | preview  | preview       | preview         | preview       |
-| `solid-platform run <target>`                             | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | preview       | preview         | preview       |
-| `solid-platform devices`                                  | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | preview       | preview         | preview       |
-| `solid-platform plugin new`                               | tested  | tested  | tested  | tested  | tested  | preview | tested     | tested  | tested   | tested        | preview         | preview       |
-| `solid-platform check [target]`                           | tested  | tested  | tested  | tested  | tested  | preview | preview    | preview | preview  | tested        | preview         | preview       |
-| `solid-platform explain <target> <module>`                | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | preview       | preview         | preview       |
-| `solid-platform package desktop`                          | no      | no      | no      | no      | no      | no      | no         | no      | no       | preview       | preview         | preview       |
-| `solid-platform certify roku <metrics.json>`              | no      | no      | no      | no      | preview | no      | no         | no      | no       | no            | no              | no            |
-| `solid-platform add video <release.tgz>`                  | preview | preview | preview | preview | preview | preview | tested     | tested  | tested   | preview       | preview         | preview       |
-| `solid-platform add desktop [<tarball> \| <url> \| none]` | no      | no      | no      | no      | no      | no      | no         | no      | no       | preview       | preview         | preview       |
+| Feature                                                   | web     | tizen   | webos   | vizio   | ps4     | roku    | android | android-tv | ios     | apple-tv | desktop-linux | desktop-windows | desktop-macos |
+| --------------------------------------------------------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ---------- | ------- | -------- | ------------- | --------------- | ------------- |
+| `solid-platform init`                                     | tested  | tested  | tested  | tested  | tested  | tested  | preview | tested     | tested  | tested   | tested        | preview         | preview       |
+| `solid-platform build <target>`                           | tested  | tested  | tested  | tested  | tested  | tested  | preview | tested     | tested  | tested   | preview       | preview         | preview       |
+| `solid-platform dev <web\|desktop>`                       | preview | no      | no      | no      | no      | no      | no      | no         | no      | no       | preview       | preview         | preview       |
+| `solid-platform doctor [target]`                          | tested  | tested  | tested  | tested  | preview | preview | preview | preview    | preview | preview  | preview       | preview         | preview       |
+| `solid-platform run <target>`                             | preview | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | preview       | preview         | preview       |
+| `solid-platform devices`                                  | preview | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | preview       | preview         | preview       |
+| `solid-platform plugin new`                               | tested  | tested  | tested  | tested  | preview | tested  | preview | tested     | tested  | tested   | tested        | preview         | preview       |
+| `solid-platform check [target]`                           | tested  | tested  | tested  | tested  | preview | tested  | preview | preview    | preview | preview  | tested        | preview         | preview       |
+| `solid-platform explain <target> <module>`                | preview | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | preview       | preview         | preview       |
+| `solid-platform package desktop`                          | no      | no      | no      | no      | no      | no      | no      | no         | no      | no       | preview       | preview         | preview       |
+| `solid-platform certify roku <metrics.json>`              | no      | no      | no      | no      | no      | preview | no      | no         | no      | no       | no            | no              | no            |
+| `solid-platform add video <release.tgz>`                  | preview | preview | preview | preview | preview | preview | preview | tested     | tested  | tested   | preview       | preview         | preview       |
+| `solid-platform add desktop [<tarball> \| <url> \| none]` | no      | no      | no      | no      | no      | no      | no      | no         | no      | no       | preview       | preview         | preview       |
 
 Notes:
 
 - `solid-platform build <target>`, desktop-linux: `tests/cli/projects-smoke.sh` builds it only when a runtime is present, and no CI job provides one; `tests/cli/desktop-smoke.sh` builds bytecode and proves a first frame on a machine with a runtime.
 - `solid-platform dev <web|desktop>`, web: Implemented for web; no test runs the dev server.
 - `solid-platform dev <web|desktop>`, desktop-linux, desktop-windows, desktop-macos: Builds and starts the app in the Rust + Hermes runtime; no automated test covers the dev window.
-- `solid-platform run <target>`, web, tizen, webos, vizio, roku, android, android-tv, ios, apple-tv, desktop-linux, desktop-windows, desktop-macos: Device commands ran against faked tools only; no test installs and launches an app with `run`.
-- `solid-platform devices`, web, tizen, webos, vizio, roku, android, android-tv, ios, apple-tv, desktop-linux, desktop-windows, desktop-macos: Device commands ran against faked tools only; no test lists a real device with this command.
-- `solid-platform explain <target> <module>`, web, tizen, webos, vizio, roku, android, android-tv, ios, apple-tv, desktop-linux, desktop-windows, desktop-macos: The resolver has a unit test (tests/cli/variants.test.mjs); the command is not run for a target in CI.
+- `solid-platform run <target>`, web, tizen, webos, vizio, ps4, roku, android, android-tv, ios, apple-tv, desktop-linux, desktop-windows, desktop-macos: Device commands ran against faked tools only; no test installs and launches an app with `run`.
+- `solid-platform devices`, web, tizen, webos, vizio, ps4, roku, android, android-tv, ios, apple-tv, desktop-linux, desktop-windows, desktop-macos: Device commands ran against faked tools only; no test lists a real device with this command.
+- `solid-platform explain <target> <module>`, web, tizen, webos, vizio, ps4, roku, android, android-tv, ios, apple-tv, desktop-linux, desktop-windows, desktop-macos: The resolver has a unit test (tests/cli/variants.test.mjs); the command is not run for a target in CI.
 - `solid-platform package desktop`, desktop-linux, desktop-windows, desktop-macos: The `solid-platform` command is not run in CI; the host's `packageDesktop` is exercised by `packages/host-desktop/tests/package/run.mjs`, and the `Desktop packages` workflow runs only when started by hand.
 - `solid-platform add desktop [<tarball> | <url> | none]`, desktop-linux, desktop-windows, desktop-macos: Installs the host package or downloads a prebuilt runtime. Resolution is unit-tested (`tests/cli/unit/add-desktop.test.mjs`); `tests/cli/projects-smoke.sh` installs it only when a built runtime is present, and no CI job provides one.
 
 ## Packaging
 
-| Feature                                         | web     | tizen   | webos  | vizio | roku   | android | android-tv | ios    | apple-tv | desktop-linux | desktop-windows | desktop-macos |
-| ----------------------------------------------- | ------- | ------- | ------ | ----- | ------ | ------- | ---------- | ------ | -------- | ------------- | --------------- | ------------- |
-| Web app with service worker and manifest        | preview | no      | no     | no    | no     | no      | no         | no     | no       | no            | no              | no            |
-| Browser TV package (Tizen `.wgt`, webOS `.ipk`) | no      | preview | tested | no    | no     | no      | no         | no     | no       | no            | no              | no            |
-| Roku channel zip                                | no      | no      | no     | no    | tested | no      | no         | no     | no       | no            | no              | no            |
-| Android debug APK                               | no      | no      | no     | no    | no     | preview | tested     | no     | no       | no            | no              | no            |
-| Apple simulator app                             | no      | no      | no     | no    | no     | no      | no         | tested | tested   | no            | no              | no            |
-| Desktop archive (`.tar.gz` with runtime)        | no      | no      | no     | no    | no     | no      | no         | no     | no       | tested        | no              | no            |
+| Feature                                         | web     | tizen   | webos  | vizio | ps4 | roku   | android | android-tv | ios    | apple-tv | desktop-linux | desktop-windows | desktop-macos |
+| ----------------------------------------------- | ------- | ------- | ------ | ----- | --- | ------ | ------- | ---------- | ------ | -------- | ------------- | --------------- | ------------- |
+| Web app with service worker and manifest        | preview | no      | no     | no    | no  | no     | no      | no         | no     | no       | no            | no              | no            |
+| Browser TV package (Tizen `.wgt`, webOS `.ipk`) | no      | preview | tested | no    | no  | no     | no      | no         | no     | no       | no            | no              | no            |
+| Roku channel zip                                | no      | no      | no     | no    | no  | tested | no      | no         | no     | no       | no            | no              | no            |
+| Android debug APK                               | no      | no      | no     | no    | no  | no     | preview | tested     | no     | no       | no            | no              | no            |
+| Apple simulator app                             | no      | no      | no     | no    | no  | no     | no      | no         | tested | tested   | no            | no              | no            |
+| Desktop archive (`.tar.gz` with runtime)        | no      | no      | no     | no    | no  | no     | no      | no         | no     | no       | tested        | no              | no            |
 
 Notes:
 
@@ -250,9 +252,9 @@ Notes:
 
 ## Internationalization
 
-| Feature                                                                     | web     | tizen   | webos   | vizio   | roku | android | android-tv | ios     | apple-tv | desktop-linux | desktop-windows | desktop-macos |
-| --------------------------------------------------------------------------- | ------- | ------- | ------- | ------- | ---- | ------- | ---------- | ------- | -------- | ------------- | --------------- | ------------- |
-| `Intl` (plural rules, number, date/time, relative time, list and collation) | preview | preview | preview | preview | no   | preview | preview    | preview | preview  | tested        | preview         | preview       |
+| Feature                                                                     | web     | tizen   | webos   | vizio   | ps4 | roku | android | android-tv | ios     | apple-tv | desktop-linux | desktop-windows | desktop-macos |
+| --------------------------------------------------------------------------- | ------- | ------- | ------- | ------- | --- | ---- | ------- | ---------- | ------- | -------- | ------------- | --------------- | ------------- |
+| `Intl` (plural rules, number, date/time, relative time, list and collation) | preview | preview | preview | preview | no  | no   | preview | preview    | preview | preview  | tested        | preview         | preview       |
 
 Notes:
 
@@ -268,18 +270,22 @@ A `tested` cell names the test file that covers it, the workflow and job that ru
 ### Tested
 
 - WebGL backend (`packages/renderer/webgl`), web: packages/platform/tests/webgl/conformance-webgl.test.tsx (test.yml: browser; scene conformance cases on real WebGL in Chromium, Firefox and WebKit)
+- WebGL backend (`packages/renderer/webgl`), ps4: packages/platform/tests/webgl/ps4-host.test.tsx (test.yml: browser; a scene mounted through `ps4Host(webHost)` draws in real WebGL in Chromium, Firefox and WebKit)
 - WebGL backend (`packages/renderer/webgl`), desktop-linux: packages/host-desktop/tests/scene/run.mjs (desktop-runtime.yml: linux; the shared fixture is rendered in the Rust + Hermes runtime and its pixels compared with Chromium)
 - Desktop runtime in Rust embedding Hermes, without Node, desktop-linux: packages/host-desktop/tests/run.sh (desktop-runtime.yml: linux; the runtime opens a window and the host suite runs the scene, input, text fields, services, accessibility, idle and packaging checks)
 - Canvas 2D backend (`packages/renderer/canvas`), web: packages/platform/tests/webgl/conformance-canvas.test.tsx (test.yml: browser; scene conformance cases on Canvas 2D in Chromium, Firefox and WebKit)
 - Host contract (`startApp` / `HostDefinition`), web: packages/platform/tests/cli/browser-smoke.mjs (test.yml: projects; the generated app starts through `startApp(webHost(...))` in Chromium)
+- Host contract (`startApp` / `HostDefinition`), ps4: packages/platform/tests/webgl/ps4-host.test.tsx (test.yml: browser; the scene starts through `startApp(ps4Host(webHost))` in Chromium, Firefox and WebKit)
 - Host contract (`startApp` / `HostDefinition`), ios, apple-tv: packages/platform/tests/cli/apple-smoke.sh (test.yml: apple; the generated app starts through `startApp(nativeHost(...))` in a simulator)
 - Host contract (`startApp` / `HostDefinition`), desktop-linux: packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; the generated entry calls `startApp(desktopHost())` and the host suite drives it)
 - Flex layout (`src/core/flexLayout.ts`), web: packages/platform/tests/webgl/flex-text.test.tsx (test.yml: browser; flex rows and columns with measured text in Chromium)
 - Text rendering, web: packages/platform/tests/webgl/flex-text.test.tsx and text-fit.test.tsx (test.yml: browser; text is laid out and measured by the WebGL backend in Chromium, and its ink stays inside the box its parent reserved)
 - Text rendering, desktop-linux: packages/host-desktop/tests/scene/run.mjs (desktop-runtime.yml: linux; the fixture's glyph pixels and per-cell text map are compared with Chromium's)
 - Focus and key handling, web: packages/platform/tests/cli/browser-smoke.mjs (test.yml: projects, called by tests/cli/projects-smoke.sh; Enter on the focused row of the generated web app in Chromium)
+- Focus and key handling, ps4: packages/platform/tests/webgl/ps4-host.test.tsx (test.yml: browser; pointer movement focuses and a click selects by pressing Enter on the focused node, in Chromium, Firefox and WebKit)
 - Focus and key handling, desktop-linux: packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; keys go through SDL's queue and, with xdotool, are real X events; focus moves with Right and Left)
 - Pointer and touch input (`src/sdk/input.ts`), web: packages/platform/tests/cli/browser-smoke.mjs (test.yml: projects; a real pointer clicks the generated app and the focused control is asserted in Chromium)
+- Pointer and touch input (`src/sdk/input.ts`), ps4: packages/platform/tests/webgl/ps4-host.test.tsx (test.yml: browser; real mouse events move focus and click-select in Chromium, Firefox and WebKit) and packages/platform/tests/host/ps4-input.test.tsx (test.yml: unit; a click on empty space presses Enter on the focused node)
 - Pointer and touch input (`src/sdk/input.ts`), desktop-linux: packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; a real mouse moves, clicks and scrolls, with xdotool when it is installed)
 - Accessibility semantics (`src/sdk/semantics.ts`), web: apps/showcase/tests/showcase.e2e.mjs (test.yml: showcase (chromium, firefox, webkit); a real keyboard walk checks the ARIA mirror at every step in each engine)
 - Accessibility semantics (`src/sdk/semantics.ts`), desktop-linux: packages/host-desktop/tests/a11y/run.mjs (desktop-runtime.yml: linux; the runtime's AT-SPI adapter over AccessKit is read from a test accessibility bus and its actions are invoked)
@@ -359,12 +365,13 @@ A `tested` cell names the test file that covers it, the workflow and job that ru
 - `sensors` (`src/sdk/sensors.ts`), web: apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `sensors` to report ok in headless Chromium)
 - `biometrics` (`src/sdk/biometrics.ts`), ios: packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (ios); the service probe gets the expected not-enrolled refusal in a simulator)
 - Playback adapter (`packages/video`), ios, apple-tv: packages/platform/tests/cli/apple-smoke.sh (test.yml: apple; AVPlayer opens a clip, plays until time advances, pauses and seeks in a simulator, not on a physical device)
-- `solid-platform init`, web, tizen, webos, vizio, roku, desktop-linux: packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; `init --targets web,desktop,roku,tizen,webos,vizio` from the packed package on Linux)
+- `solid-platform init`, web, tizen, webos, vizio, ps4, roku, desktop-linux: packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; `init --targets web,desktop,roku,tizen,webos,vizio,ps4` from the packed package on Linux)
 - `solid-platform init`, android-tv: packages/platform/tests/cli/android-smoke.sh (android.yml: android)
 - `solid-platform init`, ios, apple-tv: packages/platform/tests/cli/apple-smoke.sh (test.yml: apple)
 - `solid-platform build <target>`, web: packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; the build is then loaded in Chromium)
 - `solid-platform build <target>`, tizen: packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; build and build --legacy, each then loaded in Chromium)
 - `solid-platform build <target>`, webos, vizio: packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; each build is driven in Chromium; the webOS `.ipk` is asserted)
+- `solid-platform build <target>`, ps4: packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; the ES2017 build is driven in Chromium with the TV stage and pointer checks)
 - `solid-platform build <target>`, roku: packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; the channel zip's contents are asserted)
 - `solid-platform build <target>`, android-tv: packages/platform/tests/cli/android-smoke.sh (android.yml: android; the debug APK's contents are asserted)
 - `solid-platform build <target>`, ios, apple-tv: packages/platform/tests/cli/apple-smoke.sh (test.yml: apple; simulator build, then launched)

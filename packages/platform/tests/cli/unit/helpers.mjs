@@ -12,6 +12,7 @@ export const allTargets = [
   'tizen',
   'webos',
   'vizio',
+  'ps4',
   'roku',
   'android',
   'android-tv',

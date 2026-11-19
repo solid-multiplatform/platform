@@ -5,6 +5,7 @@
     "tizen",
     "webos",
     "vizio",
+    "ps4",
     "roku",
     "android",
     "android-tv",
@@ -32,6 +33,10 @@
             "tizen,webos,vizio": {
               "status": "preview",
               "note": "Same backend as web. The generated Tizen build is only smoke-run in desktop Chromium; no TV hardware."
+            },
+            "ps4": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/webgl/ps4-host.test.tsx (test.yml: browser; a scene mounted through `ps4Host(webHost)` draws in real WebGL in Chromium, Firefox and WebKit)"
             },
             "roku": {
               "status": "unavailable"
@@ -81,6 +86,10 @@
             "tizen,webos,vizio": {
               "status": "preview",
               "note": "`build <target> --legacy`. The Tizen legacy build is only smoke-run in desktop Chromium."
+            },
+            "ps4": {
+              "status": "preview",
+              "note": "`build ps4 --legacy` produces the Canvas 2D variant. No test drives a generated PS4 legacy build; the backend itself is tested on web."
             }
           }
         },
@@ -117,6 +126,10 @@
             "tizen,webos,vizio": {
               "status": "preview",
               "note": "Built on `webHost` and `startApp`; the generated build is driven in desktop Chromium, never on a TV."
+            },
+            "ps4": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/webgl/ps4-host.test.tsx (test.yml: browser; the scene starts through `startApp(ps4Host(webHost))` in Chromium, Firefox and WebKit)"
             },
             "roku": {
               "status": "device",
@@ -197,6 +210,10 @@
               "status": "preview",
               "note": "`tests/cli/browser-smoke.mjs --tv` (test.yml: projects) presses Enter on the focused row of the generated Tizen build, but in desktop Chromium. No test runs on a Tizen TV or with its remote."
             },
+            "ps4": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/webgl/ps4-host.test.tsx (test.yml: browser; pointer movement focuses and a click selects by pressing Enter on the focused node, in Chromium, Firefox and WebKit)"
+            },
             "roku": {
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435; focus moves, Select activates, Back is consumed, Play maps through `rokuKeyMap`; HOST RESULT passed=48 failed=0)",
@@ -225,6 +242,10 @@
             },
             "webos,vizio": {
               "status": "preview"
+            },
+            "ps4": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/webgl/ps4-host.test.tsx (test.yml: browser; real mouse events move focus and click-select in Chromium, Firefox and WebKit) and packages/platform/tests/host/ps4-input.test.tsx (test.yml: unit; a click on empty space presses Enter on the focused node)"
             },
             "android,ios": {
               "status": "preview",
@@ -1555,9 +1576,9 @@
             "status": "preview"
           },
           "cells": {
-            "web,tizen,roku,webos,vizio,desktop-linux": {
+            "web,tizen,roku,webos,vizio,ps4,desktop-linux": {
               "status": "tested",
-              "evidence": "packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; `init --targets web,desktop,roku,tizen,webos,vizio` from the packed package on Linux)"
+              "evidence": "packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; `init --targets web,desktop,roku,tizen,webos,vizio,ps4` from the packed package on Linux)"
             },
             "android-tv": {
               "status": "tested",
@@ -1587,6 +1608,10 @@
             "webos,vizio": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; each build is driven in Chromium; the webOS `.ipk` is asserted)"
+            },
+            "ps4": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; the ES2017 build is driven in Chromium with the TV stage and pointer checks)"
             },
             "roku": {
               "status": "tested",

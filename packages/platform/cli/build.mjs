@@ -1,5 +1,5 @@
 import { packageTV } from './tv-package.mjs';
-import { stageSources, browserTVs } from './variants.mjs';
+import { stageSources, browserTVs, tvBrowsers } from './variants.mjs';
 import { CliError } from './context.mjs';
 import { requireHostDesktopCli } from './host-desktop.mjs';
 import {
@@ -112,9 +112,15 @@ function roku(work, plugins, dir) {
 // `app` is how src/app starts: a component (its default export), or the
 // `App` and `appOptions` exports of an app written before that.
 function browserEntry(target, legacy, name, fonts, app, settings) {
-  const tv = browserTVs.includes(target);
+  const tv = tvBrowsers.includes(target);
   const options = `{ target: '${target}', namespace: ${JSON.stringify(name)} }`;
   const base = legacy ? 'canvasHost' : 'webHost';
+  const host =
+    target === 'ps4'
+      ? `ps4Host(${base}, ${options})`
+      : tv
+        ? `tvHost(${base}, ${options})`
+        : `${base}(${options})`;
   return `import { onCleanup } from 'solid-js';
 ${app.component ? "import { appEntry } from '@solid-multiplatform/platform/app/entry';" : "import { createComponent } from '@solid-multiplatform/platform';"}
 import { startApp } from '@solid-multiplatform/platform/host';
@@ -123,14 +129,14 @@ ${
     ? "import { canvasHost } from '@solid-multiplatform/platform/browser-tv/canvas';"
     : "import { webHost } from '@solid-multiplatform/platform/host/web';"
 }
-${tv ? "import { tvHost } from '@solid-multiplatform/platform/browser-tv/input';" : "import { registerServiceWorker } from '@solid-multiplatform/platform/pwa';"}
+${target === 'ps4' ? "import { ps4Host } from '@solid-multiplatform/platform/browser-tv/input';" : tv ? "import { tvHost } from '@solid-multiplatform/platform/browser-tv/input';" : "import { registerServiceWorker } from '@solid-multiplatform/platform/pwa';"}
 import { attachPlugins } from '@solid-multiplatform/platform/plugins';
 ${app.component ? `import App${app.options ? ', { options }' : ''} from './src/app';` : "import { App, appOptions } from './src/app';"}
 import { plugins } from './plugins.mjs';
 export function mount(host = { target: '${target}' }) {
   ${app.component ? `const entry = appEntry(App, plugins, ${settings}${app.options ? ', options' : ''});` : ''}
   return startApp(
-    ${tv ? `tvHost(${base}, ${options})` : `${base}(${options})`},
+    ${host},
     (context) => {
       // Plugins attach once the host's services exist and detach before they go.
       onCleanup(attachPlugins(plugins, host));
@@ -148,8 +154,8 @@ function buildTarget(root, target, dev, legacy) {
     throw new Error(
       'Use build for native packages, then launch them with the device SDK.',
     );
-  if (legacy && !browserTVs.includes(target))
-    throw new Error('--legacy requires a browser TV target');
+  if (legacy && !tvBrowsers.includes(target))
+    throw new Error('--legacy requires a browser TV or PS4 target');
   const dir = path.join(root, 'targets', target);
   const work = path.join(dir, 'work');
   if (existsSync(work) && !existsSync(path.join(work, '.generated')))
@@ -269,7 +275,7 @@ function buildTarget(root, target, dev, legacy) {
         path.join(publicDir, 'icon.png'),
       );
   }
-  const browser = target === 'web' || browserTVs.includes(target);
+  const browser = target === 'web' || tvBrowsers.includes(target);
   // Roku draws text with font files. The starter's (targets/roku/fonts, from
   // init) is imported by the generated entry, which registers it under the
   // family the app names; the Roku preset packages the file and its layout

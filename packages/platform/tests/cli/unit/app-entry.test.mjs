@@ -60,10 +60,22 @@ test('the design size reaches TV targets only', (t) => {
     }),
   });
   const size = 'designSize: {"width":1920,"height":1080}';
-  for (const target of ['tizen', 'webos', 'vizio', 'roku', 'android-tv', 'apple-tv'])
+  for (const target of [
+    'tizen',
+    'webos',
+    'vizio',
+    'ps4',
+    'roku',
+    'android-tv',
+    'apple-tv',
+  ])
     assert.ok(appSettings(root, target, "'r'").settings.includes(size), target);
   for (const target of ['web', 'android', 'ios', 'desktop'])
-    assert.equal(appSettings(root, target, "'r'").settings, '{ fonts: [] }', target);
+    assert.equal(
+      appSettings(root, target, "'r'").settings,
+      '{ fonts: [] }',
+      target,
+    );
 });
 
 test('Roku imports font files; `app.fonts` replaces the convention', (t) => {
@@ -116,7 +128,10 @@ test('Roku starts a component with startApp, not a mount wrapper', () => {
     rokuComponentEntry('{}', false, 'demo'),
     /import App from '\.\/src\/app';/,
   );
-  assert.match(rokuComponentEntry('{}', false, 'demo'), /appEntry\(App, plugins, \{\}\)/);
+  assert.match(
+    rokuComponentEntry('{}', false, 'demo'),
+    /appEntry\(App, plugins, \{\}\)/,
+  );
 });
 
 test('every self-rendering host mounts a component with the same statement', () => {
@@ -160,4 +175,3 @@ test('each NativeScript target starts its own host form through startApp', () =>
     assert.doesNotMatch(nativeComponent('{}', false, form), /, options\)/);
   }
 });
-
