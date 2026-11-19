@@ -25,10 +25,10 @@ export interface ScreenProps extends Omit<ColumnProps, 'padding' | 'scale'> {
 
 /**
  * The root of a screen: fills the viewport with the theme's background, keeps
- * its children inside the safe area, lays them out as a column and moves
- * focus between them. The column is inset rather than padded, so a `Spacer`
- * shares exactly the space inside the safe area. The geometry is computed
- * when the viewport changes, never per frame.
+ * its children inside the safe area and above the software keyboard, lays
+ * them out as a column and moves focus between them. The column is inset
+ * rather than padded, so a `Spacer` shares exactly the space inside the safe
+ * area. The geometry is computed when the viewport changes, never per frame.
  */
 export function Screen(props: ScreenProps): JSX.Element {
   const scope = useContext(AppScope);
@@ -55,10 +55,13 @@ export function Screen(props: ScreenProps): JSX.Element {
     const pad = (local.padding as number | undefined) ?? theme().spacing(8);
     const inset = (edge: number, bar: number) =>
       Math.max(0, edge - bar) / scale + pad;
+    // The keyboard covers the bottom of the screen whether or not the safe
+    // area already reserves it: take the larger of the two, once, here.
+    const bottom = Math.max(v.safeArea.bottom, v.keyboardInset);
     const left = inset(v.safeArea.left, barX);
     const top = inset(v.safeArea.top, barY);
     const w = width - left - inset(v.safeArea.right, barX);
-    const h = height - top - inset(v.safeArea.bottom, barY);
+    const h = height - top - inset(bottom, barY);
     return {
       scale,
       width: w,

@@ -112,6 +112,44 @@ v.describe('Screen', () => {
     v.expect(last!.y).toBe(724 - 30);
   });
 
+  v.test('keeps its content above the software keyboard', async () => {
+    resize(400, 800);
+    await mount(() => (
+      <Screen ref={column} padding={8} gap={4}>
+        <view width={50} height={30} />
+        <Spacer />
+        <view width={50} height={30} />
+      </Screen>
+    ));
+    v.expect(column.height).toBe(800 - 16);
+    // The keyboard inset arrives with a viewport update (the memo, not a frame).
+    updateViewport(
+      {
+        width: 400,
+        height: 800,
+        scale: 1,
+        safeArea: zeroInsets,
+        keyboardInset: 300,
+        reducedMotion: false,
+      },
+      null,
+    );
+    v.expect([column.y, column.height]).toEqual([8, 800 - 8 - (300 + 8)]);
+    // The safe area still wins when it is larger than the keyboard.
+    updateViewport(
+      {
+        width: 400,
+        height: 800,
+        scale: 1,
+        safeArea: { top: 0, right: 0, bottom: 420, left: 0 },
+        keyboardInset: 300,
+        reducedMotion: false,
+      },
+      null,
+    );
+    v.expect(column.height).toBe(800 - 8 - (420 + 8));
+  });
+
   v.test('scales a design size: extend fills, contain letterboxes', async () => {
     const [fit, setFit] = createSignal<'extend' | 'contain'>('extend');
     resize(1280, 960);
@@ -341,7 +379,9 @@ v.describe('hooks', () => {
 
   v.test('service hooks follow the service while mounted and are undefined without it', async () => {
     let listener: ((online: boolean) => void) | undefined;
+    let batteryListener: ((state: { level: number; charging: boolean }) => void) | undefined;
     let stopped = 0;
+    let batteryStopped = 0;
     const uninstall = installServices({
       connectivity: {
         online: () => false,
@@ -350,7 +390,13 @@ v.describe('hooks', () => {
           return () => stopped++;
         },
       },
-      battery: { get: () => Promise.resolve({ level: 0.5, charging: true }) },
+      battery: {
+        get: () => Promise.resolve({ level: 0.5, charging: true }),
+        subscribe(next) {
+          batteryListener = next;
+          return () => batteryStopped++;
+        },
+      },
     });
     let online!: () => boolean | undefined;
     let battery!: ReturnType<typeof useBattery>;
@@ -366,11 +412,15 @@ v.describe('hooks', () => {
     listener!(true);
     v.expect(online()).toBe(true);
     v.expect(battery()).toEqual({ level: 0.5, charging: true });
+    // A provider that reports changes keeps the hook current while mounted.
+    batteryListener!({ level: 0.2, charging: false });
+    v.expect(battery()).toEqual({ level: 0.2, charging: false });
     v.expect(missing()).toBe(undefined);
     v.expect(available('battery')).toBe(true);
     dispose!();
     dispose = undefined;
     v.expect(stopped).toBe(1);
+    v.expect(batteryStopped).toBe(1);
     uninstall();
   });
 });

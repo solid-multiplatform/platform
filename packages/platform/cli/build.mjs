@@ -1,7 +1,12 @@
 import { packageTV } from './tv-package.mjs';
 import { buildDesktopUI } from './desktop.mjs';
 import { stageSources, browserTVs } from './variants.mjs';
-import { appModule, appSettings, mountComponent } from './app-entry.mjs';
+import {
+  appModule,
+  appSettings,
+  mountComponent,
+  rokuComponentEntry,
+} from './app-entry.mjs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
@@ -252,9 +257,17 @@ function buildTarget(root, target, dev, legacy) {
           app,
           settings?.settings,
         )
-      : app.component
+      : app.component && target === 'roku'
+        ? // Roku starts the host itself: one startApp call, the app's
+          // default export, and the remote's media keys in the key map.
+          `${settings.imports}\n${rokuComponentEntry(
+            settings.settings,
+            app.options,
+            project(root).name,
+          )}`
+        : app.component
         ? // The app is a component: the entry wires it to the host. The same
-          // text on Roku, Android, Android TV, iOS and tvOS.
+          // text on Android, Android TV, iOS and tvOS.
           `${settings.imports}
 ${target === 'roku' ? "import { setRendererFactory } from '@solid-multiplatform/platform'; import { rokuHost } from '@solid-multiplatform/platform/roku';" : ''}
 import App${app.options ? ', { options }' : ''} from './src/app';
@@ -284,9 +297,9 @@ export function mount(host = { target: '${target}' }) {
   } catch (error) { detach(); throw error; }
 }
 `) +
-      (target === 'roku'
-        ? // The Roku host starts the app when its scene exists; the app's
-          // own mount() builds the renderer the host supplies.
+      (target === 'roku' && !app.component
+        ? // An app written before the component API: its own mount() builds
+          // the renderer the host supplies when the scene exists.
           `rokuHost({ namespace: ${JSON.stringify(project(root).name)} }).launch((context) => { setRendererFactory((settings) => context.createRenderer(settings), context.loadFonts); return mount({ target: 'roku', ...context }); });\n`
         : ''),
   );

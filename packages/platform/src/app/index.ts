@@ -24,6 +24,12 @@ export { Screen, type ScreenProps } from '../primitives/Screen.jsx';
 export { Text, type TextProps } from '../primitives/Text.jsx';
 export { Button, type ButtonProps } from '../primitives/Button.jsx';
 export { List, type ListProps } from '../primitives/List.jsx';
+export {
+  TextField,
+  SearchField,
+  type TextFieldProps,
+  type SearchFieldProps,
+} from '../primitives/TextField.jsx';
 export { Spacer } from '../primitives/Spacer.jsx';
 
 // Layout, lists and images.
@@ -49,6 +55,7 @@ export { KeepAliveRoute } from '../primitives/KeepAlive.jsx';
 // The host, plugins and services, without props.
 export {
   available,
+  deviceColorScheme,
   useBattery,
   useColorScheme,
   useConnectivity,

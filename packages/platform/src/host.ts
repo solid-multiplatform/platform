@@ -104,7 +104,10 @@ export interface AppOptions {
  * reads with `useHost`: the target's name and the host's native root.
  */
 export type HostWiring = Partial<
-  Pick<HostContext, 'keys' | 'pointer' | 'semantics' | 'target' | 'native'>
+  Pick<
+    HostContext,
+    'keys' | 'pointer' | 'semantics' | 'target' | 'native' | 'text'
+  >
 >;
 
 /**

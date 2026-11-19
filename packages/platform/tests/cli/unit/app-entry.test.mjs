@@ -6,6 +6,7 @@ import {
   appModule,
   appSettings,
   mountComponent,
+  rokuComponentEntry,
 } from '../../../cli/app-entry.mjs';
 import { scratch } from './helpers.mjs';
 
@@ -93,6 +94,27 @@ test('Roku imports font files; `app.fonts` replaces the convention', (t) => {
     imports: 'import font0 from "../fonts/Lato-Regular.ttf";',
     settings: '{ fonts: [{ fontFamily: "Lato", fontUrl: font0 }] }',
   });
+});
+
+test('Roku starts a component with startApp, not a mount wrapper', () => {
+  const body = rokuComponentEntry('{ fonts: [] }', true, 'demo');
+  assert.match(body, /import App, \{ options \} from '\.\/src\/app';/);
+  assert.match(body, /appEntry\(App, plugins, \{ fonts: \[\] \}, options\)/);
+  assert.match(body, /startApp\(\s*rokuHost\(\{ namespace: "demo" \}\),/);
+  // The component is the app; the project options keep the remote's key map.
+  assert.match(body, /return entry\.root\(\);/);
+  assert.match(body, /\{ \.\.\.entry\.options, keyMap: rokuKeyMap \}/);
+  assert.match(
+    body,
+    /import \{ rokuHost, rokuKeyMap \} from '@solid-multiplatform\/platform\/roku';/,
+  );
+  assert.doesNotMatch(body, /mountApp\(|export function mount/);
+  // Without an `options` export there is nothing to spread into appEntry.
+  assert.match(
+    rokuComponentEntry('{}', false, 'demo'),
+    /import App from '\.\/src\/app';/,
+  );
+  assert.match(rokuComponentEntry('{}', false, 'demo'), /appEntry\(App, plugins, \{\}\)/);
 });
 
 test('every self-rendering host mounts a component with the same statement', () => {
