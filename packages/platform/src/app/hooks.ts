@@ -22,7 +22,7 @@ import {
 import type {} from '../sdk/services.js';
 import {
   bindColorScheme,
-  useColorScheme as colorScheme,
+  useColorScheme as rawColorScheme,
   type ColorScheme,
 } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
@@ -121,23 +121,37 @@ export function useLifecycle(): Accessor<boolean | undefined> {
 }
 
 /**
- * The battery level and charging state, read once when the caller mounts
- * (hosts report it on request; nothing polls). `undefined` without a battery.
+ * The battery level and charging state, kept current while the caller is
+ * mounted on a host that reports changes, and read once on a host that only
+ * answers on request (nothing polls). `undefined` without a battery.
  */
 export function useBattery(): Accessor<BatteryState | undefined> {
   return watch('battery', (port, set) => {
     void port.get().then(set, () => {});
+    return port.subscribe?.(set);
   });
 }
 
 /**
  * The system's light or dark appearance, followed while the caller is
  * mounted. `light` on a host that does not report one.
+ *
+ * The package root exports a name of the same spelling as the raw accessor
+ * itself; `/app`'s hook returns an accessor and binds the host service for
+ * the caller's lifetime. Import `deviceColorScheme` when the raw accessor is
+ * what you want.
  */
 export function useColorScheme(): Accessor<ColorScheme> {
   onCleanup(bindColorScheme());
-  return colorScheme;
+  return rawColorScheme;
 }
+
+/**
+ * The reactive device colour scheme, without binding the service. The same
+ * accessor as the package root's `useColorScheme`; named separately here so
+ * it cannot be confused with `/app`'s hook.
+ */
+export const deviceColorScheme: Accessor<ColorScheme> = rawColorScheme;
 
 /** The app's current locale as a BCP 47 tag. */
 export function useLocale(): Accessor<string> {

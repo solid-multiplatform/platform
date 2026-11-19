@@ -7,6 +7,7 @@
 import {
   createComponent,
   onCleanup,
+  useContext,
   type Component,
   type JSXElement,
 } from 'solid-js';
@@ -18,7 +19,7 @@ import {
   themeFor,
   type Theme,
 } from '../sdk/theme.jsx';
-import { AppScope, type DesignSize } from './context.js';
+import { AppScope, HostScope, type DesignSize } from './context.js';
 
 /** The `app` settings of the project config, and the `options` export of `src/app.tsx`. */
 export interface AppSettings extends AppOptions {
@@ -45,8 +46,11 @@ export function appEntry(
     Config.fontSettings = { ...Config.fontSettings, fontFamily };
   const root = () => {
     if (theme === 'system') onCleanup(bindColorScheme());
+    // `/app` fields take the host's editor from here, so an app never has to
+    // wrap them in `Controls`.
+    const text = useContext(HostScope)?.text;
     return createComponent(AppScope.Provider, {
-      value: { plugins, designSize },
+      value: { plugins, designSize, text },
       get children() {
         return createComponent(ThemeProvider, {
           // A named scheme still follows the high-contrast and text-scale

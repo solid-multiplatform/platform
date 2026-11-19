@@ -80,12 +80,13 @@ export default function App() {
 }
 ```
 
-- `Screen` fills the viewport, keeps its children inside the safe area and stacks them. No coordinates and no viewport arithmetic: the same file runs on a TV, in a browser window and on a phone.
+- `Screen` fills the viewport, keeps its children inside the safe area and above the software keyboard, and stacks them. No coordinates and no viewport arithmetic: the same file runs on a TV, in a browser window and on a phone.
 - `Button` is as wide as its label. A remote's OK key, Enter, a mouse click and a tap all call `onPress`, and a screen reader sees a button with that label.
 - `List` moves focus through its items with the arrow keys and reports the one that was activated.
 - `usePlugins` gives the plugins of the target being built. Nothing is passed into `App`.
+- `TextField` is a labelled field: focus it and press Enter and the host's keyboard takes over. `SearchField` is the same with a search keyboard. No `Controls` wrapper and no coordinates.
 
-There is no `mount` function. The CLI generates each target's entry in `targets/<target>/work`, and that entry starts the component on the target's host with the fonts, design size and theme from `solid-platform.config.json`. [The app API](/app-api.md) lists every component, hook and setting.
+There is no `mount` function. The CLI generates each target's entry in `targets/<target>/work`, and that entry starts the component on the target's host with the fonts, design size and theme from `solid-platform.config.json`. Roku is no exception: its entry calls `startApp(rokuHost(...), App, options)` and adds the remote's media keys to the key map. [The app API](/app-api.md) lists every component, hook and setting.
 
 ## Project layout
 

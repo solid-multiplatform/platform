@@ -1,7 +1,7 @@
 // What a generated entry does for a component app: `appEntry` splits the
 // project's settings from the host options, and `startApp` hands the
 // component its host, so the app takes no props.
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { Config } from '@solid-multiplatform/platform';
 import {
   Screen,
@@ -14,6 +14,7 @@ import {
 import { appEntry } from '@solid-multiplatform/platform/app/entry';
 import { startApp, type HostContext } from '@solid-multiplatform/platform/host';
 import { domHost } from '@solid-multiplatform/platform/host/dom';
+import { rokuKeyMap } from '../../hosts/roku/keys.js';
 
 globalThis.ResizeObserver = class {
   observe() {}
@@ -77,6 +78,34 @@ test('a component app reads its host, plugins and theme without props', async ()
   expect(host.capabilities.inputs).toEqual(['remote']);
   expect(host.native).toBe(context.native);
   expect(seen).toEqual(['g', 'dark']);
+  (stop as () => void)();
+  root.remove();
+});
+
+test('a component app starts through startApp with the Roku key map options', async () => {
+  const root = document.body.appendChild(document.createElement('div'));
+  let host!: HostInfo;
+  const onInfo = vi.fn();
+  function App() {
+    host = useHost();
+    return (
+      <view autofocus width={40} height={20} onInfo={onInfo}>
+        <Text>Roku</Text>
+      </view>
+    );
+  }
+  const entry = appEntry(App, {}, {});
+  // The generated Roku entry passes the app entry's options plus its media keys.
+  const stop = startApp(
+    domHost({ root, target: 'roku', namespace: 'entry-test' }),
+    entry.root,
+    { ...entry.options, keyMap: rokuKeyMap },
+  );
+  await new Promise((resolve) => setTimeout(resolve, 5));
+
+  expect(host.target).toBe('roku');
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Info' }));
+  expect(onInfo).toHaveBeenCalledTimes(1);
   (stop as () => void)();
   root.remove();
 });

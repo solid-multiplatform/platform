@@ -1,0 +1,183 @@
+import { createEffect, createSignal, onCleanup, useContext, type JSX } from 'solid-js';
+import type { ElementNode } from '@solid-multiplatform/platform';
+import { AppScope } from '../app/context.js';
+import type { Editor, EditorHost, EditorOptions } from '../sdk/editor.js';
+import type { Rect } from '../sdk/input.js';
+import { useTheme } from '../sdk/theme.jsx';
+
+export interface TextFieldProps {
+  /** Drawn above the field and given to assistive technology. */
+  label: string;
+  /** Shown muted while the value is empty. */
+  placeholder?: string;
+  /** The current value; leave it out to let the field keep its own. */
+  value?: string;
+  onChange?: (value: string) => void;
+  onSubmit?: (value: string) => void;
+  /** Draw bullets and ask the host for a password editor. */
+  password?: boolean;
+  /** Ask the host for a numeric keyboard (one-time code layout). */
+  numeric?: boolean;
+  multiline?: boolean;
+  autofocus?: boolean;
+  disabled?: boolean;
+  width?: number;
+  height?: number;
+  /** The host keyboard hint; derived from `password`/`numeric` when omitted. */
+  purpose?: EditorOptions['purpose'];
+}
+
+/** The editor options a field asks the host for. */
+function purposeOf(props: TextFieldProps): EditorOptions['purpose'] {
+  if (props.purpose) return props.purpose;
+  if (props.password) return 'new-password';
+  if (props.numeric) return 'one-time-code';
+  return 'text';
+}
+
+/**
+ * The position and size of a node on screen, following the scale of its
+ * ancestors. Host editors that draw over the scene (the web input) place
+ * themselves with it.
+ */
+function screenRect(node: ElementNode): Rect {
+  const chain: ElementNode[] = [];
+  for (let n: ElementNode | undefined = node; n; n = n.parent) chain.unshift(n);
+  let x = 0;
+  let y = 0;
+  let scale = 1;
+  for (const n of chain) {
+    x += (n.x || 0) * scale;
+    y += (n.y || 0) * scale;
+    scale *= n.scale || 1;
+  }
+  return {
+    x,
+    y,
+    width: node.width * scale,
+    height: node.height * scale,
+  };
+}
+
+/**
+ * A labelled text field drawn in the scene. Focus it and press Enter (or
+ * click it) to type: the host's editor takes over with its own keyboard,
+ * IME and autofill, and every change calls `onChange`. No `Controls` wrapper
+ * and no bounds are needed — the field gets the host editor from the app
+ * context. Without an editor it still draws label, placeholder and value.
+ */
+export function TextField(props: TextFieldProps): JSX.Element {
+  const theme = useTheme();
+  const host: EditorHost | undefined = useContext(AppScope)?.text;
+  const [inner, setInner] = createSignal(props.value ?? '');
+  let node: ElementNode | undefined;
+  let editor: Editor | undefined;
+
+  const value = () => props.value ?? inner();
+  const masked = (text: string) =>
+    props.password ? '•'.repeat([...text].length) : text;
+  const shown = () => {
+    const text = value();
+    return text === '' ? props.placeholder ?? '' : masked(text);
+  };
+
+  const bounds = () => {
+    const rect = node ? screenRect(node) : { x: 0, y: 0, width: 0, height: 0 };
+    return {
+      ...rect,
+      width: rect.width || props.width || 0,
+      height:
+        rect.height ||
+        props.height ||
+        Math.round(theme.typography.body * 1.35) +
+          2 * theme.spacing(2),
+    };
+  };
+
+  const open = () => {
+    if (props.disabled || host === undefined) return;
+    if (editor === undefined) {
+      editor = host.createEditor({
+        label: props.label,
+        value: value(),
+        purpose: purposeOf(props),
+        multiline: props.multiline,
+        onChange(next) {
+          setInner(next);
+          props.onChange?.(next);
+        },
+        onSubmit: props.onSubmit,
+      });
+    }
+    editor.setBounds(bounds());
+    editor.focus();
+  };
+
+  createEffect(() => {
+    if (props.value !== undefined) setInner(props.value);
+    if (editor !== undefined) editor.setValue(value());
+  });
+  onCleanup(() => {
+    editor?.dispose();
+    editor = undefined;
+  });
+
+  return (
+    <view
+      ref={(el) => (node = el)}
+      display="flex"
+      flexDirection="column"
+      alignItems="flexStart"
+      gap={theme.spacing(1)}
+      width={props.width}
+      height={props.height}
+      padding={theme.spacing(2)}
+      autofocus={props.autofocus}
+      skipFocus={props.disabled}
+      ariaDisabled={props.disabled}
+      role="textbox"
+      ariaLabel={props.label}
+      forwardStates
+      style={{
+        color: theme.colors.surface,
+        $focus: { color: theme.colors.focus },
+        $hover: { color: theme.colors.border },
+      }}
+      onEnter={open}
+      onMouseClick={open}
+    >
+      <text
+        fontSize={theme.typography.label}
+        color={theme.colors.textMuted}
+      >
+        {props.label}
+      </text>
+      <text
+        fontSize={theme.typography.body}
+        color={
+          value() === ''
+            ? theme.colors.textMuted
+            : theme.colors.text
+        }
+      >
+        {shown()}
+      </text>
+    </view>
+  );
+}
+
+export interface SearchFieldProps extends Omit<TextFieldProps, 'password'> {
+  /** Defaults to the label. */
+  placeholder?: string;
+}
+
+/** A text field that asks the host for its search keyboard. */
+export function SearchField(props: SearchFieldProps): JSX.Element {
+  return (
+    <TextField
+      {...props}
+      placeholder={props.placeholder ?? props.label}
+      purpose="search"
+    />
+  );
+}

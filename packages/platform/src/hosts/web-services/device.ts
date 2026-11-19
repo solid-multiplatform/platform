@@ -47,14 +47,52 @@ export const deviceInfo: DeviceInfoPort = {
   },
 };
 
+interface BatteryManagerLike {
+  level: number;
+  charging: boolean;
+  addEventListener?(type: string, listener: () => void): void;
+  removeEventListener?(type: string, listener: () => void): void;
+}
+
+const batteryManager = (): Promise<BatteryManagerLike> | undefined => {
+  const nav = navigator as {
+    getBattery?(): Promise<BatteryManagerLike>;
+  };
+  return typeof nav.getBattery === 'function' ? nav.getBattery() : undefined;
+};
+
+const stateOf = (battery: BatteryManagerLike) => ({
+  level: battery.level,
+  charging: battery.charging,
+});
+
 export const battery: BatteryPort = {
   async get() {
-    const nav = navigator as {
-      getBattery?(): Promise<{ level: number; charging: boolean }>;
+    const pending = batteryManager();
+    return pending ? stateOf(await pending) : undefined;
+  },
+  subscribe(listener) {
+    const pending = batteryManager();
+    if (!pending) return () => {};
+    let disposed = false;
+    let stop = () => {};
+    void pending.then(
+      (manager) => {
+        if (disposed) return;
+        const update = () => listener(stateOf(manager));
+        for (const type of ['levelchange', 'chargingchange'])
+          manager.addEventListener?.(type, update);
+        stop = () => {
+          for (const type of ['levelchange', 'chargingchange'])
+            manager.removeEventListener?.(type, update);
+        };
+      },
+      () => {},
+    );
+    return () => {
+      disposed = true;
+      stop();
     };
-    if (typeof nav.getBattery !== 'function') return undefined;
-    const state = await nav.getBattery();
-    return { level: state.level, charging: state.charging };
   },
 };
 
