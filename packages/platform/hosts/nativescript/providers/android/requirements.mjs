@@ -31,6 +31,7 @@ const SERVICES = {
   },
   haptics: { phone: true, permissions: [permission('VIBRATE')] },
   deviceInfo: {},
+  display: {},
   battery: {},
   memory: {},
   keepAwake: {},

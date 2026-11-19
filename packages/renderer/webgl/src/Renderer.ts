@@ -92,6 +92,8 @@ export class Renderer extends RendererCore {
   private readonly uploader: Uploader;
   private readonly memory: MemoryManager;
   private readonly loop: FrameLoop;
+  /** Stops the platform's display-rate notifications (destroy). */
+  private readonly stopFramePeriod: () => void;
   /** Turns frame deltas into animation steps (animationSnapRate). */
   private readonly snapper = new FrameSnapper();
   /** The renderer created the canvas (destroy detaches only that one). */
@@ -316,6 +318,15 @@ export class Renderer extends RendererCore {
       },
     });
     loop.targetFrameTime = frameTime(s.targetFPS);
+    // Uncapped, the wake frame steps by the panel's period when the platform
+    // knows it (a 120 Hz panel steps 8.33 ms, not 16.67); a mode switch
+    // afterwards updates it. The cap, when set, is the nominal anyway.
+    if (s.targetFPS <= 0) {
+      const period = platform.framePeriod();
+      if (period > 0) {
+        loop.nominalFrameTime = period;
+      }
+    }
     this.snapper.period = frameTime(s.animationSnapRate);
     loop.wakeFallbackDelay = s.wakeFallbackDelay;
     this.loop = loop;
@@ -356,6 +367,14 @@ export class Renderer extends RendererCore {
       this.applyInspector(false);
     }
     this.applyTelemetry();
+    // A display mode switch after construction updates the wake step. Last,
+    // once nothing above can throw: a failed constructor would otherwise
+    // leave the platform's listener behind.
+    this.stopFramePeriod = platform.onFramePeriodChange((period) => {
+      if (period > 0 && this.settings.targetFPS <= 0) {
+        loop.nominalFrameTime = period;
+      }
+    });
     // The root's creation requested a frame before the loop existed.
     loop.schedule();
     // The idle warm-up (spec 8.1): the renderer waits between booting and
@@ -758,6 +777,12 @@ export class Renderer extends RendererCore {
     }
     if ((effects & APPLY_TARGET_FPS) !== 0) {
       this.loop.targetFrameTime = frameTime(s.targetFPS);
+      if (s.targetFPS <= 0) {
+        const period = this.platform.framePeriod();
+        if (period > 0) {
+          this.loop.nominalFrameTime = period;
+        }
+      }
     }
     if ((effects & APPLY_ANIMATION_SNAP) !== 0) {
       this.snapper.period = frameTime(s.animationSnapRate);
@@ -828,6 +853,7 @@ export class Renderer extends RendererCore {
     }
     this.destroyed = true;
     this.loop.stop();
+    this.stopFramePeriod();
     const telemetry = this.telemetry;
     if (telemetry !== null) {
       telemetry.stop();

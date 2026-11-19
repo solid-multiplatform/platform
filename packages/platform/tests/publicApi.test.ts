@@ -28,7 +28,7 @@ import * as appEntryModule from '@solid-multiplatform/platform/app/entry';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 288 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 292 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -127,6 +127,8 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'deviceInfo',
       'deviceMemory',
       'dir',
+      'displayInfo',
+      'displayRefreshRate',
       'downloadBytes',
       'downloadFile',
       'downloadText',
@@ -215,6 +217,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'mod',
       'moveItem',
       'normalizeWindowBounds',
+      'onDisplayChange',
       'openDirections',
       'openExternal',
       'openMap',
@@ -223,6 +226,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'pickContact',
       'pickFiles',
       'pickedFileFromWeb',
+      'preferDisplayRefreshRate',
       'publicEnvironment',
       'readClipboard',
       'readFileBytes',

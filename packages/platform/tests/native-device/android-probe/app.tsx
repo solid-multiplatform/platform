@@ -10,6 +10,8 @@ import { Application, File, knownFolders } from '@nativescript/core';
 import {
   Config,
   createRenderer,
+  displayInfo,
+  displayRefreshRate,
   loadFonts,
 } from '@solid-multiplatform/platform';
 import {
@@ -236,6 +238,7 @@ export function mount(
     deviceInfo: () => device.deviceInfo(),
     battery: () => device.batteryState(),
     memory: () => device.deviceMemory(),
+    display: () => ({ ...displayInfo(), current: displayRefreshRate() }),
     keepAwake: async (args) => {
       await device.keepAwake(args.on === '1');
       return args.on === '1';

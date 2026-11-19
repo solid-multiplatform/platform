@@ -65,6 +65,30 @@ export abstract class Platform {
   abstract setTimeout(callback: () => void, ms: number): void;
 
   /**
+   * The display's frame period in ms (1000 / refresh rate), or 0 when the
+   * host has no display to ask. The uncapped loop steps the first frame after
+   * a sleep or a resume by its nominal frame; that is 60 fps on the web,
+   * where a page has no refresh-rate API, and the panel's real period on a
+   * host that knows it (a 120 Hz panel: 8.33 ms). Read once per frame at
+   * most: the loop uses frame timestamps, not this.
+   */
+  framePeriod(): number {
+    return 0;
+  }
+
+  /**
+   * Calls `listener` with the new frame period when the display's refresh
+   * rate changes (a mode switch to 90 or 120 Hz, a panel at 60 Hz moving to
+   * its native rate). Returns a function that stops the notifications;
+   * nothing is registered by default, and a host that reports a fixed period
+   * need not implement it.
+   */
+  onFramePeriodChange(listener: (period: number) => void): () => void {
+    void listener;
+    return () => {};
+  }
+
+  /**
    * The page is hidden, so its animation frames are paused on purpose: the
    * loop then arms no wake fallback. Shown by default.
    */

@@ -1,21 +1,66 @@
 import { tvBackingScale } from './scale.mjs';
-import { File, knownFolders, Http } from '@nativescript/core';
+import { Application, File, knownFolders, Http } from '@nativescript/core';
 import type { Canvas } from '@nativescript/canvas';
 import { TvPlatform } from '@solid-multiplatform/platform/nativescript';
 import { setDefaultPlatform } from '@solid-multiplatform/renderer/platform';
 import type { RendererMainSettings } from '@solid-multiplatform/renderer';
 import { createNativeContext } from './gl-context.mjs';
 import { httpArrayBuffer } from './http-buffer.android';
+import { bindDisplayRefreshRate } from './refresh-rate.mjs';
+import {
+  currentDisplayRefreshRate,
+  display,
+} from '../nativescript/providers/android/display.ts';
+import type { AndroidApp } from '../nativescript/providers/android/runtime.ts';
 
 let surface: Canvas;
 let tvSurface = false;
 let webgl2 = true;
 const glOptions = { threaded: true, desynchronized: false };
 
+/** NativeScript's application object, as the Android providers read it. */
+const androidApp = (): AndroidApp | undefined =>
+  Application.android as unknown as AndroidApp | undefined;
+
+/** The default display's current refresh rate, or 0 when there is none yet. */
+const refreshRate = (): number => {
+  const app = androidApp();
+  if (app === undefined) return 0;
+  try {
+    return currentDisplayRefreshRate(app);
+  } catch {
+    return 0;
+  }
+};
+
 /** The root uses the native view; probes and SVG rasterization get private canvases. */
 export class AndroidPlatform extends TvPlatform {
   override present(): void {
     // Android presents the native surface after each frame.
+  }
+  /**
+   * The panel's frame period (1000 / refresh rate): the uncapped loop's
+   * nominal step after a wake, so a 120 Hz panel steps 8.33 ms there, not
+   * the web's 16.67. 0 while there is no activity to ask.
+   */
+  override framePeriod(): number {
+    const rate = refreshRate();
+    return rate > 0 ? 1000 / rate : 0;
+  }
+
+  /** The display service's mode-change listener, for the nominal period. */
+  override onFramePeriodChange(listener: (period: number) => void): () => void {
+    const app = androidApp();
+    if (app === undefined) return () => {};
+    try {
+      return (
+        display(app).subscribe?.((info) => {
+          if (info.refreshRate > 0) listener(1000 / info.refreshRate);
+        }) ?? (() => {})
+      );
+    } catch {
+      return () => {};
+    }
   }
   override async fetch(url: string, type: any): Promise<unknown> {
     // Query strings distinguish renderer cache entries, not files in the APK.
@@ -118,4 +163,8 @@ export function bindAndroidCanvas(canvas: Canvas, isTV = false) {
   const selected = createNativeContext(canvas, glOptions);
   webgl2 = selected.webgl2;
   setDefaultPlatform(AndroidPlatform);
+  // Ask for the panel's highest mode and follow it until unbound. Without
+  // the request Android keeps the window at the display's default (60 Hz)
+  // mode even on a 120 Hz panel.
+  return bindDisplayRefreshRate(canvas);
 }

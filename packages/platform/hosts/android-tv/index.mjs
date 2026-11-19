@@ -23,7 +23,7 @@ export function runAndroidTV(
     'android-tv',
     loadApp,
     (canvas, bridge, _platform, _root, history, back) => {
-      bindAndroidCanvas(canvas, true);
+      const unbindDisplay = bindAndroidCanvas(canvas, true);
       // The device's services, installed once. Nothing in them runs until
       // the app first uses one. The key bridge is the app's key source, so
       // the key-events service listens on it rather than on a `document`.
@@ -43,6 +43,7 @@ export function runAndroidTV(
       );
       return () => {
         unbindInput();
+        unbindDisplay();
         removeServices();
       };
     },
