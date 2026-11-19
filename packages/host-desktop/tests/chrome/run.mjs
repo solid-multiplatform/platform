@@ -215,7 +215,9 @@ function runtime(args, { extra = {}, onLine = () => {}, timeout = 120000 } = {})
  * `predicate`. Reading the array the runtime's listener appends to means an
  * event that arrives before the wait starts is not lost.
  */
-async function nextLine(lines, from, kind, predicate = () => true, ms = 6000) {
+// Hosted runners are slow enough that a window can take many seconds to
+// report its first state; the bound only has to catch a hang.
+async function nextLine(lines, from, kind, predicate = () => true, ms = 30000) {
   for (let waited = 0; waited < ms; waited += 30) {
     const found = lines
       .slice(from)
