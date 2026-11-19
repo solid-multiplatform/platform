@@ -260,7 +260,9 @@ jobs:
           path: |
             hermes
             hermes-build
-          key: hermes-${{ runner.os }}-${{ runner.arch }}-${{ env.HERMES_SHA }}-macos
+          # `macos11`: the deployment target is part of the build, and an
+          # archive made for the runner's own macOS fails the link below.
+          key: hermes-${{ runner.os }}-${{ runner.arch }}-${{ env.HERMES_SHA }}-macos11
       - name: Build Hermes
         if: steps.hermes.outputs.cache-hit != 'true'
         run: |
@@ -271,9 +273,14 @@ jobs:
           git -C hermes checkout -q FETCH_HEAD
           test "$(git -C hermes rev-parse HEAD)" = "$HERMES_SHA"
           # The same configuration as Linux (`-DHERMES_ENABLE_INTL=OFF`),
-          # for this runner's architecture.
+          # for this runner's architecture. The deployment target is the
+          # one Rust targets by default: without it Hermes and SDL objects
+          # are built for the runner's macOS (15.x) and the link against a
+          # binary for 11.0 fails on compiler-rt's availability symbol.
+          export MACOSX_DEPLOYMENT_TARGET=11.0
           cmake -S hermes -B hermes-build -G Ninja -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_OSX_ARCHITECTURES=arm64 -DHERMES_ENABLE_INTL=OFF
+            -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
+            -DHERMES_ENABLE_INTL=OFF
           ninja -C hermes-build hermesvm hermesNapi
       - name: Save the Hermes build
         if: steps.hermes.outputs.cache-hit != 'true'
@@ -289,12 +296,18 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             packages/host-desktop/native/target
-          key: desktop-cargo-${{ runner.os }}-${{ runner.arch }}-${{ env.HERMES_SHA }}-static-${{ hashFiles('packages/host-desktop/native/Cargo.lock') }}
+          # `macos11` keeps SDL and the glue compiled for the same target as
+          # Hermes; a target directory built for 15.x would not be reused.
+          key: desktop-cargo-${{ runner.os }}-${{ runner.arch }}-${{ env.HERMES_SHA }}-static-macos11-${{ hashFiles('packages/host-desktop/native/Cargo.lock') }}
       - name: Build the runtime
         working-directory: packages/host-desktop/native
         run: |
           set -euo pipefail
           export HERMES_SRC="$GITHUB_WORKSPACE/hermes" HERMES_BUILD="$GITHUB_WORKSPACE/hermes-build"
+          # The same floor Hermes was built with: the glue, the SDL that
+          # `sdl3-sys` compiles and rustc itself must agree on it, or the
+          # link mixes objects for two macOS versions.
+          export MACOSX_DEPLOYMENT_TARGET=11.0
           # SDL is compiled into the executable: the runner has none.
           cargo build --release --locked --features static-sdl
           ./target/release/solid-desktop --diagnostics
