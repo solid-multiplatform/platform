@@ -8,8 +8,65 @@ import {
   activeElement,
   setActiveElement as setActiveElementSignal,
 } from './activeElement.js';
+import { focusVisibility } from '../sdk/capabilities.js';
 
 let _signalWrapper: (cb: () => void) => void = (cb) => cb();
+
+// ---------------------------------------------------------------------------
+// Focus visibility
+// ---------------------------------------------------------------------------
+//
+// Focus always exists (so Enter works from launch), but on a pointer-first
+// host the ring is only drawn after a keyboard/D-pad interaction, as the
+// web's `:focus-visible` does. The policy lives in the host's capabilities;
+// this module keeps the modality the policy is about, and owns the `$focus`
+// state that styles are drawn from.
+//
+// Turning the ring on or off touches only the current focus path: nothing
+// here schedules work while the scene is idle.
+
+/** Whether the last focus-moving interaction was a keyboard/D-pad one. */
+const [focusVisible, setFocusVisible] = createSignal(false);
+export { focusVisible };
+
+/**
+ * Whether a focused element should draw its focus style right now, given
+ * the host's {@link focusVisibility} policy.
+ */
+function isFocusVisible(): boolean {
+  const policy = focusVisibility();
+  if (policy === 'always') return true;
+  if (policy === 'never') return false;
+  return focusVisible();
+}
+
+const applyFocusState = (
+  path: readonly ElementNode[],
+  visible: boolean,
+): void => {
+  for (let i = 0; i < path.length; i++) {
+    const elm = path[i]!;
+    if (visible) elm.states?.add(Config.focusStateKey);
+    else elm.states?.remove(Config.focusStateKey);
+  }
+};
+
+/**
+ * A pointer press focused something: hide the ring until a key moves focus.
+ * Called by the scene pointer for every press; a policy of `always` ignores it.
+ */
+export function hideFocusVisible(): void {
+  if (focusVisibility() !== 'auto' || !focusVisible()) return;
+  setFocusVisible(false);
+  applyFocusState(focusPath(), false);
+}
+
+/** A keyboard/D-pad key arrived: from now on focus draws its ring. */
+const showFocusVisible = (): void => {
+  if (focusVisibility() !== 'auto' || focusVisible()) return;
+  setFocusVisible(true);
+  applyFocusState(focusPath(), true);
+};
 
 type KeyMapEntries = Record<KeyNameOrKeyCode, string>;
 
@@ -279,17 +336,19 @@ const updateFocusPath = (
   currentFocusedElm: ElementNode,
   prevFocusedElm: ElementNode | undefined,
 ) => {
+  const prevFp = focusPath();
+  const visible = isFocusVisible();
   let current: ElementNode | undefined = currentFocusedElm;
   // fp escapes through the focusPath signal, so it must be a fresh array; the
   // membership test below runs on paths of a handful of elements every single
   // keypress, where a linear scan beats allocating and hashing a Set.
   const fp: ElementNode[] = [];
   while (current) {
-    if (
-      !current.states?.has(Config.focusStateKey) ||
-      current === currentFocusedElm
-    ) {
-      current.states?.add(Config.focusStateKey);
+    // Focus exists whether or not it is drawn: onFocus fires for a new path
+    // member either way. `$focus` is the style state, so it follows the
+    // visibility policy.
+    if (prevFp.indexOf(current) === -1 || current === currentFocusedElm) {
+      if (visible) current.states?.add(Config.focusStateKey);
       if (typeof current.onFocus === 'function')
         current.onFocus.call(
           current,
@@ -310,7 +369,6 @@ const updateFocusPath = (
     current = current.parent;
   }
 
-  const prevFp = focusPath();
   for (let i = 0; i < prevFp.length; i++) {
     const elm = prevFp[i]!;
     if (fp.indexOf(elm) === -1) {
@@ -637,6 +695,9 @@ const handleKeyEvents = (
   keyup?: KeyboardEvent,
 ): boolean => {
   if (keydown) {
+    // A real key reached the app: on a pointer-first host this is what makes
+    // the focus ring appear. Synthetic presses (pressKey) do not come here.
+    showFocusVisible();
     const name = keyNameId(keydown);
     const code = keyCodeId(keydown);
     if (Config.inferKeyRepeat) {

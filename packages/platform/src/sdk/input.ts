@@ -35,6 +35,7 @@ import type { ElementNode } from '../core/elementNode.js';
 import {
   currentFocusTrap,
   focusPath,
+  hideFocusVisible,
   pressKey,
   type KeyEventLike,
 } from '../core/focusManager.js';
@@ -456,6 +457,9 @@ export function createScenePointer(
   const wheelEvent = { deltaX: 0, deltaY: 0 };
 
   const onDown = () => {
+    // A pointer press is not a navigation interaction: focus it reaches is
+    // drawn without a ring on a pointer-first host.
+    hideFocusVisible();
     const node = hit(argX, argY);
     result = node !== undefined && node.ariaDisabled !== true;
     if (result) begin(argId, node!, argX, argY);

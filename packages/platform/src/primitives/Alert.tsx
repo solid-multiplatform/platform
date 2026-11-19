@@ -1,5 +1,6 @@
 import type { JSX } from 'solid-js';
 import type { ElementNode } from '../core/elementNode.js';
+import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
 import type { NodeStyles } from '../core/intrinsicTypes.js';
 import { Modal } from './Modal.jsx';
@@ -34,6 +35,7 @@ export interface AlertProps {
  * It uses the shared `Modal` focus trap, safe area and Back/Escape handling.
  */
 export function Alert(props: AlertProps): JSX.Element {
+  const theme = () => useTheme();
   const width = () => Math.min(640, viewport().width - 64);
   let actions: ElementNode | undefined;
   const confirm = () => {
@@ -61,6 +63,7 @@ export function Alert(props: AlertProps): JSX.Element {
         width={width()}
         height={360}
         color={0x1d2937ff}
+        borderRadius={theme().radius.medium}
         onMouseClick={() => true}
       >
         <text x={28} y={28} fontSize={32} color={0xf2f6faff}>

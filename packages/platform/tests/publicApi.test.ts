@@ -28,7 +28,7 @@ import * as appEntryModule from '@solid-multiplatform/platform/app/entry';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 287 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 288 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -145,6 +145,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'fileExists',
       'findMenuItem',
       'flattenSections',
+      'focusVisibility',
       'formatDate',
       'formatDisplayName',
       'formatList',
@@ -505,12 +506,14 @@ v.describe('Exports: runtime export names of every entry point', () => {
   );
 
   v.test(
-    '@solid-multiplatform/platform/focusManager (src/core/focusManager.ts): 11 names',
+    '@solid-multiplatform/platform/focusManager (src/core/focusManager.ts): 13 names',
     () => {
       v.expect(names(focusManager)).toEqual([
         'currentFocusTrap',
         'focusPath',
+        'focusVisible',
         'getFocusHistory',
+        'hideFocusVisible',
         'pressKey',
         'printFocusHistory',
         'pushFocusTrap',

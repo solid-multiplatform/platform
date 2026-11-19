@@ -4,6 +4,7 @@ import type { ForwardFocusHandler } from '../core/focusKeyTypes.js';
 import { isElementNode } from '../core/utils.js';
 import type { Rect } from '../sdk/input.js';
 import type { SemanticsRole } from '../sdk/semantics.js';
+import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
 import { Modal } from './Modal.jsx';
 
@@ -45,6 +46,7 @@ export interface PopoverProps {
  * dismissible by tapping the barrier or pressing Back/Escape.
  */
 export function Popover(props: PopoverProps): JSX.Element {
+  const theme = () => useTheme();
   const anchor = () =>
     typeof props.anchor === 'function' ? props.anchor() : props.anchor;
   const width = () => props.width ?? 280;
@@ -84,6 +86,7 @@ export function Popover(props: PopoverProps): JSX.Element {
       <view
         {...rect()}
         color={0x1d2937ff}
+        borderRadius={theme().radius.medium}
         role={props.role ?? 'none'}
         ariaLabel={props.role ? props.label : undefined}
         forwardFocus={focusContent}

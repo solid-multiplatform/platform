@@ -210,14 +210,33 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
   };
 
   /**
+   * The day the next arrow step starts from. Focus is normally on a day; if
+   * it is on the grid itself — the day children were not inserted yet when
+   * the dialog took focus — start from the chosen day instead of losing every
+   * direction (`children.indexOf(grid)` is -1).
+   */
+  const currentDay = (): number => {
+    const active = activeElement();
+    if (grid !== undefined && active !== grid) {
+      const index = grid.children.indexOf(active as ElementNode);
+      if (index >= 0) return index + 1;
+    }
+    const chosen = working();
+    const shown = month();
+    return chosen.getFullYear() === shown.getFullYear() &&
+      chosen.getMonth() === shown.getMonth()
+      ? chosen.getDate()
+      : 1;
+  };
+
+  /**
    * Left and Right move by a day and cross into the next month; Up and Down
    * move by a week and, past the first or last week, leave the grid for the
    * row above or below it (the key is not taken).
    */
   const moveDay = (delta: number): boolean => {
     if (grid === undefined) return false;
-    const day = grid.children.indexOf(activeElement() as ElementNode) + 1;
-    if (day < 1) return false;
+    const day = currentDay();
     const target = day + delta;
     const outside = target < 1 || target > daysInMonth();
     if (outside && (delta === 7 || delta === -7)) return false;
@@ -365,6 +384,12 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
           onRight={() => moveDay(1)}
           onUp={() => moveDay(-7)}
           onDown={() => moveDay(7)}
+          // Focus can land on the grid itself (the panel is its forwardFocus
+          // fallback); Enter then picks the day arrows would start from.
+          onEnter={() => {
+            chooseDay(currentDay());
+            return true;
+          }}
         >
           <For each={Array.from({ length: 42 }, (_, index) => index)}>
             {(index) => {

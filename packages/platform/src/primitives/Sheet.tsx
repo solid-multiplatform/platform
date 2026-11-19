@@ -2,6 +2,7 @@ import type { JSX } from 'solid-js';
 import type { ElementNode } from '../core/elementNode.js';
 import type { ForwardFocusHandler } from '../core/focusKeyTypes.js';
 import { isElementNode } from '../core/utils.js';
+import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
 import { Modal } from './Modal.jsx';
 
@@ -39,6 +40,7 @@ export interface SheetProps {
  * and focus restoration.
  */
 export function Sheet(props: SheetProps): JSX.Element {
+  const theme = () => useTheme();
   const height = () =>
     props.height ?? Math.min(640, viewport().height * 0.6);
   const bottom = () =>
@@ -58,6 +60,7 @@ export function Sheet(props: SheetProps): JSX.Element {
         width={viewport().width}
         height={height()}
         color={0x1d2937ff}
+        borderRadius={[theme().radius.medium, theme().radius.medium, 0, 0]}
         forwardFocus={1}
       >
         <text skipFocus x={28} y={24} fontSize={30} color={0xf2f6faff}>

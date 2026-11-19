@@ -12,31 +12,31 @@ A cell says `tested` only when an automated test in this repository runs that fe
 
 ## Counts
 
-1027 cells: 79 features on 13 targets.
+1040 cells: 80 features on 13 targets.
 
 | Status      | Cells |
 | ----------- | ----- |
-| tested      | 146   |
+| tested      | 148   |
 | device      | 74    |
-| preview     | 377   |
+| preview     | 388   |
 | in progress | 0     |
 | no          | 430   |
 
 | Target            | tested | device | preview | in progress | no  |
 | ----------------- | ------ | ------ | ------- | ----------- | --- |
-| `web`             | 32     | 0      | 30      | 0           | 17  |
-| `tizen`           | 5      | 0      | 53      | 0           | 21  |
-| `webos`           | 6      | 0      | 52      | 0           | 21  |
-| `vizio`           | 5      | 0      | 52      | 0           | 22  |
-| `ps4`             | 6      | 0      | 18      | 0           | 55  |
-| `roku`            | 5      | 19     | 9       | 0           | 46  |
-| `android`         | 0      | 33     | 26      | 0           | 20  |
-| `android-tv`      | 5      | 22     | 18      | 0           | 34  |
-| `ios`             | 29     | 0      | 20      | 0           | 30  |
-| `apple-tv`        | 21     | 0      | 16      | 0           | 42  |
-| `desktop-linux`   | 32     | 0      | 19      | 0           | 28  |
-| `desktop-windows` | 0      | 0      | 32      | 0           | 47  |
-| `desktop-macos`   | 0      | 0      | 32      | 0           | 47  |
+| `web`             | 33     | 0      | 30      | 0           | 17  |
+| `tizen`           | 5      | 0      | 54      | 0           | 21  |
+| `webos`           | 6      | 0      | 53      | 0           | 21  |
+| `vizio`           | 5      | 0      | 53      | 0           | 22  |
+| `ps4`             | 6      | 0      | 19      | 0           | 55  |
+| `roku`            | 5      | 19     | 10      | 0           | 46  |
+| `android`         | 0      | 33     | 27      | 0           | 20  |
+| `android-tv`      | 5      | 22     | 19      | 0           | 34  |
+| `ios`             | 29     | 0      | 21      | 0           | 30  |
+| `apple-tv`        | 21     | 0      | 17      | 0           | 42  |
+| `desktop-linux`   | 33     | 0      | 19      | 0           | 28  |
+| `desktop-windows` | 0      | 0      | 33      | 0           | 47  |
+| `desktop-macos`   | 0      | 0      | 33      | 0           | 47  |
 
 ## Rendering backends
 
@@ -65,6 +65,7 @@ Notes:
 | Flex layout (`src/core/flexLayout.ts`)           | tested | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | preview       | preview         | preview       |
 | Text rendering                                   | tested | preview | preview | preview | preview | device  | preview | preview    | preview | preview  | tested        | preview         | preview       |
 | Focus and key handling                           | tested | preview | preview | preview | tested  | device  | preview | preview    | preview | preview  | tested        | preview         | preview       |
+| Focus visibility policy (`focusVisibility`)      | tested | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | tested        | preview         | preview       |
 | Pointer and touch input (`src/sdk/input.ts`)     | tested | preview | preview | preview | tested  | no      | preview | no         | preview | no       | tested        | preview         | preview       |
 | Accessibility semantics (`src/sdk/semantics.ts`) | tested | no      | no      | no      | no      | no      | no      | no         | no      | no       | tested        | no              | no            |
 | Shapes, borders, gradients and shadows           | tested | preview | preview | preview | preview | device  | preview | preview    | preview | preview  | preview       | preview         | preview       |
@@ -79,6 +80,7 @@ Notes:
 - Text rendering, roku: Fonts, wrapping, flex text and the device's own metrics were measured on the TV.
 - Focus and key handling, tizen: `tests/cli/browser-smoke.mjs --tv` (test.yml: projects) presses Enter on the focused row of the generated Tizen build, but in desktop Chromium. No test runs on a Tizen TV or with its remote.
 - Focus and key handling, roku: The host test also checks that a held key is one press and that the keyEvents service raises the key.
+- Focus visibility policy (`focusVisibility`), tizen, webos, vizio, roku, android-tv, apple-tv: The policy is `always`: the ring is drawn for every focus, as the existing TV focus tests assert.
 - Pointer and touch input (`src/sdk/input.ts`), tizen: `tests/cli/browser-smoke.mjs --tv` (test.yml: projects) maps clicks through four viewport sizes on the generated Tizen build, but in desktop Chromium. No test runs on a Tizen TV.
 - Pointer and touch input (`src/sdk/input.ts`), android, ios: Touch through `hosts/nativescript/touch.mjs`.
 - Accessibility semantics (`src/sdk/semantics.ts`), desktop-windows, desktop-macos: No accessibility adapter is implemented for these systems: the runtime builds and runs its headless tests, but `__solid.a11y` is absent.
@@ -284,6 +286,7 @@ A `tested` cell names the test file that covers it, the workflow and job that ru
 - Focus and key handling, web: packages/platform/tests/cli/browser-smoke.mjs (test.yml: projects, called by tests/cli/projects-smoke.sh; Enter on the focused row of the generated web app in Chromium)
 - Focus and key handling, ps4: packages/platform/tests/webgl/ps4-host.test.tsx (test.yml: browser; pointer movement focuses and a click selects by pressing Enter on the focused node, in Chromium, Firefox and WebKit)
 - Focus and key handling, desktop-linux: packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; keys go through SDL's queue and, with xdotool, are real X events; focus moves with Right and Left)
+- Focus visibility policy (`focusVisibility`), web, desktop-linux: packages/platform/tests/focus-visibility.test.tsx (test.yml: unit; a pointer click focuses without the `$focus` state, a key turns it on, and a focused Button follows the policy) and apps/showcase/tests/showcase.e2e.mjs (test.yml: projects; the same keys and pointer drive the built showcase in Chromium)
 - Pointer and touch input (`src/sdk/input.ts`), web: packages/platform/tests/cli/browser-smoke.mjs (test.yml: projects; a real pointer clicks the generated app and the focused control is asserted in Chromium)
 - Pointer and touch input (`src/sdk/input.ts`), ps4: packages/platform/tests/webgl/ps4-host.test.tsx (test.yml: browser; real mouse events move focus and click-select in Chromium, Firefox and WebKit) and packages/platform/tests/host/ps4-input.test.tsx (test.yml: unit; a click on empty space presses Enter on the focused node)
 - Pointer and touch input (`src/sdk/input.ts`), desktop-linux: packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; a real mouse moves, clicks and scrolls, with xdotool when it is installed)

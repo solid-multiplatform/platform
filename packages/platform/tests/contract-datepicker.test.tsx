@@ -3,6 +3,7 @@ import { createSignal } from 'solid-js';
 import * as lng from '@solid-multiplatform/platform';
 import { DatePicker } from '@solid-multiplatform/platform/primitives';
 import { renderer, waitForUpdate } from './setup.js';
+import { flush, mount } from './contract-focus-helpers.js';
 
 const texts = (node: unknown): string[] => {
   const current = node as { text?: string; children?: readonly unknown[] };
@@ -99,6 +100,57 @@ v.describe('DatePicker', () => {
     done.onMouseClick?.(new MouseEvent('click'), done);
     v.expect(selected[0]!.getHours()).toBe(11);
     v.expect(selected[0]!.getMinutes()).toBe(35);
+    dispose();
+  });
+
+  v.it('navigates and picks a date with the keyboard only', async () => {
+    const selected: Date[] = [];
+    const { target, dispose } = await mount(() => (
+      <DatePicker
+        visible
+        value={new Date(2026, 0, 15)}
+        onChange={(date) => selected.push(date)}
+      />
+    ));
+    await flush();
+    await flush();
+    const activeText = () => texts(lng.activeElement()).join('');
+    v.expect(activeText()).toBe('15');
+
+    // Move to the 16th and pick it: navigation must keep working afterwards
+    // (the picker stays open; Done commits).
+    target.down('ArrowRight');
+    target.up('ArrowRight');
+    await flush();
+    v.expect(activeText()).toBe('16');
+    target.down('Enter');
+    target.up('Enter');
+    await flush();
+    target.down('ArrowRight');
+    target.up('ArrowRight');
+    await flush();
+    v.expect(activeText()).toBe('17');
+
+    // Focus on the grid container itself (its days were not inserted when
+    // the dialog took focus): every arrow used to be rejected because the
+    // grid is not one of its own children. It now starts from the chosen day.
+    const grid = findAll(
+      renderer.rootNode,
+      (node) =>
+        typeof node.onLeft === 'function' &&
+        typeof node.onRight === 'function' &&
+        typeof node.onUp === 'function' &&
+        typeof node.onDown === 'function' &&
+        typeof node.onEnter === 'function',
+    )[0]!;
+    lng.setActiveElementCore(grid);
+    await flush();
+    v.expect(lng.activeElement()).toBe(grid);
+    target.down('ArrowRight');
+    target.up('ArrowRight');
+    await flush();
+    v.expect(activeText()).toBe('17');
+    v.expect(selected).toEqual([]);
     dispose();
   });
 });

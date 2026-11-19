@@ -7,13 +7,27 @@ import {
   Menu,
   Modal,
   Popover,
+  Sheet,
   Toast,
   Tooltip,
 } from '@solid-multiplatform/platform/primitives';
 import { useFocusManager } from '@solid-multiplatform/platform/focusManager';
+import { createScenePointer } from '../src/sdk/input.js';
 import { renderer, waitForUpdate } from './setup.js';
+import { mount } from './contract-focus-helpers.js';
 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+const findAll = (
+  node: unknown,
+  predicate: (node: lng.ElementNode) => boolean,
+  found: lng.ElementNode[] = [],
+): lng.ElementNode[] => {
+  if (!lng.isINode(node)) return found;
+  if (lng.isElementNode(node) && predicate(node)) found.push(node);
+  for (const child of node.children) findAll(child, predicate, found);
+  return found;
+};
 
 v.describe('Modal', () => {
   v.it('moves focus into the panel and restores it on close', async () => {
@@ -114,6 +128,61 @@ v.describe('overlay primitives', () => {
 });
 
 v.describe('Drawer', () => {
+  v.it('reaches the close button from the content and Enter closes it', async () => {
+    const [open, setOpen] = createSignal(true);
+    const { target, dispose } = await mount(() => (
+      <Drawer
+        visible={open}
+        label="Navigation"
+        onRequestClose={() => setOpen(false)}
+      >
+        <view width={200} height={40} onEnter={() => {}} />
+      </Drawer>
+    ));
+    await flush();
+    await flush();
+    // Without an initialFocus the drawer opens in the app's content.
+    const first = lng.activeElement();
+    v.expect(first).toBeDefined();
+    v.expect(first?.ariaLabel).not.toBe('Close');
+
+    // Down past the content reaches the close button; Enter activates it.
+    target.down('ArrowDown');
+    target.up('ArrowDown');
+    await flush();
+    v.expect(lng.activeElement()?.ariaLabel).toBe('Close');
+
+    target.down('Enter');
+    target.up('Enter');
+    await flush();
+    v.expect(open()).toBe(false);
+    dispose();
+  });
+
+  v.it('reaches the close button from the content and Enter closes it after moving up', async () => {
+    const [open, setOpen] = createSignal(true);
+    const { target, dispose } = await mount(() => (
+      <Drawer
+        visible={open}
+        label="Navigation"
+        onRequestClose={() => setOpen(false)}
+      >
+        <view width={200} height={40} onEnter={() => {}} />
+      </Drawer>
+    ));
+    await flush();
+    await flush();
+    target.down('ArrowDown');
+    target.up('ArrowDown');
+    await flush();
+    v.expect(lng.activeElement()?.ariaLabel).toBe('Close');
+    target.down('ArrowUp');
+    target.up('ArrowUp');
+    await flush();
+    v.expect(lng.activeElement()?.ariaLabel).not.toBe('Close');
+    dispose();
+  });
+
   v.it('traps focus in the panel and restores the trigger', async () => {
     const [open, setOpen] = createSignal(false);
     let trigger!: lng.ElementNode;
@@ -155,6 +224,92 @@ v.describe('Drawer', () => {
     await waitForUpdate();
     await flush();
     v.expect(lng.activeElement()).toBe(trigger);
+    dispose();
+  });
+});
+
+v.describe('dialog surfaces', () => {
+  v.it('all use the theme radius', async () => {
+    const theme = lng.useTheme();
+    const dispose = renderer.render(() => (
+      <>
+        <Alert visible title="Title" message="Message" />
+        <Sheet visible label="Sheet">
+          <view width={10} height={10} />
+        </Sheet>
+        <Popover
+          visible
+          anchor={{ x: 0, y: 0, width: 10, height: 10 }}
+          label="Popover"
+        >
+          <view width={10} height={10} />
+        </Popover>
+        <Drawer visible label="Drawer">
+          <view width={10} height={10} />
+        </Drawer>
+      </>
+    ));
+    await waitForUpdate();
+    const find = (predicate: (node: lng.ElementNode) => boolean) =>
+      findAll(renderer.rootNode, predicate)[0]!;
+
+    const alert = find(
+      (node) => node.color === 0x1d2937ff && node.height === 360,
+    );
+    const sheet = find(
+      (node) => node.color === 0x1d2937ff && node.width === 1920,
+    );
+    const popover = find(
+      (node) => node.color === 0x1d2937ff && node.width === 280,
+    );
+    const drawer = find(
+      (node) => node.width === 360 && node.height === 1080,
+    );
+
+    v.expect(alert.borderRadius).toBe(theme.radius.medium);
+    v.expect(popover.borderRadius).toBe(theme.radius.medium);
+    v.expect(sheet.borderRadius).toEqual([
+      theme.radius.medium,
+      theme.radius.medium,
+      0,
+      0,
+    ]);
+    v.expect(drawer.borderRadius).toEqual([
+      0,
+      theme.radius.medium,
+      theme.radius.medium,
+      0,
+    ]);
+    dispose();
+  });
+});
+
+v.describe('Tooltip', () => {
+  v.it('is not a pointer or focus target, even around interactive children', async () => {
+    const pressed: string[] = [];
+    const dispose = renderer.render(() => (
+      <view width={1920} height={1080}>
+        <Tooltip
+          visible
+          placement="bottom"
+          anchor={{ x: 100, y: 100, width: 300, height: 38 }}
+          label="Hint"
+        >
+          <view
+            width={300}
+            height={38}
+            onEnter={() => pressed.push('tooltip')}
+          />
+        </Tooltip>
+      </view>
+    ));
+    await waitForUpdate();
+    const pointer = createScenePointer(lng.rootNode);
+    pointer.down(1, { x: 110, y: 160 });
+    pointer.up(1, { x: 110, y: 160 });
+    await waitForUpdate();
+    v.expect(pressed).toEqual([]);
+    pointer.dispose();
     dispose();
   });
 });

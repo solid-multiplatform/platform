@@ -313,6 +313,25 @@ async function expectFocus(page, expected, what) {
   assert.fail(`${what}: focus is on ${name}, expected ${expected}`);
 }
 
+/** The focus-visibility modality the app mirrors as a status. */
+const focusRing = (page) =>
+  page.evaluate(() => {
+    const status = [...document.querySelectorAll('[role="status"]')].find(
+      (el) => el.getAttribute('aria-label')?.startsWith('Focus ring:'),
+    );
+    return status?.getAttribute('aria-label') ?? null;
+  });
+
+async function expectRing(page, expected, what) {
+  let ring;
+  for (let attempt = 0; attempt < 100; attempt++) {
+    ring = await focusRing(page);
+    if (ring === expected) return;
+    await sleep(50);
+  }
+  assert.fail(`${what}: the focus ring is ${ring}, expected ${expected}`);
+}
+
 /** The screen's result line, which the ARIA mirror carries as a status. */
 async function expectStatus(page, expected, what) {
   let lines;
@@ -411,9 +430,12 @@ async function interactive(browser) {
 
   // Keyboard on the home grid.
   await expectFocus(page, 'button:Layout', 'home autofocus');
+  // Focus exists from launch, but on a desktop no ring is drawn until a key.
+  await expectRing(page, 'Focus ring: hidden', 'home autofocus');
   await shot(page, '1-home');
   await page.keyboard.press('ArrowRight');
   await expectFocus(page, 'button:Text', 'Right');
+  await expectRing(page, 'Focus ring: visible', 'a key drew the ring');
   await page.keyboard.press('ArrowLeft');
   await expectFocus(page, 'button:Layout', 'Left');
   await page.keyboard.press('ArrowDown');
@@ -497,6 +519,8 @@ async function interactive(browser) {
   // The mouse: Back, then the Services tile. Focus returns to the tile left.
   await click(page, backButton);
   await expectFocus(page, 'button:Controls', 'mouse click on Back');
+  // A pointer press focuses without drawing the ring, like `:focus-visible`.
+  await expectRing(page, 'Focus ring: hidden', 'mouse click on Back');
   const early = [];
   for (let i = 0; i < 5; i++) early.push(await clickBackWhileOpening(page));
   console.log(`ok  clicks on Back while Controls opened: ${early.join(', ')}`);

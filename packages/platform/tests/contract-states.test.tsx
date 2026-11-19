@@ -11,6 +11,10 @@ import * as s from 'solid-js';
 import * as lng from '@solid-multiplatform/platform';
 import { renderer } from './setup.js';
 
+// The focus-state tests assert the `$focus` style, which a TV always draws.
+v.beforeEach(() => lng.setCapabilities('roku'));
+v.afterEach(() => lng.resetCapabilities());
+
 const RED = 0xff0000ff;
 const BLUE = 0x0000ffff;
 const GREEN = 0x00ff00ff;
