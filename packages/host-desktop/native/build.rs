@@ -66,6 +66,11 @@ fn main() {
         ] {
             glue.define(name, None);
         }
+        // Hermes' headers use C compound literals (`(SHLegacyValue){...}`).
+        // MSVC's conformance mode, implied by /std:c++20, reports those as
+        // error C4576; non-conformant mode accepts them. The flag is passed
+        // after `/std:c++20`, so it wins.
+        glue.flag_if_supported("/permissive");
     }
     for dir in ["include", "API", "public", "external", "external/llvh/include", "external/llvh/gen/include"] {
         glue.include(src.join(dir));
