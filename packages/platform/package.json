@@ -1,6 +1,6 @@
 {
   "name": "@solid-multiplatform/platform",
-  "version": "0.2.0-preview.8",
+  "version": "0.3.0-beta.1",
   "description": "Portable Solid primitives and device hosts",
   "type": "module",
   "exports": {
@@ -480,7 +480,7 @@
   },
   "peerDependencies": {
     "@solidjs/router": "^0.16.1",
-    "@solid-multiplatform/renderer": "0.2.0-preview.2",
+    "@solid-multiplatform/renderer": "0.3.0-beta.1",
     "solid-js": "*",
     "@nativescript/secure-storage": "^4.0.2",
     "@nativescript/local-notifications": "^7.0.0",
