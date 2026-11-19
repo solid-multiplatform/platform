@@ -83,7 +83,9 @@ export function mediaSession(): MediaSessionPort {
         targets.set(
           action,
           remote.addTargetWithHandler(() => {
-            handler();
+            // A remote command raises the action without a seek position;
+            // only `seekto` reads the details argument.
+            (handler as () => void)();
             return MPRemoteCommandHandlerStatusSuccess;
           }),
         );
