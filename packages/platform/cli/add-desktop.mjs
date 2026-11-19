@@ -29,6 +29,9 @@ import { project, copy, json, writeJson } from './files.mjs';
 
 export const LATEST_RELEASE =
   'https://api.github.com/repos/solid-multiplatform/platform/releases/latest';
+// `releases/latest` leaves out pre-releases, and a beta is all there may be.
+export const RECENT_RELEASES =
+  'https://api.github.com/repos/solid-multiplatform/platform/releases?per_page=10';
 export const PACKAGE = '@solid-multiplatform/host-desktop';
 
 const executable = (platform) =>
@@ -81,15 +84,35 @@ export async function download(url, fetchImpl = fetch) {
   return responseBytes(response);
 }
 
-/** The runtime asset of the latest release, for this system. */
+/**
+ * The runtime asset of the latest release, for this system: the newest
+ * release that carries one, pre-releases included. `releases/latest` is
+ * skipped when there is none, because GitHub leaves pre-releases out of it.
+ */
 export async function latestRuntimeAsset({
   tag = platformTag(),
   fetchImpl = fetch,
 } = {}) {
-  const release = JSON.parse(
-    (await download(LATEST_RELEASE, fetchImpl)).toString('utf8'),
-  );
-  return runtimeAsset(release, tag);
+  const releases = async (url) =>
+    JSON.parse((await download(url, fetchImpl)).toString('utf8'));
+  const has = (release) =>
+    (release.assets ?? []).some(
+      (asset) => asset.name === runtimeAssetName(tag),
+    );
+  let latest;
+  try {
+    latest = await releases(LATEST_RELEASE);
+  } catch {
+    latest = undefined;
+  }
+  if (latest && has(latest)) return runtimeAsset(latest, tag);
+  const recent = await releases(RECENT_RELEASES);
+  const carrying = recent.find(has);
+  if (!carrying)
+    throw new Error(
+      `No release on GitHub carries ${runtimeAssetName(tag)}; pass a tarball or a URL instead, or set SOLID_DESKTOP_RUNTIME.`,
+    );
+  return runtimeAsset(carrying, tag);
 }
 
 /**

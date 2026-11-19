@@ -21,7 +21,9 @@
         {
           "id": "backend-webgl",
           "feature": "WebGL backend (`packages/renderer/webgl`)",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -31,7 +33,9 @@
               "status": "preview",
               "note": "Same backend as web. The generated Tizen build is only smoke-run in desktop Chromium; no TV hardware."
             },
-            "roku": { "status": "unavailable" },
+            "roku": {
+              "status": "unavailable"
+            },
             "android,android-tv,ios,apple-tv": {
               "status": "preview",
               "note": "NativeScript canvas host. CI builds the app; no test asserts what it draws."
@@ -49,7 +53,9 @@
         {
           "id": "runtime-desktop",
           "feature": "Desktop runtime in Rust embedding Hermes, without Node",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "desktop-linux": {
               "status": "tested",
@@ -64,7 +70,9 @@
         {
           "id": "backend-canvas",
           "feature": "Canvas 2D backend (`packages/renderer/canvas`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -79,7 +87,9 @@
         {
           "id": "backend-roku",
           "feature": "Roku SceneGraph backend (`packages/renderer/roku`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "roku": {
               "status": "device",
@@ -96,7 +106,9 @@
         {
           "id": "host-contract",
           "feature": "Host contract (`startApp` / `HostDefinition`)",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -138,7 +150,9 @@
         {
           "id": "layout-flex",
           "feature": "Flex layout (`src/core/flexLayout.ts`)",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -149,7 +163,9 @@
         {
           "id": "text",
           "feature": "Text rendering",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -169,7 +185,9 @@
         {
           "id": "focus-keys",
           "feature": "Focus and key handling",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -193,7 +211,9 @@
         {
           "id": "pointer",
           "feature": "Pointer and touch input (`src/sdk/input.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -203,7 +223,9 @@
               "status": "preview",
               "note": "`tests/cli/browser-smoke.mjs --tv` (test.yml: projects) maps clicks through four viewport sizes on the generated Tizen build, but in desktop Chromium. No test runs on a Tizen TV."
             },
-            "webos,vizio": { "status": "preview" },
+            "webos,vizio": {
+              "status": "preview"
+            },
             "android,ios": {
               "status": "preview",
               "note": "Touch through `hosts/nativescript/touch.mjs`."
@@ -220,7 +242,9 @@
         {
           "id": "accessibility",
           "feature": "Accessibility semantics (`src/sdk/semantics.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -239,7 +263,9 @@
         {
           "id": "shapes-effects",
           "feature": "Shapes, borders, gradients and shadows",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -259,7 +285,9 @@
         {
           "id": "animation",
           "feature": "Animation (`animateProp`, transitions)",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -281,7 +309,9 @@
         {
           "id": "app-components",
           "feature": "`/app` components the starter uses (`Screen`, `Text`, `Button`)",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -305,7 +335,9 @@
         {
           "id": "app-layout-components",
           "feature": "`/app` layout and overlay components (`List`, `Spacer`, `Row`, `Column`, `Grid`, overlays)",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "preview",
@@ -316,7 +348,9 @@
         {
           "id": "app-hooks",
           "feature": "`/app` hooks (`useHost`, `usePlugin`, `useViewport`, service hooks)",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "preview",
@@ -327,7 +361,9 @@
         {
           "id": "app-starter",
           "feature": "Generated starter app (one component)",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -360,7 +396,9 @@
         {
           "id": "service-settings",
           "feature": "`settings` (`src/sdk/services.ts`)",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -395,7 +433,9 @@
         {
           "id": "service-secureStorage",
           "feature": "`secureStorage` (`src/sdk/services.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "roku": {
               "status": "device",
@@ -426,13 +466,17 @@
         {
           "id": "service-lifecycle",
           "feature": "`lifecycle` (`src/sdk/services.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `lifecycle` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "roku": {
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435; active on start and a suspend/resume pair; HOST RESULT passed=48 failed=0)"
@@ -462,13 +506,17 @@
         {
           "id": "service-connectivity",
           "feature": "`connectivity` (`src/sdk/services.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `connectivity` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "roku": {
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435; reports online; HOST RESULT passed=48 failed=0)"
@@ -498,13 +546,17 @@
         {
           "id": "service-links",
           "feature": "`links` (`src/sdk/services.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `links` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "roku": {
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435; launch and running deep links reach the service; HOST RESULT passed=48 failed=0)"
@@ -536,13 +588,17 @@
         {
           "id": "service-notifications",
           "feature": "`notifications` (`src/sdk/services.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: a permission prompt is required."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; posted and seen in `dumpsys notification` after the permission was granted; 35 rows, 0 failed)"
@@ -561,7 +617,9 @@
         {
           "id": "service-push",
           "feature": "`push` (`src/sdk/services.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
@@ -576,7 +634,9 @@
         {
           "id": "service-jobs",
           "feature": "`jobs` (`src/sdk/services.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
@@ -599,13 +659,17 @@
         {
           "id": "service-request",
           "feature": "`request` (`src/sdk/services.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `request` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "roku": {
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435; a public HTTPS page returns 200 and a missing host fails; HOST RESULT passed=48 failed=0)"
@@ -622,13 +686,17 @@
         {
           "id": "service-clipboard",
           "feature": "`clipboard` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `clipboard` to report ok with the clipboard permission granted)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; round trip; 35 rows, 0 failed)"
@@ -650,13 +718,17 @@
         {
           "id": "service-share",
           "feature": "`share` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it opens the system share sheet."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; the chooser appeared and Back dismissed it; 35 rows, 0 failed)"
@@ -674,13 +746,17 @@
         {
           "id": "service-haptics",
           "feature": "`haptics` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: only a person can feel a vibration."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; vibrator_manager entry; 35 rows, 0 failed)"
@@ -694,13 +770,17 @@
         {
           "id": "service-deviceInfo",
           "feature": "`deviceInfo` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `deviceInfo` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "roku": {
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435; platform, model, OS and app version from the device; HOST RESULT passed=48 failed=0)"
@@ -730,13 +810,17 @@
         {
           "id": "service-battery",
           "feature": "`battery` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `battery` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; level and charging state, then reset; 35 rows, 0 failed)"
@@ -754,13 +838,17 @@
         {
           "id": "service-memory",
           "feature": "`memory` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `memory` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "roku": {
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435; lowMemory and levels; HOST RESULT passed=48 failed=0)"
@@ -790,13 +878,17 @@
         {
           "id": "service-keepAwake",
           "feature": "`keepAwake` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports denied: headless Chromium refuses the screen wake lock."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; window flag on and off; 35 rows, 0 failed)"
@@ -822,13 +914,17 @@
         {
           "id": "service-openExternal",
           "feature": "`openExternal` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it opens another application."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; browser activity on top, probe brought back; 35 rows, 0 failed)"
@@ -854,13 +950,17 @@
         {
           "id": "service-orientation",
           "feature": "`orientation` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it rotates the screen."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; landscape, portrait and released; 35 rows, 0 failed)"
@@ -874,13 +974,17 @@
         {
           "id": "service-systemBars",
           "feature": "`systemBars` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `systemBars` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; appearance flags set, cleared and restored; 35 rows, 0 failed)"
@@ -890,7 +994,9 @@
         {
           "id": "service-appReview",
           "feature": "`appReview` (`src/sdk/device.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "android": {
               "status": "preview",
@@ -905,13 +1011,17 @@
         {
           "id": "service-locale",
           "feature": "`locale` (`src/sdk/i18n.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `locale` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "roku": {
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435; a BCP 47 tag from the device; HOST RESULT passed=48 failed=0)"
@@ -941,13 +1051,17 @@
         {
           "id": "service-colorScheme",
           "feature": "`colorScheme` (`src/sdk/theme.tsx`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `colorScheme` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; dark and light events, none after dispose; 35 rows, 0 failed)"
@@ -974,13 +1088,17 @@
         {
           "id": "service-keyEvents",
           "feature": "`keyEvents` (`src/sdk/shortcuts.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `keyEvents` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "roku": {
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435; the keyEvents service raises ArrowRight on keyup; HOST RESULT passed=48 failed=0)"
@@ -1010,13 +1128,17 @@
         {
           "id": "service-audio",
           "feature": "`audio` (`src/sdk/audio.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it plays sound."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; focus held while playing and released on stop; 35 rows, 0 failed)"
@@ -1030,13 +1152,17 @@
         {
           "id": "service-mediaSession",
           "feature": "`mediaSession` (`src/sdk/media.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it changes the system media controls."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; metadata, a dispatched pause, then released; 35 rows, 0 failed)"
@@ -1058,13 +1184,17 @@
         {
           "id": "service-fullscreen",
           "feature": "`fullscreen` (`src/sdk/media.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it needs a user gesture."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; immersive on and off, picture-in-picture entered and left; 35 rows, 0 failed)"
@@ -1078,25 +1208,33 @@
         {
           "id": "service-thumbnails",
           "feature": "`thumbnails` (`src/sdk/media.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it needs a video to decode."
             },
-            "tizen,webos,vizio": { "status": "preview" }
+            "tizen,webos,vizio": {
+              "status": "preview"
+            }
           }
         },
         {
           "id": "service-mediaCapabilities",
           "feature": "`mediaCapabilities` (`src/sdk/drm.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `mediaCapabilities` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; 18 decoder types and Widevine/ClearKey; 35 rows, 0 failed)"
@@ -1110,13 +1248,17 @@
         {
           "id": "service-camera",
           "feature": "`camera` (`src/sdk/capture.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it asks for the camera."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "preview",
               "note": "Written but not device-verified."
@@ -1126,25 +1268,33 @@
         {
           "id": "service-microphone",
           "feature": "`microphone` (`src/sdk/capture.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it asks for the microphone."
             },
-            "tizen,webos,vizio": { "status": "preview" }
+            "tizen,webos,vizio": {
+              "status": "preview"
+            }
           }
         },
         {
           "id": "service-download",
           "feature": "`download` (`src/sdk/download.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it saves a file."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; save() to Downloads and saveUrl() over adb reverse; 35 rows, 0 failed)"
@@ -1162,13 +1312,17 @@
         {
           "id": "service-filePicker",
           "feature": "`filePicker` (`src/sdk/files.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it opens the file picker."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "preview",
               "note": "Written but not device-verified."
@@ -1182,7 +1336,9 @@
         {
           "id": "service-fileSystem",
           "feature": "`fileSystem` (`src/sdk/files.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "android": {
               "status": "device",
@@ -1209,13 +1365,17 @@
         {
           "id": "service-geolocation",
           "feature": "`geolocation` (`src/sdk/geolocation.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
               "note": "The showcase probe reports unverified: it asks for the location permission."
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; a geo fix read once and by a watch; 35 rows, 0 failed)"
@@ -1233,13 +1393,17 @@
         {
           "id": "service-sensors",
           "feature": "`sensors` (`src/sdk/sensors.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `sensors` to report ok in headless Chromium)"
             },
-            "tizen,webos,vizio": { "status": "preview" },
+            "tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; values read and the connection held only while watched; 35 rows, 0 failed)"
@@ -1249,9 +1413,13 @@
         {
           "id": "service-maps",
           "feature": "`maps` (`src/sdk/maps.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
-            "web,tizen,webos,vizio": { "status": "preview" },
+            "web,tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; the geo: intent resolved and the probe was brought back; 35 rows, 0 failed)"
@@ -1261,9 +1429,13 @@
         {
           "id": "service-contacts",
           "feature": "`contacts` (`src/sdk/contacts.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
-            "web,tizen,webos,vizio": { "status": "preview" },
+            "web,tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; 2,000 rows read over 7 frames, pages and search; 35 rows, 0 failed)"
@@ -1273,9 +1445,13 @@
         {
           "id": "service-calendar",
           "feature": "`calendar` (`src/sdk/calendar.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
-            "web,tizen,webos,vizio": { "status": "preview" },
+            "web,tizen,webos,vizio": {
+              "status": "preview"
+            },
             "android": {
               "status": "device",
               "evidence": "handoff/android-device/verify-phone-run1.json (API 36 phone emulator; events inserted, read in order and removed; 35 rows, 0 failed)"
@@ -1285,7 +1461,9 @@
         {
           "id": "service-biometrics",
           "feature": "`biometrics` (`src/sdk/biometrics.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "android": {
               "status": "preview",
@@ -1301,7 +1479,9 @@
         {
           "id": "service-menus",
           "feature": "`menus` (`src/sdk/menus.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
@@ -1312,7 +1492,9 @@
         {
           "id": "service-updateDelivery",
           "feature": "`updateDelivery` (`src/sdk/update.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
@@ -1323,7 +1505,9 @@
         {
           "id": "service-updateSource",
           "feature": "`updateSource` (`src/sdk/update.ts`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
@@ -1339,7 +1523,9 @@
         {
           "id": "video",
           "feature": "Playback adapter (`packages/video`)",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "ios,apple-tv": {
               "status": "tested",
@@ -1365,7 +1551,9 @@
         {
           "id": "cli-init",
           "feature": "`solid-platform init`",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web,tizen,roku,webos,vizio,desktop-linux": {
               "status": "tested",
@@ -1384,7 +1572,9 @@
         {
           "id": "cli-build",
           "feature": "`solid-platform build <target>`",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -1419,7 +1609,9 @@
         {
           "id": "cli-dev",
           "feature": "`solid-platform dev <web|desktop>`",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
@@ -1434,7 +1626,9 @@
         {
           "id": "cli-doctor",
           "feature": "`solid-platform doctor [target]`",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web,tizen,webos,vizio": {
               "status": "tested",
@@ -1463,7 +1657,9 @@
         {
           "id": "cli-plugin-new",
           "feature": "`solid-platform plugin new`",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web": {
               "status": "tested",
@@ -1498,7 +1694,9 @@
         {
           "id": "cli-check",
           "feature": "`solid-platform check [target]`",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "web,tizen,roku,webos,vizio,desktop-linux": {
               "status": "tested",
@@ -1518,7 +1716,9 @@
         {
           "id": "cli-package-desktop",
           "feature": "`solid-platform package desktop`",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
@@ -1529,13 +1729,21 @@
         {
           "id": "cli-certify-roku",
           "feature": "`solid-platform certify roku <metrics.json>`",
-          "default": { "status": "unavailable" },
-          "cells": { "roku": { "status": "preview" } }
+          "default": {
+            "status": "unavailable"
+          },
+          "cells": {
+            "roku": {
+              "status": "preview"
+            }
+          }
         },
         {
           "id": "cli-add-video",
           "feature": "`solid-platform add video <release.tgz>`",
-          "default": { "status": "preview" },
+          "default": {
+            "status": "preview"
+          },
           "cells": {
             "android-tv": {
               "status": "tested",
@@ -1550,7 +1758,9 @@
         {
           "id": "cli-add-desktop",
           "feature": "`solid-platform add desktop [<tarball> | <url> | none]`",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
@@ -1566,7 +1776,9 @@
         {
           "id": "package-pwa",
           "feature": "Web app with service worker and manifest",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "web": {
               "status": "preview",
@@ -1577,7 +1789,9 @@
         {
           "id": "package-browser-tv",
           "feature": "Browser TV package (Tizen `.wgt`, webOS `.ipk`)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "tizen": {
               "status": "preview",
@@ -1596,7 +1810,9 @@
         {
           "id": "package-roku",
           "feature": "Roku channel zip",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "roku": {
               "status": "tested",
@@ -1607,9 +1823,13 @@
         {
           "id": "package-android",
           "feature": "Android debug APK",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
-            "android": { "status": "preview" },
+            "android": {
+              "status": "preview"
+            },
             "android-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/android-smoke.sh (android.yml: android; asserts the APK and its three ABI slices; not installed on a device in CI)"
@@ -1619,7 +1839,9 @@
         {
           "id": "package-apple",
           "feature": "Apple simulator app",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "ios,apple-tv": {
               "status": "tested",
@@ -1630,7 +1852,9 @@
         {
           "id": "package-desktop",
           "feature": "Desktop archive (`.tar.gz` with runtime)",
-          "default": { "status": "unavailable" },
+          "default": {
+            "status": "unavailable"
+          },
           "cells": {
             "desktop-linux": {
               "status": "tested",
@@ -1639,6 +1863,40 @@
             "desktop-windows,desktop-macos": {
               "status": "unavailable",
               "note": "Windows and macOS app packaging is not implemented; the runtime itself is released for all three (`solid-desktop-linux-x64`, `solid-desktop-darwin-arm64`, `solid-desktop-win32-x64`)."
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Internationalization",
+      "rows": [
+        {
+          "id": "intl-formatters",
+          "feature": "`Intl` (plural rules, number, date/time, relative time, list and collation)",
+          "default": {
+            "status": "unavailable"
+          },
+          "cells": {
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/web/intl.ts (desktop-runtime.yml: the host suite runs it headless in the Rust + Hermes runtime)"
+            },
+            "desktop-windows,desktop-macos": {
+              "status": "preview",
+              "note": "The same ICU4X formatters; neither is built with a window in CI."
+            },
+            "web,tizen,webos,vizio": {
+              "status": "preview",
+              "note": "The browser's own `Intl`; the SDK's formatting is not asserted on these targets."
+            },
+            "roku": {
+              "status": "unavailable",
+              "note": "The device's Hermes has no `Intl`; `sdk/i18n.ts` falls back to `en`."
+            },
+            "android,android-tv,ios,apple-tv": {
+              "status": "preview",
+              "note": "The engine's own `Intl`; no target test asserts formatting."
             }
           }
         }

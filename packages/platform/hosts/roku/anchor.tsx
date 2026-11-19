@@ -7,6 +7,7 @@
 import { defineAnchorNode, FieldType } from '@roku-sdk/rsg-ts';
 import { KeyHandler } from '@roku-sdk/components';
 import {
+  catchError,
   createElement,
   createEffect,
   insertNode,
@@ -133,6 +134,33 @@ export function createAnchor(
       };
       let stop: Disposer | undefined;
       let removeServices: (() => void) | undefined;
+      // Whether the app's first screen is up (the error screen counts), so a
+      // later failure is reported, not drawn over the app.
+      let launched = false;
+      let failed = false;
+      let signalled = false;
+      /** Tell the firmware the first screen is on, once. */
+      const launchComplete = () => {
+        launched = true;
+        if (signalled) return;
+        signalled = true;
+        signalLaunchComplete();
+      };
+      /**
+       * A failure before the first screen. The SDK renders this component in
+       * its own `ErrorBoundary`, so a throw from the app's first render never
+       * reaches a `try` around `run` below; it is handled here instead, where
+       * the screen can still be drawn.
+       */
+      const handleBootError = (error: unknown) => {
+        if (launched) {
+          reportError('ROKU_APP_ERROR', error);
+          return;
+        }
+        if (failed) return;
+        failed = true;
+        showBootError(root, error);
+      };
       onMount(() => {
         setTaskRoot(root);
         // The focus manager marks a handled key by `preventDefault`; that is
@@ -195,41 +223,52 @@ export function createAnchor(
           );
         let scene: SceneGraphRenderer | undefined;
         try {
-          stop = run({
-            target: 'roku',
-            surface: root,
-            native: root,
-            keys,
-            history,
-            text: rokuEditorHost(text, (reason) =>
-              reportError('ROKU_EDITOR', reason),
-            ),
-            createRenderer: (settings) =>
-              (scene = new SceneGraphRenderer(
-                settings,
-                root,
-                // Native motion is on unless the app turns it off; a host
-                // without it falls back to the JS clock for every property.
-                options.nativeMotion === false ? {} : createRokuMotionHost(),
-              )),
-            // Each font file the app imported is registered with the scene.
-            // An entry for another backend (an SDF atlas) has no file here.
-            loadFonts: (fonts) =>
-              Promise.all(
-                fonts.map((font) =>
-                  scene && typeof font.fontUrl === 'string'
-                    ? scene.loadFont(font as never)
-                    : undefined,
+          // The SDK renders this component in its own `ErrorBoundary`, which
+          // owns the app's first render; a throw there is routed to that
+          // boundary and never reaches a `try` around `run`. `catchError`
+          // gives that render an owner whose only error handler is
+          // `handleBootError`, so a boot failure still draws its screen.
+          stop = catchError(
+            () =>
+              run({
+                target: 'roku',
+                surface: root,
+                native: root,
+                keys,
+                history,
+                text: rokuEditorHost(text, (reason) =>
+                  reportError('ROKU_EDITOR', reason),
                 ),
-              ).then(() => undefined),
-          });
+                createRenderer: (settings) =>
+                  (scene = new SceneGraphRenderer(
+                    settings,
+                    root,
+                    // Native motion is on unless the app turns it off; a host
+                    // without it falls back to the JS clock for every property.
+                    options.nativeMotion === false
+                      ? {}
+                      : createRokuMotionHost(),
+                  )),
+                // Each font file the app imported is registered with the scene.
+                // An entry for another backend (an SDF atlas) has no file here.
+                loadFonts: (fonts) =>
+                  Promise.all(
+                    fonts.map((font) =>
+                      scene && typeof font.fontUrl === 'string'
+                        ? scene.loadFont(font as never)
+                        : undefined,
+                    ),
+                  ).then(() => undefined),
+              }),
+            handleBootError,
+          );
         } catch (error) {
-          showBootError(root, error);
+          handleBootError(error);
         }
         // The first screen is ready once the scene has written its first
-        // frame; with no scene (a boot error) it is ready now.
-        if (scene && stop) scene.once('idle', signalLaunchComplete);
-        else signalLaunchComplete();
+        // frame; a boot error has no frame to wait for.
+        if (scene && stop && !failed) scene.once('idle', launchComplete);
+        else launchComplete();
       });
       onCleanup(() => {
         try {

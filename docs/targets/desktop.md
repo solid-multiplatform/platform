@@ -56,6 +56,19 @@ The runtime binary resolves as: `SOLID_DESKTOP_RUNTIME`, then the host package's
 
 Screen variants ending in `.linux`, `.windows`, `.macos` or `.desktop` are selected by the OS the build runs on.
 
+## Internationalization
+
+Hermes on Linux has no `Intl`. The runtime supplies it from ICU4X (`packages/host-desktop/native/src/intl.rs`), with the data compiled into the executable, and a thin spec-shaped layer (`packages/host-desktop/src/web/intl.ts`) installs it beside the other web globals. It is defined only when the engine has none, builds no formatter until an app asks for one, and caches instances by their serialized locale and options.
+
+- `Intl.PluralRules`: `select`, `resolvedOptions`.
+- `Intl.NumberFormat`: decimal, currency, percent and unit styles, grouping, fraction digits, `formatToParts`.
+- `Intl.DateTimeFormat`: date and time styles or individual fields, `formatToParts`, and time zones from the system's IANA database (`TZ` is applied for the call and restored).
+- `Intl.RelativeTimeFormat`, `Intl.ListFormat`: `format`, `formatToParts`, `resolvedOptions`.
+- `Intl.Collator`: sorting only (`compare`), no options.
+- `Intl.getCanonicalLocales`; invalid language tags throw `RangeError`.
+
+`encodings` and `numberingSystem` are the locale's defaults; compact notation, significant digits, non-default hour cycles and `Intl.DisplayNames` are not implemented (the SDK already treats display names as optional). `style: "unit"` appends a short unit symbol from a small table. Every CLDR locale is compiled in, so no data file ships and adding a locale is not a build step. The formatters cost about 2 MB of the executable.
+
 ## How it is tested
 
 - `packages/host-desktop/native/tests/run.sh` runs the runtime's own scripts (timers, decodes, errors, fatal start, bytecode) headless, then the two tests that need a window. `SOLID_DESKTOP_HEADLESS_ONLY=1` skips the window tests, which is what the macOS and Windows CI jobs do.

@@ -13,6 +13,7 @@ import {
   Response,
   type HttpTransport,
 } from './fetch.js';
+import { installIntl } from './intl.js';
 import { URL, URLSearchParams } from './url.js';
 
 export {
@@ -31,6 +32,7 @@ export {
   URL,
   URLSearchParams,
 };
+export { installIntl } from './intl.js';
 export { decodeUtf8, encodeUtf8 } from './encoding.js';
 export type { EventInit, EventListener } from './events.js';
 export type {
@@ -66,6 +68,9 @@ export function installWebGlobals(transport?: HttpTransport): void {
     URLSearchParams,
   };
   if (transport !== undefined) globals.fetch = createFetch(transport);
+  // `Intl` is a whole namespace, so it is installed by its own module; this
+  // defines the classes only, and builds no formatter.
+  installIntl();
   const scope = globalThis as Record<string, unknown>;
   for (const name of Object.keys(globals))
     if (typeof scope[name] === 'undefined')

@@ -2,9 +2,9 @@
 // `TextEncoder`, `TextDecoder`, `Event`, `EventTarget`, `DOMException`,
 // `AbortController`, `AbortSignal`, `Headers`, `Request`, `Response`,
 // `fetch`, `structuredClone` (./web), `Blob` (./globals.ts) and
-// `KeyboardEvent` (./keys.ts). `Intl` is not among them: the engine was
-// built without it and nothing here supplies it yet.
-// Each only where the engine has none. Defining them is all this does.
+// `KeyboardEvent` (./keys.ts) and `Intl` (./web/intl.ts, over the native
+// ICU4X formatters). Each only where the engine has none. Defining them is
+// all this does; no formatter is built until an app asks for one.
 //
 // `KeyboardEvent` is here because the platform's shortcuts and media keys
 // ask `event instanceof KeyboardEvent` (packages/platform/src/sdk/
