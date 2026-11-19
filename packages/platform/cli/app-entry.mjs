@@ -76,7 +76,8 @@ export function appSettings(root, target, fontRoot) {
       );
       fonts.push(`{ fontFamily: ${family}, fontUrl: font${i} }`);
     } else if (font.atlas && fontRoot) {
-      const url = (ext) => `${fontRoot} + ${JSON.stringify('/' + font.atlas + ext)}`;
+      const url = (ext) =>
+        `${fontRoot} + ${JSON.stringify('/' + font.atlas + ext)}`;
       fonts.push(
         `{ type: 'msdf', fontFamily: ${family}, atlasUrl: ${url('.png')}, atlasDataUrl: ${url('.json')} }`,
       );
@@ -87,7 +88,10 @@ export function appSettings(root, target, fontRoot) {
   if (designSize && variantOrder(target).includes('tv'))
     settings.push(`designSize: ${JSON.stringify(designSize)}`);
   if (theme) settings.push(`theme: ${JSON.stringify(theme)}`);
-  return { imports: imports.join('\n'), settings: `{ ${settings.join(', ')} }` };
+  return {
+    imports: imports.join('\n'),
+    settings: `{ ${settings.join(', ')} }`,
+  };
 }
 
 /**
@@ -114,6 +118,31 @@ startApp(
     return entry.root();
   },
   { ...entry.options, keyMap: rokuKeyMap },
+);
+`;
+}
+
+/**
+ * The desktop entry of a component app: the native window host, started the
+ * same way as every other target. The app is its default export; the runtime
+ * that runs the bundle contains no Node.
+ */
+export function desktopComponent(settings, hasOptions) {
+  return `import { onCleanup } from 'solid-js';
+import App${hasOptions ? ', { options }' : ''} from './src/app';
+import { appEntry } from '@solid-multiplatform/platform/app/entry';
+import { startApp } from '@solid-multiplatform/platform/host';
+import { attachPlugins } from '@solid-multiplatform/platform/plugins';
+import { desktopHost } from '@solid-multiplatform/host-desktop';
+import { plugins } from './plugins.mjs';
+const entry = appEntry(App, plugins, ${settings}${hasOptions ? ', options' : ''});
+startApp(
+  desktopHost(),
+  () => {
+    onCleanup(attachPlugins(plugins, { target: 'desktop' }));
+    return entry.root();
+  },
+  entry.options,
 );
 `;
 }

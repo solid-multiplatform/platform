@@ -5,6 +5,7 @@ import {
   NATIVE_FORMS,
   appModule,
   appSettings,
+  desktopComponent,
   mountComponent,
   nativeComponent,
   rokuComponentEntry,
@@ -40,6 +41,18 @@ function pluginsFor(root, target) {
     })
     .filter((p) => p.targets.includes(target))
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// The desktop runtime's own build tool, from the app's dependencies or the
+// workspace. Node is the build tool; what runs the app is the Rust binary.
+function hostDesktopCli(root) {
+  return [
+    path.join(
+      root,
+      'node_modules/@solid-multiplatform/host-desktop/cli/index.mjs',
+    ),
+    path.join(framework, '../host-desktop/cli/index.mjs'),
+  ].find((file) => existsSync(file));
 }
 
 function buildDesktop(root, work, plugins, launch) {
@@ -203,6 +216,47 @@ function buildTarget(root, target, dev, legacy) {
   );
   stageSources(path.join(root, 'src'), path.join(work, 'src'), target);
   if (target === 'desktop') {
+    const cli = hostDesktopCli(root);
+    const app = appModule(work);
+    if (cli && app.component) {
+      // One component, one startApp call: the runtime bundles the entry and
+      // runs it. The old host stays for apps without the package.
+      const settings = appSettings(root, 'desktop', "'./fonts'");
+      write(
+        path.join(work, 'entry.tsx'),
+        settings.imports +
+          '\n' +
+          desktopComponent(settings.settings, app.options),
+      );
+      const out = path.join(work, 'bundle');
+      const fonts = path.join(work, 'fonts');
+      const hasFonts = existsSync(fonts);
+      command(
+        process.execPath,
+        [
+          cli,
+          'build',
+          path.join(work, 'entry.tsx'),
+          '--out',
+          out,
+          ...(hasFonts ? ['--assets', fonts] : []),
+          ...(dev === true ? [] : ['--bytecode', '--minify']),
+        ],
+        work,
+      );
+      if (dev === true)
+        command(
+          process.execPath,
+          [
+            cli,
+            'run',
+            path.join(out, 'app.hbc'),
+            ...(hasFonts ? ['--assets', fonts] : []),
+          ],
+          work,
+        );
+      return;
+    }
     const graphical =
       json(path.join(dir, 'package.json')).solidDesktopWindow &&
       dev !== 'plugins';
@@ -271,9 +325,9 @@ function buildTarget(root, target, dev, legacy) {
             project(root).name,
           )}`
         : app.component
-        ? // The app is a component: the entry wires it to the host. The same
-          // text on Roku; the same shape on the four NativeScript targets.
-          `${settings.imports}
+          ? // The app is a component: the entry wires it to the host. The same
+            // text on Roku; the same shape on the four NativeScript targets.
+            `${settings.imports}
 ${target === 'roku' ? "import { setRendererFactory } from '@solid-multiplatform/platform'; import { rokuHost } from '@solid-multiplatform/platform/roku';" : ''}
 import App${app.options ? ', { options }' : ''} from './src/app';
 import { appEntry } from '@solid-multiplatform/platform/app/entry';
@@ -296,7 +350,7 @@ export function mount(host = { target: '${target}' }) {
   } catch (error) { detach(); throw error; }
 }
 `
-        : `${rokuFont ? "import { loadFonts } from '@solid-multiplatform/platform'; import lato from '../fonts/Lato-Regular.ttf';" : ''}
+          : `${rokuFont ? "import { loadFonts } from '@solid-multiplatform/platform'; import lato from '../fonts/Lato-Regular.ttf';" : ''}
 ${target === 'roku' ? "import { setRendererFactory } from '@solid-multiplatform/platform'; import { rokuHost } from '@solid-multiplatform/platform/roku';" : ''}
 import { mount as start } from './src/app';
 import { attachPlugins } from '@solid-multiplatform/platform/plugins';
