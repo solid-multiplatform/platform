@@ -245,7 +245,7 @@ export async function runServicesProbe(form: 'phone' | 'tv'): Promise<void> {
           await wait(1000);
         }
       }
-      expect(once !== undefined, 'no position after six attempts');
+      if (once === undefined) throw new Error('no position after six attempts');
       expect(near(once.latitude, 48.8584), 'latitude ' + once.latitude);
       expect(near(once.longitude, 2.2945), 'longitude ' + once.longitude);
       let watched: number | undefined;
