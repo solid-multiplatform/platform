@@ -14,6 +14,7 @@ export function deviceInfo(
         .getPackageInfo(context.getPackageName(), 0);
       return {
         platform: form === 'tv' ? 'tv' : 'android',
+        os: 'android',
         model: android.os.Build.MODEL,
         osVersion: android.os.Build.VERSION.RELEASE,
         appVersion: info.versionName ?? undefined,

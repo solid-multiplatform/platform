@@ -71,7 +71,9 @@ const calcFps = (fps: number) => {
 };
 
 function updateMemoryInfo(renderer: RendererMain) {
-  const memInfo = renderer.memoryInfo();
+  // memoryInfo is optional in the scene contract: not every backend has it.
+  const memInfo = renderer.memoryInfo?.();
+  if (!memInfo) return;
   setCriticalThresholdSignal(bytesToMb(memInfo.criticalThreshold));
   setTargetThresholdSignal(bytesToMb(memInfo.targetThreshold));
   setRenderableMemUsedSignal(bytesToMb(memInfo.renderableMemUsed));

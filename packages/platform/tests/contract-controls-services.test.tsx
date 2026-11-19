@@ -3,11 +3,8 @@ import { createSignal } from 'solid-js';
 import * as lng from '@solid-multiplatform/platform';
 import { Select } from '@solid-multiplatform/platform/primitives';
 import { renderer, waitForUpdate } from './setup.js';
-import {
-  capturePhoto,
-  openMicrophone,
-  stopMicrophone,
-} from '../src/sdk/capture.js';
+import { capturePhoto, startRecording } from '../src/sdk/capture.js';
+import { openMicrophoneStream } from '../src/hosts/web-services/index.js';
 import { applySystemBarStyle, requestAppReview } from '../src/sdk/device.js';
 import { bindMediaKeys } from '../src/sdk/media.js';
 import { CapabilityError, serviceAvailable } from '../src/sdk/registry.js';
@@ -104,7 +101,41 @@ v.describe('Select', () => {
 v.describe('camera and microphone', () => {
   useWebServices();
 
-  v.it('captures photos and streams through host ports', async () => {
+  /** A `MediaRecorder` that records one chunk and stops when told to. */
+  const fakeRecorder = () => {
+    const made: FakeRecorder[] = [];
+    class FakeRecorder {
+      static isTypeSupported = (type: string) => type === 'audio/mp4';
+      mimeType: string;
+      ondataavailable?: (event: { data: Blob }) => void;
+      onstop?: () => void;
+      onerror?: () => void;
+      calls: string[] = [];
+      constructor(
+        public stream: unknown,
+        options?: { mimeType?: string },
+      ) {
+        this.mimeType = options?.mimeType ?? 'audio/webm';
+        made.push(this);
+      }
+      start() {
+        this.calls.push('start');
+      }
+      stop() {
+        this.calls.push('stop');
+        this.ondataavailable?.({ data: new Blob(['abc']) });
+        this.ondataavailable?.({ data: new Blob([]) });
+        this.onstop?.();
+      }
+    }
+    v.vi.stubGlobal('MediaRecorder', FakeRecorder);
+    v.onTestFinished(() => {
+      v.vi.unstubAllGlobals();
+    });
+    return made;
+  };
+
+  v.it('captures photos and recordings through host ports', async () => {
     const calls: string[] = [];
     provide({
       camera: {
@@ -125,19 +156,61 @@ v.describe('camera and microphone', () => {
     });
     v.expect(calls).toEqual(['capture:environment']);
 
-    const stream = { getTracks: () => [] } as unknown as MediaStream;
+    // A native host records to a file: no browser type crosses the port.
+    const recording = { mimeType: 'audio/mp4', path: '/cache/a.m4a' };
     provide({
       microphone: {
-        start: async () => {
-          calls.push('start');
-          return stream;
+        start: async (options) => {
+          calls.push(`start:${options.mimeType}`);
+          return {
+            stop: async () => {
+              calls.push('stop');
+              return recording;
+            },
+          };
         },
-        stop: () => calls.push('stop'),
       },
     });
-    v.expect(await openMicrophone()).toBe(stream);
-    stopMicrophone(stream);
-    v.expect(calls).toEqual(['capture:environment', 'start', 'stop']);
+    const session = await startRecording({ mimeType: 'audio/mp4' });
+    v.expect(await session.stop()).toBe(recording);
+    v.expect(calls).toEqual(['capture:environment', 'start:audio/mp4', 'stop']);
+  });
+
+  v.it('the web provider records with MediaRecorder into a blob', async () => {
+    const original = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
+    const stopped: string[] = [];
+    const stream = {
+      getTracks: () => [{ stop: () => stopped.push('audio') }],
+    } as unknown as MediaStream;
+    const recorders = fakeRecorder();
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getUserMedia: async () => stream },
+    });
+    try {
+      // A type the browser records is asked for; another is left to it.
+      const session = await startRecording({ mimeType: 'audio/mp4' });
+      v.expect(recorders[0]!.stream).toBe(stream);
+      v.expect(recorders[0]!.calls).toEqual(['start']);
+      const first = session.stop();
+      // Stopping twice gives the one recording.
+      v.expect(session.stop()).toBe(first);
+      const recording = await first;
+      v.expect(recorders[0]!.calls).toEqual(['start', 'stop']);
+      v.expect(recording.mimeType).toBe('audio/mp4');
+      v.expect(recording.blob!.size).toBe(3);
+      v.expect(recording.blob!.type).toBe('audio/mp4');
+      v.expect(recording.durationMs).toBeGreaterThanOrEqual(0);
+      v.expect(recording.path).toBeUndefined();
+      // The microphone is released with the recording.
+      v.expect(stopped).toEqual(['audio']);
+
+      const other = await startRecording({ mimeType: 'audio/flac' });
+      v.expect((await other.stop()).mimeType).toBe('audio/webm');
+    } finally {
+      if (original) Object.defineProperty(navigator, 'mediaDevices', original);
+      else delete (navigator as { mediaDevices?: unknown }).mediaDevices;
+    }
   });
 
   v.it('the web providers need navigator.mediaDevices', async () => {
@@ -152,7 +225,11 @@ v.describe('camera and microphone', () => {
         value: undefined,
       });
       await v.expect(capturePhoto()).rejects.toThrowError(/camera/);
-      await v.expect(openMicrophone()).rejects.toThrowError(/microphone/);
+      // No MediaRecorder (jsdom), then no mediaDevices: neither can record.
+      await v.expect(startRecording()).rejects.toThrowError(/microphone/);
+      fakeRecorder();
+      await v.expect(startRecording()).rejects.toThrowError(/microphone/);
+      await v.expect(openMicrophoneStream()).rejects.toThrowError(/microphone/);
 
       const constraints: unknown[] = [];
       Object.defineProperty(navigator, 'mediaDevices', {
@@ -164,10 +241,10 @@ v.describe('camera and microphone', () => {
           },
         },
       });
-      v.expect(await openMicrophone()).toBe(stream);
+      // Web only: the live stream, which the app stops itself.
+      v.expect(await openMicrophoneStream()).toBe(stream);
       v.expect(constraints).toEqual([{ audio: true }]);
-      stopMicrophone(stream);
-      v.expect(stopped).toEqual(['audio']);
+      v.expect(stopped).toEqual([]);
     } finally {
       if (original) Object.defineProperty(navigator, 'mediaDevices', original);
       else delete (navigator as { mediaDevices?: unknown }).mediaDevices;
@@ -179,23 +256,17 @@ v.describe('camera and microphone', () => {
     async () => {
       const restore = forbid(navigator, 'mediaDevices');
       const create = v.vi.spyOn(document, 'createElement');
-      const stopped: string[] = [];
       try {
         await withoutServices(async () => {
           await v.expect(capturePhoto()).rejects.toMatchObject({
             name: 'CapabilityError',
             capability: 'camera',
           });
-          await v.expect(openMicrophone()).rejects.toMatchObject({
+          await v.expect(startRecording()).rejects.toMatchObject({
             name: 'CapabilityError',
             capability: 'microphone',
           });
-          // A stream the app got elsewhere is still stopped.
-          stopMicrophone({
-            getTracks: () => [{ stop: () => stopped.push('track') }],
-          } as unknown as MediaStream);
         });
-        v.expect(stopped).toEqual(['track']);
         v.expect(create).not.toHaveBeenCalled();
       } finally {
         create.mockRestore();
@@ -218,9 +289,10 @@ v.describe('camera and microphone', () => {
         configurable: true,
         value: { getUserMedia },
       });
+      fakeRecorder();
       try {
         await expectSameTurn(getUserMedia, () => capturePhoto());
-        await expectSameTurn(getUserMedia, () => openMicrophone());
+        await expectSameTurn(getUserMedia, () => startRecording());
         v.expect(getUserMedia.mock.calls).toEqual([
           [{ video: true }],
           [{ audio: true }],

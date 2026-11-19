@@ -6,6 +6,7 @@
 import type { ProviderMap } from '../../sdk/registry.js';
 import { deviceServices } from './device.manifest.js';
 import { notificationsThrough } from './device.sync.js';
+export { openMicrophoneStream } from './media.sync.js';
 import { mediaServices } from './media.manifest.js';
 import { sensorsServices } from './sensors.manifest.js';
 
