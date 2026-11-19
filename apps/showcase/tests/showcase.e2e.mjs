@@ -5,7 +5,9 @@
 //       the ARIA mirror names the focused control at every step;
 //   (b) `?probe=1` reports every service and every UI assertion;
 //   (c) once settled, no frame is requested for two seconds;
-//   (d) screen history restores focus to the same card by key after the
+//   (d) the window reflows to a phone and back, and the frame meter opens
+//       and closes;
+//   (e) screen history restores focus to the same card by key after the
 //       data comes back reordered.
 //
 //   node tests/showcase.e2e.mjs dist/web [web] [chromium|firefox|webkit]

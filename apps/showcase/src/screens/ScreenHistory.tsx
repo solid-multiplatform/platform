@@ -14,7 +14,7 @@ import {
 } from '@solid-multiplatform/platform/app';
 import { viewport } from '@solid-multiplatform/platform/viewport';
 import { useShowcase } from '../env';
-import { Button, Caption, MARGIN, MUTED, Screen, TEXT } from '../ui';
+import { Button, Caption, metrics, MUTED, Screen, TEXT } from '../ui';
 
 interface Card {
   id: string;
@@ -81,13 +81,23 @@ export function ScreenHistoryScreen() {
         }
       >
         <view width={viewport().width} height={viewport().height}>
-          <text x={MARGIN} y={18} fontSize={34} color={TEXT}>
+          <text
+            x={metrics().margin}
+            y={metrics().titleY}
+            fontSize={metrics().titleSize}
+            color={TEXT}
+          >
             Screen history
           </text>
-          <text x={MARGIN} y={68} fontSize={22} color={MUTED}>
+          <text
+            x={metrics().margin}
+            y={metrics().subtitleY}
+            fontSize={metrics().subtitleSize}
+            color={MUTED}
+          >
             {`Detail: card ${(screen.current().state?.card ?? '').toUpperCase()}. Back returns to the reordered list.`}
           </text>
-          <view y={140}>
+          <view y={metrics().screenBodyY}>
             <Button label="Detail" width={520} autofocus />
           </view>
         </view>
