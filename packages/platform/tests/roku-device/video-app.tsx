@@ -6,16 +6,19 @@
 //   - the pending timer count after teardown.
 // Select draws an opaque bar over the player to prove the Video node is below
 // the app's UI. Options disposes the player and reports the timers left.
-import { createSignal, onCleanup, onMount, Show, type JSXElement } from 'solid-js';
 import {
-  startApp,
-  type HostContext,
-} from '@solid-multiplatform/platform/host';
+  createSignal,
+  onCleanup,
+  onMount,
+  Show,
+  type JSXElement,
+} from 'solid-js';
+import { startApp, type HostContext } from '@solid-multiplatform/platform/host';
+import { rokuHost, type RokuSurface } from '@solid-multiplatform/platform/roku';
 import {
-  rokuHost,
-  type RokuSurface,
-} from '@solid-multiplatform/platform/roku';
-import { useService } from '@solid-multiplatform/platform/services';
+  loadService,
+  useService,
+} from '@solid-multiplatform/platform/services';
 import { createRokuPlayer, type RokuPlayer } from '../../../video/roku.mjs';
 
 const log = (line: string) => console.log('VIDEO ' + line);
@@ -75,6 +78,21 @@ function App(context: HostContext<RokuSurface>): JSXElement {
       show('README no url');
       return;
     }
+    // Prove the TV can reach the LAN source independently of the Video node.
+    // Prove the TV can reach the source independently of the Video node.
+    void (async () => {
+      const deadline = new Promise<never>((_, reject) =>
+        realSetTimeout(() => reject(new Error('timeout')), 8000),
+      );
+      try {
+        const { fetch: request } = await loadService('request');
+        const response = await Promise.race([request(url), deadline]);
+        const body = await Promise.race([response.text(), deadline]);
+        log(`PROBE status=${response.status} chars=${body.length}`);
+      } catch (error) {
+        log('PROBE failed ' + String(error).slice(0, 100));
+      }
+    })();
     player?.dispose();
     player = createRokuPlayer(context.surface, {
       width: 1920,
@@ -92,7 +110,9 @@ function App(context: HostContext<RokuSurface>): JSXElement {
     });
     // The ready handler is installed; open paused when asked so a frame can
     // be checked before any playback.
-    show(`OPEN url=http:${/^https?:\/\//.test(url)} mode=${mode} start=${start}`);
+    show(
+      `OPEN url=http:${/^https?:\/\//.test(url)} mode=${mode} start=${start}`,
+    );
     void player
       .open({
         url,
@@ -108,12 +128,13 @@ function App(context: HostContext<RokuSurface>): JSXElement {
   };
 
   const onKey = (input: Event) => {
+    // The host raises keydown events only on the 'keydown' listener.
     const event = input as KeyboardEvent;
-    if (event.type !== 'keydown') return;
     if (event.key === 'Enter') {
-      setCovered((value) => !value);
-      log('COVER ' + (!covered() ? 'on' : 'off'));
-    } else if (event.key === 'Info') {
+      const next = !covered();
+      setCovered(next);
+      log('COVER ' + (next ? 'on' : 'off'));
+    } else if (String(event.key).toLowerCase() === 'instantreplay') {
       player?.dispose();
       player = undefined;
       realSetTimeout(() => show('TEARDOWN pending=' + timers.size), 150);

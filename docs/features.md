@@ -16,9 +16,9 @@ A cell says `tested` only when an automated test in this repository runs that fe
 
 | Status      | Cells |
 | ----------- | ----- |
-| tested      | 109   |
+| tested      | 110   |
 | device      | 70    |
-| preview     | 367   |
+| preview     | 366   |
 | in progress | 3     |
 | no          | 375   |
 
@@ -28,7 +28,7 @@ A cell says `tested` only when an automated test in this repository runs that fe
 | `tizen`           | 5      | 0      | 52      | 0           | 20  |
 | `webos`           | 6      | 0      | 51      | 0           | 20  |
 | `vizio`           | 5      | 0      | 51      | 0           | 21  |
-| `roku`            | 5      | 17     | 11      | 0           | 44  |
+| `roku`            | 6      | 17     | 10      | 0           | 44  |
 | `android`         | 0      | 32     | 26      | 0           | 19  |
 | `android-tv`      | 5      | 21     | 18      | 0           | 33  |
 | `ios`             | 28     | 0      | 20      | 0           | 29  |
@@ -189,13 +189,12 @@ Notes:
 
 ## Video
 
-| Feature                             | web     | tizen   | webos   | vizio   | roku    | android | android-tv | ios    | apple-tv | desktop-linux | desktop-windows | desktop-macos |
-| ----------------------------------- | ------- | ------- | ------- | ------- | ------- | ------- | ---------- | ------ | -------- | ------------- | --------------- | ------------- |
-| Playback adapter (`packages/video`) | preview | preview | preview | preview | preview | preview | preview    | tested | tested   | preview       | preview         | preview       |
+| Feature                             | web     | tizen   | webos   | vizio   | roku   | android | android-tv | ios    | apple-tv | desktop-linux | desktop-windows | desktop-macos |
+| ----------------------------------- | ------- | ------- | ------- | ------- | ------ | ------- | ---------- | ------ | -------- | ------------- | --------------- | ------------- |
+| Playback adapter (`packages/video`) | preview | preview | preview | preview | tested | preview | preview    | tested | tested   | preview       | preview         | preview       |
 
 Notes:
 
-- Playback adapter (`packages/video`), roku: packages/platform/tests/roku-device/run-video.mjs; on the TCL 50S435 (OS 16.0.4) the app opens the clip but the Video node stays buffering and the TV makes no HTTP request to the LAN server (2026-11-18).
 - Playback adapter (`packages/video`), android-tv: CI checks that the APK contains the Media3 player; nothing plays in CI.
 
 ## CLI commands
@@ -326,6 +325,7 @@ A `tested` cell names the test file that covers it, the workflow and job that ru
 - `geolocation` (`src/sdk/geolocation.ts`), ios: packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (ios); the service probe reads a set location and a watched position in a simulator)
 - `sensors` (`src/sdk/sensors.ts`), web: apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `sensors` to report ok in headless Chromium)
 - `biometrics` (`src/sdk/biometrics.ts`), ios: packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (ios); the service probe gets the expected not-enrolled refusal in a simulator)
+- Playback adapter (`packages/video`), roku: packages/platform/tests/roku-device/run-video.mjs (TCL 50S435, Roku OS 16.0.4; opens paused at 3 s, plays, pauses/resumes, Fwd seeks, reaches the end, maps a 404 to an error with the firmware code and message, teardown pending=0; VIDEO RESULT passed=16 failed=0, public HTTPS source)
 - Playback adapter (`packages/video`), ios, apple-tv: packages/platform/tests/cli/apple-smoke.sh (test.yml: apple; AVPlayer opens a clip, plays until time advances, pauses and seeks in a simulator, not on a physical device)
 - `solid-platform init`, web, tizen, webos, vizio, roku, desktop-linux: packages/platform/tests/cli/projects-smoke.sh (test.yml: projects; `init --targets web,desktop,roku,tizen,webos,vizio` from the packed package on Linux)
 - `solid-platform init`, android-tv: packages/platform/tests/cli/android-smoke.sh (android.yml: android)

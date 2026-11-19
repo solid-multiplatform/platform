@@ -25,7 +25,7 @@ These adapters are preview. What CI checks:
 
 - iOS and tvOS simulators: `packages/platform/tests/cli/apple-smoke.sh` opens a clip, plays until time advances, pauses and seeks (CI job `apple`).
 - Android TV: `packages/platform/tests/cli/android-smoke.sh` asserts that the player and its layout are in the built APK (CI job `android`). Playback is checked only when you run the script with an emulator.
-- Roku: `packages/platform/tests/roku-device/run-video.mjs` opens a clip paused, plays, pauses, seeks with the remote, reaches the end, maps an unreachable URL's firmware error and checks teardown leaves no timer, on the TV named by `ROKU_DEV_IP`.
+- Roku: `packages/platform/tests/roku-device/run-video.mjs` opens a clip paused at a start position, plays, pauses, seeks with the remote, reaches the end, maps a 404's firmware error and checks teardown leaves no timer, on the TV named by `ROKU_DEV_IP`. On Roku OS 16 `prebuffer` does not open the stream, so the scene opens with `play`, seeks to the start and pauses through the adapter.
 - `npm test` in this directory runs the package's own Node tests.
 
 Nothing is checked on a physical device. DRM and track selection need qualification per device. The per-target status is in the [feature matrix](../../docs/features.md).

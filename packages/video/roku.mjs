@@ -65,8 +65,7 @@ export function rokuMediaCapabilities(features) {
     if (codec.includes('dash')) return has('dash');
     return true;
   });
-  const hdr =
-    (features && (features.hdr10 || features.dolby_vision)) === true;
+  const hdr = (features && (features.hdr10 || features.dolby_vision)) === true;
   return { drm, codecs, hdr };
 }
 
@@ -97,7 +96,9 @@ export function rokuStreamFormat(url, format) {
   if (hint === 'smooth' || hint === 'ism') return 'ism';
   if (hint === 'mkv') return 'mkv';
   if (hint === 'mp4' || hint === 'm4v') return 'mp4';
-  const path = String(url ?? '').split('?')[0].toLowerCase();
+  const path = String(url ?? '')
+    .split('?')[0]
+    .toLowerCase();
   if (path.endsWith('.m3u8')) return 'hls';
   if (path.endsWith('.mpd')) return 'dash';
   if (path.endsWith('.ism') || path.endsWith('.isml')) return 'ism';
@@ -123,13 +124,17 @@ export function rokuFailure(code, message) {
     failure = 'unsupported-format';
     reason = 'container';
   }
-  const detail = numeric > 0 || text
-    ? ` (Roku error ${numeric || 'unknown'}${text ? ': ' + text : ''})`
-    : '';
+  const detail =
+    numeric > 0 || text
+      ? ` (Roku error ${numeric || 'unknown'}${text ? ': ' + text : ''})`
+      : '';
   return new PlayerOperationError(
     failure,
     'SceneGraph playback failed' + detail,
-    { firmwareCode: Number.isFinite(numeric) ? numeric : null, firmwareMessage: text },
+    {
+      firmwareCode: Number.isFinite(numeric) ? numeric : null,
+      firmwareMessage: text,
+    },
     reason,
   );
 }
@@ -159,7 +164,12 @@ function createHostDriver(bridge, request, emit, options) {
   let settled = false;
   let position = 0;
   let duration = null;
-  let tracks = { audio: [], text: [], selectedAudioId: null, selectedTextId: null };
+  let tracks = {
+    audio: [],
+    text: [],
+    selectedAudioId: null,
+    selectedTextId: null,
+  };
   let offset = 0;
 
   const finish = (error) => {
@@ -193,20 +203,27 @@ function createHostDriver(bridge, request, emit, options) {
         if (typeof event.duration === 'number' && event.duration > 0)
           duration = event.duration;
         const state = event.state;
-        if (state === 'playing' || state === 'paused' || state === 'buffering') {
+        if (
+          state === 'playing' ||
+          state === 'paused' ||
+          state === 'buffering'
+        ) {
           emit({ state });
           time();
-          if (state !== 'buffering') finish();
         } else if (state === 'finished' || state === 'ended') {
           time();
           emit({ state: 'ended' });
           finish();
         } else if (state === 'error') {
           const error = failure(event);
-          emit({ state: 'error', error: error.toFailure(), time: {
-            positionSeconds: position,
-            durationSeconds: duration,
-          } });
+          emit({
+            state: 'error',
+            error: error.toFailure(),
+            time: {
+              positionSeconds: position,
+              durationSeconds: duration,
+            },
+          });
           finish(error);
         }
         break;
@@ -245,7 +262,10 @@ function createHostDriver(bridge, request, emit, options) {
       return new Promise((resolve, rejectPrepare) => {
         settle = resolve;
         reject = rejectPrepare;
-        if (!live) return finish(new PlayerOperationError('invalid-state', 'Player is disposed'));
+        if (!live)
+          return finish(
+            new PlayerOperationError('invalid-state', 'Player is disposed'),
+          );
         const headers = {
           ...(options.httpHeaders ?? {}),
           ...(request.authorization?.headers ?? {}),
@@ -265,7 +285,8 @@ function createHostDriver(bridge, request, emit, options) {
           licenseServerURL: drm.licenseServerURL,
           certificate: drm.certificate,
           drmParams: drm.params,
-          startAt: request.startAtSeconds > 0 ? request.startAtSeconds : undefined,
+          startAt:
+            request.startAtSeconds > 0 ? request.startAtSeconds : undefined,
           paused: !!request.paused,
           mute: !!options.muted,
           audioTrack: request.audioTrackId,
@@ -279,7 +300,11 @@ function createHostDriver(bridge, request, emit, options) {
     play: () => send({ op: 'play', seq: Date.now() }),
     pause: () => send({ op: 'pause', seq: Date.now() }),
     seek: (seconds) => {
-      position = Math.max(0, Number(seconds) || 0) + offset;
+      const target = Math.max(0, Number(seconds) || 0) + offset;
+      // The host already seeked to the start before it reported ready; a
+      // second seek here would resume playback after the adapter's pause.
+      if (Math.abs(target - position) < 0.75) return;
+      position = target;
       send({ op: 'seek', seconds: Number(seconds) || 0, seq: Date.now() });
     },
     setMuted: (value) => send({ op: 'mute', value: !!value, seq: Date.now() }),
@@ -287,13 +312,19 @@ function createHostDriver(bridge, request, emit, options) {
       send({ op: 'rate', value: Number(rate) || 1, seq: Date.now() }),
     selectAudioTrack(id) {
       if (!tracks.audio.some((track) => track.id === id))
-        throw new PlayerOperationError('unsupported-operation', 'Track unavailable');
+        throw new PlayerOperationError(
+          'unsupported-operation',
+          'Track unavailable',
+        );
       publishTracks({ selectedAudioId: id });
       send({ op: 'audioTrack', id, seq: Date.now() });
     },
     selectTextTrack(id) {
       if (id !== null && !tracks.text.some((track) => track.id === id))
-        throw new PlayerOperationError('unsupported-operation', 'Track unavailable');
+        throw new PlayerOperationError(
+          'unsupported-operation',
+          'Track unavailable',
+        );
       publishTracks({ selectedTextId: id });
       send({ op: 'textTrack', id: id ?? 'off', seq: Date.now() });
     },
@@ -349,7 +380,10 @@ function createNodeDriver(root, request, emit, options) {
   };
   const select = (kind, id) => {
     if (id !== null && !tracks[kind].some((track) => track.id === id))
-      throw new PlayerOperationError('unsupported-operation', 'Track unavailable');
+      throw new PlayerOperationError(
+        'unsupported-operation',
+        'Track unavailable',
+      );
     props[kind === 'text' ? 'selectedTextId' : 'selectedAudioId'] = id;
     prop(kind === 'text' ? 'subtitleTrack' : 'audioTrack', id ?? 'off');
     publishTracks(
@@ -408,9 +442,7 @@ function createNodeDriver(root, request, emit, options) {
   prop('onAvailableSubtitleTracks', (list) =>
     publishTracks({ text: availableTracks(list, 'TrackName') }),
   );
-  prop('onAudioTrack', (id) =>
-    publishTracks({ selectedAudioId: id || null }),
-  );
+  prop('onAudioTrack', (id) => publishTracks({ selectedAudioId: id || null }));
   prop('onSubtitleTrack', (id) =>
     publishTracks({ selectedTextId: id && id !== 'off' ? id : null }),
   );
@@ -501,7 +533,8 @@ function createNodeDriver(root, request, emit, options) {
 
 /** Wire `mediaSession` handlers to the adapter's own commands. */
 function bindMediaSession(player, session, options) {
-  if (!session || typeof session.setActionHandler !== 'function') return () => {};
+  if (!session || typeof session.setActionHandler !== 'function')
+    return () => {};
   const ignore = (error) => {
     if (!(error instanceof PlayerOperationError)) throw error;
   };
