@@ -19,8 +19,12 @@ fn main() {
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
     let mut glue = cc::Build::new();
+    // Hermes' CMake (`CMakeLists.txt`, `CMAKE_CXX_COMPILER_ID MATCHES
+    // "MSVC"`) builds the VM as C++20 on MSVC because its headers use
+    // designated initializers and C compound literals. C++17 is what the
+    // other compilers use.
     glue.cpp(true)
-        .std("c++17")
+        .std(if target_env == "msvc" { "c++20" } else { "c++17" })
         .flag_if_supported("-fno-exceptions")
         .flag_if_supported("-fno-rtti")
         .flag_if_supported("-fno-strict-aliasing")
@@ -45,12 +49,23 @@ fn main() {
     if target_env != "msvc" {
         glue.define("HERMESVM_INDIRECT_THREADING", None);
     }
-    // Hermes' own CMake does `add_definitions(-D_WINDOWS)` for a Windows
-    // build. Its headers test `_WINDOWS` rather than `_WIN32` (MSVC does not
-    // predefine the former), and without it `hermes/Support/OSCompat.h`
-    // includes `<unistd.h>`, which Windows does not have.
+    // The definitions Hermes' own CMake adds to every Windows translation
+    // unit. `_WINDOWS` is the one that matters: Hermes' headers test it
+    // rather than `_WIN32` (MSVC does not predefine the former), and without
+    // it `hermes/Support/OSCompat.h` includes `<unistd.h>`. The `_CRT_*` and
+    // `_SCL_*` ones silence MSVC's deprecation warnings, as in Hermes.
     if target_os == "windows" {
-        glue.define("_WINDOWS", None);
+        for name in [
+            "_WINDOWS",
+            "_CRT_SECURE_NO_DEPRECATE",
+            "_CRT_SECURE_NO_WARNINGS",
+            "_CRT_NONSTDC_NO_DEPRECATE",
+            "_CRT_NONSTDC_NO_WARNINGS",
+            "_SCL_SECURE_NO_DEPRECATE",
+            "_SCL_SECURE_NO_WARNINGS",
+        ] {
+            glue.define(name, None);
+        }
     }
     for dir in ["include", "API", "public", "external", "external/llvh/include", "external/llvh/gen/include"] {
         glue.include(src.join(dir));
