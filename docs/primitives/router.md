@@ -27,8 +27,12 @@ export const Routes = () => (
 `Route`, `useNavigate`, `useParams` and the other router functions come from
 `@solidjs/router`.
 
-`HashRouter` reads and writes `window.location.hash` and uses
-`window.history`. It needs a host that has them.
+`HashRouter` reads and writes the host's history
+(`HostContext.history`, supplied by `startApp`). The web host gives it the
+browser's `window.history` behind the hash; Android, iOS, tvOS and Roku give
+it an in-memory stack that Back drives. Only when no host supplies one does
+the router fall back to `window.location.hash` and `window.history`, and only
+where `window` exists. The router never reads a fake browser shim.
 
 ## Props
 

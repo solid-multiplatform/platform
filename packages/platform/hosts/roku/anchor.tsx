@@ -14,9 +14,10 @@ import {
   setProp,
 } from '@roku-sdk/solid';
 import { Config } from '@solid-multiplatform/platform';
-import type {
-  Disposer,
-  HostContext,
+import {
+  createMemoryHistory,
+  type Disposer,
+  type HostContext,
 } from '@solid-multiplatform/platform/host';
 import {
   installServices,
@@ -91,6 +92,8 @@ export function createAnchor(
     (_inputs, outputs) => {
       const root = createElement('group');
       const keys = createKeySource();
+      // The router's stack lives here: Roku has no browser history to read.
+      const history = createMemoryHistory();
       const entry = createNativeTextEntry(root);
       // The keyboard dialog takes the remote as it opens.
       const text: typeof entry = {
@@ -123,6 +126,7 @@ export function createAnchor(
             surface: root,
             native: root,
             keys,
+            history,
             text: rokuEditorHost(text, (reason) =>
               reportError('ROKU_EDITOR', reason),
             ),
@@ -132,9 +136,7 @@ export function createAnchor(
                 root,
                 // Native motion is on unless the app turns it off; a host
                 // without it falls back to the JS clock for every property.
-                options.nativeMotion === false
-                  ? {}
-                  : createRokuMotionHost(),
+                options.nativeMotion === false ? {} : createRokuMotionHost(),
               )),
             // Each font file the app imported is registered with the scene.
             // An entry for another backend (an SDF atlas) has no file here.
@@ -172,7 +174,11 @@ export function createAnchor(
             // The system keyboard dialog has the remote while it is open.
             if (text.ownsInput()) return;
             const handled = keys.dispatch(key, press);
-            if (!handled && press && key === 'back') outputs.exitApp(true);
+            if (!handled && press && key === 'back') {
+              // A mounted router's Back goes one entry; at its root, exit.
+              if (history.canGoBack?.()) history.go?.(-1);
+              else outputs.exitApp(true);
+            }
           }}
         >
           {root as unknown as import('solid-js').JSX.Element}

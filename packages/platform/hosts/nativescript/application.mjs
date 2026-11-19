@@ -3,6 +3,7 @@
 // surface, so the host module itself stays importable where there is no
 // NativeScript runtime.
 import { RendererMain } from '@solid-multiplatform/renderer';
+import { createMemoryHistory } from './history.mjs';
 
 /** Runs `run` on a Canvas this module creates. Returns how to stop. */
 export function launchApplication(form, options, run) {
@@ -82,13 +83,14 @@ export function launchApplication(form, options, run) {
       keys: bridge,
       pointer,
       text,
+      // The router's stack, owned by the host: nothing here shims a browser.
+      history: options.history ?? createMemoryHistory(),
     });
   };
 
   void (async () => {
-    const { Application, Color, GridLayout } = await import(
-      '@nativescript/core'
-    );
+    const { Application, Color, GridLayout } =
+      await import('@nativescript/core');
     const { Canvas } = await import('@nativescript/canvas');
     Application.run({
       create() {
@@ -111,9 +113,7 @@ export function launchApplication(form, options, run) {
         return root;
       },
     });
-  })().catch((error) =>
-    console.error('Native host startup failed', error),
-  );
+  })().catch((error) => console.error('Native host startup failed', error));
 
   return () => {
     stopped = true;

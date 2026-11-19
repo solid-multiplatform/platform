@@ -19,6 +19,7 @@ import type {
 import { bindBrowserViewport } from '../sdk/browser-viewport.js';
 import type { PlatformTarget } from '../sdk/capabilities.js';
 import { resetCursor, setCursor } from '../sdk/cursor.js';
+import { createBrowserHistory } from './web-history.js';
 import { browserEditorHost } from '../sdk/editor.js';
 import { bindPointerEvents, type PointerSource } from '../sdk/input.js';
 import { installServices } from '../sdk/registry.js';
@@ -126,6 +127,7 @@ export function createWebHost(
           pointer,
           semantics,
           text: browserEditorHost(surface),
+          history: createBrowserHistory(),
           loadFonts,
           createRenderer: (settings) => createRenderer(settings, surface),
         });

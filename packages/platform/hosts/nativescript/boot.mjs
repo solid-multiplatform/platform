@@ -7,6 +7,7 @@ import {
   installShims,
   KeyBridge,
 } from '@solid-multiplatform/platform/nativescript';
+import { createMemoryHistory } from './history.mjs';
 import { nativeEditorHost } from './editors.mjs';
 
 /**
@@ -48,7 +49,10 @@ export function runNativeApp(
         // The bridge is the app's key source: no target, so nothing is
         // dispatched to a fake `document`. The focus manager listens on it.
         const bridge = new KeyBridge();
-        const binding = bindDevice(canvas, bridge, platform, root);
+        // The router's stack, owned here: the target's Back handling drives
+        // it, and no `window.history` shim exists to read.
+        const history = createMemoryHistory();
+        const binding = bindDevice(canvas, bridge, platform, root, history);
         const lifecycle = bindLifecycle(
           () => platform.renderer,
           bridge,
@@ -100,6 +104,7 @@ export function runNativeApp(
             root,
             canvas,
             keys: bridge,
+            history,
             text: nativeEditorHost(root, target),
             input: binding.input,
           });

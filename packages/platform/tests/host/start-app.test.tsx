@@ -1,6 +1,7 @@
 // startApp on the DOM host: one call declares capabilities, builds the
 // renderer, wires keys to focus, renders, and tears all of it down.
 import { expect, test, vi } from 'vitest';
+import { useContext } from 'solid-js';
 import {
   activeElement,
   Config,
@@ -10,7 +11,13 @@ import {
   useColorScheme,
   type ElementNode,
 } from '@solid-multiplatform/platform';
-import { startApp, type HostContext } from '@solid-multiplatform/platform/host';
+import {
+  createMemoryHistory,
+  startApp,
+  type HostContext,
+  type HostDefinition,
+} from '@solid-multiplatform/platform/host';
+import { HostScope } from '../../src/app/context.js';
 import { domHost } from '@solid-multiplatform/platform/host/dom';
 import {
   loadService,
@@ -81,6 +88,9 @@ test('startApp runs an app on a host and its disposer tears it down', async () =
   expect(context.keys).toBe(document);
   expect(context.pointer).toBeDefined();
   expect(context.text).toBeDefined();
+  // The browser's history is the host's, so the router never reads window.
+  expect(context.history).toBeDefined();
+  expect(typeof context.history?.push).toBe('function');
   expect(serviceAvailable('clipboard')).toBe('available');
   expect((await deviceInfo()).platform).toBe('web');
   // Settings are stored under the host's namespace.
@@ -117,6 +127,31 @@ test('startApp runs an app on a host and its disposer tears it down', async () =
     name: 'CapabilityError',
     capability: 'deviceInfo',
   });
+});
+
+test('startApp hands the app the host history in its context', async () => {
+  const root = document.body.appendChild(document.createElement('div'));
+  const history = createMemoryHistory('/start');
+  let seen: unknown;
+  const base = domHost({ root });
+  const host: HostDefinition<HTMLElement> = {
+    target: base.target,
+    launch: (run) =>
+      base.launch((context: HostContext<HTMLElement>) =>
+        run({ ...context, history }),
+      ),
+  };
+  const stop = startApp(
+    host,
+    () => {
+      seen = useContext(HostScope)?.history;
+      return <view width={10} height={10} />;
+    },
+    { renderer: { appWidth: 1280, appHeight: 720 } },
+  );
+  await tick();
+  expect(seen).toBe(history);
+  (stop as () => void)();
 });
 
 test('the web host keeps settings under `app` unless told otherwise', async () => {
