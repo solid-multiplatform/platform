@@ -6,8 +6,9 @@
  * Adding a platform means writing one `HostDefinition`. A new graphics model
  * also needs a backend in `@solid-multiplatform/renderer`.
  */
-import type { JSXElement } from 'solid-js';
+import { createComponent, type JSXElement } from 'solid-js';
 import type { SceneRenderer } from '@solid-multiplatform/renderer/contracts';
+import { HostScope } from './app/context.js';
 import { Config } from './core/config.js';
 import { isElementNode } from './core/utils.js';
 import {
@@ -98,9 +99,12 @@ export interface AppOptions {
   pointer?: Omit<ScenePointerOptions, 'cursor'>;
 }
 
-/** The input and output of a host that a scene is wired to. */
+/**
+ * The input and output of a host that a scene is wired to, and what the app
+ * reads with `useHost`: the target's name and the host's native root.
+ */
 export type HostWiring = Partial<
-  Pick<HostContext, 'keys' | 'pointer' | 'semantics'>
+  Pick<HostContext, 'keys' | 'pointer' | 'semantics' | 'target' | 'native'>
 >;
 
 /**
@@ -142,7 +146,12 @@ export function mountApp(
       if (host.semantics !== undefined) {
         release.push(attachSemantics(rootNode, host.semantics));
       }
-      return app();
+      return createComponent(HostScope.Provider, {
+        value: host,
+        get children() {
+          return app();
+        },
+      });
     });
   } catch (error) {
     releaseAll();

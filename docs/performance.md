@@ -55,6 +55,18 @@ The procedure is in `packages/platform/tests/performance`. It needs a physical d
 
 Results that were recorded with these scripts are in `docs/beta`, with a [README](/beta/README.md) that says what each directory holds and what the numbers are. Read it before quoting any of them.
 
+### Where the Android TV gate stands
+
+Measured on 2026-11-18 on a physical Android TV at 60 Hz with `main`: **the gate is not met.**
+
+- One complete 10-minute mixed pass: 14,389 window frames, 6 flagged late. All six fall in one 104 ms run where another app's system prompt closed over the test app; the app finished those frames on time.
+- Three 5-minute gallery passes: 0 flagged late of about 9,600 frames each. Frame time p50 6.7 ms, p99 10.6 ms, worst 13.9 ms.
+- The flagged count understates the problem. In 30 s of scrolling the GL thread swapped 1,141 frames one refresh apart, and the window showed 1,022, with 114 two-refresh intervals. JavaScript and GL were on time (4.5 ms and 2.4 ms median per refresh). The frames are lost between the GL surface and the window; a build with `surface-view` delivered every buffer one refresh apart. The analysers do not count that layer yet.
+- The scene is not idle when still: the canvas plugin's native frame callback wakes the main thread 60 times a second while nothing is drawn.
+- On that day the display reported no present time for 97–100% of frames, so a zero could not have been confirmed either.
+
+The analysers now report frames with no display present time, and the mixed driver checks input focus before each key.
+
 ## Measure on Roku
 
 There is no Roku frame-timing procedure on `main`. What exists:

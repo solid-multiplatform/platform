@@ -12,6 +12,11 @@ const good = {
   name: 'my-app',
   version: '1.4.0',
   targets: ['web', 'roku', 'android-tv'],
+  app: {
+    fonts: [{ family: 'Lato', atlas: 'Lato-Regular.msdf', file: 'Lato.ttf' }],
+    designSize: { width: 1920, height: 1080 },
+    theme: 'dark',
+  },
   icons: { default: 'assets/icon.png' },
   splash: 'assets/splash.png',
   deepLinks: { schemes: ['myapp'], hosts: ['example.com'] },
@@ -47,6 +52,12 @@ test('optional sections get empty defaults', () => {
   assert.deepEqual(config.deepLinks, { schemes: [], hosts: [] });
   assert.deepEqual(config.services, []);
   assert.deepEqual(config.signing, {});
+  // No `app` section: fonts by convention, no design size, the system theme.
+  assert.deepEqual(config.app, {
+    fonts: undefined,
+    designSize: undefined,
+    theme: undefined,
+  });
   assert.equal(config.id, undefined);
   assert.equal(config.version, undefined);
 });
@@ -95,6 +106,29 @@ test('each mistake is reported with the file and the key path', () => {
       /^app\.json: signing\.android\.storePassword: do not store credentials/,
     ],
     [{ ...good, colour: 'red' }, /^app\.json: colour: unknown key/],
+    [{ ...good, app: [] }, /^app\.json: app: expected \{ fonts, designSize, theme \}$/],
+    [{ ...good, app: { font: [] } }, /^app\.json: app\.font: unknown key/],
+    [
+      { ...good, app: { fonts: [{ atlas: 'Lato.msdf' }] } },
+      /^app\.json: app\.fonts\[0\]\.family: required string$/,
+    ],
+    [
+      { ...good, app: { fonts: [{ family: 'Lato' }] } },
+      /^app\.json: app\.fonts\[0\]: needs an atlas/,
+    ],
+    [
+      { ...good, app: { fonts: [{ family: 'Lato', atlas: '../Lato.msdf' }] } },
+      /^app\.json: app\.fonts\[0\]\.atlas: expected a file name without a directory$/,
+    ],
+    [
+      { ...good, app: { designSize: { width: 1920 } } },
+      /^app\.json: app\.designSize: expected \{ width, height \}/,
+    ],
+    [
+      { ...good, app: { designSize: { width: 0, height: 1080 } } },
+      /^app\.json: app\.designSize: expected \{ width, height \}/,
+    ],
+    [{ ...good, app: { theme: 'blue' } }, /^app\.json: app\.theme: expected one of system, light, dark$/],
   ];
   for (const [raw, expected] of cases)
     throwsMessage(() => validateConfig(raw, 'app.json'), expected);

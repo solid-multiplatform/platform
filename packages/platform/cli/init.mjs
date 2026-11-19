@@ -186,6 +186,8 @@ export function init(destination, selected) {
       name,
       version: '0.1.0',
       targets: selected,
+      // Fonts come from assets/fonts unless `app.fonts` lists them.
+      app: { designSize: { width: 1920, height: 1080 }, theme: 'dark' },
       deepLinks: { schemes: [], hosts: [] },
       services: [],
       signing: {},
@@ -193,14 +195,6 @@ export function init(destination, selected) {
     write(
       path.join(root, 'src/app.tsx'),
       template('app/app.tsx', { APP_NAME: name }),
-    );
-    copy(
-      path.join(framework, 'cli/templates/app/screens'),
-      path.join(root, 'src/screens'),
-    );
-    copy(
-      path.join(framework, 'cli/templates/app/screen.ts'),
-      path.join(root, 'src/screen.ts'),
     );
     copy(
       path.join(framework, 'tests/webgl/fonts'),

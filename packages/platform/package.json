@@ -401,6 +401,20 @@
         "default": "./dist/src/sdk/certification.js"
       }
     },
+    "./app": {
+      "@solidtv/source": "./src/app/index.ts",
+      "import": {
+        "types": "./dist/src/app/index.d.ts",
+        "default": "./dist/src/app/index.js"
+      }
+    },
+    "./app/entry": {
+      "@solidtv/source": "./src/app/entry.ts",
+      "import": {
+        "types": "./dist/src/app/entry.d.ts",
+        "default": "./dist/src/app/entry.js"
+      }
+    },
     "./host": {
       "@solidtv/source": "./src/host.ts",
       "import": {

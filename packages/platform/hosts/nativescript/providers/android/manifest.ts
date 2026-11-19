@@ -13,11 +13,16 @@
  * A service the device, the form or the app's manifest cannot support is left
  * out, so the SDK reports it `unavailable`. Not provided on Android at all:
  * `push` (it needs Firebase, which is the app's to add), `microphone` (the
- * SDK's port returns a browser `MediaStream`), `thumbnails`, and `request`
- * (a `fetch` through the runtime did not settle on the test emulator).
+ * SDK's port returns a browser `MediaStream`), `thumbnails`, and `request`.
+ * The runtime's `fetch` (OkHttp, off the UI thread) answers over HTTPS and,
+ * where the app's network security configuration allows the host, over
+ * cleartext; it rejects a host the configuration blocks. Against an HTTP/1.0
+ * server it neither resolved nor rejected on the emulator, and it has no
+ * timeout of its own, so there is no `request` provider until one bounds it.
  *
  * The services in `ANDROID_PREVIEW_SERVICES` are written but have no device
- * evidence yet. They are offered only when the app asks with `preview`.
+ * evidence yet; those in `ANDROID_TV_PREVIEW_SERVICES` have it on a phone
+ * only. They are offered only when the app asks with `preview`.
  */
 import type {
   ServiceName,
@@ -70,20 +75,27 @@ export interface AndroidServicesOptions {
   preview?: boolean;
 }
 
-/** Services whose providers have not been verified on a device. */
+/**
+ * Services whose providers have not been verified on a device. A service
+ * leaves this list with a passing check in the device verification
+ * (`tests/native-device/android-probe.mjs verify`).
+ */
 export const ANDROID_PREVIEW_SERVICES: readonly ServiceName[] = [
   'appReview',
   'biometrics',
-  'calendar',
   'camera',
-  'contacts',
-  'download',
   'filePicker',
+  'keyEvents',
+];
+
+/**
+ * Services verified on a phone that a TV could also offer, where the TV
+ * emulator could not show it: still a preview on a TV.
+ */
+export const ANDROID_TV_PREVIEW_SERVICES: readonly ServiceName[] = [
+  'battery',
   'fullscreen',
   'geolocation',
-  'keyEvents',
-  'maps',
-  'mediaCapabilities',
   'sensors',
 ];
 
@@ -93,8 +105,10 @@ const PERMISSION = 'android.permission.';
 
 export function androidServices(options: AndroidServicesOptions): ProviderMap {
   const map = everyService(options);
-  if (!options.preview)
-    for (const name of ANDROID_PREVIEW_SERVICES) delete map[name];
+  if (options.preview) return map;
+  for (const name of ANDROID_PREVIEW_SERVICES) delete map[name];
+  if (options.form === 'tv')
+    for (const name of ANDROID_TV_PREVIEW_SERVICES) delete map[name];
   return map;
 }
 
