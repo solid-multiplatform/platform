@@ -5,7 +5,9 @@ to do: hover, secondary click, the wheel, text selection, focus rings and
 keyboard shortcuts. This page lists what the framework does, and the Apple
 Human Interface Guidelines page each behaviour follows. The guidance applied
 here is **macOS and iPadOS**: iOS touch-scrolling physics and tvOS focus rules
-are intentionally not imported into desktop or web.
+are intentionally not imported into desktop or web. The pages these rules come
+from are downloaded locally by `scripts/apple-docs.mjs`; see
+[Apple guidance as a reference](../reference/apple-hig.md).
 
 The rule that governs all of it: nothing here runs while the scene is idle. A
 listener exists only where a host has a pointer, a held timer only while a
