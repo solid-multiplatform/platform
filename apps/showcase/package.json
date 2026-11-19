@@ -9,9 +9,12 @@
     "build": "vite build",
     "build:tizen": "vite build --mode tizen",
     "build:webos": "vite build --mode webos",
-    "test": "vite build && node tests/showcase.e2e.mjs dist/web",
-    "test:tizen": "vite build --mode tizen && node tests/showcase.e2e.mjs dist/tizen tizen",
-    "test:webos": "vite build --mode webos && node tests/showcase.e2e.mjs dist/webos webos"
+    "test": "vite build && node tests/showcase.e2e.mjs dist/web web chromium && node tests/showcase.e2e.mjs dist/web web firefox && node tests/showcase.e2e.mjs dist/web web webkit",
+    "test:chromium": "vite build && node tests/showcase.e2e.mjs dist/web web chromium",
+    "test:firefox": "vite build && node tests/showcase.e2e.mjs dist/web web firefox",
+    "test:webkit": "vite build && node tests/showcase.e2e.mjs dist/web web webkit",
+    "test:tizen": "vite build --mode tizen && node tests/showcase.e2e.mjs dist/tizen tizen chromium",
+    "test:webos": "vite build --mode webos && node tests/showcase.e2e.mjs dist/webos webos chromium"
   },
   "dependencies": {
     "@solid-multiplatform/platform": "workspace:*",
