@@ -1,4 +1,4 @@
-import { browserTVs } from './variants.mjs';
+import { tvBrowsers } from './variants.mjs';
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import {
@@ -145,7 +145,7 @@ export function newPlugin(root, name, selected, mode) {
       const values = { CLASS: label, PLUGIN: name };
       if (target === 'android-tv' || target === 'android')
         androidPlugin(dest, name, mode);
-      if (target === 'web' || browserTVs.includes(target))
+      if (target === 'web' || tvBrowsers.includes(target))
         write(
           path.join(dest, 'index.mjs'),
           `export async function run() { return '${name} web'; }\n`,

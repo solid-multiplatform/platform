@@ -1,4 +1,4 @@
-import { browserTVs } from './variants.mjs';
+import { tvBrowsers } from './variants.mjs';
 import { rendererArchive } from './renderer-archive.mjs';
 import path from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
@@ -221,7 +221,7 @@ export function init(destination, selected) {
           private: true,
           type: 'module',
         });
-      } else if (target === 'web' || browserTVs.includes(target)) {
+      } else if (target === 'web' || tvBrowsers.includes(target)) {
         writeJson(path.join(dest, 'package.json'), {
           name: 'web-host',
           private: true,
@@ -232,7 +232,7 @@ export function init(destination, selected) {
           devDependencies: {
             vite: '8.0.13',
             'vite-plugin-solid': '2.11.12',
-            ...(browserTVs.includes(target)
+            ...(tvBrowsers.includes(target)
               ? { '@vitejs/plugin-legacy': '8.2.4', terser: '5.51.2' }
               : {}),
             ...(target === 'webos' ? { '@webos-tools/cli': '3.2.6' } : {}),
@@ -251,8 +251,10 @@ export function init(destination, selected) {
             path.join(dest, file),
             template(
               'web/' +
-                (file === 'vite.config.mjs' && browserTVs.includes(target)
-                  ? 'tv-vite.config.mjs'
+                (file === 'vite.config.mjs' && tvBrowsers.includes(target)
+                  ? target === 'ps4'
+                    ? 'ps4-vite.config.mjs'
+                    : 'tv-vite.config.mjs'
                   : file),
               { APP_NAME: name, TARGET: target },
             ),

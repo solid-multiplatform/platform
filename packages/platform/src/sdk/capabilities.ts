@@ -5,6 +5,7 @@ export type PlatformTarget =
   | 'tizen'
   | 'webos'
   | 'vizio'
+  | 'ps4'
   | 'roku'
   | 'android'
   | 'android-tv'
@@ -50,6 +51,16 @@ const defaults: Record<PlatformTarget, PlatformCapabilities> = {
   vizio: {
     target: 'vizio',
     inputs: ['remote'],
+    colorScheme: true,
+    insets: false,
+    haptics: false,
+  },
+  // The PlayStation 4 browser has a mouse pointer and left click, and no
+  // remote, keyboard or gamepad the host can read. A click is Select; pointer
+  // movement is focus.
+  ps4: {
+    target: 'ps4',
+    inputs: ['mouse'],
     colorScheme: true,
     insets: false,
     haptics: false,

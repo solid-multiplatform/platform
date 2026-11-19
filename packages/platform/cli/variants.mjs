@@ -9,6 +9,11 @@ import {
 import { command, copy, project, writeJson } from './files.mjs';
 
 export const browserTVs = ['tizen', 'webos', 'vizio'];
+// Browser targets hosted as a web app: the browser TVs and the PS4, which
+// has no package format. `ps4` gets the fixed TV stage and the TV entry but
+// no vendor packaging.
+export const tvBrowsers = [...browserTVs, 'ps4'];
+export const hostedBrowsers = ['web', ...tvBrowsers];
 export const desktopOS = ['linux', 'windows', 'macos'];
 const families = {
   android: 'mobile',
@@ -19,6 +24,7 @@ const families = {
   tizen: 'tv',
   webos: 'tv',
   vizio: 'tv',
+  ps4: 'tv',
   linux: 'desktop',
   windows: 'desktop',
   macos: 'desktop',

@@ -108,6 +108,13 @@ export interface ScenePointer extends PointerSink {
    * around at the ends: Tab on a keyboard. False when there is none.
    */
   focusNext(reverse?: boolean): boolean;
+  /**
+   * Turns focus-on-hover on or off for this scene. A host whose pointer is
+   * its only input (the PS4 browser) turns it on when it connects, so that
+   * moving the pointer focuses what it is over. Nothing else changes: the
+   * hover state, cursor and click path stay as they are.
+   */
+  setHoverFocus(enabled: boolean): void;
   dispose(): void;
 }
 
@@ -194,7 +201,7 @@ export function createScenePointer(
   const slop = options.slop ?? 8;
   const hoverState = options.hoverState ?? '$hover';
   const pressedState = options.pressedState ?? '$pressed';
-  const hoverFocus = options.hoverFocus === true;
+  let hoverFocus = options.hoverFocus === true;
   const showCursor = options.cursor;
   const owner = getOwner();
   const presses = new Map<number, Press>();
@@ -348,7 +355,16 @@ export function createScenePointer(
 
   function setHover(node: ElementNode | undefined) {
     const shown = node === undefined ? undefined : stateOwner(node);
-    if (shown === hovered) return;
+    if (shown === hovered) {
+      // A pointer-only host keeps focus under the pointer even when the
+      // hovered node did not change: a click elsewhere moved focus away, and
+      // the next move over the same node must bring it back.
+      if (hoverFocus && shown !== undefined) {
+        selectInParent(shown);
+        shown.setFocus();
+      }
+      return;
+    }
     hovered?.states.remove(hoverState);
     hovered = shown;
     if (shown === undefined) return;
@@ -619,6 +635,9 @@ export function createScenePointer(
       stops[next]!.setFocus();
       return true;
     },
+    setHoverFocus(enabled: boolean) {
+      hoverFocus = enabled;
+    },
     dispose() {
       onCancelAll();
       attached.delete(root);
@@ -633,12 +652,17 @@ export function createScenePointer(
  * {@link PointerSource} the app is mounted with, and input reaches the scene
  * once that connects it. Nothing is registered on it any more.
  */
-export function createInputScope() {
+export function createInputScope(options: { hoverFocus?: boolean } = {}) {
   let sink: PointerSink | undefined;
   const cancelAll = () => sink?.cancelAll();
   return {
     connect(next: PointerSink) {
       sink = next;
+      // A pointer-only host asks for focus on movement; a click and a key
+      // host do not. The scene owns the setting, so this changes nothing
+      // until input actually arrives.
+      if (options.hoverFocus === true)
+        (next as Partial<ScenePointer>).setHoverFocus?.(true);
       return () => {
         if (sink === next) sink = undefined;
       };

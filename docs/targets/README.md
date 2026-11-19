@@ -1,11 +1,12 @@
 # Targets
 
-A target is a name the CLI and the SDK both know: `web`, `tizen`, `webos`, `vizio`, `roku`, `android`, `android-tv`, `ios`, `apple-tv`, `desktop`.
+A target is a name the CLI and the SDK both know: `web`, `tizen`, `webos`, `vizio`, `ps4`, `roku`, `android`, `android-tv`, `ios`, `apple-tv`, `desktop`.
 
 Each page below says what the target is built from, how it is tested, and what is still in progress. The per-feature status is in the [feature matrix](/features.md), which is generated from `docs/features.json`.
 
 - [Web](/targets/web.md): `web`
 - [Browser TVs](/targets/browser-tv.md): `tizen`, `webos`, `vizio`
+- [PlayStation 4](/targets/ps4.md): `ps4`
 - [Roku](/targets/roku.md): `roku`
 - [Android and Android TV](/targets/android.md): `android`, `android-tv`
 - [iOS and tvOS](/targets/apple.md): `ios`, `apple-tv`

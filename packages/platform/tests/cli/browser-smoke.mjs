@@ -84,6 +84,9 @@ try {
     );
   }
   if (process.argv.includes('--tv')) {
+    // A pointer-only host (PS4) selects the focused node when a click lands on
+    // empty space instead of dropping it.
+    const emptySelects = process.argv.includes('--empty-selects');
     const cdp = await page.context().newCDPSession(page);
     for (const [width, height, dpr] of [
       [1920, 1080, 1],
@@ -123,7 +126,16 @@ try {
       );
       if (top) {
         await page.mouse.click(pluginButton.x * scale + left, top / 2);
-        assert.equal(await result(), null);
+        if (emptySelects)
+          await page.waitForFunction(
+            () => document.documentElement.dataset.pluginResult === 'greeting',
+            undefined,
+            { timeout: 3000 },
+          );
+        else assert.equal(await result(), null);
+        await page.evaluate(
+          () => delete document.documentElement.dataset.pluginResult,
+        );
       }
       await page.mouse.click(
         pluginButton.x * scale + left,
