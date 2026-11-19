@@ -474,6 +474,28 @@ declare global {
 
 initClickInspector();
 
+/** One line of a text node's glyph geometry (see {@link ElementNode.getTextGeometry}). */
+export interface TextGeometryLine {
+  text: string;
+  /** Index of `text[0]` in the geometry's `text`. */
+  start: number;
+  /** Line box, local to the text block. */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  baseline: number;
+  /** x of each character boundary relative to `x`; length `text.length + 1`. */
+  charX: number[];
+}
+
+/** A text node's lines, for selection hit-testing and highlights. */
+export interface TextGeometry {
+  /** The lines joined by `\n`: what a selection copies. */
+  text: string;
+  lines: TextGeometryLine[];
+}
+
 /** `ElementNode.lng` before the node is rendered: the props to create it with. */
 type PendingNodeProps = Partial<ElementNode> & { shader?: any };
 
@@ -1489,6 +1511,64 @@ export class ElementNode {
       result += this.children[i]!.text;
     }
     return result;
+  }
+
+  /**
+   * The laid-out lines of a text node, for hit-testing and drawing a
+   * selection highlight: each line's text, its box and the x of every
+   * character boundary. Read-only and computed on request (never a frame).
+   *
+   * A backend that knows its glyph geometry exposes it on the node (the
+   * WebGL backend's `renderer.textNodes.selectionGeometry`). The DOM
+   * backend does not: its fallback is one box per `\n` line with the
+   * measured width shared evenly between characters, which is enough for
+   * tests and for the DOM renderer's own non-glyph text.
+   */
+  getTextGeometry(): TextGeometry | null {
+    const lng = this.lng as unknown as {
+      id?: number;
+      renderer?: {
+        textNodes?: {
+          selectionGeometry?(id: number): TextGeometry | null;
+        };
+      };
+    };
+    const backend = lng?.renderer?.textNodes;
+    if (
+      typeof backend?.selectionGeometry === 'function' &&
+      typeof lng.id === 'number'
+    ) {
+      const geometry = backend.selectionGeometry(lng.id);
+      if (geometry !== null) return geometry;
+    }
+    const text = this.text ?? '';
+    const width = this.width || 0;
+    const height = this.height || 0;
+    if (text.length === 0 || !(width > 0)) return null;
+    const parts = text.split('\n');
+    const lineHeight = height > 0 ? height / parts.length : 0;
+    const lines: TextGeometryLine[] = [];
+    let start = 0;
+    for (let i = 0; i < parts.length; i++) {
+      if (i > 0) start += 1;
+      const lineText = parts[i]!;
+      const charX: number[] = new Array(lineText.length + 1);
+      for (let k = 0; k <= lineText.length; k++) {
+        charX[k] = lineText.length > 0 ? (width * k) / lineText.length : 0;
+      }
+      lines.push({
+        text: lineText,
+        start,
+        x: 0,
+        y: i * lineHeight,
+        width,
+        height: lineHeight,
+        baseline: (i + 0.8) * lineHeight,
+        charX,
+      });
+      start += lineText.length;
+    }
+    return { text, lines };
   }
 
   destroy() {

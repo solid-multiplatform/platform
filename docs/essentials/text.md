@@ -63,6 +63,43 @@ advance by more than a pixel is clipped to the text's box.
 This is what CSS, React Native, Flutter, Android and Roku do: content is
 wrapped or cut at the container's edge, never silently painted past it.
 
+## Selecting and copying text
+
+Make text selectable with `selectable`. The app writes no selection code:
+
+```tsx
+<Text
+  selectable
+  width={600}
+  contain="width"
+  onSelectionChange={(text) => console.log(text)}
+>
+  Drag across this paragraph, or use Shift+Arrow and Ctrl/Cmd+C.
+</Text>
+```
+
+- Dragging selects from the point the pointer went down at to the current
+  point. A drag that leaves the box extends to the nearest end; releasing
+  keeps the selection; a click without a drag clears it. A double click
+  selects a word, and a double-click drag extends by words.
+- On a host with keys, `Shift+Arrow` extends by character,
+  `Shift+Ctrl`/`Shift+Cmd+Arrow` by word, `Ctrl`/`Cmd+C` copies, and `Escape`
+  clears.
+- The highlight is drawn in the scene behind the glyphs, one quad per line
+  segment, in the theme's `colors.selection`. It follows wrapped and
+  truncated lines and `letterSpacing` because the geometry comes from the
+  backend that laid the glyphs out. Nothing runs while the scene is idle.
+- Copy goes through the `clipboard` service (`writeClipboard`), never a
+  browser API directly. A host without one logs a warning and copies
+  nothing.
+- `onSelectionChange(text | null)` reports the selected string, and
+  `selectionColor` overrides the theme token. `<SelectableText>` is the same
+  component without the `selectable` flag.
+
+A target with no pointer cannot select: on Roku and a TV remote this is a
+no-op, and the Roku backend does not draw the highlight yet. Selection is
+shipped for WebGL hosts (web, desktop, PS4) once its tests pass there.
+
 ## Defaults for all text
 
 `Config.fontSettings` holds the defaults for every `<text>`. Set it once at

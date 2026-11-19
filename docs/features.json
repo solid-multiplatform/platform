@@ -196,6 +196,31 @@
           }
         },
         {
+          "id": "text-selection",
+          "feature": "Text selection and copy (`<Text selectable>`)",
+          "default": {
+            "status": "preview"
+          },
+          "cells": {
+            "web": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/webgl/text-selection.test.tsx and tests/contract-selection.test.tsx (test.yml: browser and unit; a drag highlights characters 5–15 at their glyph advances in real WebGL, a click clears it, and keyboard copy reaches the clipboard service)"
+            },
+            "desktop-linux": {
+              "status": "preview",
+              "note": "The same WebGL backend and pointer sink as web, but no desktop-runtime test drives a selection."
+            },
+            "ps4": {
+              "status": "preview",
+              "note": "Pointer-only host: a drag selects with the PS4 browser's mouse; no test drives it on the host."
+            },
+            "roku": {
+              "status": "unavailable",
+              "note": "No pointer, and the Roku backend draws no selection highlight yet; `selectable` is a no-op."
+            }
+          }
+        },
+        {
           "id": "focus-keys",
           "feature": "Focus and key handling",
           "default": {
