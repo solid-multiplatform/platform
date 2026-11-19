@@ -357,6 +357,15 @@ jobs:
           git -C hermes fetch -q --depth 1 origin "$HERMES_SHA"
           git -C hermes checkout -q FETCH_HEAD
           test "$(git -C hermes rev-parse HEAD)" = "$HERMES_SHA"
+          # At this SHA two Node-API test addons are both named test_exception.
+          # Ninja with MSVC writes every import library into the same binary
+          # directory and refuses to generate two rules for one path, before
+          # it knows which targets will be built. Give each addon's archive a
+          # directory under its own category. Build-system only: no VM code is
+          # touched, and none of these test addons is built or shipped.
+          sed -i 's|^    RUNTIME_OUTPUT_DIRECTORY_RELEASE ${ADDON_OUTPUT_DIR}$|    RUNTIME_OUTPUT_DIRECTORY_RELEASE ${ADDON_OUTPUT_DIR}\n    ARCHIVE_OUTPUT_DIRECTORY ${ADDON_OUTPUT_DIR}|' \
+            hermes/external/node-api-tests/hermes/CMakeLists.txt
+          grep -n "ARCHIVE_OUTPUT_DIRECTORY" hermes/external/node-api-tests/hermes/CMakeLists.txt
           cmake -S hermes -B hermes-build -G Ninja -DCMAKE_BUILD_TYPE=Release -DHERMES_ENABLE_INTL=OFF
           ninja -C hermes-build hermesvm hermesNapi
       - name: Save the Hermes build
