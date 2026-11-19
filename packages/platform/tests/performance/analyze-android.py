@@ -11,7 +11,13 @@ import pathlib
 import re
 import subprocess
 
-from frame_timeline import as_csv, is_flagged, layer_query, split_layers
+from frame_timeline import (
+    as_csv,
+    is_flagged,
+    layer_query,
+    present_unknown,
+    split_layers,
+)
 
 p = argparse.ArgumentParser()
 p.add_argument("trace_directory", type=pathlib.Path)
@@ -77,6 +83,9 @@ for meta in sorted(args.trace_directory.glob("pass-*.json")):
             "appFrames": len(rows),
             "sampleSpanSeconds": round(span, 2),
             "misses": misses,
+            # Not in misses, and not known to be on time: Android had no
+            # display present time for these frames.
+            "framesWithUnknownPresent": sum(map(present_unknown, rows)),
             "presentation": counts,
             "cadence60Hz": cadence,
         }
@@ -88,6 +97,8 @@ if not reports or any(
     reason = "Missing application or display frame timing"
 elif any(r["misses"] for r in reports):
     reason = "Missed presentation deadlines"
+elif any(r["framesWithUnknownPresent"] for r in reports):
+    reason = "Frames without a display present time cannot be called on time"
 elif any(r["cadence60Hz"]["intervals25To100ms"] for r in reports):
     reason = "Short multi-refresh gaps in the 60 Hz gallery workload"
 summary = {"status": "preview", "reason": reason, "passes": reports}

@@ -25,9 +25,70 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+      # Dependencies resolved once are not fetched again: Maven Central has
+      # failed single artifacts in this job.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: gradle-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: |
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'emulator' 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+      # One retry: the script starts from a fresh directory each time, and a
+      # failed artifact download succeeds on the second attempt.
       - working-directory: packages/platform
-        run: bash tests/cli/android-smoke.sh
+        run: bash tests/cli/android-smoke.sh || bash tests/cli/android-smoke.sh
+
+  # Runs the service providers' device checks on a phone emulator. This job
+  # has never run: it does not fail the workflow until it has been seen green.
+  android-services:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    continue-on-error: true
+    env:
+      GRADLE_OPTS: -Dorg.gradle.workers.max=2 -Dorg.gradle.daemon=false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: gradle-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+      - name: Allow the emulator to use KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot-save
+          disable-animations: true
+          working-directory: packages/platform
+          script: node tests/native-device/android-probe.mjs verify --serial emulator-5554 --form phone --dir "$RUNNER_TEMP/probe-phone" --out "$RUNNER_TEMP/android-services/verify-phone.json"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-services
+          path: ${{ runner.temp }}/android-services
+          if-no-files-found: ignore

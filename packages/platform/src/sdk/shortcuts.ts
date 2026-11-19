@@ -99,8 +99,9 @@ export function matchesCombo(
   }
   if (combo.ctrl && !event.ctrlKey) return false;
   if (combo.meta && !event.metaKey) return false;
-  if (combo.alt !== event.altKey) return false;
-  if (combo.shift !== event.shiftKey) return false;
+  // A native key event may carry no modifier fields at all.
+  if (combo.alt !== Boolean(event.altKey)) return false;
+  if (combo.shift !== Boolean(event.shiftKey)) return false;
   return true;
 }
 

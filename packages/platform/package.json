@@ -450,7 +450,8 @@
     "prepack": "npm run build && node cli/renderer-archive.mjs",
     "test:browser": "vitest --config=vitest.browser.config.ts",
     "test:webgl": "vitest run --config=vitest.webgl.config.ts",
-    "typecheck:native": "tsc -p hosts/nativescript/tsconfig.android.json"
+    "typecheck:native": "tsc -p hosts/nativescript/tsconfig.android.json",
+    "typecheck:apple": "tsc -p hosts/nativescript/tsconfig.apple.json"
   },
   "keywords": [
     "lightning",
@@ -481,7 +482,8 @@
     "vite-plugin-solid": "^2.11.12",
     "vitest": "^4.1.6",
     "@solid-multiplatform/renderer": "workspace:*",
-    "solid-js": "1.9.17"
+    "solid-js": "1.9.17",
+    "@nativescript/types-ios": "9.1.1"
   },
   "peerDependencies": {
     "@solidjs/router": "^0.16.1",

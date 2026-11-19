@@ -62,6 +62,7 @@ jobs:
         run: |
           npm test
           npm run typecheck:native
+          npm run typecheck:apple
           node --test tests/cli/variants.test.mjs
           python tests/performance/test_frame_timeline.py
           node --test tests/native/*.test.mjs
