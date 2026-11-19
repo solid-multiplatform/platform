@@ -1,23 +1,34 @@
 // Measures Roku frame pacing on a physical device through the existing
 // developer installer and console (no `rk dev`/`rk sideload`): builds
 // tests/roku-device/pacing-app.tsx, installs it, relaunches it with launch
-// parameters for one fixed workload, collects the timestamps it prints, and
-// analyses them.
+// parameters for one fixed workload, records a Perfetto trace while it runs,
+// and analyses the render-thread slices.
 //
 //   node tests/performance/run-pacing.mjs --case steady --seconds 60 \
 //     --out /path/to/roku-pacing/steady
 //
 // The case is `steady`, `animation` or `block`; `--seconds` defaults to 60.
-// Results go to <out>-pacing.json (raw samples + analysis) and
+// Results go to <out>-pacing.json (raw samples + both analyses) and
 // <out>-pacing.txt (the readable report). Without --out, only the report is
 // printed. The app that was on screen before is restored afterwards, also on
 // failure. Never prints the device address, serial or credentials.
 //
-// THIS IS A PROXY. The samples are JavaScript-thread frame callbacks on the
-// device; the firmware's real render/swapBuffers timing is only in a Perfetto
-// trace (docs/performance.md, "Measure on Roku"). The analysis says so.
+// THE REAL SOURCE IS PERFETTO (default). The firmware records `render` and
+// `swapBuffers` slices on `RenderThr:Main`; `render + swapBuffers` is the
+// frame budget (rsg-sdk perfetto-profiling.md). `--proxy` disables tracing and
+// measures only the JavaScript-thread proxy, for comparison. If the endpoint
+// refuses or no trace processor is found, the runner says so and falls back.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  rmSync,
+  writeFileSync,
+  writeSync,
+} from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -31,10 +42,11 @@ import {
 } from '../../cli/roku-device.mjs';
 import { analyzePacing, formatPacingReport } from './analyze-roku-pacing.mjs';
 import {
-  CASES,
-  DEFAULT_SECONDS,
-  PERIOD_MS,
-} from '../roku-device/pacing-cases.mjs';
+  analyzePerfetto,
+  findTraceProcessor,
+  formatPerfettoReport,
+} from './analyze-roku-perfetto.mjs';
+import { CASES, DEFAULT_SECONDS } from '../roku-device/pacing-cases.mjs';
 
 const project = fileURLToPath(new URL('../../examples/roku/', import.meta.url));
 const out = path.join(project, 'dist-pacing');
@@ -58,6 +70,8 @@ const seconds = Math.max(
 const target = flag('--out');
 const maxOverBudget = flag('--max-over-budget');
 const keep = args.includes('--keep');
+const channel = flag('--channel') ?? 'dev';
+const proxyOnly = args.includes('--proxy');
 
 const device = rokuDevice();
 const info = await deviceInfo(device);
@@ -67,7 +81,9 @@ console.log(
   `Roku ${info.model}, OS ${info.softwareVersion}, ${info.uiResolution}`,
 );
 console.log(
-  `Workload ${requested} for ${seconds}s (JavaScript-thread proxy at ${Math.round(1000 / PERIOD_MS)} Hz)`,
+  proxyOnly
+    ? `Workload ${requested} for ${seconds}s (JavaScript-thread proxy only)`
+    : `Workload ${requested} for ${seconds}s (Perfetto render+swap; proxy alongside)`,
 );
 
 // ---- build and install ------------------------------------------------------
@@ -103,6 +119,127 @@ execFileSync(
   { stdio: 'inherit' },
 );
 
+// ---- Perfetto: enable, capture, and find the trace processor ----------------
+
+async function enablePerfetto() {
+  try {
+    const response = await fetch(
+      `http://${device.ip}:8060/perfetto/enable/${encodeURIComponent(channel)}`,
+      { method: 'POST', signal: AbortSignal.timeout(10_000) },
+    );
+    const body = (await response.text())
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 240);
+    return { ok: response.ok, status: response.status, body };
+  } catch (error) {
+    return { ok: false, status: 0, body: String(error.message ?? error) };
+  }
+}
+
+/** Stream the device's trace WebSocket to a file until `stop()`. */
+async function captureTrace(file) {
+  mkdirSync(path.dirname(file), { recursive: true });
+  const fd = openSync(file, 'w');
+  let bytes = 0;
+  const socket = new WebSocket(`ws://${device.ip}:8060/perfetto-session`);
+  socket.binaryType = 'arraybuffer';
+  let opened = false;
+  socket.onmessage = (event) => {
+    const data =
+      event.data instanceof ArrayBuffer
+        ? Buffer.from(event.data)
+        : Buffer.from(String(event.data));
+    writeSync(fd, data);
+    bytes += data.length;
+  };
+  try {
+    await new Promise((resolve, reject) => {
+      socket.onopen = () => {
+        opened = true;
+        resolve();
+      };
+      socket.onerror = () => reject(new Error('Perfetto WebSocket error'));
+      setTimeout(
+        () => reject(new Error('Perfetto WebSocket connect timeout')),
+        5000,
+      );
+    });
+  } catch (error) {
+    try {
+      socket.close();
+    } catch {
+      // Ignore: the socket never opened.
+    }
+    closeSync(fd);
+    rmSync(file, { force: true });
+    throw error;
+  }
+  return {
+    bytes: () => bytes,
+    async stop() {
+      await new Promise((resolve) => {
+        const done = () => resolve();
+        socket.onclose = done;
+        try {
+          socket.close();
+        } catch {
+          done();
+        }
+        setTimeout(done, 1500);
+      });
+      closeSync(fd);
+      return { bytes, opened };
+    },
+  };
+}
+
+let processor = null;
+let capture = null;
+let traceFile = null;
+let perfettoStatus = null;
+if (!proxyOnly) {
+  processor = findTraceProcessor(flag('--processor'));
+  if (!processor)
+    console.log(
+      'Perfetto: no trace_processor_shell found (pass --processor <path>); falling back to the proxy.',
+    );
+  else console.log(`Perfetto: ${processor.version} at ${processor.path}`);
+}
+
+/**
+ * Enable tracing once the channel is installed and running, then open the
+ * trace stream. Installing over a tracing channel resets it, so this must
+ * happen after `sideload` and before the parameterized relaunch.
+ */
+async function startPerfetto() {
+  if (!processor) return;
+  perfettoStatus = await enablePerfetto();
+  console.log(
+    `Perfetto enable ${perfettoStatus.ok ? 'ok' : 'refused'} status=${perfettoStatus.status} body=${perfettoStatus.body}`,
+  );
+  if (!perfettoStatus.ok) {
+    console.log('Perfetto: falling back to the proxy.');
+    return;
+  }
+  traceFile =
+    flag('--trace') ??
+    path.join(
+      os.homedir(),
+      '.cache/smp-perfetto/traces',
+      `roku-${requested}-${new Date().toISOString().replace(/[:.]/g, '-')}.perfetto-trace`,
+    );
+  try {
+    capture = await captureTrace(traceFile);
+    console.log('Perfetto: recording started');
+  } catch (error) {
+    console.log(
+      `Perfetto: capture failed (${error.message}); falling back to the proxy.`,
+    );
+    traceFile = null;
+  }
+}
+
 // ---- read the console while the app runs ------------------------------------
 
 const markers = [];
@@ -124,12 +261,24 @@ const reading = readConsole(
   (seconds + 90) * 1000,
 );
 
+let traceBytes = 0;
 try {
   await sleep(1500);
   fresh = true;
   await sideload(device, zip);
-  // The installer launches once without parameters; relaunch with the case.
+  // The installer launches once without parameters; give that launch time to
+  // reach the app, then enable tracing and open the stream.
+  for (let i = 0; i < 40; i++) {
+    if (markers.some((text) => text.startsWith('NO_PARAMS'))) break;
+    await sleep(250);
+  }
+  // Leave the channel so the tracing configuration is read by a fresh
+  // process when it launches below. Enabling with the app already running
+  // records nothing.
+  await keypress(device, 'Home').catch(() => {});
   await sleep(1000);
+  if (!proxyOnly) await startPerfetto();
+  // Relaunch with the case; the trace is recording from here.
   await launch(device, 'dev', {
     contentId: 'pacing',
     case: requested,
@@ -138,6 +287,12 @@ try {
   await reading.done;
 } finally {
   reading.stop();
+  if (capture) {
+    const stopped = await capture.stop().catch(() => ({ bytes: 0 }));
+    traceBytes = stopped.bytes;
+    capture = null;
+    if (traceBytes === 0) traceFile = null;
+  }
   // The home screen's id is not stable ("Roku", then a number on the same
   // TV), so relaunch the recorded id and fall back to Home if the dev channel
   // is still in front. Any other id is an installed channel.
@@ -202,7 +357,31 @@ const analysis = analyzePacing({
   blocks,
   durationMs: rawSummary?.durationMs,
 });
-const report = formatPacingReport(analysis);
+const proxyReport = formatPacingReport(analysis);
+
+// ---- analyse the real trace -------------------------------------------------
+
+let perfetto = null;
+if (traceFile && processor) {
+  try {
+    perfetto = analyzePerfetto({
+      processor: processor.path,
+      trace: traceFile,
+      caseName: requested,
+    });
+    perfetto.traceFile = traceFile;
+    perfetto.traceBytes = traceBytes;
+  } catch (error) {
+    console.error('Perfetto analysis failed: ' + error.message);
+    perfetto = null;
+  }
+}
+
+const perfettoReport = perfetto ? formatPerfettoReport(perfetto) : null;
+const report = [
+  perfettoReport ?? 'Perfetto: not recorded (proxy only).',
+  proxyReport,
+].join('\n\n');
 
 if (target) {
   const base = path.resolve(target).replace(/\.(txt|json)$/i, '');
@@ -221,23 +400,35 @@ if (target) {
         events,
         samples,
         analysis,
+        perfetto,
+        perfettoStatus,
+        traceFile,
+        traceBytes,
       },
       null,
       2,
     ) + '\n',
   );
   writeFileSync(base + '-pacing.txt', report + '\n');
+  if (perfetto)
+    writeFileSync(
+      base + '-perfetto.json',
+      JSON.stringify(perfetto, null, 2) + '\n',
+    );
   console.log('Results: ' + base + '-pacing.json');
+  if (traceFile) console.log('Trace: ' + traceFile);
 }
 
 console.log(report);
-console.log(JSON.stringify(analysis));
+console.log(JSON.stringify({ perfetto, proxy: analysis }));
 
 if (maxOverBudget !== undefined) {
   const limit = Number(maxOverBudget);
-  if (!(analysis.overBudget <= limit)) {
+  const over = perfetto ? perfetto.over16_67 : analysis.overBudget;
+  const source = perfetto ? 'Perfetto render+swap' : 'JS-thread proxy';
+  if (!(over <= limit)) {
     console.error(
-      `Proxy gate failed: ${analysis.overBudget} intervals over budget, limit ${limit}.`,
+      `Gate failed (${source}): ${over} over budget, limit ${limit}.`,
     );
     process.exit(1);
   }

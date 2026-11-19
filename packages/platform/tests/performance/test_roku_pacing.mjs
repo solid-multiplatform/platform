@@ -10,6 +10,11 @@ import {
   BUDGET_MS,
   WHAT_THIS_DOES_NOT_MEASURE,
 } from './analyze-roku-pacing.mjs';
+import {
+  summarizeFrames,
+  pairFrames,
+  BUDGET_MS as PERFETTO_BUDGET_MS,
+} from './analyze-roku-perfetto.mjs';
 
 /** Timestamps at an exact 60 Hz cadence. */
 function clean(count, period = PERIOD_MS) {
@@ -91,4 +96,30 @@ test('the summary states it is a proxy and what it does not measure', () => {
   assert.equal(summary.kind, 'roku-pacing-proxy');
   assert.equal(summary.whatThisDoesNotMeasure, WHAT_THIS_DOES_NOT_MEASURE);
   assert.match(summary.whatThisDoesNotMeasure, /GPU and compositor timing/);
+});
+
+// ---- Perfetto real-source analyser -----------------------------------------
+
+test('pairFrames sums each render with the swapBuffers that follows it', () => {
+  const rows = [
+    { name: 'render', dur: 1_000_000 }, // 1 ms
+    { name: 'swapBuffers', dur: 2_000_000 }, // 2 ms
+    { name: 'render', dur: 4_000_000 },
+    { name: 'swapBuffers', dur: 16_000_000 },
+  ];
+  assert.deepEqual(pairFrames(rows), [3, 20]);
+});
+
+test('a Perfetto frame summary counts frames over the 16.67 ms budget', () => {
+  const summary = summarizeFrames([3, 3, 20, 10], PERFETTO_BUDGET_MS);
+  assert.equal(summary.frames, 4);
+  assert.equal(summary.overBudget, 1);
+  assert.equal(summary.overBudget1ms, 1);
+  assert.equal(summary.worstMs, 20);
+  // Nearest rank over [3, 3, 10, 20]: p50 is the second value.
+  assert.equal(summary.p50Ms, 3);
+});
+
+test('the Perfetto budget matches the 60 Hz refresh period', () => {
+  assert.ok(Math.abs(PERFETTO_BUDGET_MS - 16.6667) < 0.01);
 });

@@ -65,6 +65,7 @@ jobs:
           npm run typecheck:apple
           node --test tests/cli/variants.test.mjs
           python tests/performance/test_frame_timeline.py
+          node --test tests/performance/test_roku_pacing.mjs
           node --test tests/native/*.test.mjs
       - working-directory: packages/video
         run: npm test
