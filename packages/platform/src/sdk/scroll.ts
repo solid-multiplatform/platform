@@ -137,30 +137,43 @@ export function wheelToScroll(
 }
 
 /**
- * Apple's `UIScrollView.DecelerationRate.normal`: velocity keeps this fraction
- * per millisecond. The local UIKit reference does not print the number, so
- * this uses 0.998 per millisecond until the mobile demo's rewritten engine is
- * the reference; see `docs/app-api.md#scrolling`.
+ * `UIScrollViewDecelerationRateNormal`: velocity keeps this fraction per
+ * millisecond. The same constant is the mobile demo's researched reference
+ * (`apps/mobile-demo/src/scroller.ts`); see `docs/app-api.md#scrolling`.
  */
 export const TOUCH_DECELERATION_RATE = 0.998;
 
-/** UIScrollView's rubber-band coefficient, `UIScrollViewRubberBandFactor`. */
+/** UIScrollView's rubber-band coefficient, `__UIScrollViewRubberBandCoefficient`. */
 export const RUBBER_BAND_COEFFICIENT = 0.55;
 
 /** Movement, in scene units, before a nested gesture locks to one axis. */
 export const AXIS_LOCK_SLOP = 10;
 
-/** Velocity, in scene units per millisecond, at which a fling stops. */
-const MIN_FLING_VELOCITY = 0.02;
-/** Only the last 100 ms of pointer samples decide the release velocity. */
-const VELOCITY_WINDOW_MS = 100;
+const LN_RATE = Math.log(TOUCH_DECELERATION_RATE);
+/**
+ * The bounce spring's fixed stiffness, 0.99 per millisecond, from UIKit's
+ * `_getBouncingDecelerationOffset`; independent of the deceleration rate.
+ */
+const BOUNCE_RATE = 0.99;
+const LN_BOUNCE = Math.log(BOUNCE_RATE);
+/** Below this release velocity, in units/ms, iOS does not decelerate at all. */
+const FLING_MIN_VELOCITY = 0.25;
+/** UIKit's projection integrates the decay only down to 0.01 units/ms. */
+const VELOCITY_FLOOR = 0.01;
+/** UIPanGestureRecognizer's two-sample blend while dragging. */
+const SAMPLE_BLEND_CURRENT = 0.2;
+/** The guarded low-pass UIKit applies to the release velocity. */
+const RELEASE_BLEND_LATEST = 0.25;
+/** A settle is finished within half a scene unit of its target. */
+const SETTLE_EPSILON = 0.5;
 /** A frame longer than this (a background tab) is not allowed to jump. */
 const MAX_FRAME_MS = 64;
-const SNAP_SETTLE_MS = 220;
-const SNAP_SETTLE_PER_VELOCITY = 140;
-const SNAP_SETTLE_MAX_MS = 620;
-const RUBBER_BAND_RETURN_MS = 220;
-const SETTLED_DISTANCE = 0.5;
+/**
+ * A slot settle that starts at rest approaches its target at 0.98 per
+ * millisecond: about 265 ms from 100 units, distance-adaptive like a
+ * deceleration.
+ */
+const SLOT_SETTLE_RATE = 0.98;
 
 /**
  * The standard rubber-band function from the UIScrollView guides:
@@ -180,14 +193,17 @@ export function rubberBandDistance(
 }
 
 /**
- * How far a fling with `velocity` (scene units per millisecond) travels with
- * a per-millisecond deceleration rate: `v / (1 - rate)`.
+ * UIKit's projection: how far a fling with `velocity` (scene units per
+ * millisecond) travels under the exponential decay, integrated down to the
+ * 0.01 units/ms floor — `(|v| - 0.01) / |ln(rate)|`.
  */
 export function flingDistance(
   velocity: number,
   rate = TOUCH_DECELERATION_RATE,
 ): number {
-  return velocity / (1 - rate);
+  const speed = Math.abs(velocity) - VELOCITY_FLOOR;
+  if (speed <= 0) return 0;
+  return (Math.sign(velocity) * speed) / -Math.log(rate);
 }
 
 /**
@@ -290,23 +306,18 @@ export interface ScrollEngine {
   drag(phase: 'start' | 'move' | 'end' | 'cancel', point: Point): void;
   /** Follow one axis of a pointer, after an axis lock decided it. */
   dragAxis(phase: 'start' | 'move' | 'end' | 'cancel', value: number): void;
-  /** Release velocity from the last 100 ms, in units per millisecond. */
+  /** The recognizer's guarded low-pass velocity, in units per millisecond. */
   velocity(): number;
 }
 
-interface Sample {
-  p: number;
-  t: number;
-}
+type Mode = 'idle' | 'dragging' | 'decel' | 'bounce' | 'glide';
 
 /**
- * The framework's touch scroller. One module, no dependency beyond
- * `requestAnimationFrame`; see {@link ScrollEngine}.
+ * The framework's touch scroller. One module and no new dependency; the
+ * physics follow the researched reference in `apps/mobile-demo/src/scroller.ts`.
  */
 export function createScrollEngine(options: ScrollEngineOptions): ScrollEngine {
   const axis = options.axis;
-  const rate = options.decelerationRate ?? TOUCH_DECELERATION_RATE;
-  const coefficient = options.rubberBand ?? RUBBER_BAND_COEFFICIENT;
   const now =
     options.now ??
     (() =>
@@ -327,13 +338,28 @@ export function createScrollEngine(options: ScrollEngineOptions): ScrollEngine {
   const [max, setMax] = createSignal(0);
   const [settled, setSettled] = createSignal(true);
 
-  let visible = 0;
+  let visible = 1;
   let frame = 0;
-  let dragging = false;
+  let mode: Mode = 'idle';
+  let lastTime = 0;
+
+  // Drag state: the anchor pair and the recognizer's velocity-sample chain.
   let startOffset = 0;
   let startPointer = 0;
-  let lastVelocity = 0;
-  let samples: Sample[] = [];
+  let lastSample = { p: 0, t: 0 };
+  let sampleVelocity = 0;
+  let blendPrevious = 0;
+  let blendCurrent = 0;
+  let moveCount = 0;
+
+  // Flight state: the active velocity, the exponential curve, its snap
+  // target in decel/glide, and the edge a bounce settles on.
+  let velocity = 0;
+  let flightRate = TOUCH_DECELERATION_RATE;
+  let flightTarget: number | null = null;
+  let bounceEdge = 0;
+  let glideTarget = 0;
+  let glideRate = SLOT_SETTLE_RATE;
 
   const clamp = (value: number) => Math.max(0, Math.min(max(), value));
 
@@ -344,7 +370,7 @@ export function createScrollEngine(options: ScrollEngineOptions): ScrollEngine {
     }
   }
 
-  function cancelFrame() {
+  function stopFrames() {
     if (frame !== 0) {
       cancelRaf(frame);
       frame = 0;
@@ -352,49 +378,174 @@ export function createScrollEngine(options: ScrollEngineOptions): ScrollEngine {
   }
 
   function settleDone() {
-    frame = 0;
+    stopFrames();
+    mode = 'idle';
+    velocity = 0;
     setSettled(true);
     options.onSettle?.();
   }
 
-  function stop() {
-    cancelFrame();
-    dragging = false;
-    setSettled(true);
+  function startFrames() {
+    lastTime = now();
+    if (frame === 0) frame = raf(step);
   }
 
-  function rubber(value: number): number {
-    if (value < 0) {
-      return -rubberBandDistance(-value, visible || max() || 1, coefficient);
+  function step() {
+    const time = now();
+    const dt = Math.max(0, Math.min(MAX_FRAME_MS, time - lastTime));
+    lastTime = time;
+    if (dt > 0) {
+      if (mode === 'decel') decelStep(dt);
+      else if (mode === 'bounce') bounceStep(dt);
+      else if (mode === 'glide') glideStep(dt);
     }
-    if (value > max()) {
-      return (
-        max() +
-        rubberBandDistance(value - max(), visible || max() || 1, coefficient)
-      );
+    // A finishing mode called `settleDone` itself; a drag that started
+    // mid-frame owns the scroller now. Either way, no next frame.
+    if (mode !== 'idle' && mode !== 'dragging') frame = raf(step);
+    else frame = 0;
+  }
+
+  /** `dx = v * rate * (1 - rate^dt) / (1 - rate)`, then `v *= rate^dt`. */
+  function decelStep(dt: number) {
+    const rate = flightRate;
+    const decay = Math.exp(dt * Math.log(rate));
+    const delta = (velocity * rate * (1 - decay)) / (1 - rate);
+    const next = offset() + delta;
+    const maxV = max();
+    const inside = offset() >= 0 && offset() <= maxV;
+    if (inside && (next < 0 || next > maxV)) {
+      // A fling reaching an edge integrates to the edge, then hands the
+      // frame remainder to the bounce spring.
+      const edge = next < 0 ? 0 : maxV;
+      const spent =
+        Math.abs(delta) > 0 ? Math.abs((edge - offset()) / delta) : 1;
+      velocity *= Math.exp(Math.min(1, Math.max(0, spent)) * dt * LN_RATE);
+      apply(edge);
+      bounceEdge = edge;
+      mode = 'bounce';
+      return;
     }
-    return value;
-  }
-
-  function push(pointer: number, time: number) {
-    samples.push({ p: pointer, t: time });
-    while (samples.length > 2 && time - samples[0]!.t > 110) samples.shift();
-  }
-
-  function sampleVelocity(): number {
-    const count = samples.length;
-    if (count < 2) return 0;
-    const last = samples[count - 1]!;
-    let first = samples[0]!;
-    for (let i = 0; i < count; i++) {
-      if (last.t - samples[i]!.t <= VELOCITY_WINDOW_MS) {
-        first = samples[i]!;
-        break;
+    if (!inside && (next < 0 ? velocity < 0 : next > maxV && velocity > 0)) {
+      // Out of bounds and moving further out: the bounce owns this.
+      bounceEdge = next < 0 ? 0 : maxV;
+      mode = 'bounce';
+      return;
+    }
+    apply(next);
+    velocity *= decay;
+    if (Math.abs(velocity) < VELOCITY_FLOOR) {
+      if (offset() < 0 || offset() > maxV) {
+        bounceEdge = offset() < 0 ? 0 : maxV;
+        mode = 'bounce';
+      } else if (flightTarget !== null) {
+        // A snap flight lands exactly on its slot.
+        apply(clamp(flightTarget));
+        flightTarget = null;
+        settleDone();
+      } else {
+        apply(clamp(Math.round(offset())));
+        settleDone();
       }
     }
-    const dt = last.t - first.t;
-    if (dt <= 0) return 0;
-    return -(last.p - first.p) / dt;
+  }
+
+  /** The bounce: the overshoot contracts at 0.99/ms with the carried velocity. */
+  function bounceStep(dt: number) {
+    const springK = Math.exp(dt * LN_BOUNCE);
+    const decay = Math.exp(dt * LN_RATE);
+    const edge = bounceEdge;
+    const over = offset() - edge;
+    const next =
+      edge +
+      over * springK +
+      (velocity * TOUCH_DECELERATION_RATE * springK * (1 - decay)) /
+        (1 - TOUCH_DECELERATION_RATE);
+    velocity *= decay * springK;
+    // A bounce carrying the content back across its edge hands off to a
+    // free deceleration, as a fling released from an overscroll does.
+    if (
+      (edge === 0 && next > SETTLE_EPSILON && next < max()) ||
+      (edge === max() && next < max() - SETTLE_EPSILON && next > 0)
+    ) {
+      apply(next);
+      mode = 'decel';
+      flightRate = TOUCH_DECELERATION_RATE;
+      return;
+    }
+    apply(next);
+    if (Math.abs(next - edge) < SETTLE_EPSILON && Math.abs(velocity) < 0.05) {
+      apply(edge);
+      settleDone();
+    }
+  }
+
+  /** An exponential approach to a target: `to()` and a slot settle. */
+  function glideStep(dt: number) {
+    const decay = Math.exp(dt * Math.log(glideRate));
+    const current = offset();
+    const next = glideTarget + (current - glideTarget) * decay;
+    apply(next);
+    if (Math.abs(next - glideTarget) < SETTLE_EPSILON) {
+      apply(glideTarget);
+      settleDone();
+    }
+  }
+
+  function glideTo(target: number, rate: number) {
+    glideTarget = clamp(target);
+    glideRate = rate;
+    if (Math.abs(offset() - glideTarget) < SETTLE_EPSILON) {
+      apply(glideTarget);
+      settleDone();
+      return;
+    }
+    setSettled(false);
+    mode = 'glide';
+    startFrames();
+  }
+
+  /** The rubber-band offset for a raw dragged position. */
+  function rubber(raw: number): number {
+    const maxV = max();
+    if (raw < 0) {
+      const x = -raw;
+      const d = visible;
+      return -d * (1 - 1 / ((x * RUBBER_BAND_COEFFICIENT) / d + 1));
+    }
+    if (raw > maxV) {
+      const x = raw - maxV;
+      const d = visible;
+      return maxV + d * (1 - 1 / ((x * RUBBER_BAND_COEFFICIENT) / d + 1));
+    }
+    return raw;
+  }
+
+  function pushSample(p: number, t: number) {
+    const dt = t - lastSample.t;
+    if (dt > 0) {
+      // The sample velocity is in offset space: a finger moving +p scrolls
+      // the content the other way.
+      const sample = (lastSample.p - p) / dt;
+      blendPrevious = blendCurrent;
+      blendCurrent =
+        moveCount === 0
+          ? sample
+          : SAMPLE_BLEND_CURRENT * sample +
+            (1 - SAMPLE_BLEND_CURRENT) * sampleVelocity;
+      sampleVelocity = sample;
+      moveCount++;
+    }
+    lastSample = { p, t };
+  }
+
+  /** The guarded low-pass over the recognizer blends, as UIKit releases it. */
+  function releaseVelocity(): number {
+    if (moveCount === 0) return 0;
+    if (moveCount === 1) return blendCurrent;
+    return (
+      (1 - RELEASE_BLEND_LATEST) * blendPrevious +
+      RELEASE_BLEND_LATEST * blendCurrent
+    );
   }
 
   function snapSize(): number {
@@ -403,137 +554,110 @@ export function createScrollEngine(options: ScrollEngineOptions): ScrollEngine {
     return value !== undefined && value > 0 ? value : 0;
   }
 
-  /**
-   * Cubic settle used for a snap slot and for a rubber-band return. A
-   * quantised target cannot be approached with the free fling's exponential
-   * curve without a long tail; the demo's reference scroller uses the same
-   * short ease.
-   */
-  function animateTo(value: number, duration: number) {
-    cancelFrame();
-    const from = offset();
-    const target = clamp(value);
-    if (duration <= 0 || viewport().reducedMotion) {
-      apply(target);
-      settleDone();
-      return;
+  /** The snap slot nearest `value`, with the content's end as a slot too. */
+  function nearestSnap(value: number, slot: number): number {
+    const maxV = max();
+    const rounded = Math.max(
+      0,
+      Math.min(maxV, Math.round(value / slot) * slot),
+    );
+    let best = rounded;
+    let bestDistance = Math.abs(value - best);
+    const distance = Math.abs(value - maxV);
+    if (distance < bestDistance) {
+      best = maxV;
+      bestDistance = distance;
     }
-    if (Math.abs(target - from) < SETTLED_DISTANCE) {
-      apply(target);
-      settleDone();
-      return;
-    }
-    setSettled(false);
-    const started = now();
-    const step = () => {
-      const t = Math.min(1, (now() - started) / duration);
-      apply(from + (target - from) * (1 - (1 - t) ** 3));
-      if (t < 1) {
-        frame = raf(step);
-      } else {
-        apply(target);
-        settleDone();
-      }
-    };
-    frame = raf(step);
-  }
-
-  function fling(velocity: number) {
-    lastVelocity = velocity;
-    if (Math.abs(velocity) < MIN_FLING_VELOCITY) {
-      apply(clamp(offset()));
-      settleDone();
-      return;
-    }
-    setSettled(false);
-    const k = -Math.log(rate);
-    let v = velocity;
-    let last = now();
-    const step = () => {
-      const time = now();
-      const dt = Math.min(MAX_FRAME_MS, time - last);
-      last = time;
-      if (dt <= 0) {
-        frame = raf(step);
-        return;
-      }
-      const decay = Math.exp(-k * dt);
-      const next = offset() + (v * (1 - decay)) / k;
-      v *= decay;
-      if (next <= 0) {
-        apply(0);
-        settleDone();
-        return;
-      }
-      if (next >= max()) {
-        apply(max());
-        settleDone();
-        return;
-      }
-      apply(next);
-      if (Math.abs(v) < MIN_FLING_VELOCITY) {
-        apply(clamp(next));
-        settleDone();
-        return;
-      }
-      frame = raf(step);
-    };
-    frame = raf(step);
+    return best;
   }
 
   function release() {
-    const velocity = sampleVelocity();
-    lastVelocity = velocity;
+    const v = releaseVelocity();
+    const maxV = max();
+    const out = offset() < 0 || offset() > maxV;
+    const inward = (offset() < 0 && v > 0) || (offset() > maxV && v < 0);
+    const slot = snapSize();
+
     if (viewport().reducedMotion) {
-      // Motion is optional: no fling and no settle. A snap still lands on a
-      // slot, instantly; continuous scrolling stops where the finger left it.
-      const slot = snapSize();
-      if (offset() < 0 || offset() > max()) {
-        apply(clamp(offset()));
-      } else if (slot > 0) {
-        const natural = offset() + flingDistance(velocity, rate);
-        apply(clamp(Math.round(natural / slot) * slot));
-      }
+      // Motion is optional: no fling, no settle. A snap still lands on a
+      // slot, instantly; continuous scrolling stops where the finger did.
+      if (out) apply(clamp(offset()));
+      else if (slot > 0) apply(clamp(nearestSnap(offset(), slot)));
+      else apply(clamp(Math.round(offset())));
       settleDone();
       return;
     }
-    if (offset() < 0 || offset() > max()) {
-      animateTo(clamp(offset()), RUBBER_BAND_RETURN_MS);
+
+    // Released past an edge: the bounce owns it, before any snap.
+    if (out && !(Math.abs(v) >= FLING_MIN_VELOCITY && inward)) {
+      flightTarget = null;
+      bounceEdge = offset() < 0 ? 0 : maxV;
+      velocity = inward ? 0 : v;
+      setSettled(false);
+      mode = 'bounce';
+      startFrames();
       return;
     }
-    const slot = snapSize();
+
     if (slot > 0) {
-      const natural = offset() + flingDistance(velocity, rate);
-      const target = clamp(Math.round(natural / slot) * slot);
+      const landing = offset() + flingDistance(v);
+      const target = nearestSnap(landing, slot);
+      const distance = target - offset();
       if (
-        Math.abs(velocity) < MIN_FLING_VELOCITY &&
-        Math.abs(target - offset()) < SETTLED_DISTANCE
+        Math.abs(v) >= FLING_MIN_VELOCITY &&
+        Math.sign(distance) === Math.sign(v) &&
+        Math.abs(distance) > 1
       ) {
-        apply(target);
-        settleDone();
+        // A fling: decay at the rate that lands exactly on the slot, the
+        // same exponential curve UIKit's paging uses to reach its page.
+        flightRate = Math.abs(distance) / (Math.abs(distance) + Math.abs(v));
+        flightTarget = target;
+        velocity = v;
+        setSettled(false);
+        mode = 'decel';
+        startFrames();
         return;
       }
-      animateTo(
-        target,
-        Math.min(
-          SNAP_SETTLE_MAX_MS,
-          SNAP_SETTLE_MS + Math.abs(velocity) * SNAP_SETTLE_PER_VELOCITY,
-        ),
-      );
+      // Released slow or at rest: settle into the nearest slot.
+      glideTo(target, SLOT_SETTLE_RATE);
       return;
     }
-    fling(velocity);
+
+    if (Math.abs(v) >= FLING_MIN_VELOCITY) {
+      flightTarget = null;
+      flightRate = TOUCH_DECELERATION_RATE;
+      velocity = v;
+      setSettled(false);
+      mode = 'decel';
+      startFrames();
+      return;
+    }
+    // A drag that stops before release has no fling; it stays where the
+    // finger left it (in bounds) or springs back (out of bounds).
+    if (out) {
+      bounceEdge = offset() < 0 ? 0 : maxV;
+      velocity = 0;
+      setSettled(false);
+      mode = 'bounce';
+      startFrames();
+      return;
+    }
+    apply(Math.round(offset()));
+    settleDone();
   }
 
   function to(value: number, duration = 0) {
-    cancelFrame();
-    const target = clamp(value);
     if (duration <= 0 || viewport().reducedMotion) {
-      apply(target);
+      stopFrames();
+      mode = 'idle';
+      velocity = 0;
+      apply(clamp(value));
       settleDone();
       return;
     }
-    animateTo(target, duration);
+    // An exponential approach that covers 99.9% of the distance in
+    // `duration` ms: an iOS-shaped ease for programmatic scrolls.
+    glideTo(value, Math.exp(Math.log(0.001) / duration));
   }
 
   function reveal(
@@ -546,28 +670,54 @@ export function createScrollEngine(options: ScrollEngineOptions): ScrollEngine {
     else if (end > offset() + viewportSize) to(end - viewportSize, duration);
   }
 
+  function stop() {
+    stopFrames();
+    mode = 'idle';
+    velocity = 0;
+    setSettled(true);
+  }
+
   function dragAxis(phase: 'start' | 'move' | 'end' | 'cancel', value: number) {
     if (phase === 'start') {
-      cancelFrame();
-      dragging = true;
+      stopFrames();
+      mode = 'dragging';
+      flightTarget = null;
       setSettled(false);
       startOffset = offset();
       startPointer = value;
-      samples = [];
-      push(value, now());
+      lastSample = { p: value, t: now() };
+      sampleVelocity = 0;
+      blendPrevious = 0;
+      blendCurrent = 0;
+      moveCount = 0;
       return;
     }
     if (phase === 'move') {
-      if (!dragging) return;
-      push(value, now());
+      if (mode !== 'dragging') return;
+      pushSample(value, now());
       apply(rubber(startOffset - (value - startPointer)));
       return;
     }
-    if (!dragging) return;
-    push(value, now());
-    dragging = false;
-    if (phase === 'cancel') animateTo(clamp(offset()), RUBBER_BAND_RETURN_MS);
-    else release();
+    if (mode !== 'dragging') return;
+    mode = 'idle';
+    pushSample(value, now());
+    apply(rubber(startOffset - (value - startPointer)));
+    if (phase === 'cancel') {
+      // The platform took the gesture away: iOS animates back in bounds.
+      const maxV = max();
+      bounceEdge = offset() < 0 ? 0 : maxV;
+      velocity = 0;
+      if (offset() < -SETTLE_EPSILON || offset() > maxV + SETTLE_EPSILON) {
+        setSettled(false);
+        mode = 'bounce';
+        startFrames();
+      } else {
+        apply(clamp(offset()));
+        settleDone();
+      }
+      return;
+    }
+    release();
   }
 
   function drag(phase: 'start' | 'move' | 'end' | 'cancel', point: Point) {
@@ -579,22 +729,25 @@ export function createScrollEngine(options: ScrollEngineOptions): ScrollEngine {
     max,
     settled,
     layout(content, visibleSize, inset = 0) {
-      visible = Math.max(0, visibleSize);
-      setMax(Math.max(0, Math.max(0, content) + inset - visible));
-      if (!dragging && frame === 0 && offset() > max()) apply(max());
+      visible = Math.max(1, visibleSize);
+      const next = Math.max(0, Math.max(0, content) + inset - visible);
+      setMax(next);
+      if (mode === 'idle' && offset() > next) apply(next);
     },
     to,
     reveal,
     stop,
     sync(value) {
-      cancelFrame();
+      stopFrames();
+      mode = 'idle';
+      velocity = 0;
       apply(clamp(value));
       setSettled(true);
     },
     drag,
     dragAxis,
     velocity() {
-      return dragging ? sampleVelocity() : lastVelocity;
+      return mode === 'dragging' ? releaseVelocity() : velocity;
     },
   };
 }

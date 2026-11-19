@@ -55,24 +55,24 @@ function runToRest(clock: ReturnType<typeof fakeClock>) {
 }
 
 describe('scroll engine physics', () => {
-  test('the release velocity comes from the last 100 ms of samples', () => {
+  test('release velocity is the recognizer low-pass, not one raw sample', () => {
     const clock = fakeClock();
     const engine = engineAt(clock);
     engine.layout(10_000, 1_000);
     engine.dragAxis('start', 0);
-    // Discarded: older than the 100 ms window at release.
-    clock.advance(200);
-    engine.dragAxis('move', -10);
     clock.advance(50);
-    engine.dragAxis('move', -60);
+    engine.dragAxis('move', -50);
     clock.advance(50);
-    engine.dragAxis('move', -110);
-    // In the window: -100 in 100 ms, so 1 unit/ms.
-    expect(engine.velocity()).toBeCloseTo(1, 1);
-    engine.dragAxis('end', -110);
+    engine.dragAxis('move', -100);
+    clock.advance(50);
+    // The finger stops: the latest sample is 0, the previous blend is 1.
+    engine.dragAxis('move', -100);
+    // 0.75 * previous (1) + 0.25 * current (0.8) = 0.95.
+    expect(engine.velocity()).toBeCloseTo(0.95, 2);
+    engine.dragAxis('end', -100);
   });
 
-  test('exponential decay travels about v / (1 - rate)', () => {
+  test('exponential decay travels about (|v| - 0.01) / |ln(rate)|', () => {
     const clock = fakeClock();
     const engine = engineAt(clock);
     engine.layout(10_000, 1_000);
@@ -86,12 +86,11 @@ describe('scroll engine physics', () => {
     engine.dragAxis('end', -100);
     runToRest(clock);
 
-    // 100 dragged + (1 - 0.02) / (1 - 0.998) for the part above the stop
-    // velocity. The exact infinite distance is 500.
+    // 100 dragged + (1 - 0.01) / |ln(0.998)| integrated down to the floor.
     expect(engine.offset()).toBeGreaterThan(580);
     expect(engine.offset()).toBeLessThan(605);
     expect(engine.settled()).toBe(true);
-    expect(flingDistance(1)).toBeCloseTo(500, 0);
+    expect(flingDistance(1)).toBeCloseTo(494.5, 0);
     expect(TOUCH_DECELERATION_RATE).toBe(0.998);
   });
 
@@ -124,9 +123,12 @@ describe('scroll engine physics', () => {
     engine.dragAxis('start', 0);
     clock.advance(100);
     engine.dragAxis('move', -130);
-    // Held still for the last 100 ms: no fling, just a snap.
-    clock.advance(100);
-    engine.dragAxis('move', -130);
+    // Held still: the low-pass decays to zero over the zero-move samples,
+    // so the release is a slot settle, not a fling.
+    for (let i = 0; i < 3; i++) {
+      clock.advance(100);
+      engine.dragAxis('move', -130);
+    }
     expect(engine.velocity()).toBeCloseTo(0, 2);
     engine.dragAxis('end', -130);
     runToRest(clock);

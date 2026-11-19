@@ -198,9 +198,10 @@ On a host without an editor the field still draws its label, placeholder and val
 ## Scrolling
 
 `Row` and `Column` scroll with the focus keys by default: `scroll="auto"`,
-`"edge"`, `"always"`, `"center"`, `"bounded"` or `"none"`. On a host with a
-pointer, pass `scroll="touch"` to add direct manipulation — drag, fling,
-rubber band and, on a horizontal rail, snapping to one item plus the gap:
+`"edge"`, `"always"`, `"center"`, `"bounded"` or `"none"`. On a pointer-touch
+host — mobile, web touch, or the PS4's pointer remote — pass `scroll="touch"`
+to add direct manipulation: drag, fling, rubber band and, on a horizontal
+rail, snapping to one item plus the gap:
 
 ```tsx
 // Before: a rail moved only with Left/Right, and hand-written pointer code.
@@ -237,27 +238,28 @@ handler, and the arrow keys keep their page/line semantics.
 The engine is `createScrollEngine` in `@solid-multiplatform/platform/scroll`.
 Its model and constants, kept in one module with no new dependency:
 
-| Part             | Value / rule                                                                                                                |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Release velocity | Displacement over the last 100 ms of pointer samples, in scene units per millisecond.                                       |
-| Deceleration     | `UIScrollView.DecelerationRate.normal`: velocity keeps `0.998` per millisecond, so a fling travels `v / (1 - 0.998)`.       |
-| Rubber band      | `f(x, d, c) = (x · d · c) / (d + c · x)` with `c = 0.55` and `d` the viewport length, the UIScrollView formula.             |
-| Snap             | A release projects the fling, rounds to the nearest slot, and settles with a 220–620 ms cubic ease.                         |
-| Snap-back        | A release past an edge returns with a 220 ms cubic ease.                                                                    |
-| Axis lock        | Horizontal or vertical, decided once the gesture passes 10 scene units; ties go horizontal.                                 |
-| Idle             | `requestAnimationFrame` only during a fling or settle; a drag follows pointer events. A resting scroller schedules nothing. |
+| Part             | Value / rule                                                                                                                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --- | --------- | --------- | --- |
+| Release velocity | UIPanGestureRecognizer's chain: per-event finite differences, blended `0.2·current + 0.8·previous`, then `0.75·previous + 0.25·latest` at release. A drag that stops flings nowhere. |
+| Deceleration     | `UIScrollViewDecelerationRateNormal`: velocity keeps `0.998` per millisecond. UIKit projects down to the 0.01 units/ms floor: `(                                                     | v   | - 0.01) / | ln(0.998) | `.  |
+| Minimum fling    | Below `0.25` units/ms a release does not decelerate, as on iOS.                                                                                                                      |
+| Rubber band      | `f(x, d, c) = (x · d · c) / (d + c · x)` with `c = 0.55` and `d` the viewport length; content never goes more than one viewport past an edge.                                        |
+| Bounce           | The overshoot contracts at `0.99` per millisecond with the carried velocity (`_getBouncingDecelerationOffset`), settling within 0.5 units of the bound.                              |
+| Snap             | A fling decays at the rate that lands exactly on the nearest slot (the content end is a slot too); a slow release glides into it at `0.98` per millisecond.                          |
+| Axis lock        | Horizontal or vertical, decided once the gesture passes 10 scene units; ties go horizontal.                                                                                          |
+| Idle             | `requestAnimationFrame` only during a fling, bounce or settle; a drag follows pointer events. A resting scroller schedules nothing.                                                  |
 
 Sources: Apple's [Scroll views](https://developer.apple.com/design/human-interface-guidelines/scroll-views)
 (page-by-page only where it fits; show partial content at the edge; no
-same-orientation nesting; scroll automatically only as far as needed), the
+same-orientation nesting; scroll automatically only as far as needed),
+[Gestures](https://developer.apple.com/design/human-interface-guidelines/gestures),
+[Motion](https://developer.apple.com/design/human-interface-guidelines/motion)
+(short, purposeful motion that can be cancelled) and the
 [UIScrollView](https://developer.apple.com/documentation/uikit/uiscrollview)
-reference (`decelerationRate`, bouncing) and [Motion](https://developer.apple.com/design/human-interface-guidelines/motion)
-(short, purposeful motion that can be cancelled). The local UIKit reference
-does not print the deceleration number; `0.998` per millisecond is the value
-in use until the mobile demo's rewritten engine is the reference. That
-rewrite is also the reference for the cubic settle in
-`apps/mobile-demo/src/scroller.ts`. `src/sdk/scroll.ts` records the same
-constants.
+reference (`decelerationRate`, bouncing). The instruction-level constants
+come from the mobile demo's researched scroller
+(`apps/mobile-demo/src/scroller.ts`, whose README records its sources);
+`src/sdk/scroll.ts` keeps the same constants.
 
 ## Hooks
 

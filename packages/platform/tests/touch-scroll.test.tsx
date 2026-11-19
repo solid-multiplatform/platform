@@ -101,7 +101,9 @@ v.describe('touch scrolling on Row and Column', () => {
       m.pointer.move(1, { x: 200, y: 150 });
       m.pointer.up(1, { x: 200, y: 150 });
       await waitStable(() => m.row.x);
-      v.expect(m.row.x % 150).toBe(0);
+      const stable = -m.row.x;
+      // A slot, or the content's end (1100 here), which is a slot too.
+      v.expect(stable === 1100 || stable % 150 === 0).toBe(true);
     } finally {
       m.dispose();
     }
