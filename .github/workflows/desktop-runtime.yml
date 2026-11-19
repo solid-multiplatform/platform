@@ -419,13 +419,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Archive from inside the directory: Git Bash's tar reads a `D:\`
-          # path as a remote host and fails on the drive letter.
-          (cd packages/host-desktop/native/target/release &&
-            tar -czf "$GITHUB_WORKSPACE/solid-desktop-win32-x64.tar.gz" solid-desktop.exe)
-          mkdir -p "$RUNNER_TEMP/unpacked"
-          tar -xzf solid-desktop-win32-x64.tar.gz -C "$RUNNER_TEMP/unpacked"
-          "$RUNNER_TEMP/unpacked/solid-desktop.exe" --diagnostics
+          # Every path is relative: Git Bash's tar reads `D:\` as a remote
+          # host, and the runner's workspace and temp are on D:.
+          tar -czf solid-desktop-win32-x64.tar.gz \
+            -C packages/host-desktop/native/target/release solid-desktop.exe
+          rm -rf unpacked && mkdir unpacked
+          tar -xzf solid-desktop-win32-x64.tar.gz -C unpacked
+          ./unpacked/solid-desktop.exe --diagnostics
       - uses: actions/upload-artifact@v4
         with:
           name: solid-desktop-win32-x64
