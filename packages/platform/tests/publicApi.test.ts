@@ -321,7 +321,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   });
 
   v.test(
-    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 86 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 93 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
@@ -358,6 +358,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'Row',
         'SafeArea',
         'Select',
+        'SelectableText',
         'Sheet',
         'Suspense',
         'Svg',
@@ -372,6 +373,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'borderBox',
         'chainFunctions',
         'chainRefs',
+        'charIndexAt',
         'checkIsInNonScrollableZone',
         'createBlurredImage',
         'createInfiniteItems',
@@ -391,13 +393,17 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'moveSelection',
         'navigableForwardFocus',
         'navigableHandleNavigation',
+        'nextWordBoundary',
         'onGridFocus',
         'printFocusHistory',
+        'rangeBounds',
+        'rangeSegments',
         'releaseKeySuppression',
         'removeCustomStateFromElement',
         'resetCounter',
         'scrollColumn',
         'scrollRow',
+        'selectedText',
         'setActiveElement',
         'setActiveElementCore',
         'setupFPS',
@@ -410,6 +416,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'useHold',
         'useMouse',
         'withScrolling',
+        'wordRangeAt',
       ]);
     },
   );
@@ -526,7 +533,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   // The authoring surface: what an app imports. A name here is a promise to
   // every app; add one only with an example in docs/app-api.md.
   // src/app/index.ts and src/app/entry.ts.
-  v.test('@solid-multiplatform/platform/app: 58 names', () => {
+  v.test('@solid-multiplatform/platform/app: 59 names', () => {
     v.expect(names(app)).toEqual([
       'Alert',
       'AppErrorBoundary',
@@ -545,6 +552,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'Row',
       'Screen',
       'SearchField',
+      'SelectableText',
       'Sheet',
       'Show',
       'Spacer',
