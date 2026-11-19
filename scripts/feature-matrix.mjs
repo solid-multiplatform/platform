@@ -6,9 +6,9 @@
 //                                             data breaks the evidence rule
 //
 // The evidence rule: a `tested` cell must name an automated test file that
-// exists in this repository. Everything else is `preview` (implemented, no
-// test on that target), `in-progress` (in an open pull request) or
-// `unavailable`.
+// exists in this repository; a `device` cell must name a recorded run kept
+// under `handoff/`. Everything else is `preview` (implemented, no test on
+// that target), `in-progress` (in an open pull request) or `unavailable`.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -17,9 +17,16 @@ export const root = fileURLToPath(new URL('../', import.meta.url));
 export const dataFile = path.join(root, 'docs/features.json');
 export const outputFile = path.join(root, 'docs/features.md');
 
-export const statuses = ['tested', 'preview', 'in-progress', 'unavailable'];
+export const statuses = [
+  'tested',
+  'device',
+  'preview',
+  'in-progress',
+  'unavailable',
+];
 const cellText = {
   tested: 'tested',
+  device: 'device',
   preview: 'preview',
   'in-progress': 'in progress',
   unavailable: 'no',
@@ -40,11 +47,52 @@ const inRepository = (file) =>
   !file.split('/').includes('..') &&
   existsSync(path.join(root, file));
 
+/** The handoff directory, when this machine keeps one beside the checkout. */
+export function handoffDirectory(base = root) {
+  for (const candidate of [
+    path.join(base, 'handoff'),
+    path.join(base, '..', 'handoff'),
+  ])
+    if (existsSync(candidate)) return candidate;
+  return undefined;
+}
+
+/** Whether an evidence string names something under `handoff/`. */
+export function isHandoffEvidence(evidence) {
+  const file = evidencePath(evidence);
+  return (
+    file.startsWith('handoff/') &&
+    file.length > 'handoff/'.length &&
+    !path.isAbsolute(file) &&
+    !file.split('/').includes('..')
+  );
+}
+
+/**
+ * The default device-evidence check. It validates the shape everywhere and,
+ * when this machine keeps a `handoff/` folder, that the named file is there.
+ * CI has no such folder, so a device cell is not a CI failure there.
+ */
+export function inHandoff(evidence, base = root) {
+  if (!isHandoffEvidence(evidence)) return false;
+  const directory = handoffDirectory(base);
+  if (!directory) return true;
+  return existsSync(
+    path.join(directory, evidencePath(evidence).slice('handoff/'.length)),
+  );
+}
+
 /**
  * Expands every row to one cell per target and collects what is wrong with
- * the data. `exists` answers whether an evidence path is in the repository.
+ * the data. `exists` answers whether a test evidence path is in the
+ * repository; `deviceExists` answers whether a device evidence file is in the
+ * local `handoff/` folder.
  */
-export function expand(data, exists = inRepository) {
+export function expand(
+  data,
+  exists = inRepository,
+  deviceExists = inHandoff,
+) {
   const errors = [];
   const targets = Array.isArray(data.targets) ? data.targets : [];
   if (!targets.length) errors.push('No targets');
@@ -80,16 +128,31 @@ export function expand(data, exists = inRepository) {
           errors.push(`${at}: unknown status "${cell.status}"`);
           continue;
         }
-        if (cell.status !== 'tested') {
-          if (cell.evidence !== undefined)
-            errors.push(`${at}: only a tested cell has evidence; use note`);
+        if (cell.status === 'tested') {
+          if (typeof cell.evidence !== 'string' || !cell.evidence.trim())
+            errors.push(`${at}: tested without evidence`);
+          else if (!exists(evidencePath(cell.evidence)))
+            errors.push(
+              `${at}: evidence path does not exist: ${evidencePath(cell.evidence)}`,
+            );
           continue;
         }
-        if (typeof cell.evidence !== 'string' || !cell.evidence.trim())
-          errors.push(`${at}: tested without evidence`);
-        else if (!exists(evidencePath(cell.evidence)))
+        if (cell.status === 'device') {
+          if (typeof cell.evidence !== 'string' || !cell.evidence.trim())
+            errors.push(`${at}: device without evidence`);
+          else if (!isHandoffEvidence(cell.evidence))
+            errors.push(
+              `${at}: device evidence must be under handoff/: ${evidencePath(cell.evidence)}`,
+            );
+          else if (!deviceExists(cell.evidence))
+            errors.push(
+              `${at}: device evidence file does not exist: ${evidencePath(cell.evidence)}`,
+            );
+          continue;
+        }
+        if (cell.evidence !== undefined)
           errors.push(
-            `${at}: evidence path does not exist: ${evidencePath(cell.evidence)}`,
+            `${at}: only a tested or device cell has evidence; use note`,
           );
       }
       rows.push({ id: row.id, feature: row.feature, cells });
@@ -100,8 +163,12 @@ export function expand(data, exists = inRepository) {
 }
 
 /** The problems with the data; empty when it is valid. */
-export function validate(data, exists = inRepository) {
-  return expand(data, exists).errors;
+export function validate(
+  data,
+  exists = inRepository,
+  deviceExists = inHandoff,
+) {
+  return expand(data, exists, deviceExists).errors;
 }
 
 export function count(matrix) {
@@ -136,15 +203,15 @@ function byText(matrix, row, pick) {
 }
 
 /** The markdown, before formatting. */
-export function render(data, exists = inRepository) {
-  const matrix = expand(data, exists);
+export function render(data, exists = inRepository, deviceExists = inHandoff) {
+  const matrix = expand(data, exists, deviceExists);
   const { total, perTarget } = count(matrix);
   const cells = statuses.reduce((sum, s) => sum + total[s], 0);
   const out = [
     '# Feature matrix',
     '<!-- Generated by scripts/feature-matrix.mjs from docs/features.json. Do not edit; change the JSON and run `node scripts/feature-matrix.mjs`. -->',
-    'A cell says `tested` only when an automated test in this repository runs that feature on that target; the test and the CI job that runs it are listed under [Evidence](#evidence). A simulator, an emulator or a build loaded in desktop Chromium is named as such there: no cell claims a physical TV, phone or Apple device.',
-    '- **tested**: an automated test runs it on that target.\n- **preview**: implemented on main, with no automated test on that target.\n- **in progress**: in an open pull request, not on main.\n- **no**: not implemented on that target.',
+    'A cell says `tested` only when an automated test in this repository runs that feature on that target; it says `device` only when a recorded run on a physical device or emulator is named. The evidence, and whether the run used a device, an emulator or a simulator, is listed under [Evidence](#evidence). No `tested` cell claims a physical device.',
+    '- **tested**: an automated test runs it on that target.\n- **device**: a recorded run on the physical device or emulator verified it; the evidence under `handoff/` is named in the cell.\n- **preview**: implemented on main, with no automated test on that target.\n- **in progress**: in an open pull request, not on main.\n- **no**: not implemented on that target.',
     '## Counts',
     `${cells} cells: ${matrix.groups.reduce((n, g) => n + g.rows.length, 0)} features on ${matrix.targets.length} targets.`,
     table(
@@ -160,6 +227,7 @@ export function render(data, exists = inRepository) {
     ),
   ];
   const evidence = [];
+  const device = [];
   for (const group of matrix.groups) {
     out.push('## ' + group.title);
     if (group.note) out.push(group.note);
@@ -180,14 +248,20 @@ export function render(data, exists = inRepository) {
         c.status === 'tested' ? c.evidence : undefined,
       ))
         evidence.push(`- ${row.feature}, ${targets.join(', ')}: ${text}`);
+      for (const [text, targets] of byText(matrix, row, (c) =>
+        c.status === 'device' ? c.evidence : undefined,
+      ))
+        device.push(`- ${row.feature}, ${targets.join(', ')}: ${text}`);
     }
     if (notes.length) out.push('Notes:', notes.join('\n'));
   }
   out.push(
     '## Evidence',
-    'Each tested cell, with the test file that covers it, the workflow and job that run it, and what it checks.',
-    evidence.length ? evidence.join('\n') : 'No cell is tested.',
+    'A `tested` cell names the test file that covers it, the workflow and job that run it, and what it checks. A `device` cell names a recorded run kept under `handoff/`; that folder is local, so the generator checks the shape of the path, not what the run contains.',
   );
+  if (evidence.length) out.push('### Tested', evidence.join('\n'));
+  if (device.length) out.push('### Device runs', device.join('\n'));
+  if (!evidence.length && !device.length) out.push('No cell has evidence.');
   return out.join('\n\n') + '\n';
 }
 

@@ -117,6 +117,12 @@ export interface DeviceInfoPort {
 export interface BatteryPort {
   /** Undefined when the device has no battery to report. */
   get(): Promise<BatteryState | undefined>;
+  /**
+   * Calls `listener` whenever the level or charging state changes, until the
+   * returned function is called. Hosts that only report on request omit it;
+   * nothing polls.
+   */
+  subscribe?(listener: (state: BatteryState | undefined) => void): () => void;
 }
 
 export interface MemoryPort {

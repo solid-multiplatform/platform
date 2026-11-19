@@ -17,6 +17,7 @@
   - [Text](/essentials/text.md)
   - [Images](/essentials/images.md)
   - [Events](/essentials/events.md)
+  - [Text fields](/app-api.md#textfield-and-searchfield)
   - [Focus and keys](/essentials/focus.md)
   - [Transitions and animations](/essentials/transitions.md)
   - [Destroy animations](/flow/ondestroy.md)

@@ -59,13 +59,13 @@ export const options: AppSettings = {
 };
 ```
 
-An app written before this API, which exports `mount` (and `App` and `appOptions` for browser targets) and has no default export, keeps building: its entry is generated as before.
+Every target, Roku included, starts the default export through `startApp` on its host. An app written before this API, which exports `mount` (and `App` and `appOptions` for browser targets) and has no default export, keeps building: its entry is generated as before.
 
 ## Components
 
 ### Screen
 
-The root of a screen. It fills the viewport with the theme's background, keeps its children inside the safe area, lays them out as a column and moves focus between them with up and down. The geometry is computed when the viewport changes, never per frame.
+The root of a screen. It fills the viewport with the theme's background, keeps its children inside the safe area and above the software keyboard (`useViewport().keyboardInset`), lays them out as a column and moves focus between them with up and down. The geometry is computed when the viewport changes, never per frame.
 
 - `padding` (default `theme.spacing(8)`): space between the safe area and the content.
 - `gap` (default `theme.spacing(6)`): space between children.
@@ -139,6 +139,39 @@ export function Channels(props: {
 
 For thousands of items use `VirtualRow`, `VirtualColumn` or `VirtualGrid`: see [VirtualRow and VirtualColumn](/primitives/virtual.md).
 
+### TextField and SearchField
+
+A labelled field drawn in the scene. Focus it and press Enter (or click it) and the host's own editor takes over: the system keyboard, IME and autofill; every change calls `onChange`. There is no `Controls` wrapper and no bounds to compute — the host editor comes from the app context. `SearchField` is a `TextField` that asks for the search keyboard and defaults its placeholder to the label.
+
+```tsx
+import {
+  SearchField,
+  TextField,
+  createSignal,
+} from '@solid-multiplatform/platform/app';
+
+export function SignIn() {
+  const [name, setName] = createSignal('');
+  const [code, setCode] = createSignal('');
+  return (
+    <>
+      <TextField label="Name" value={name()} onChange={setName} autofocus />
+      <TextField label="Password" password value={code()} onChange={setCode} />
+      <SearchField label="Search" onSubmit={runSearch} />
+    </>
+  );
+}
+```
+
+- `label`: drawn above the field and given to assistive technology.
+- `placeholder`: shown muted while the value is empty.
+- `value` and `onChange`: controlled value; leave `value` out to let the field keep its own.
+- `password`: draws bullets and asks for a password keyboard.
+- `numeric`: asks for a numeric keyboard (the host's one-time-code layout).
+- `multiline`, `autofocus`, `disabled`, `width`, `height`, `onSubmit` and `purpose` are also taken.
+
+On a host without an editor the field still draws its label, placeholder and value; pressing Enter does nothing. The host editor is the `text` of `HostContext`, so a web build shows a real input and Roku opens its native keyboard dialog.
+
 ### Spacer, Row and Column
 
 `Row` and `Column` are flex containers that move focus between their children; they take `gap` and `padding`. `Spacer` takes the free space of the container it is in.
@@ -166,13 +199,13 @@ For thousands of items use `VirtualRow`, `VirtualColumn` or `VirtualGrid`: see [
 - `useViewport()`: the viewport's `width`, `height`, `scale`, `safeArea` and `keyboardInset`. Reactive.
 - `useBreakpoint()`: `compact`, `medium` or `expanded`, from the viewport's width. Reactive.
 - `useTheme()`: the current theme's tokens.
-- `useColorScheme()`: an accessor of `light` or `dark`, following the device while the caller is mounted.
+- `useColorScheme()`: an accessor of `light` or `dark`, following the device while the caller is mounted. Import `deviceColorScheme` for the raw reactive accessor, without binding the host service.
 - `useLocale()`: an accessor of the app's locale.
 - `useConnectivity()`: an accessor of whether the device is online; `undefined` when the host cannot tell.
 - `useLifecycle()`: an accessor of whether the app is in the foreground; `undefined` when the host cannot tell.
-- `useBattery()`: an accessor of `{ level, charging }`, read once when the caller mounts; `undefined` without a battery.
+- `useBattery()`: an accessor of `{ level, charging }`, kept current by a host that reports changes and read once on a host that only answers on request; `undefined` without a battery.
 
-The service hooks subscribe while the calling component is mounted and unsubscribe when it goes. None of them throws on a host without the service. `useColorScheme` from `/app` returns an accessor; the export of the same name from the package root is the accessor itself.
+The service hooks subscribe while the calling component is mounted and unsubscribe when it goes. None of them throws on a host without the service. `useColorScheme` from `/app` returns an accessor; the export of the same name from the package root is the accessor itself. The `/app` alias for that raw accessor is `deviceColorScheme`, so the two cannot be confused.
 
 ```tsx
 import {
@@ -244,7 +277,7 @@ One adaptive screen is the default. When a target needs a different layout, add 
 
 ## What is verified where
 
-- Components, hooks and the entry: unit tests on the DOM backend (`packages/platform/tests/app-surface.test.tsx`, `tests/host/app-entry.test.tsx`, `tests/cli/unit/app-entry.test.mjs`).
+- Components, hooks and the entry: unit tests on the DOM backend (`packages/platform/tests/app-surface.test.tsx`, `tests/app-textfield.test.tsx`, `tests/host/app-entry.test.tsx`, `tests/cli/unit/app-entry.test.mjs`).
 - The starter end to end in Chromium, with a real pointer, the keyboard and the accessibility tree: the `web` build, and the `tizen` (WebGL and Canvas 2D), `webos` and `vizio` builds (`tests/cli/projects-smoke.sh`).
 - The generated entry is built, and not run, for `roku` (`projects-smoke.sh`) and `android-tv` (`android-smoke.sh`).
 - Not covered by an automated test: the entry on `desktop`, `android`, `ios` and `apple-tv`, and the components on any device.

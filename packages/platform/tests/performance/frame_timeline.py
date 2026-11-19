@@ -1,8 +1,28 @@
 """Read FrameTimeline transactions for the probe without confusing layers with frames."""
 
+import collections
 import csv
 import io
 import re
+
+VSYNC_NS = 16_666_667
+# Shorter than this is a frame inside a move; the workload rests between moves.
+MOVING_NS = 100_000_000
+# The columns layer_query() selects, for a trace where the app has no
+# FrameTimeline rows at all (a SurfaceView scene).
+LAYER_FIELDS = [
+    "ts",
+    "dur",
+    "surface_frame_token",
+    "display_frame_token",
+    "layer_name",
+    "is_buffer",
+    "present_type",
+    "jank_type",
+    "display_present_ns",
+    "display_present_type",
+    "display_jank_type",
+]
 
 
 def layer_query(package):
@@ -49,6 +69,100 @@ def present_unknown(row):
     return row.get("display_present_type") == "Unspecified Present"
 
 
+def surface_latches_query(package):
+    """SQL for the app's SurfaceView buffer latches.
+
+    FrameTimeline records no rows for a SurfaceView: the scene's buffers go
+    straight to SurfaceFlinger instead of through the app's window. For each
+    buffer transaction SurfaceFlinger pulses a `BufferTX - SurfaceView[
+    <package>/...]` counter (1, then 0), so its rising edges are the times the
+    layer's frames reached the compositor. Video playback creates a second
+    SurfaceView layer in the same app; scene_surface_layer() distinguishes it.
+    """
+    if not re.fullmatch(r"[A-Za-z0-9_.]+", package):
+        raise ValueError("Invalid trace package")
+    return f"""
+        SELECT t.id AS track_id, t.name AS track_name, c.ts
+        FROM counter c JOIN counter_track t ON c.track_id=t.id
+        WHERE instr(t.name, 'BufferTX - SurfaceView[') > 0
+          AND instr(t.name, '{package}/') > 0
+          AND c.value > 0.5
+        ORDER BY c.ts
+    """
+
+
+def surface_swaps_query():
+    """SQL for the app GL thread's buffer swaps.
+
+    `eglSwapBuffers` runs once per rendered buffer on the thread with the most
+    swaps in the trace (the scene's GL thread; system compositors do not call
+    it per frame). Comparing this count with the SurfaceView latches says
+    whether a rendered frame failed to reach SurfaceFlinger at all, or whether
+    SurfaceFlinger merely latched a buffer late.
+    """
+    return """
+        SELECT s.ts
+        FROM slice s JOIN thread_track tt ON s.track_id=tt.id
+        WHERE tt.utid = (
+            SELECT t.utid FROM slice s JOIN thread_track tt ON s.track_id=tt.id
+            JOIN thread t USING(utid)
+            WHERE s.name='eglSwapBuffers'
+            GROUP BY t.utid ORDER BY count(*) DESC LIMIT 1
+        ) AND s.name='eglSwapBuffers' AND s.dur>=0
+        ORDER BY s.ts
+    """
+
+
+def scene_surface_layer(rows, is_gallery=None):
+    """The app's scene SurfaceView, as (track_name, latch timestamps).
+
+    A player's SurfaceView is in the same app, so layer names cannot tell the
+    scene from the video. The scene layer is the one that latched most while
+    the gallery was on screen; the player's layer only latches in its own
+    phase. `is_gallery(ts)` restricts that choice when the trace has phases.
+    """
+    by_track = collections.defaultdict(list)
+    names = {}
+    for row in rows:
+        by_track[row["track_id"]].append(int(row["ts"]))
+        names[row["track_id"]] = row["track_name"]
+    if not by_track:
+        raise ValueError("No app SurfaceView buffer latches in the trace")
+
+    def score(track_id):
+        times = by_track[track_id]
+        return (
+            sum(bool(is_gallery(int(ts))) for ts in times) if is_gallery else len(times),
+            len(times),
+        )
+
+    track_id = max(by_track, key=score)
+    return names[track_id], sorted(by_track[track_id])
+
+
+def surface_cadence(times):
+    """Frame intervals on a SurfaceView layer, counted in display refreshes.
+
+    Only intervals shorter than 100 ms are inside a move: the workload rests
+    between moves and a rest is not a lost frame. A move frame that arrives two
+    refreshes after the previous one means one rendered frame never reached the
+    display, which is what the gate calls a lost frame.
+    """
+    times = sorted(times)
+    intervals = [b - a for a, b in zip(times, times[1:]) if b - a < MOVING_NS]
+    refreshes = [max(1, round(gap / VSYNC_NS)) for gap in intervals]
+    histogram = collections.Counter(min(5, n) for n in refreshes)
+    return {
+        "frames": len(times),
+        "motionIntervals": len(intervals),
+        "oneRefresh": histogram.get(1, 0),
+        "twoRefreshes": histogram.get(2, 0),
+        "threeOrMore": sum(v for k, v in histogram.items() if k >= 3),
+        "framesLost": sum(n - 1 for n in refreshes if n > 1),
+        "longestIntervalMs": round(max(intervals) / 1e6, 2) if intervals else None,
+    }
+
+
 def split_layers(rows, package):
     window = re.compile(
         r"(?:TX - )?"
@@ -81,7 +195,7 @@ def split_layers(rows, package):
 
 def as_csv(rows, fields):
     output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=fields)
+    writer = csv.DictWriter(output, fieldnames=fields, extrasaction="ignore")
     writer.writeheader()
     writer.writerows(rows)
     return output.getvalue().encode()

@@ -713,7 +713,7 @@ describe('Flexbox Layout (calculateFlex)', () => {
       expect(child2.y).toBe(0);
     });
 
-    it('should return false if an ElementText child has text but no dimensions', () => {
+    it('should lay out an ElementText child with no dimensions at size 0', () => {
       // ElementText is an ElementNode with _type = NodeType.TextNode
       const textChild = createTestElement({
         nodeType: 'textNode',
@@ -726,7 +726,11 @@ describe('Flexbox Layout (calculateFlex)', () => {
         height: 100,
         children: [textChild],
       }) as ElementNode;
-      expect(calculateFlex(parent)).toBe(false);
+      // The pass runs (and fits the row to the zero-width content) instead of
+      // leaving the whole subtree unpositioned while the text is unmeasured.
+      expect(calculateFlex(parent)).toBe(true);
+      expect(textChild.x).toBe(0);
+      expect(parent.width).toBe(0);
     });
   });
 

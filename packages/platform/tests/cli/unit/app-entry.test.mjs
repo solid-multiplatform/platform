@@ -3,9 +3,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  NATIVE_FORMS,
   appModule,
   appSettings,
   mountComponent,
+  nativeComponent,
+  rokuComponentEntry,
 } from '../../../cli/app-entry.mjs';
 import { scratch } from './helpers.mjs';
 
@@ -95,6 +98,27 @@ test('Roku imports font files; `app.fonts` replaces the convention', (t) => {
   });
 });
 
+test('Roku starts a component with startApp, not a mount wrapper', () => {
+  const body = rokuComponentEntry('{ fonts: [] }', true, 'demo');
+  assert.match(body, /import App, \{ options \} from '\.\/src\/app';/);
+  assert.match(body, /appEntry\(App, plugins, \{ fonts: \[\] \}, options\)/);
+  assert.match(body, /startApp\(\s*rokuHost\(\{ namespace: "demo" \}\),/);
+  // The component is the app; the project options keep the remote's key map.
+  assert.match(body, /return entry\.root\(\);/);
+  assert.match(body, /\{ \.\.\.entry\.options, keyMap: rokuKeyMap \}/);
+  assert.match(
+    body,
+    /import \{ rokuHost, rokuKeyMap \} from '@solid-multiplatform\/platform\/roku';/,
+  );
+  assert.doesNotMatch(body, /mountApp\(|export function mount/);
+  // Without an `options` export there is nothing to spread into appEntry.
+  assert.match(
+    rokuComponentEntry('{}', false, 'demo'),
+    /import App from '\.\/src\/app';/,
+  );
+  assert.match(rokuComponentEntry('{}', false, 'demo'), /appEntry\(App, plugins, \{\}\)/);
+});
+
 test('every self-rendering host mounts a component with the same statement', () => {
   const body = mountComponent('{ fonts: [] }', true);
   assert.match(body, /appEntry\(App, plugins, \{ fonts: \[\] \}, options\)/);
@@ -106,3 +130,34 @@ test('every self-rendering host mounts a component with the same statement', () 
   assert.match(mountComponent('{}', false, 'input'), /pointer: input,/);
   assert.doesNotMatch(mountComponent('{}', false), /options\)/);
 });
+
+test('each NativeScript target starts its own host form through startApp', () => {
+  // One form per native target, and every generated entry keeps that shape.
+  assert.deepEqual(NATIVE_FORMS, {
+    android: 'phone',
+    'android-tv': 'tv',
+    ios: 'ios',
+    'apple-tv': 'tvOS',
+  });
+  for (const [target, form] of Object.entries(NATIVE_FORMS)) {
+    const body = nativeComponent('{ fonts: [] }', true, form);
+    assert.match(
+      body,
+      /const entry = appEntry\(App, plugins, \{ fonts: \[\] \}, options\);/,
+      target,
+    );
+    assert.match(
+      body,
+      new RegExp(`nativeHost\\(\\{ form: ${JSON.stringify(form)}, host \\}\\)`),
+      target,
+    );
+    assert.match(body, /startApp\(\s*nativeHost\(/, target);
+    assert.match(body, /\(\) => entry\.root\(\),/, target);
+    assert.match(body, /entry\.options,/, target);
+    // The host contract owns the wiring: no direct mount in the entry.
+    assert.doesNotMatch(body, /mountApp/, target);
+    // The component's options export is optional.
+    assert.doesNotMatch(nativeComponent('{}', false, form), /, options\)/);
+  }
+});
+

@@ -526,7 +526,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   // The authoring surface: what an app imports. A name here is a promise to
   // every app; add one only with an example in docs/app-api.md.
   // src/app/index.ts and src/app/entry.ts.
-  v.test('@solid-multiplatform/platform/app: 55 names', () => {
+  v.test('@solid-multiplatform/platform/app: 58 names', () => {
     v.expect(names(app)).toEqual([
       'Alert',
       'AppErrorBoundary',
@@ -544,11 +544,13 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'Modal',
       'Row',
       'Screen',
+      'SearchField',
       'Sheet',
       'Show',
       'Spacer',
       'Switch',
       'Text',
+      'TextField',
       'ThemeProvider',
       'Toast',
       'VirtualColumn',
@@ -560,6 +562,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'createMemo',
       'createSignal',
       'defineTheme',
+      'deviceColorScheme',
       'deviceInfo',
       'impact',
       'keepAwake',
@@ -724,6 +727,7 @@ v.describe('package.json exports', () => {
       './apple-tv',
       './android-tv',
       './nativescript',
+      './nativescript/host',
       './nativescript/webpack',
       './browser-tv',
       './browser-tv/canvas',

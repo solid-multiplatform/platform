@@ -91,15 +91,67 @@ export function appSettings(root, target, fontRoot) {
 }
 
 /**
+ * The Roku entry of a component app. Roku is the one target whose host is
+ * reached directly rather than through the generated `mount` wrapper:
+ * `startApp` declares the target, builds the scene renderer, loads fonts and
+ * wires the remote, and the app is just its default export.
+ */
+export function rokuComponentEntry(settings, hasOptions, namespace) {
+  return `import { onCleanup } from 'solid-js';
+import App${hasOptions ? ', { options }' : ''} from './src/app';
+import { appEntry } from '@solid-multiplatform/platform/app/entry';
+import { startApp } from '@solid-multiplatform/platform/host';
+import { attachPlugins } from '@solid-multiplatform/platform/plugins';
+import { plugins } from './plugins.mjs';
+import { rokuHost, rokuKeyMap } from '@solid-multiplatform/platform/roku';
+const entry = appEntry(App, plugins, ${settings}${hasOptions ? ', options' : ''});
+startApp(
+  rokuHost({ namespace: ${JSON.stringify(namespace)} }),
+  (context) => {
+    onCleanup(
+      attachPlugins(plugins, { target: 'roku', root: context.native as object }),
+    );
+    return entry.root();
+  },
+  { ...entry.options, keyMap: rokuKeyMap },
+);
+`;
+}
+
+/**
  * The body of a generated `mount(host)` for a component app on a target
- * whose host installs its renderer itself (Roku, Android, iOS, tvOS,
- * desktop): the same statement on each of them.
+ * whose host installs its renderer itself (Android, iOS, tvOS, desktop):
+ * the same statement on each of them.
  */
 export function mountComponent(settings, hasOptions, pointer = 'host.input') {
   return `const entry = appEntry(App, plugins, ${settings}${hasOptions ? ', options' : ''});
     const dispose = mountApp(
       entry.root,
       { keys: host.keys, pointer: ${pointer}, semantics: host.semantics, target: host.target, native: host.root },
+      entry.options,
+    );`;
+}
+
+/** The NativeScript form each native target starts its host with. */
+export const NATIVE_FORMS = {
+  android: 'phone',
+  'android-tv': 'tv',
+  ios: 'ios',
+  'apple-tv': 'tvOS',
+};
+
+/**
+ * The body of a generated `mount(host)` for a component app on a
+ * NativeScript target: one `HostDefinition` per form, started through
+ * `startApp` like every other host. `host` is the surface the target's
+ * bootstrap already made (Canvas, key bridge, touch scope, editor host);
+ * the host adopts it, so the app and the host both keep working.
+ */
+export function nativeComponent(settings, hasOptions, form) {
+  return `const entry = appEntry(App, plugins, ${settings}${hasOptions ? ', options' : ''});
+    const stop = startApp(
+      nativeHost({ form: ${JSON.stringify(form)}, host }),
+      () => entry.root(),
       entry.options,
     );`;
 }

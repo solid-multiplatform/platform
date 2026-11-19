@@ -16,7 +16,10 @@ from frame_timeline import (
     is_flagged,
     layer_query,
     present_unknown,
+    scene_surface_layer,
     split_layers,
+    surface_cadence,
+    surface_latches_query,
 )
 
 p = argparse.ArgumentParser()
@@ -49,6 +52,29 @@ for meta in sorted(args.trace_directory.glob("pass-*.json")):
     )
     reader = csv.DictReader(io.StringIO(output))
     rows, other, reconciliation = split_layers(list(reader), app)
+    # The scene's SurfaceView has no FrameTimeline rows; its buffer latches are
+    # SurfaceFlinger counter pulses. The gallery lane has no player, so this
+    # layer is the only SurfaceView in the trace.
+    surface_output = subprocess.check_output(
+        [
+            args.processor,
+            "query",
+            "--no-agent",
+            "--format",
+            "csv",
+            str(trace),
+            surface_latches_query(app),
+        ],
+        text=True,
+        stderr=subprocess.DEVNULL,
+    )
+    surface_rows = list(csv.DictReader(io.StringIO(surface_output)))
+    surface_layer, surface_times = None, []
+    try:
+        surface_layer, surface_times = scene_surface_layer(surface_rows)
+    except ValueError:
+        pass
+    surface_cad = surface_cadence(surface_times)
     counts = {}
     for row in rows:
         key = row["present_type"] + " / " + row["jank_type"]
@@ -88,15 +114,24 @@ for meta in sorted(args.trace_directory.glob("pass-*.json")):
             "framesWithUnknownPresent": sum(map(present_unknown, rows)),
             "presentation": counts,
             "cadence60Hz": cadence,
+            "surfaceViewLayer": surface_layer,
+            "surfaceFrames": len(surface_times),
+            "surfaceCadence": surface_cad,
         }
     )
 reason = "Full scenario coverage and active-frame expectation evidence required"
 if not reports or any(
-    not r["appFrames"] or not r["cadence60Hz"]["matchedDisplayFrames"] for r in reports
+    not (r["appFrames"] or r["surfaceFrames"])
+    or not (
+        r["cadence60Hz"]["matchedDisplayFrames"] or r["surfaceCadence"]["frames"]
+    )
+    for r in reports
 ):
     reason = "Missing application or display frame timing"
 elif any(r["misses"] for r in reports):
     reason = "Missed presentation deadlines"
+elif any(r["surfaceCadence"]["framesLost"] for r in reports):
+    reason = "Frames lost between the SurfaceView and the display during motion"
 elif any(r["framesWithUnknownPresent"] for r in reports):
     reason = "Frames without a display present time cannot be called on time"
 elif any(r["cadence60Hz"]["intervals25To100ms"] for r in reports):

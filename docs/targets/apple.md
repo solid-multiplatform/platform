@@ -23,11 +23,14 @@ Building for a physical iPhone or Apple TV needs your own signing identity and i
 ## How it is tested
 
 - `apple` job (`test.yml`), once per target: `tests/cli/apple-smoke.sh` creates an app with `init`, adds a plugin and the video package, builds it, installs it in the newest available simulator, launches it and waits for the Swift plugin command to return its result through NativeScript.
+- The same build is launched a second time with a services probe. It checks every installed service through the registry and fails on a service that does not work: 22 passed on iOS and 14 on tvOS. `simctl openurl` delivery and, on tvOS, a live colour-scheme change are reported as warnings and stay unverified.
 - `unit` job: `tests/apple-providers.test.mjs` and `tests/apple-signing.test.mjs`, in Node with fakes.
+
+The feature matrix marks these simulator checks `tested`: they are CI runs on the target. `device` is reserved for recorded runs outside CI, whose evidence is kept under `handoff/`; there are no Apple runs of that kind.
 
 What this does not cover:
 
-- No test checks what the scene draws in the simulator. The launch test proves the app starts and the plugin bridge works.
+- No test checks what the scene draws in the simulator. The launch test proves the app starts and the plugin bridge works; the services probe checks the services, not the picture.
 - Physical Apple devices are not verified by this project.
 - Push notifications are not verified end to end.
 
