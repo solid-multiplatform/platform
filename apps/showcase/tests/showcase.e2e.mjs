@@ -18,6 +18,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { chromium, firefox, webkit } from 'playwright';
 
@@ -143,6 +144,7 @@ const server = createServer(async (request, response) => {
 });
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 const origin = 'http://127.0.0.1:' + server.address().port;
+console.log(`serving ${root} at ${origin} in ${engine}`);
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -193,14 +195,99 @@ async function newPage(browser) {
   });
   const page = await context.newPage();
   const errors = [];
+  const consoleLines = [];
   page.on('pageerror', (error) => errors.push(error));
+  page.on('console', (message) =>
+    consoleLines.push(`${message.type()}: ${message.text()}`),
+  );
   // A shape whose shader the host did not register draws nothing and says
   // so: rounded corners, borders and gradients (the Effects screen) must not.
   page.on('console', (message) => {
     if (/Shader type .* is not registered/.test(message.text()))
       errors.push(new Error(message.text()));
   });
-  return { page, errors };
+  return { page, errors, consoleLines };
+}
+
+/**
+ * What the page actually is when it does not show a canvas: the URL, body,
+ * whether a canvas is attached and its box, whether WebGL can be created at
+ * all in this context, the page errors and the console. Also a screenshot.
+ * A CI-only failure of the canvas wait is otherwise a bare timeout.
+ */
+async function diagnose(page, errors, consoleLines, where) {
+  const state = await page
+    .evaluate(() => {
+      const canvas = document.querySelector('canvas');
+      const probe = document.createElement('canvas');
+      const gl = {};
+      for (const kind of ['webgl2', 'webgl']) {
+        try {
+          const context = probe.getContext(kind);
+          gl[kind] = !!context;
+          if (!context) gl[kind + 'Error'] = null;
+        } catch (error) {
+          gl[kind] = false;
+          gl[kind + 'Error'] = String(error);
+        }
+      }
+      const box = canvas?.getBoundingClientRect();
+      return {
+        url: location.href,
+        title: document.title,
+        visibility: document.visibilityState,
+        viewport: [innerWidth, innerHeight],
+        hasApp: !!document.getElementById('app'),
+        hasCanvas: !!canvas,
+        canvasBox: box ? { ...box.toJSON() } : null,
+        canvasPixels: canvas ? [canvas.width, canvas.height] : null,
+        ...gl,
+        body: document.body.innerHTML.slice(0, 4000),
+      };
+    })
+    .catch((error) => ({ evaluateFailed: String(error) }));
+
+  console.error(`\n${where}: no canvas\n` + JSON.stringify(state, null, 2));
+  console.error(
+    'page errors:\n' +
+      (errors.map((error) => error.stack ?? error.message).join('\n') ||
+        '(none)'),
+  );
+  console.error(
+    'console:\n' + (consoleLines.slice(-40).join('\n') || '(none)'),
+  );
+  try {
+    const file = path.join(
+      shots ?? tmpdir(),
+      `failure-${target}-${engine}.png`,
+    );
+    await page.screenshot({ path: file });
+    console.error(`screenshot: ${file}`);
+  } catch (error) {
+    console.error('screenshot failed: ' + String(error));
+  }
+}
+
+/**
+ * Waits for the scene's canvas. It must be in the document with a non-empty
+ * box; a canvas that exists but never gets a box is diagnosed, not retried
+ * forever. A page that threw while booting is diagnosed with its error.
+ */
+async function waitForCanvas(page, errors, consoleLines) {
+  try {
+    await page.waitForSelector('canvas', { state: 'attached', timeout: 30000 });
+  } catch (error) {
+    await diagnose(page, errors, consoleLines, 'boot');
+    throw error;
+  }
+  const canvas = page.locator('canvas').first();
+  try {
+    await canvas.waitFor({ state: 'visible', timeout: 10000 });
+  } catch (error) {
+    await diagnose(page, errors, consoleLines, 'canvas has no box');
+    throw error;
+  }
+  return canvas;
 }
 
 /** The accessible name of what the browser has focused: the mirror's item. */
@@ -312,9 +399,9 @@ async function expectIdle(page, where) {
 }
 
 async function interactive(browser) {
-  const { page, errors } = await newPage(browser);
+  const { page, errors, consoleLines } = await newPage(browser);
   await page.goto(origin);
-  await page.waitForSelector('canvas');
+  await waitForCanvas(page, errors, consoleLines);
   // Every section is a button named by its text, with no code in the app.
   for (const name of SECTIONS)
     await page
@@ -542,7 +629,7 @@ async function interactive(browser) {
 }
 
 async function probe(browser) {
-  const { page, errors } = await newPage(browser);
+  const { page, errors, consoleLines } = await newPage(browser);
   let marker;
   page.on('console', (message) => {
     const text = message.text();
@@ -550,14 +637,19 @@ async function probe(browser) {
       marker = JSON.parse(text.slice('SHOWCASE_RESULT '.length));
   });
   await page.goto(origin + '/?probe=1');
-  await page.waitForFunction(
-    () => window.__showcaseResult !== undefined,
-    undefined,
-    {
-      polling: 100,
-      timeout: 60000,
-    },
-  );
+  try {
+    await page.waitForFunction(
+      () => window.__showcaseResult !== undefined,
+      undefined,
+      {
+        polling: 100,
+        timeout: 60000,
+      },
+    );
+  } catch (error) {
+    await diagnose(page, errors, consoleLines, 'probe');
+    throw error;
+  }
   const result = await page.evaluate(() => window.__showcaseResult);
   await shot(page, '4-probe');
   console.log(JSON.stringify(result, null, 2));
