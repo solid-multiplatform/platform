@@ -39,7 +39,9 @@ export class NativePlayer extends SessionPlayer {
     if (this.snapshot.state === 'disposed')
       throw new PlayerOperationError('invalid-state', 'Player is disposed');
     const authorization = checkedSourceAuthorization(request.authorization);
-    if (authorization)
+    // A native engine that forwards request headers (Roku's httpHeaders) can
+    // open an authorized source itself; the others cannot.
+    if (authorization && !this.capabilities.canUseRequestHeaders)
       throw new PlayerOperationError(
         'authorization-unsupported',
         'Native delivery requires a source the device can open.',

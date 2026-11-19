@@ -13,8 +13,30 @@ import type {
   ProviderMap,
   Store,
 } from '@solid-multiplatform/platform/services';
+import type { MediaCapabilities } from '../../src/sdk/drm.js';
 import type { RokuKeySource } from './keys';
 import { reportError } from './report';
+
+/** The host's media session actions, the shape `src/sdk/media.ts` declares. */
+type RokuMediaAction =
+  | 'play'
+  | 'pause'
+  | 'stop'
+  | 'seekbackward'
+  | 'seekforward'
+  | 'seekto'
+  | 'nexttrack'
+  | 'previoustrack';
+type RokuMediaHandler = (details: { seekTime: number }) => void;
+interface RokuMediaSessionPort {
+  setMetadata(metadata: unknown): void;
+  setPlaybackState(state: 'none' | 'paused' | 'playing'): void;
+  setPositionState(state: unknown): void;
+  setActionHandler(
+    action: RokuMediaAction,
+    handler: RokuMediaHandler | undefined,
+  ): void;
+}
 
 // ---- the firmware's runtime objects the SDK exports no plain getter for ----
 
@@ -141,6 +163,75 @@ function unseal(hex: string): string {
   let utf8 = '';
   for (let i = 0; i < bytes.length; i++) utf8 += String.fromCharCode(bytes[i]!);
   return decodeURIComponent(escape(utf8));
+}
+
+/**
+ * The W3C Media Session port, backed by the remote's transport keys. No
+ * handler is installed until an app (the video adapter) registers one, so an
+ * app that does not play media pays no listener. `src/sdk/media.ts` declares
+ * the same port; this module does not import it because a host build
+ * type-checks that file without its `shortcuts` augmentation.
+ */
+function rokuMediaSession(keys: RokuKeySource): RokuMediaSessionPort {
+  const handlers = new Map<RokuMediaAction, RokuMediaHandler>();
+  let playbackState: 'none' | 'paused' | 'playing' = 'none';
+  const emit = (action: RokuMediaAction, seekTime = 0) => {
+    const handler = handlers.get(action);
+    if (!handler) return;
+    try {
+      handler({ seekTime });
+    } catch (error) {
+      reportError('ROKU_MEDIA_SESSION handler failed', error);
+    }
+  };
+  const onKey = (event: { key?: string }) => {
+    switch (event.key) {
+      case 'MediaPlayPause':
+        emit(playbackState === 'playing' ? 'pause' : 'play');
+        break;
+      case 'MediaPlay':
+        emit('play');
+        break;
+      case 'MediaPause':
+        emit('pause');
+        break;
+      case 'MediaStop':
+        emit('stop');
+        break;
+      case 'MediaRewind':
+      case 'InstantReplay':
+        emit('seekbackward');
+        break;
+      case 'MediaFastForward':
+        emit('seekforward');
+        break;
+      case 'MediaTrackNext':
+        emit('nexttrack');
+        break;
+      case 'MediaTrackPrevious':
+        emit('previoustrack');
+        break;
+    }
+  };
+  let listening = false;
+  const listen = (on: boolean) => {
+    if (on === listening) return;
+    listening = on;
+    if (on) keys.addEventListener('keydown', onKey);
+    else keys.removeEventListener('keydown', onKey);
+  };
+  return {
+    setMetadata(_metadata: unknown) {},
+    setPlaybackState(state) {
+      playbackState = state;
+    },
+    setPositionState(_state: unknown) {},
+    setActionHandler(action, handler) {
+      if (handler) handlers.set(action, handler);
+      else handlers.delete(action);
+      listen(handlers.size > 0);
+    },
+  };
 }
 
 export function rokuServices(
@@ -270,7 +361,54 @@ export function rokuServices(
     keyEvents: () => ({
       target: () => keys as unknown as EventTarget,
     }),
+    // What the device decodes and protects. `roku.hasFeature` is the firmware
+    // query; without it, the documented Roku playback set, with HDR and DRM
+    // reported only when the firmware confirms them.
+    mediaCapabilities: () => {
+      let known: MediaCapabilities | undefined;
+      return {
+        async get() {
+          if (known) return known;
+          const runtime = (
+            globalThis as {
+              roku?: { hasFeature?(key: string): boolean };
+            }
+          ).roku;
+          const query =
+            typeof runtime?.hasFeature === 'function'
+              ? (key: string) => runtime.hasFeature!(key)
+              : undefined;
+          const codecs = [
+            'video/mp4; codecs="avc1.42E01E"',
+            'audio/mp4; codecs="mp4a.40.2"',
+            'application/vnd.apple.mpegurl',
+            'application/dash+xml',
+          ];
+          if (query?.('hevc') ?? true)
+            codecs.push('video/mp4; codecs="hvc1.1.6.L93.B0"');
+          const drm = [
+            'com.microsoft.playready',
+            'com.widevine.alpha',
+            'com.apple.fps',
+          ].filter((_scheme, index) => {
+            if (!query) return true;
+            return query(
+              ['playready', 'widevine', 'fairplay'][index] as string,
+            );
+          });
+          const hdr =
+            (query?.('hdr10') ?? false) || (query?.('dolby_vision') ?? false);
+          known = { drm, codecs, hdr };
+          return known;
+        },
+      };
+    },
   };
+  // `mediaSession` is a port `src/sdk/media.ts` also declares. It is added
+  // here rather than in the literal because this host build must not pull that
+  // module into its type graph (see `rokuMediaSession`).
+  (providers as unknown as Record<string, unknown>).mediaSession = () =>
+    rokuMediaSession(keys);
   // Suspend and resume exist only for a channel whose manifest opts in to
   // Instant Resume.
   if (getAppInfo()?.getManifestValue('sdk_instant_resume') !== '1')

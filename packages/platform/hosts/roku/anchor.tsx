@@ -8,6 +8,7 @@ import { defineAnchorNode, FieldType } from '@roku-sdk/rsg-ts';
 import { KeyHandler } from '@roku-sdk/components';
 import {
   createElement,
+  createEffect,
   insertNode,
   onCleanup,
   onMount,
@@ -22,6 +23,7 @@ import {
 import {
   installServices,
   loadService,
+  peekService,
   serviceAvailable,
 } from '@solid-multiplatform/platform/services';
 import { SceneGraphRenderer } from '@solid-multiplatform/renderer/roku';
@@ -84,12 +86,38 @@ export function createAnchor(
     {
       componentName: 'SolidApp',
       extends: 'Group' as const,
-      inputFields: {},
+      // The video adapter talks to the scene's Video layer through these: a
+      // JSON command out and a JSON event back in. Both are inert when the
+      // app does not play video.
+      inputFields: { videoevent: FieldType.String('') },
       // Set when Back was pressed and nothing in the app handled it. The
       // scene observes it and the channel's main loop closes the screen.
-      outputFields: { exitApp: FieldType.Boolean(false) },
+      outputFields: {
+        exitApp: FieldType.Boolean(false),
+        videocommand: FieldType.String(''),
+      },
     },
-    (_inputs, outputs) => {
+    (inputs, outputs) => {
+      const videoListeners = new Set<(event: unknown) => void>();
+      createEffect(() => {
+        const raw = inputs.videoevent;
+        if (!raw) return;
+        let event: unknown;
+        try {
+          event = JSON.parse(raw);
+        } catch (error) {
+          reportError('ROKU_VIDEO event is not JSON', error);
+          return;
+        }
+        // A copy: a listener may unsubscribe while it runs.
+        for (const listener of Array.from(videoListeners)) {
+          try {
+            listener(event);
+          } catch (error) {
+            reportError('ROKU_VIDEO listener failed', error);
+          }
+        }
+      });
       const root = createElement('group');
       const keys = createKeySource();
       // The router's stack lives here: Roku has no browser history to read.
@@ -113,6 +141,52 @@ export function createAnchor(
         removeServices = installServices(
           rokuServices(options.namespace ?? 'app', keys),
         );
+        // The video adapter's seam: commands go out through the anchor's
+        // output field, events arrive on its input field. Only true firmware
+        // features are listed; the adapter fills the rest with its documented
+        // set, because an unknown feature key also answers false.
+        const firmware = (globalThis as { roku?: { hasFeature?(key: string): boolean } }).roku;
+        let features: Record<string, boolean> | undefined;
+        if (typeof firmware?.hasFeature === 'function') {
+          features = {};
+          for (const key of [
+            'hevc',
+            'hdr10',
+            'dolby_vision',
+            'widevine',
+            'playready',
+            'fairplay',
+            'dash',
+            '4k',
+            'uhd',
+          ])
+            if (firmware.hasFeature(key)) features[key] = true;
+        }
+        const videoHost = {
+          send: (command: string) => outputs.videocommand(command),
+          subscribe(listener: (event: unknown) => void) {
+            videoListeners.add(listener);
+            return () => videoListeners.delete(listener);
+          },
+          features: () => features,
+          // The provider is installed by `rokuServices`; its port type is
+          // declared in `src/sdk/media.ts`, which this host build does not
+          // pull in (see `rokuMediaSession`).
+          mediaSession: (
+            peekService as unknown as (
+              name: string,
+            ) => Record<string, unknown> | undefined
+          )('mediaSession'),
+        };
+        (globalThis as Record<string, unknown>).__smpRokuVideoHost = videoHost;
+        onCleanup(() => {
+          if (
+            (globalThis as Record<string, unknown>).__smpRokuVideoHost ===
+            videoHost
+          )
+            delete (globalThis as Record<string, unknown>).__smpRokuVideoHost;
+          videoListeners.clear();
+        });
         // A channel that opted in to Instant Resume must answer the
         // firmware's suspend and resume whether or not the app listens.
         if (serviceAvailable('lifecycle') === 'available')

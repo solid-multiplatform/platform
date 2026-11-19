@@ -1222,6 +1222,10 @@
             "android-tv": {
               "status": "preview",
               "note": "CI checks that the APK contains the Media3 player; nothing plays in CI."
+            },
+            "roku": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/roku-device/run-video.mjs (TCL 50S435, Roku OS 16.0.4; opens paused at 3 s, plays, pauses/resumes, Fwd seeks, reaches the end, maps a 404 to an error with the firmware code and message, teardown pending=0; VIDEO RESULT passed=16 failed=0, public HTTPS source)"
             }
           }
         }
