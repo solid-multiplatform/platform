@@ -53,7 +53,7 @@ jobs:
             libwayland-dev wayland-protocols libdecor-0-dev
             libegl1-mesa-dev libgles2-mesa-dev libgl1-mesa-dev libdrm-dev libgbm-dev
             libdbus-1-dev libibus-1.0-dev libudev-dev
-            xvfb xauth xdotool openssl libgl1-mesa-dri libegl1 libgles2
+            xvfb xauth xdotool openbox openssl libgl1-mesa-dri libegl1 libgles2
             at-spi2-core python3-gi gir1.2-glib-2.0"
           # From this runner, downloads from the package mirrors over plain
           # HTTP stop in the middle and apt waits on them for many minutes,

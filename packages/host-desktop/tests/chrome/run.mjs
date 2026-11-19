@@ -334,7 +334,9 @@ async function runCustom(windowManager) {
   check('the bar is drawn at the top of the scene', JSON.stringify(bar) !== JSON.stringify(content), `${bar} vs ${content}`);
   check('the content is below the bar', JSON.stringify(below) === JSON.stringify(content), `${below} vs ${content}`);
   const window = await windowFor('Solid chrome test');
-  xdo('windowactivate', '--sync', window);
+  // With no window manager there is nothing to activate the window with;
+  // the assertions that need one are skipped below.
+  if (windowManager) xdo('windowactivate', '--sync', window);
 
   if (screenshots) {
     // The scene's own pixels at the same places: what reached the screen is
