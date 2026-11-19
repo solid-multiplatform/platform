@@ -5,9 +5,10 @@ import { isElementNode } from '../core/utils.js';
 import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
 import { Modal } from './Modal.jsx';
+import { activeElement } from '../core/activeElement.js';
 
 // Focus on the drawer goes to the first of the app's children that takes it
-// (the panel's third child holds them); with none that view keeps it.
+// (the panel's second child holds them); with none that view keeps it.
 const focusContent: ForwardFocusHandler = function () {
   const children = this.children;
   for (let i = 0; i < children.length; i++) {
@@ -44,6 +45,24 @@ export function Drawer(props: DrawerProps): JSX.Element {
   const width = () => Math.min(props.width ?? 360, viewport().width);
   const x = () => (props.side === 'end' ? viewport().width - width() : 0);
   const safe = () => viewport().insets.safeArea;
+  let content: ElementNode | undefined;
+  let close: ElementNode | undefined;
+
+  // The panel's rows are the app's content and, last, the close button: a
+  // Down the content does not take reaches Close, and Up from Close goes
+  // back into the content at its top.
+  const panelDown = function (): boolean {
+    if (activeElement() === close) return false;
+    close?.setFocus();
+    return true;
+  };
+  const panelUp = function (): boolean {
+    if (activeElement() !== close) return false;
+    const first = content?.children[0];
+    if (isElementNode(first)) first.selected = 0;
+    content?.setFocus();
+    return true;
+  };
 
   return (
     <Modal
@@ -60,8 +79,18 @@ export function Drawer(props: DrawerProps): JSX.Element {
         width={width()}
         height={viewport().height - safe().top - safe().bottom}
         color={theme().colors.surface}
+        // Rounded on the side that faces the content, like the other dialogs.
+        borderRadius={
+          props.side === 'end'
+            ? [theme().radius.medium, 0, 0, theme().radius.medium]
+            : [0, theme().radius.medium, theme().radius.medium, 0]
+        }
         role="none"
-        forwardFocus={2}
+        // The panel is a navigable container: its rows are the app's content
+        // and, last, the close button, so arrows from the content reach it.
+        forwardFocus={1}
+        onUp={panelUp}
+        onDown={panelDown}
         onMouseClick={() => true}
         onEnter={() => true}
       >
@@ -77,11 +106,32 @@ export function Drawer(props: DrawerProps): JSX.Element {
           {props.title ?? props.label}
         </text>
         <view
+          ref={(node) => {
+            content = node as ElementNode;
+          }}
+          x={24}
+          y={88}
+          width={width() - 48}
+          height={viewport().height - safe().top - safe().bottom - 112}
+          forwardFocus={focusContent}
+        >
+          {props.children}
+        </view>
+        <view
+          ref={(node) => {
+            close = node as ElementNode;
+          }}
           x={width() - 64}
           y={20}
           width={44}
           height={44}
-          color={theme().colors.surfaceRaised}
+          style={{
+            color: theme().colors.surfaceRaised,
+            $focus: { color: theme().colors.focus },
+            $hover: { color: theme().colors.border },
+          }}
+          borderRadius={theme().radius.small}
+          role="button"
           ariaLabel="Close"
           onEnter={() => props.onRequestClose?.()}
           onMouseClick={() => props.onRequestClose?.()}
@@ -98,15 +148,6 @@ export function Drawer(props: DrawerProps): JSX.Element {
           >
             x
           </text>
-        </view>
-        <view
-          x={24}
-          y={88}
-          width={width() - 48}
-          height={viewport().height - safe().top - safe().bottom - 112}
-          forwardFocus={focusContent}
-        >
-          {props.children}
         </view>
       </view>
     </Modal>

@@ -7,13 +7,17 @@
  * Part 2 pins the end-to-end behaviour through JSX, the renderer and the
  * post-mutation layout queue.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as s from 'solid-js';
 import * as lng from '@solid-multiplatform/platform';
 import { ElementNode } from '../src/core/elementNode.ts';
 import { TextNode } from '../src/core/nodeTypes.ts';
 import flex from '../src/core/flexLayout.ts';
 import { renderer, waitForUpdate } from './setup.js';
+
+// The `$focus` layout test asserts what a TV always draws.
+beforeEach(() => lng.setCapabilities('roku'));
+afterEach(() => lng.resetCapabilities());
 
 // ---------------------------------------------------------------------------
 // Part 1: table of flex cases

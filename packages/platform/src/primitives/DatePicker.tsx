@@ -83,6 +83,35 @@ const valueOf = (
 const startOfDay = (date: Date) =>
   new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
+// The host may have no `Intl` (the desktop runtime embeds Hermes without it):
+// `formatDate` then throws for both the locale and its own fallback. The
+// labels are what a picker cannot open without, so each has an English one
+// the exception falls back to — the dialog must render and take keys.
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+// Narrow weekday initials, Sunday first, as formatDate({ weekday: 'narrow' }).
+const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+const formatOr = (date: Date, options: Intl.DateTimeFormatOptions, fallback: string): string => {
+  try {
+    return formatDate(date, options);
+  } catch {
+    return fallback;
+  }
+};
+
 const sameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() &&
   a.getMonth() === b.getMonth() &&
@@ -144,10 +173,18 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
   const firstWeekday = () => month().getDay();
   const weekdayLabels = () =>
     Array.from({ length: 7 }, (_, index) =>
-      formatDate(new Date(2024, 0, 7 + index), { weekday: 'narrow' }),
+      formatOr(
+        new Date(2024, 0, 7 + index),
+        { weekday: 'narrow' },
+        WEEKDAYS[index]!,
+      ),
     );
   const monthLabel = () =>
-    formatDate(month(), { month: 'long', year: 'numeric' });
+    formatOr(
+      month(),
+      { month: 'long', year: 'numeric' },
+      `${MONTHS[month().getMonth()]} ${month().getFullYear()}`,
+    );
 
   const disabled = (date: Date) => {
     if (props.min && startOfDay(date) < startOfDay(props.min)) return true;
@@ -210,14 +247,33 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
   };
 
   /**
+   * The day the next arrow step starts from. Focus is normally on a day; if
+   * it is on the grid itself — the day children were not inserted yet when
+   * the dialog took focus — start from the chosen day instead of losing every
+   * direction (`children.indexOf(grid)` is -1).
+   */
+  const currentDay = (): number => {
+    const active = activeElement();
+    if (grid !== undefined && active !== grid) {
+      const index = grid.children.indexOf(active as ElementNode);
+      if (index >= 0) return index + 1;
+    }
+    const chosen = working();
+    const shown = month();
+    return chosen.getFullYear() === shown.getFullYear() &&
+      chosen.getMonth() === shown.getMonth()
+      ? chosen.getDate()
+      : 1;
+  };
+
+  /**
    * Left and Right move by a day and cross into the next month; Up and Down
    * move by a week and, past the first or last week, leave the grid for the
    * row above or below it (the key is not taken).
    */
   const moveDay = (delta: number): boolean => {
     if (grid === undefined) return false;
-    const day = grid.children.indexOf(activeElement() as ElementNode) + 1;
-    if (day < 1) return false;
+    const day = currentDay();
     const target = day + delta;
     const outside = target < 1 || target > daysInMonth();
     if (outside && (delta === 7 || delta === -7)) return false;
@@ -365,6 +421,12 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
           onRight={() => moveDay(1)}
           onUp={() => moveDay(-7)}
           onDown={() => moveDay(7)}
+          // Focus can land on the grid itself (the panel is its forwardFocus
+          // fallback); Enter then picks the day arrows would start from.
+          onEnter={() => {
+            chooseDay(currentDay());
+            return true;
+          }}
         >
           <For each={Array.from({ length: 42 }, (_, index) => index)}>
             {(index) => {
