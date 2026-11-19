@@ -1,6 +1,64 @@
 import unittest
 
-from frame_timeline import is_flagged, present_unknown, split_layers
+from frame_timeline import (
+    is_flagged,
+    present_unknown,
+    scene_surface_layer,
+    split_layers,
+    surface_cadence,
+    surface_latches_query,
+    surface_swaps_query,
+)
+
+
+class SurfaceViewCadenceTests(unittest.TestCase):
+    VSYNC = 16_666_667
+
+    def test_query_reads_the_app_surface_view_latches(self):
+        sql = surface_latches_query("example.solid")
+        self.assertIn("BufferTX - SurfaceView[", sql)
+        self.assertIn("'example.solid/'", sql)
+        self.assertIn("c.value > 0.5", sql)
+        with self.assertRaisesRegex(ValueError, "Invalid trace package"):
+            surface_latches_query("example.solid'; DROP TABLE slice")
+        self.assertIn("eglSwapBuffers", surface_swaps_query())
+
+    def test_frames_one_refresh_apart_are_not_lost(self):
+        cadence = surface_cadence([i * self.VSYNC for i in range(5)])
+        self.assertEqual(cadence["frames"], 5)
+        self.assertEqual(cadence["motionIntervals"], 4)
+        self.assertEqual(cadence["oneRefresh"], 4)
+        self.assertEqual(cadence["framesLost"], 0)
+
+    def test_a_two_refresh_interval_in_a_move_is_a_lost_frame(self):
+        cadence = surface_cadence(
+            [0, self.VSYNC, 3 * self.VSYNC, 4 * self.VSYNC]
+        )
+        self.assertEqual(cadence["twoRefreshes"], 1)
+        self.assertEqual(cadence["framesLost"], 1)
+        self.assertEqual(cadence["threeOrMore"], 0)
+
+    def test_rests_between_moves_are_not_lost_frames(self):
+        # 200 ms of rest between two moves: the long interval is not a gap.
+        cadence = surface_cadence(
+            [0, self.VSYNC, self.VSYNC + 200_000_000, self.VSYNC + 200_000_000 + self.VSYNC]
+        )
+        self.assertEqual(cadence["motionIntervals"], 2)
+        self.assertEqual(cadence["framesLost"], 0)
+
+    def test_scene_layer_is_chosen_by_gallery_frames_not_by_name(self):
+        rows = [
+            {"track_id": "1", "track_name": "BufferTX - SurfaceView[app/Act]#1", "ts": ts}
+            for ts in (0, 16_666_667, 33_333_334)
+        ] + [
+            {"track_id": "2", "track_name": "BufferTX - SurfaceView[app/Act]#2", "ts": ts}
+            for ts in (2_000_000_000, 2_041_666_667)
+        ]
+        name, times = scene_surface_layer(rows, lambda ts: ts < 1_000_000_000)
+        self.assertEqual(name, "BufferTX - SurfaceView[app/Act]#1")
+        self.assertEqual(times, [0, 16_666_667, 33_333_334])
+        with self.assertRaisesRegex(ValueError, "No app SurfaceView"):
+            scene_surface_layer([])
 
 
 class ActivityBufferTests(unittest.TestCase):

@@ -42,14 +42,14 @@ The bench runs on a desktop CPU. It tells you whether a change costs more or les
 
 ## Measure on an Android TV
 
-The procedure is in `packages/platform/tests/performance`. It needs a physical device and `adb`, and it is not run by CI. It uses Android's FrameTimeline through Perfetto and counts only the frames of the app's own layer.
+The procedure is in `packages/platform/tests/performance`. It needs a physical device and `adb`, and it is not run by CI. It uses Android's FrameTimeline through Perfetto for the app's window layer and SurfaceFlinger's per-buffer `BufferTX` counters for the scene's SurfaceView layer, which FrameTimeline does not record.
 
-- `make-tv-app.mjs DEST REFERENCE_CHECKOUT [--mixed VIDEO_ARCHIVE] [--surface-view]` builds a probe app. The reference scenes and artwork are not in this repository.
+- `make-tv-app.mjs DEST REFERENCE_CHECKOUT [--mixed VIDEO_ARCHIVE] [--surface-view | --texture-view]` builds a probe app. The scene draws into a SurfaceView; `--texture-view` builds the old TextureView path for comparison. The reference scenes and artwork are not in this repository.
 - `check-gallery-pixels.py` compares what the device displays with the source artwork, before any timing is trusted.
 - `capture-android.py --serial <serial> --package <id> --out <dir>` records the passes. The defaults are three passes of 600 seconds.
 - `analyze-android.py <dir> --processor <trace processor> --out <dir>` exports the per-frame timings and writes `summary.json`.
 - `quick-android.py --package <id> --serial <serial>` is a short capture of one interaction cycle, for iterating on a fix. It does not replace the three-pass run.
-- `mixed-android.py` and `analyze-mixed.py` do the same for a workload that mixes the gallery, a dialog, video playback, suspend and resume.
+- `mixed-android.py` and `analyze-mixed.py` do the same for a workload that mixes the gallery, a dialog, video playback, suspend and resume. Both analysers count the SurfaceView layer's latches and treat a two-refresh interval inside a move as a lost frame.
 
 `test_frame_timeline.py` tests the trace parser and does run in CI (`unit` job).
 
@@ -57,15 +57,14 @@ Results that were recorded with these scripts are in `docs/beta`, with a [README
 
 ### Where the Android TV gate stands
 
-Measured on 2026-11-18 on a physical Android TV at 60 Hz with `main`: **the gate is not met.**
+Measured on 2026-11-19 on a physical Android TV at 60 Hz with the SurfaceView default: **the lost-frame defect is fixed; the strict zero-interval gate is not met.**
 
-- One complete 10-minute mixed pass: 14,389 window frames, 6 flagged late. All six fall in one 104 ms run where another app's system prompt closed over the test app; the app finished those frames on time.
-- Three 5-minute gallery passes: 0 flagged late of about 9,600 frames each. Frame time p50 6.7 ms, p99 10.6 ms, worst 13.9 ms.
-- The flagged count understates the problem. In 30 s of scrolling the GL thread swapped 1,141 frames one refresh apart, and the window showed 1,022, with 114 two-refresh intervals. JavaScript and GL were on time (4.5 ms and 2.4 ms median per refresh). The frames are lost between the GL surface and the window; a build with `surface-view` delivered every buffer one refresh apart. The analysers do not count that layer yet.
-- The scene is not idle when still: the canvas plugin's native frame callback wakes the main thread 60 times a second while nothing is drawn.
-- On that day the display reported no present time for 97–100% of frames, so a zero could not have been confirmed either.
-
-The analysers now report frames with no display present time, and the mixed driver checks input focus before each key.
+- Three complete 10-minute mixed passes: 20,122, 20,026 and 20,017 SurfaceView frames. In every pass the GL thread swapped exactly as many buffers as SurfaceFlinger latched (0 rendered frames never latched). On 2026-11-18 the TextureView path lost 119 of 1,141 rendered frames in 30 s.
+- The analysers now count the SurfaceView layer from SurfaceFlinger's `BufferTX` pulses, because FrameTimeline has no rows for it. Under the rule that a two-refresh interval inside a move is a failure, the passes have 6, 6 and 1 such intervals (14, 11 and 2 refreshes missing from the cadence). Each is a late latch of a buffer the GL thread had rendered: the intervals sit at the trace start or within 30 ms of the gallery-return transition. No rendered frame was lost; some were presented late.
+- GL frame time (`eglSwapBuffers`, one per rendered buffer): p50 1.06–1.08 ms, p99 4.29–4.65 ms, worst 7.76–9.69 ms.
+- The SurfaceView scene has no FrameTimeline app frames, so "late/dropped" and "no display present time" are 0 of 0. The display HAL's missing present times no longer hide app lateness because there is no app window frame to time.
+- The scene is still not idle when still: the canvas plugin's native frame callback wakes the main thread 60 times a second while nothing is drawn. That callback is in `libcanvasnative.so`, not in the host. Idle segments produced 0 scene frames.
+- What changed: `runAndroidTV` now creates the scene canvas as a SurfaceView by default; `surface: 'texture-view'` selects the old path. The mixed fixture also seeks to 0 when it enters the player, so a delayed Select cannot run into the 8 s clip's end and restart playback instead of pausing.
 
 ## Measure on Roku
 

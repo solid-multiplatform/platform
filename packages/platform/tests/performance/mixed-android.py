@@ -329,7 +329,7 @@ def main():
         if not args.visual:
             config = f'''buffers {{ size_kb: 32768 fill_policy: RING_BUFFER }}
 data_sources {{ config {{ name: "android.surfaceflinger.frametimeline" }} }}
-data_sources {{ config {{ name: "linux.ftrace" ftrace_config {{ atrace_apps: "{app}" atrace_categories: "view" }} }} }}
+data_sources {{ config {{ name: "linux.ftrace" ftrace_config {{ atrace_apps: "{app}" atrace_categories: "view" atrace_categories: "gfx" }} }} }}
 duration_ms: {args.seconds * 1000}
 write_into_file: true
 file_write_period_ms: 2000

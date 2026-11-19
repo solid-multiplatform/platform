@@ -14,12 +14,24 @@ import re
 import subprocess
 
 from frame_timeline import (
+    LAYER_FIELDS,
     as_csv,
     is_flagged,
     layer_query,
     present_unknown,
+    scene_surface_layer,
     split_layers,
+    surface_cadence,
+    surface_latches_query,
+    surface_swaps_query,
 )
+
+
+def pct(values, q):
+    if not values:
+        return None
+    values = sorted(values)
+    return round(values[min(len(values) - 1, int(round(q * (len(values) - 1))))], 2)
 
 
 def analyze(directory, processor):
@@ -46,7 +58,10 @@ def analyze(directory, processor):
         )
         return list(csv.DictReader(io.StringIO(result.stdout)))
 
-    [span] = query("SELECT (end_ts-start_ts)/1e9 AS seconds FROM trace_bounds")
+    [span] = query(
+        "SELECT start_ts, end_ts, (end_ts-start_ts)/1e9 AS seconds FROM trace_bounds"
+    )
+    t0, t1 = int(span["start_ts"]), int(span["end_ts"])
     if abs(float(span["seconds"]) - meta["seconds"]) > 2:
         raise ValueError("Trace duration differs from the declared duration")
     marks = query(
@@ -137,9 +152,83 @@ def analyze(directory, processor):
         gallery_gaps += sum(
             25_000_000 <= b - a < 100_000_000 for a, b in itertools.pairwise(times)
         )
-    if not frames or not per_phase.get("gallery") or not per_phase.get("player"):
-        raise ValueError("Missing gallery or playback window frames")
+
+    # A SurfaceView scene has no FrameTimeline rows: count its buffer latches
+    # from SurfaceFlinger and take gaps of two refreshes inside a move as lost
+    # frames. The player also uses a SurfaceView, so pick the scene's layer by
+    # where it latched, not by its name.
+    surface_rows = query(surface_latches_query(meta["package"]))
+
+    def in_gallery(ts):
+        return phases[bisect.bisect_right(edges, ts)] == "gallery"
+
+    surface_layer, surface_times = None, []
+    try:
+        surface_layer, surface_times = scene_surface_layer(surface_rows, in_gallery)
+    except ValueError:
+        # A texture-view build, or a trace recorded before the gfx source was
+        # enabled, has no SurfaceView layer to count. Window frames still do.
+        pass
+    surface_by_phase = collections.Counter(
+        phases[bisect.bisect_right(edges, ts)] for ts in surface_times
+    )
+    surface_cad = surface_cadence([ts for ts in surface_times if in_gallery(ts)])
+    swap_times = [int(r["ts"]) for r in query(surface_swaps_query())]
+    swaps_by_phase = collections.Counter(
+        phases[bisect.bisect_right(edges, ts)] for ts in swap_times
+    )
+    # Every rendered buffer should become a SurfaceFlinger latch. Fewer latches
+    # than swaps means rendered frames were lost; equal counts with a long
+    # latch interval means SurfaceFlinger took a buffer late.
+    gallery_swaps = sum(1 for ts in swap_times if in_gallery(ts))
+    rendered_lost = max(0, gallery_swaps - surface_cad["frames"])
+
+    # The scene's frame cost with a SurfaceView is not in FrameTimeline:
+    # report the GL thread's swap time, which is one per rendered buffer.
+    gl_ms = [
+        int(r["dur"]) / 1e6
+        for r in query(
+            """SELECT s.dur FROM slice s JOIN thread_track tt ON s.track_id=tt.id
+               WHERE tt.utid = (
+                   SELECT t.utid FROM slice s
+                   JOIN thread_track tt ON s.track_id=tt.id JOIN thread t USING(utid)
+                   WHERE s.name='eglSwapBuffers'
+                   GROUP BY t.utid ORDER BY count(*) DESC LIMIT 1)
+                 AND s.name='eglSwapBuffers' AND s.dur>=0"""
+        )
+    ]
+
+    # Phases with nothing to animate. A few frames draw each transition;
+    # anything after a 300 ms settle is the idle cost.
+    spans = [
+        (edges[i - 1] if i else t0, edges[i] if i < len(edges) else t1, name)
+        for i, name in enumerate(phases)
+    ]
+    idle = {}
+    for name in ("suspended", "paused", "modal"):
+        windows = [
+            (a + 300_000_000, b)
+            for a, b, phase_name in spans
+            if phase_name == name and b > a + 300_000_000
+        ]
+        idle[name] = {
+            "segments": len(windows),
+            "secondsAfterSettle": round(sum(b - a for a, b in windows) / 1e9, 2),
+            "surfaceFrames": sum(
+                any(a <= ts < b for a, b in windows) for ts in surface_times
+            ),
+        }
+
+    if not per_phase.get("gallery") and not surface_cad["frames"]:
+        raise ValueError("Missing gallery frames")
+    if not per_phase.get("player") and not surface_by_phase.get("player"):
+        raise ValueError("Missing playback frames")
     prefix = "pass-" + str(meta["pass"])
+    window_fields = (
+        (frames or other_layers or layers)[0].keys()
+        if (frames or other_layers or layers)
+        else LAYER_FIELDS
+    )
     counts = [c["exit"] for c in run["cycles"]]
     return {
         "pass": meta["pass"],
@@ -182,16 +271,36 @@ def analyze(directory, processor):
             )
         ),
         "windowFramesByPhase": per_phase,
+        "surfaceViewLayer": surface_layer,
+        "surfaceFrames": len(surface_times),
+        "surfaceFramesByPhase": dict(surface_by_phase),
+        "surfaceCadence": surface_cad,
+        "surfaceFramesLostDuringMotion": surface_cad["framesLost"],
+        "surfaceSwapsByPhase": dict(swaps_by_phase),
+        "surfaceRenderedFramesLost": {
+            "gallery": rendered_lost,
+            "total": max(0, len(swap_times) - len(surface_times)),
+        },
+        "appGlFrameMs": {
+            "meaning": "eglSwapBuffers on the app GL thread: one slice per "
+            "rendered buffer, the per-frame render cost with a SurfaceView "
+            "(FrameTimeline has no app-frame duration for that layer).",
+            "count": len(gl_ms),
+            "p50": pct(gl_ms, 0.50),
+            "p99": pct(gl_ms, 0.99),
+            "max": pct(gl_ms, 1),
+        },
+        "idlePhasesAfterSettle": idle,
         "galleryIntervals25To100ms": gallery_gaps,
         "videoRendered": sum(x["rendered"] for x in counts),
         "videoDropped": sum(x["dropped"] for x in counts),
         "videoSkipped": sum(x["skipped"] for x in counts),
     }, {
         prefix + "-window.csv.gz": gzip.compress(
-            as_csv(frames, frames[0].keys()), mtime=0
+            as_csv(frames, window_fields), mtime=0
         ),
         prefix + "-other-layers.csv.gz": gzip.compress(
-            as_csv(other_layers, frames[0].keys()), mtime=0
+            as_csv(other_layers, window_fields), mtime=0
         ),
         prefix + "-events.json": (json.dumps(run["events"], indent=2) + "\n").encode(),
     }
@@ -236,7 +345,13 @@ def main():
             r["windowFrames"],
             "with no display present time,",
             r["videoDropped"],
-            "dropped video buffers",
+            "dropped video buffers,",
+            r["surfaceFramesLostDuringMotion"],
+            "of",
+            r["surfaceFrames"],
+            "surface frames lost during motion,",
+            r["surfaceRenderedFramesLost"]["gallery"],
+            "rendered frames never latched",
         )
 
 

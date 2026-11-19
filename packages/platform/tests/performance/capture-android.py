@@ -21,6 +21,7 @@ for i in numbers:
     local=args.out/('pass-%d.perfetto-trace'%i)
     config=f"""buffers {{ size_kb: 32768 fill_policy: RING_BUFFER }}
 data_sources {{ config {{ name: "android.surfaceflinger.frametimeline" }} }}
+data_sources {{ config {{ name: "linux.ftrace" ftrace_config {{ atrace_categories: "gfx" }} }} }}
 duration_ms: {1000*args.seconds}
 write_into_file: true
 file_write_period_ms: 2000
