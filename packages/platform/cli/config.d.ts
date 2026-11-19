@@ -31,7 +31,45 @@ export interface SigningSettings {
   [setting: string]: string | undefined;
 }
 
+/** A font the app's text is drawn with. */
+export interface AppFont {
+  /** The family name text refers to; the first font is the default family. */
+  family: string;
+  /**
+   * An MSDF atlas in `assets/fonts`, without its extension: `Lato-Regular.msdf`
+   * names `Lato-Regular.msdf.png` and `Lato-Regular.msdf.json`. Used by every
+   * target that draws with WebGL.
+   */
+  atlas?: string;
+  /** A font file in `targets/roku/fonts`. Roku draws text from font files. */
+  file?: string;
+}
+
+/**
+ * What the generated entry of each target starts the app with. An `options`
+ * export of `src/app.tsx` overrides these in code.
+ */
+export interface AppConfig {
+  /**
+   * The fonts to load. When omitted: every atlas in `assets/fonts` (and on
+   * Roku every font file in `targets/roku/fonts`), the family being the file
+   * name up to its first hyphen or dot.
+   */
+  fonts?: AppFont[];
+  /**
+   * The coordinate space of the app's TV screens, such as 1920 by 1080.
+   * `Screen` scales it to the device on TV targets. Phones, desktop windows
+   * and the web keep the viewport's own units; pass `designSize` to `Screen`
+   * to scale there too.
+   */
+  designSize?: { width: number; height: number };
+  /** `system` (the default) follows the device's light or dark appearance. */
+  theme?: 'system' | 'light' | 'dark';
+}
+
 export interface SolidPlatformConfig {
+  /** Fonts, design size and theme of the app. */
+  app?: AppConfig;
   /**
    * Reverse-DNS application id, such as `com.example.app`. Used for the webOS
    * app id and to start the app on Android. Native projects keep the id that
@@ -62,6 +100,7 @@ export interface SolidPlatformConfig {
 
 /** What targets receive as `ctx.config`: validated, with the optional lists filled in. */
 export interface ResolvedConfig extends SolidPlatformConfig {
+  app: AppConfig;
   deepLinks: { schemes: string[]; hosts: string[] };
   services: string[];
   signing: Partial<Record<TargetName, SigningSettings>>;

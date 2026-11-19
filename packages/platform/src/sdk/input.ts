@@ -276,13 +276,34 @@ export function createScenePointer(
   }
 
   function probeChild(child: ElementNode['children'][number]) {
-    return isElementNode(child) &&
-      child.rendered &&
-      child.alpha !== 0 &&
-      !child.skipFocus &&
-      inside(child)
-      ? probe(child)
-      : undefined;
+    if (
+      !isElementNode(child) ||
+      !child.rendered ||
+      child.alpha === 0 ||
+      child.skipFocus
+    )
+      return undefined;
+    const sx = (child.scaleX ?? child.scale ?? 1) as number;
+    const sy = (child.scaleY ?? child.scale ?? 1) as number;
+    if ((sx === 1 && sy === 1) || !sx || !sy)
+      return inside(child) ? probe(child) : undefined;
+    // `absX`/`absY` add up `x`/`y` and know no scale: they place a scaled
+    // node and its subtree where they would be drawn unscaled. Undo the
+    // scale on the point, about the node's pivot, while searching in it.
+    const x = px;
+    const y = py;
+    const cx =
+      (child.absX || 0) +
+      (child.width || 0) * ((child.pivotX ?? child.pivot ?? 0.5) as number);
+    const cy =
+      (child.absY || 0) +
+      (child.height || 0) * ((child.pivotY ?? child.pivot ?? 0.5) as number);
+    px = cx + (x - cx) / sx;
+    py = cy + (y - cy) / sy;
+    const found = inside(child) ? probe(child) : undefined;
+    px = x;
+    py = y;
+    return found;
   }
 
   /** The target under a point, disabled or not. */

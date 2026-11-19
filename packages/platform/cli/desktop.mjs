@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { existsSync } from 'node:fs';
 import { command, copy, framework, write } from './files.mjs';
+import { appModule, appSettings, mountComponent } from './app-entry.mjs';
 
 export function buildDesktopUI(root, dir, work, launch) {
   command(
@@ -40,6 +41,12 @@ export function buildDesktopUI(root, dir, work, launch) {
     'run.mjs',
   ])
     copy(path.join(framework, 'hosts/desktop', file), path.join(work, file));
+  // A component app is wired here; an older app exports `mount` and is
+  // handed what its host has.
+  const app = appModule(work);
+  const settings = app.component
+    ? appSettings(root, 'desktop', "new URL('./fonts',import.meta.url).href")
+    : undefined;
   write(
     path.join(work, 'scene.ts'),
     `import {createInputScope} from '@solid-multiplatform/platform/input';
@@ -47,7 +54,13 @@ import { setDefaultPlatform } from '@solid-multiplatform/renderer/platform';
 import { getRenderer } from '@solid-multiplatform/platform';
 import { updateViewport, zeroInsets } from '@solid-multiplatform/platform/viewport';
 import { attachPlugins } from '@solid-multiplatform/platform/plugins';
-import { mount } from './src/app';
+${
+  app.component
+    ? `import App${app.options ? ', { options }' : ''} from './src/app';
+import { appEntry } from '@solid-multiplatform/platform/app/entry';
+import { mountApp } from '@solid-multiplatform/platform/host';`
+    : "import { mount } from './src/app';"
+}
 import { plugins } from './plugins.mjs';
 export function install(adapter) { setDefaultPlatform(class {constructor(){return adapter;}}); }
 export function repaint(){getRenderer()?.requestRender();}
@@ -67,7 +80,11 @@ export function start(host){
   }
   const detach=attachPlugins(plugins,host);
   try {
-    const dispose=mount(plugins,new URL('./fonts',import.meta.url).href,input,host);
+    ${
+      app.component
+        ? mountComponent(settings.settings, app.options, 'input')
+        : "const dispose=mount(plugins,new URL('./fonts',import.meta.url).href,input,host);"
+    }
     return ()=>{try {dispose?.();getRenderer()?.destroy();} finally {abort.abort();input.dispose();detach();}};
   }catch(error){detach();throw error;}
 }

@@ -22,6 +22,8 @@ import * as shaders from '@solid-multiplatform/platform/shaders';
 import * as focusManager from '@solid-multiplatform/platform/focusManager';
 import * as services from '@solid-multiplatform/platform/services';
 import * as webServices from '@solid-multiplatform/platform/services/web';
+import * as app from '@solid-multiplatform/platform/app';
+import * as appEntryModule from '@solid-multiplatform/platform/app/entry';
 
 const names = (mod: object) => Object.keys(mod).sort();
 
@@ -518,6 +520,70 @@ v.describe('Exports: runtime export names of every entry point', () => {
     },
   );
 
+  // The authoring surface: what an app imports. A name here is a promise to
+  // every app; add one only with an example in docs/app-api.md.
+  // src/app/index.ts and src/app/entry.ts.
+  v.test('@solid-multiplatform/platform/app: 55 names', () => {
+    v.expect(names(app)).toEqual([
+      'Alert',
+      'AppErrorBoundary',
+      'Button',
+      'Column',
+      'ErrorBoundary',
+      'For',
+      'Grid',
+      'HashRouter',
+      'Image',
+      'Index',
+      'KeepAliveRoute',
+      'List',
+      'Match',
+      'Modal',
+      'Row',
+      'Screen',
+      'Sheet',
+      'Show',
+      'Spacer',
+      'Switch',
+      'Text',
+      'ThemeProvider',
+      'Toast',
+      'VirtualColumn',
+      'VirtualGrid',
+      'VirtualRow',
+      'Visible',
+      'available',
+      'createEffect',
+      'createMemo',
+      'createSignal',
+      'defineTheme',
+      'deviceInfo',
+      'impact',
+      'keepAwake',
+      'loadService',
+      'onCleanup',
+      'onMount',
+      'openExternal',
+      'readClipboard',
+      'setupI18n',
+      'share',
+      't',
+      'useBattery',
+      'useBreakpoint',
+      'useColorScheme',
+      'useConnectivity',
+      'useHost',
+      'useLifecycle',
+      'useLocale',
+      'usePlugin',
+      'usePlugins',
+      'useTheme',
+      'useViewport',
+      'writeClipboard',
+    ]);
+    v.expect(names(appEntryModule)).toEqual(['appEntry']);
+  });
+
   v.test(
     '@solid-multiplatform/platform/devtools/jsx-locator is a Babel plugin (default export)',
     () => {
@@ -731,6 +797,8 @@ v.describe('package.json exports', () => {
       './menus',
       './window-state',
       './certification',
+      './app',
+      './app/entry',
       './host',
       './host/web',
       './host/dom',

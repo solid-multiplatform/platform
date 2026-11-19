@@ -1,6 +1,7 @@
 import { packageTV } from './tv-package.mjs';
 import { buildDesktopUI } from './desktop.mjs';
 import { stageSources, browserTVs } from './variants.mjs';
+import { appModule, appSettings, mountComponent } from './app-entry.mjs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
@@ -120,12 +121,14 @@ function roku(work, plugins, dir) {
 
 // Browser targets start through startApp on the web host; browser TVs wrap it
 // for the fixed stage and the remote, and --legacy draws with Canvas 2D.
-function browserEntry(target, legacy, name, fonts) {
+// `app` is how src/app starts: a component (its default export), or the
+// `App` and `appOptions` exports of an app written before that.
+function browserEntry(target, legacy, name, fonts, app, settings) {
   const tv = browserTVs.includes(target);
   const options = `{ target: '${target}', namespace: ${JSON.stringify(name)} }`;
   const base = legacy ? 'canvasHost' : 'webHost';
   return `import { onCleanup } from 'solid-js';
-import { createComponent } from '@solid-multiplatform/platform';
+${app.component ? "import { appEntry } from '@solid-multiplatform/platform/app/entry';" : "import { createComponent } from '@solid-multiplatform/platform';"}
 import { startApp } from '@solid-multiplatform/platform/host';
 ${
   legacy
@@ -134,17 +137,18 @@ ${
 }
 ${tv ? "import { tvHost } from '@solid-multiplatform/platform/browser-tv/input';" : "import { registerServiceWorker } from '@solid-multiplatform/platform/pwa';"}
 import { attachPlugins } from '@solid-multiplatform/platform/plugins';
-import { App, appOptions } from './src/app';
+${app.component ? `import App${app.options ? ', { options }' : ''} from './src/app';` : "import { App, appOptions } from './src/app';"}
 import { plugins } from './plugins.mjs';
 export function mount(host = { target: '${target}' }) {
+  ${app.component ? `const entry = appEntry(App, plugins, ${settings}${app.options ? ', options' : ''});` : ''}
   return startApp(
     ${tv ? `tvHost(${base}, ${options})` : `${base}(${options})`},
     (context) => {
       // Plugins attach once the host's services exist and detach before they go.
       onCleanup(attachPlugins(plugins, host));
-      return createComponent(App, { plugins, host: context });
+      return ${app.component ? 'entry.root()' : 'createComponent(App, { plugins, host: context })'};
     },
-    appOptions(${fonts}),
+    ${app.component ? 'entry.options' : `appOptions(${fonts})`},
   );
 }
 mount();
@@ -233,11 +237,39 @@ function buildTarget(root, target, dev, legacy) {
       : browser
         ? "'./fonts'"
         : "'file:///app/fonts'";
+  const app = appModule(work);
+  const settings = app.component
+    ? appSettings(root, target, legacy ? undefined : fonts)
+    : undefined;
   write(
     path.join(work, 'main.ts'),
     browser
-      ? browserEntry(target, legacy, project(root).name, fonts)
-      : `${rokuFont ? "import { loadFonts } from '@solid-multiplatform/platform'; import lato from '../fonts/Lato-Regular.ttf';" : ''}
+      ? browserEntry(
+          target,
+          legacy,
+          project(root).name,
+          fonts,
+          app,
+          settings?.settings,
+        )
+      : app.component
+        ? // The app is a component: the entry wires it to the host. The same
+          // text on Roku, Android, Android TV, iOS and tvOS.
+          `${settings.imports}
+import App${app.options ? ', { options }' : ''} from './src/app';
+import { appEntry } from '@solid-multiplatform/platform/app/entry';
+import { mountApp } from '@solid-multiplatform/platform/host';
+import { attachPlugins } from '@solid-multiplatform/platform/plugins';
+import { plugins } from './plugins.mjs';
+export function mount(host = { target: '${target}' }) {
+  const detach = attachPlugins(plugins, host);
+  try {
+    ${mountComponent(settings.settings, app.options)}
+    return () => { try { dispose(); } finally { detach(); } };
+  } catch (error) { detach(); throw error; }
+}
+`
+        : `${rokuFont ? "import { loadFonts } from '@solid-multiplatform/platform'; import lato from '../fonts/Lato-Regular.ttf';" : ''}
 import { mount as start } from './src/app';
 import { attachPlugins } from '@solid-multiplatform/platform/plugins';
 import { plugins } from './plugins.mjs';

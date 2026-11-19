@@ -1,85 +1,34 @@
-import { createSignal, onCleanup } from 'solid-js';
-import { Config } from '@solid-multiplatform/platform';
 import {
-  mountApp,
-  type AppOptions,
-  type HostWiring,
-} from '@solid-multiplatform/platform/host';
-import { Home } from './screens/Home';
+  Button,
+  List,
+  Screen,
+  Text,
+  createSignal,
+  usePlugins,
+} from '@solid-multiplatform/platform/app';
 
-export interface Plugin {
-  run(): Promise<string>;
-}
-
-/** What the app runs on: the target's name and, on native targets, its root view. */
-export interface AppHost {
-  target: string;
-  native?: unknown;
-}
-
-/** The fonts the app loads, from where the target serves its font files. */
-export function appOptions(fontRoot?: string): AppOptions {
-  if (!fontRoot) return {};
-  Config.fontSettings = { fontFamily: 'Lato', fontSize: 32 };
-  return {
-    fonts: [
-      {
-        type: 'msdf',
-        fontFamily: 'Lato',
-        atlasUrl: fontRoot + '/Lato-Regular.msdf.png',
-        atlasDataUrl: fontRoot + '/Lato-Regular.msdf.json',
-      },
-    ],
-  };
-}
-
-export function App(props: { plugins: Record<string, Plugin>; host: AppHost }) {
+// The app is this component. Each target's entry is generated around it, with
+// the fonts, design size and theme from solid-platform.config.json.
+// A target that needs its own layout gets its own file: app.tv.tsx,
+// app.mobile.tsx or app.roku.tsx replaces this one there
+// (`solid-platform explain roku app` shows which file a target uses).
+export default function App() {
+  const plugins = usePlugins<{ run(): Promise<string> }>();
   const [message, setMessage] = createSignal('__APP_NAME__');
-  let active = true,
-    latest = 0;
-  onCleanup(() => {
-    active = false;
-  });
-  // Shows what the plugin returns; a slower earlier run does not overwrite it.
-  function run(name: string) {
-    const call = ++latest;
-    const show = (value: unknown) => {
-      if (active && call === latest) setMessage(String(value));
-    };
-    void Promise.resolve()
-      .then(() => props.plugins[name]!.run())
-      .then(show, show);
-  }
+  const [count, setCount] = createSignal(0);
+  const run = (name: string) =>
+    void plugins[name]!.run().then(setMessage, (error) =>
+      setMessage(String(error)),
+    );
   return (
-    <Home
-      names={Object.keys(props.plugins)}
-      message={message()}
-      onRun={run}
-      target={props.host.target}
-      native={props.host.native as object | undefined}
-    />
-  );
-}
-
-/**
- * The entry of the targets that do not start through `startApp` yet (Roku,
- * Android, iOS, tvOS, desktop): each one's generated entry calls it with what
- * its host has. Browser targets start `App` with `startApp`.
- */
-export function mount(
-  plugins: Record<string, Plugin>,
-  fontRoot?: string,
-  pointer?: HostWiring['pointer'],
-  host?: { target: string; root?: object; semantics?: HostWiring['semantics'] },
-) {
-  return mountApp(
-    () => (
-      <App
-        plugins={plugins}
-        host={{ target: host?.target ?? '', native: host?.root }}
-      />
-    ),
-    { pointer, semantics: host?.semantics },
-    appOptions(fontRoot),
+    <Screen>
+      <Text size="title">{message()}</Text>
+      <Button onPress={() => setCount(count() + 1)}>
+        {`Pressed ${count()} times`}
+      </Button>
+      <List each={Object.keys(plugins)} onSelect={run}>
+        {(name) => <Button>{name}</Button>}
+      </List>
+    </Screen>
   );
 }
