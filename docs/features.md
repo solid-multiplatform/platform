@@ -12,30 +12,30 @@ A cell says `tested` only when an automated test in this repository runs that fe
 
 ## Counts
 
-936 cells: 78 features on 12 targets.
+948 cells: 79 features on 12 targets.
 
 | Status      | Cells |
 | ----------- | ----- |
-| tested      | 138   |
+| tested      | 139   |
 | device      | 74    |
-| preview     | 352   |
+| preview     | 362   |
 | in progress | 0     |
-| no          | 372   |
+| no          | 373   |
 
 | Target            | tested | device | preview | in progress | no  |
 | ----------------- | ------ | ------ | ------- | ----------- | --- |
-| `web`             | 32     | 0      | 29      | 0           | 17  |
-| `tizen`           | 5      | 0      | 52      | 0           | 21  |
-| `webos`           | 6      | 0      | 51      | 0           | 21  |
-| `vizio`           | 5      | 0      | 51      | 0           | 22  |
-| `roku`            | 5      | 19     | 9       | 0           | 45  |
-| `android`         | 0      | 33     | 25      | 0           | 20  |
-| `android-tv`      | 5      | 22     | 17      | 0           | 34  |
-| `ios`             | 29     | 0      | 19      | 0           | 30  |
-| `apple-tv`        | 21     | 0      | 15      | 0           | 42  |
-| `desktop-linux`   | 30     | 0      | 20      | 0           | 28  |
-| `desktop-windows` | 0      | 0      | 32      | 0           | 46  |
-| `desktop-macos`   | 0      | 0      | 32      | 0           | 46  |
+| `web`             | 32     | 0      | 30      | 0           | 17  |
+| `tizen`           | 5      | 0      | 53      | 0           | 21  |
+| `webos`           | 6      | 0      | 52      | 0           | 21  |
+| `vizio`           | 5      | 0      | 52      | 0           | 22  |
+| `roku`            | 5      | 19     | 9       | 0           | 46  |
+| `android`         | 0      | 33     | 26      | 0           | 20  |
+| `android-tv`      | 5      | 22     | 18      | 0           | 34  |
+| `ios`             | 29     | 0      | 20      | 0           | 30  |
+| `apple-tv`        | 21     | 0      | 16      | 0           | 42  |
+| `desktop-linux`   | 31     | 0      | 20      | 0           | 28  |
+| `desktop-windows` | 0      | 0      | 33      | 0           | 46  |
+| `desktop-macos`   | 0      | 0      | 33      | 0           | 46  |
 
 ## Rendering backends
 
@@ -249,6 +249,19 @@ Notes:
 - Browser TV package (Tizen `.wgt`, webOS `.ipk`), vizio: The build output is a hosted web app; there is no package step.
 - Desktop archive (`.tar.gz` with runtime), desktop-windows, desktop-macos: Windows and macOS packaging is not implemented.
 
+## Internationalization
+
+| Feature                                                                     | web     | tizen   | webos   | vizio   | roku | android | android-tv | ios     | apple-tv | desktop-linux | desktop-windows | desktop-macos |
+| --------------------------------------------------------------------------- | ------- | ------- | ------- | ------- | ---- | ------- | ---------- | ------- | -------- | ------------- | --------------- | ------------- |
+| `Intl` (plural rules, number, date/time, relative time, list and collation) | preview | preview | preview | preview | no   | preview | preview    | preview | preview  | tested        | preview         | preview       |
+
+Notes:
+
+- `Intl` (plural rules, number, date/time, relative time, list and collation), web, tizen, webos, vizio: The browser's own `Intl`; the SDK's formatting is not asserted on these targets.
+- `Intl` (plural rules, number, date/time, relative time, list and collation), roku: The device's Hermes has no `Intl`; `sdk/i18n.ts` falls back to `en`.
+- `Intl` (plural rules, number, date/time, relative time, list and collation), android, android-tv, ios, apple-tv: The engine's own `Intl`; no target test asserts formatting.
+- `Intl` (plural rules, number, date/time, relative time, list and collation), desktop-windows, desktop-macos: The same ICU4X formatters; neither is built with a window in CI.
+
 ## Evidence
 
 A `tested` cell names the test file that covers it, the workflow and job that run it, and what it checks. A `device` cell names a recorded run kept under `handoff/`; that folder is local, so the generator checks the shape of the path, not what the run contains.
@@ -371,6 +384,7 @@ A `tested` cell names the test file that covers it, the workflow and job that ru
 - Android debug APK, android-tv: packages/platform/tests/cli/android-smoke.sh (android.yml: android; asserts the APK and its three ABI slices; not installed on a device in CI)
 - Apple simulator app, ios, apple-tv: packages/platform/tests/cli/apple-smoke.sh (test.yml: apple; installed and launched in a simulator)
 - Desktop archive (`.tar.gz` with runtime), desktop-linux: packages/host-desktop/tests/package/run.mjs (desktop-runtime.yml: linux; the archive is unpacked, moved, run and checked for its first frame, idle counters and resources)
+- `Intl` (plural rules, number, date/time, relative time, list and collation), desktop-linux: packages/host-desktop/tests/web/intl.ts (desktop-runtime.yml: the host suite runs it headless in the Rust + Hermes runtime)
 
 ### Device runs
 

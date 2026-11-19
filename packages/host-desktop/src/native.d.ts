@@ -1,6 +1,56 @@
 // What the native runtime (packages/host-desktop/native) puts on the global
 // object. Only this package reads it: apps use the platform's APIs.
 
+/**
+ * The ICU4X formatters behind `Intl` (native/src/intl.rs, src/web/intl.ts).
+ * Each constructor returns a handle; `format` takes the handle and whether
+ * the caller wants a string or a parts array.
+ */
+interface SolidIntl {
+  plural(locale: string, type: string, key: string): number;
+  number(
+    locale: string,
+    style: string,
+    currency: string,
+    grouping: string,
+    key: string,
+  ): number;
+  date(
+    locale: string,
+    date: string,
+    time: string,
+    timeZone: string,
+    zoneLong: number,
+    key: string,
+  ): number;
+  relative(
+    locale: string,
+    unit: string,
+    style: string,
+    numeric: string,
+    key: string,
+  ): number;
+  list(locale: string, type: string, style: string, key: string): number;
+  collator(locale: string, key: string): number;
+  /**
+   * `parts` 0 returns the text; 1 returns `{ type, value }` parts. A date's
+   * components are year, month (1-12), day, hour, minute, second and the
+   * UTC offset in seconds.
+   */
+  format(
+    handle: number,
+    parts: number,
+    ...values: unknown[]
+  ): string | unknown[];
+  compare(handle: number, left: string, right: string): number;
+  /** How many formatters have been built, for tests. */
+  stats(): { formatters: number; built: number };
+  /** The system's IANA time zone. */
+  systemTimeZone(): string;
+  /** The zone's UTC offset at an instant, in seconds. */
+  zoneOffset(zone: string, epochSeconds: number): number;
+}
+
 /** A decoded image: 8-bit RGBA pixels, row by row from the top. */
 interface SolidDecodedImage {
   readonly width: number;
@@ -82,6 +132,8 @@ type SolidDone<T> = (error: Error | null, result?: T) => void;
 interface SolidNative {
   /** The directory of the running script: relative asset paths start here. */
   readonly appDir: string;
+  /** `Intl`'s formatters (native/src/intl.rs). */
+  readonly intl: SolidIntl;
   /**
    * What the app was started with, after the runtime's own options: a URL
    * of the app's scheme when the system opened it for one.

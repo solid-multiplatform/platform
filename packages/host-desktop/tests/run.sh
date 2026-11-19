@@ -18,6 +18,7 @@ here=$(cd "$(dirname "$0")" && pwd)
 bash "$here/../native/tests/run.sh"
 node "$here/adapter/run.mjs"
 node "$here/web/run.mjs"
+node "$here/web/intl-run.mjs"
 
 virtual() {
   if [[ -z "${DISPLAY:-}${WAYLAND_DISPLAY:-}" || "${SOLID_DESKTOP_VIRTUAL:-1}" == 1 ]]; then
