@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   ANDROID_PREVIEW_SERVICES,
+  ANDROID_TV_PREVIEW_SERVICES,
   androidServices,
   type AndroidApp,
   type AndroidFeatures,
@@ -269,6 +270,27 @@ describe('androidServices', () => {
       ANDROID_SERVICES.filter(
         (name) => !ANDROID_PREVIEW_SERVICES.includes(name),
       ).sort(),
+    );
+  });
+
+  test('a TV also holds back what was verified on a phone only', () => {
+    const offered = (form: 'phone' | 'tv') =>
+      Object.keys(
+        androidServices({
+          form,
+          app: untouched,
+          features: everything,
+          jobs,
+          keyTarget,
+        }),
+      );
+    for (const name of ANDROID_TV_PREVIEW_SERVICES) {
+      expect(ANDROID_PREVIEW_SERVICES).not.toContain(name);
+      expect(offered('phone')).toContain(name);
+      expect(offered('tv')).not.toContain(name);
+    }
+    expect(offered('tv')).toEqual(
+      expect.arrayContaining(['download', 'mediaCapabilities']),
     );
   });
 
