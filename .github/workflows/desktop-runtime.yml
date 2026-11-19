@@ -402,6 +402,10 @@ jobs:
         run: |
           set -euo pipefail
           export HERMES_SRC="$GITHUB_WORKSPACE/hermes" HERMES_BUILD="$GITHUB_WORKSPACE/hermes-build"
+          # Git Bash puts its own link.exe (coreutils' hard-link tool) on PATH
+          # ahead of MSVC's, and rustc would run that. Name MSVC's linker,
+          # beside the cl.exe that the MSVC environment step selected.
+          export CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER="$(dirname "$(command -v cl.exe)")/link.exe"
           cargo build --release --locked --features static-sdl
           ./target/release/solid-desktop.exe --diagnostics
           cargo test --release --locked --features static-sdl
