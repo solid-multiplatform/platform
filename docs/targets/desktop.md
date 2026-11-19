@@ -2,11 +2,11 @@
 
 Target name: `desktop`. The feature matrix splits it into `desktop-linux`, `desktop-windows` and `desktop-macos`.
 
-## Status: preview
+## Status: tested on Linux; preview on Windows and macOS
 
-The desktop target runs a Solid Multiplatform component app in a native runtime written in Rust that embeds Hermes and draws the scene with WebGL through SDL3. **No Node.js runs the app.** Node is a build tool: it bundles the entry and, by calling the runtime, compiles Hermes bytecode. The executable that opens the window contains the JavaScript engine and the scene renderer; the app's code is the bytecode.
+The desktop target runs a Solid Multiplatform component app in a native runtime written in Rust that embeds Hermes and draws the scene with WebGL through SDL3. **No Node.js runs the app.** Node is a build tool: it bundles the entry and, by calling the runtime, compiles Hermes bytecode. The executable that opens the window contains the JavaScript engine and the scene renderer; the app's code is the bytecode. The generated entry is `startApp(desktopHost(), App, options)`, and the host supplies router history.
 
-Linux is the only system verified end to end today. Windows and macOS builds exist in the runtime's source but are not covered by a CI job that opens a window.
+Linux is the only system verified end to end. The `desktop-runtime` workflow ("Desktop runtime", `linux` job) builds the runtime and runs the host suite on a virtual display. Windows and macOS builds exist in the runtime's source but are not covered by a CI job that opens a window.
 
 ## Add it to an app
 
@@ -46,10 +46,12 @@ Screen variants ending in `.linux`, `.windows`, `.macos` or `.desktop` are selec
 - `.github/workflows/desktop-runtime.yml` builds Hermes, SDL3, the runtime and the static-SDL release archive, then runs those tests on a virtual display.
 - `packages/platform/tests/cli/unit/{add-desktop,desktop-target}.test.mjs` test runtime/asset resolution with a faked fetch and filesystem, and the desktop command dispatch.
 
+On Linux the host suite covers the generated entry through `startApp(desktopHost())`: keys and focus (including real X events through xdotool), pointers and the wheel, text fields, the services (`settings`, `lifecycle`, `links`, `request`, `clipboard`, `share`/`haptics` only as absent, `deviceInfo`, `battery`, `memory`, `keepAwake`, `openExternal`, `locale`, `colorScheme`, `keyEvents`, `download`, `filePicker`, `fileSystem`), notifications and connectivity on a test bus, the idle rule, packaging, and the AccessKit tree over AT-SPI. `connectivity` and `notifications` need a stand-in on the test bus; `secureStorage` is not tested because the app must pass a keyring module.
+
 What this does not cover:
 
-- Windows and macOS merely build; no CI job opens a window there.
+- Windows and macOS merely build; no CI job opens a window there, and their packaging is not implemented.
 - The GitHub release download path in `add desktop none` is unit-tested through a fake fetch, not against the live GitHub API.
 - No AppImage is produced.
 
-Treat desktop as `preview`; the feature matrix splits it by OS.
+The feature matrix marks the Linux cells `tested`; the Windows and macOS cells remain `preview`.

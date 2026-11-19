@@ -7,7 +7,7 @@ These TVs run a browser engine, so they use the web backends and the web service
 ## What it is built from
 
 - Backend: WebGL by default. `build <target> --legacy` builds a Canvas 2D variant for old engines: it resolves the `canvas` package condition, calls `useCanvas()` from `@solid-multiplatform/platform/browser-tv/canvas` and compiles for Chrome 38 and later with `@vitejs/plugin-legacy`.
-- Host: the browser host with the TV's `target` (`webHost({ target: 'tizen' })`). The capability defaults differ per TV: `tizen` and `vizio` declare a remote only; `webos` declares a remote and a pointer.
+- Host: the browser host with the TV's `target` (`webHost({ target: 'tizen' })`). The capability defaults differ per TV: `tizen` and `vizio` declare a remote only; `webos` declares a remote and a pointer. Router history comes from the host over `window.history`.
 - CLI target: a Vite project in `targets/<target>`. The generated `work/main.ts` binds the TV viewport (`bindTVViewport`) and remote input (`bindBrowserTV`) from `@solid-multiplatform/platform/browser-tv/input`. The scene is a 1920×1080 logical stage, scaled to fit the display and centred.
 
 ## Build and package
