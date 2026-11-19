@@ -82,6 +82,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm -w run build
       - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      # llvmpipe/swrast: headless Firefox has no GPU and needs a software
+      # rasteriser for the WebGL suite.
+      - run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dri libegl-mesa0
       - name: WebGL and Canvas in Chromium, Firefox and WebKit
         run: pnpm test:webgl
       - name: Compare actual Canvas and WebGL pixels
@@ -112,6 +115,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm -w run build
       - run: pnpm --dir apps/showcase exec playwright install --with-deps ${{ matrix.engine }}
+      # Headless Firefox has no GPU and needs a software rasteriser.
+      - if: matrix.engine == 'firefox'
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dri libegl-mesa0
       - run: pnpm --dir apps/showcase run test:${{ matrix.engine }}
   projects:
     runs-on: ubuntu-24.04

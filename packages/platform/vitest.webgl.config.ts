@@ -13,6 +13,26 @@ import solid from 'vite-plugin-solid';
 // Every engine runs the same suite. Chromium's headless build has no GPU, so
 // it alone is launched on SwiftShader; Firefox and WebKit provide software
 // WebGL themselves and reject Chromium's switches.
+function launch(name: 'chromium' | 'firefox' | 'webkit') {
+  if (name === 'chromium')
+    return {
+      args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+    };
+  if (name === 'firefox')
+    // A GitHub runner has no GPU. Firefox normally refuses WebGL there, so
+    // allow it explicitly and keep it out of process; Mesa/llvmpipe draws.
+    return {
+      firefoxUserPrefs: {
+        'webgl.disabled': false,
+        'webgl.force-enabled': true,
+        'webgl.out-of-process': false,
+        'gfx.webrender.software': true,
+      },
+      env: { ...process.env, LIBGL_ALWAYS_SOFTWARE: '1' },
+    };
+  return {};
+}
+
 function engine(name: 'chromium' | 'firefox' | 'webkit') {
   return {
     extends: true as const,
@@ -25,17 +45,7 @@ function engine(name: 'chromium' | 'firefox' | 'webkit') {
         // does not, and would litter the tree with __screenshots__.
         screenshotFailures: false,
         // https://vitest.dev/guide/browser/playwright
-        provider: playwright({
-          launchOptions:
-            name === 'chromium'
-              ? {
-                  args: [
-                    '--use-angle=swiftshader',
-                    '--enable-unsafe-swiftshader',
-                  ],
-                }
-              : {},
-        }),
+        provider: playwright({ launchOptions: launch(name) }),
         instances: [{ browser: name }],
       },
     },

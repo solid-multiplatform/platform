@@ -606,11 +606,23 @@ async function probe(browser) {
 let browser;
 try {
   // Headless Chromium has no GPU: run WebGL on SwiftShader. Firefox and
-  // WebKit draw in software themselves and reject Chromium's switches.
+  // WebKit draw in software themselves and reject Chromium's switches. A CI
+  // runner has no GPU either, and Firefox refuses WebGL there unless told
+  // otherwise, so allow software WebGL explicitly for it.
   browser = await engines[engine].launch(
     engine === 'chromium'
       ? { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] }
-      : {},
+      : engine === 'firefox'
+        ? {
+            firefoxUserPrefs: {
+              'webgl.disabled': false,
+              'webgl.force-enabled': true,
+              'webgl.out-of-process': false,
+              'gfx.webrender.software': true,
+            },
+            env: { ...process.env, LIBGL_ALWAYS_SOFTWARE: '1' },
+          }
+        : {},
   );
   // The mouse path is laid out for the web host, where scene units are CSS
   // pixels; a TV host scales a fixed stage, and mirrors no ARIA by default.
