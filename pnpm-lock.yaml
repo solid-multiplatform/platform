@@ -24,6 +24,25 @@ importers:
         specifier: ^3.8.3
         version: 3.8.3
 
+  apps/mobile-demo:
+    dependencies:
+      '@solid-multiplatform/platform':
+        specifier: workspace:*
+        version: link:../../packages/platform
+      '@solid-multiplatform/renderer':
+        specifier: workspace:*
+        version: link:../../packages/renderer
+      '@solidjs/router':
+        specifier: 0.16.1
+        version: 0.16.1(solid-js@1.9.17)
+      solid-js:
+        specifier: 1.9.17
+        version: 1.9.17
+    devDependencies:
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+
   apps/showcase:
     dependencies:
       '@solid-multiplatform/host-desktop':

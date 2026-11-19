@@ -1,0 +1,850 @@
+{
+  "trending": [
+    {
+      "id": 693134,
+      "title": "Dune: Part Two",
+      "year": 2024,
+      "rating": 8.1,
+      "genres": ["Science Fiction", "Adventure"],
+      "overview": "Follow the mythic journey of Paul Atreides as he unites with Chani and the Fremen while on a path of revenge against the conspirators who destroyed his family. Facing a choice between the love of his life and the fate of the known universe, Paul endeavors to prevent a terrible future only he can foresee.",
+      "poster": "https://image.tmdb.org/t/p/w342/6izwz7rsy95ARzTR3poZ8H6c5pp.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/eZ239CUp1d6OryZEBPnO2n87gMG.jpg",
+      "runtime": 167,
+      "cast": [
+        "Timothée Chalamet",
+        "Zendaya",
+        "Rebecca Ferguson",
+        "Javier Bardem",
+        "Josh Brolin",
+        "Austin Butler",
+        "Florence Pugh",
+        "Dave Bautista"
+      ]
+    },
+    {
+      "id": 872585,
+      "title": "Oppenheimer",
+      "year": 2023,
+      "rating": 8.0,
+      "genres": ["Drama", "History", "War"],
+      "overview": "The story of J. Robert Oppenheimer's role in the development of the atomic bomb during World War II.",
+      "poster": "https://image.tmdb.org/t/p/w342/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/neeNHeXjMF5fXoCJRsOmkNGC7q.jpg",
+      "runtime": 181,
+      "cast": [
+        "Cillian Murphy",
+        "Emily Blunt",
+        "Matt Damon",
+        "Robert Downey Jr.",
+        "Florence Pugh",
+        "Josh Hartnett",
+        "Casey Affleck",
+        "Rami Malek"
+      ]
+    },
+    {
+      "id": 1022789,
+      "title": "Inside Out 2",
+      "year": 2024,
+      "rating": 7.5,
+      "genres": ["Animation", "Adventure", "Comedy"],
+      "overview": "Teenager Riley's mind headquarters is undergoing a sudden demolition to make room for something entirely unexpected: new Emotions! Joy, Sadness, Anger, Fear and Disgust, who’ve long been running a successful operation by all accounts, aren’t sure how to feel when Anxiety shows up. And it looks like she’s not alone.",
+      "poster": "https://image.tmdb.org/t/p/w342/vpnVM9B6NMmQpWeZvzLvDESb2QY.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/p5ozvmdgsmbWe0H8Xk7Rc8SCwAB.jpg",
+      "runtime": 97,
+      "cast": [
+        "Amy Poehler",
+        "Maya Hawke",
+        "Kensington Tallman",
+        "Liza Lapira",
+        "Tony Hale",
+        "Lewis Black",
+        "Phyllis Smith",
+        "Ayo Edebiri"
+      ]
+    },
+    {
+      "id": 346698,
+      "title": "Barbie",
+      "year": 2023,
+      "rating": 6.9,
+      "genres": ["Comedy", "Adventure", "Fantasy"],
+      "overview": "Barbie and Ken are having the time of their lives in the colorful and seemingly perfect world of Barbie Land. However, when they get a chance to go to the real world, they soon discover the joys and perils of living among humans.",
+      "poster": "https://image.tmdb.org/t/p/w342/iuFNMS8U5cb6xfzi51Dbkovj7vM.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/1esAE8sLJRWWFsLLeh5r3g2WanI.jpg",
+      "runtime": 114,
+      "cast": [
+        "Margot Robbie",
+        "Ryan Gosling",
+        "America Ferrera",
+        "Ariana Greenblatt",
+        "Issa Rae",
+        "Kate McKinnon",
+        "Alexandra Shipp",
+        "Emma Mackey"
+      ]
+    },
+    {
+      "id": 569094,
+      "title": "Spider-Man: Across the Spider-Verse",
+      "year": 2023,
+      "rating": 8.3,
+      "genres": ["Animation", "Action", "Adventure"],
+      "overview": "After reuniting with Gwen Stacy, Brooklyn’s full-time, friendly neighborhood Spider-Man is catapulted across the Multiverse, where he encounters the Spider Society, a team of Spider-People charged with protecting the Multiverse's very existence. But when the heroes clash on how to handle a new threat, Miles finds himself pitted against the other Spiders and must set out on his own to save those he loves most.",
+      "poster": "https://image.tmdb.org/t/p/w342/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/kVd3a9YeLGkoeR50jGEXM6EqseS.jpg",
+      "runtime": 140,
+      "cast": [
+        "Shameik Moore",
+        "Hailee Steinfeld",
+        "Oscar Isaac",
+        "Brian Tyree Henry",
+        "Luna Lauren Vélez",
+        "Jake Johnson",
+        "Jason Schwartzman",
+        "Issa Rae"
+      ]
+    },
+    {
+      "id": 361743,
+      "title": "Top Gun: Maverick",
+      "year": 2022,
+      "rating": 8.2,
+      "genres": ["Action", "Drama"],
+      "overview": "After more than thirty years of service as one of the Navy’s top aviators, and dodging the advancement in rank that would ground him, Pete “Maverick” Mitchell finds himself training a detachment of TOP GUN graduates for a specialized mission the likes of which no living pilot has ever seen.",
+      "poster": "https://image.tmdb.org/t/p/w342/n0YuM4f5lvGAP6MAW2kBIzugXnc.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/AaV1YIdWKnjAIAOe8UUKBFm327v.jpg",
+      "runtime": 131,
+      "cast": [
+        "Tom Cruise",
+        "Miles Teller",
+        "Jennifer Connelly",
+        "Bashir Salahuddin",
+        "Jon Hamm",
+        "Charles Parnell",
+        "Monica Barbaro",
+        "Lewis Pullman"
+      ]
+    },
+    {
+      "id": 545611,
+      "title": "Everything Everywhere All at Once",
+      "year": 2022,
+      "rating": 7.7,
+      "genres": ["Action", "Adventure", "Science Fiction"],
+      "overview": "An aging Chinese immigrant is swept up in an insane adventure, where she alone can save what's important to her by connecting with the lives she could have led in other universes.",
+      "poster": "https://image.tmdb.org/t/p/w342/u68AjlvlutfEIcpmbYpKcdi09ut.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/fIwiFha3WPu5nHkBeMQ4GzEk0Hv.jpg",
+      "runtime": 140,
+      "cast": [
+        "Michelle Yeoh",
+        "Stephanie Hsu",
+        "Ke Huy Quan",
+        "James Hong",
+        "Jamie Lee Curtis",
+        "Tallie Medel",
+        "Jenny Slate",
+        "Harry Shum Jr."
+      ]
+    },
+    {
+      "id": 792307,
+      "title": "Poor Things",
+      "year": 2023,
+      "rating": 7.6,
+      "genres": ["Science Fiction", "Romance", "Comedy"],
+      "overview": "Brought back to life by an unorthodox scientist, a young woman runs off with a lawyer on a whirlwind adventure across the continents. Free from the prejudices of her times, she grows steadfast in her purpose to stand for equality and liberation.",
+      "poster": "https://image.tmdb.org/t/p/w342/kCGlIMHnOm8JPXq3rXM6c5wMxcT.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/zh6IdheEYinU4TPtorWsjx6qPQE.jpg",
+      "runtime": 141,
+      "cast": [
+        "Emma Stone",
+        "Mark Ruffalo",
+        "Willem Dafoe",
+        "Ramy Youssef",
+        "Christopher Abbott",
+        "Suzy Bemba",
+        "Jerrod Carmichael",
+        "Kathryn Hunter"
+      ]
+    },
+    {
+      "id": 466420,
+      "title": "Killers of the Flower Moon",
+      "year": 2023,
+      "rating": 7.4,
+      "genres": ["Crime", "History", "Drama"],
+      "overview": "When oil is discovered in 1920s Oklahoma under Osage Nation land, the Osage people are murdered one by one—until the FBI steps in to unravel the mystery.",
+      "poster": "https://image.tmdb.org/t/p/w342/dB6Krk806zeqd0YNp2ngQ9zXteH.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/jwjCWMPWSQ7h3sqG4mqI7pMEZu0.jpg",
+      "runtime": 206,
+      "cast": [
+        "Leonardo DiCaprio",
+        "Robert De Niro",
+        "Lily Gladstone",
+        "Jesse Plemons",
+        "Tantoo Cardinal",
+        "John Lithgow",
+        "Brendan Fraser",
+        "Cara Jade Myers"
+      ]
+    },
+    {
+      "id": 603692,
+      "title": "John Wick: Chapter 4",
+      "year": 2023,
+      "rating": 7.7,
+      "genres": ["Action", "Thriller", "Crime"],
+      "overview": "With the price on his head ever increasing, John Wick uncovers a path to defeating The High Table. But before he can earn his freedom, Wick must face off against a new enemy with powerful alliances across the globe and forces that turn old friends into foes.",
+      "poster": "https://image.tmdb.org/t/p/w342/vZloFAK7NmvMGKE7VkF5UHaz0I.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/7I6VUdPj6tQECNHdviJkUHD2u89.jpg",
+      "runtime": 170,
+      "cast": [
+        "Keanu Reeves",
+        "Donnie Yen",
+        "Bill Skarsgård",
+        "Ian McShane",
+        "Laurence Fishburne",
+        "Lance Reddick",
+        "Clancy Brown",
+        "Hiroyuki Sanada"
+      ]
+    }
+  ],
+  "popular": [
+    {
+      "id": 76600,
+      "title": "Avatar: The Way of Water",
+      "year": 2022,
+      "rating": 7.6,
+      "genres": ["Action", "Adventure", "Science Fiction"],
+      "overview": "Set more than a decade after the events of the first film, learn the story of the Sully family (Jake, Neytiri, and their kids), the trouble that follows them, the lengths they go to keep each other safe, the battles they fight to stay alive, and the tragedies they endure.",
+      "poster": "https://image.tmdb.org/t/p/w342/t6HIqrRAclMCA60NsSmeqe9RmNV.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/kJsPVzdyBrYHLomuNv5SJDXUQ2f.jpg",
+      "runtime": 192,
+      "cast": [
+        "Sam Worthington",
+        "Zoe Saldaña",
+        "Sigourney Weaver",
+        "Stephen Lang",
+        "Kate Winslet",
+        "Cliff Curtis",
+        "Joel David Moore",
+        "CCH Pounder"
+      ]
+    },
+    {
+      "id": 634649,
+      "title": "Spider-Man: No Way Home",
+      "year": 2021,
+      "rating": 7.9,
+      "genres": ["Action", "Adventure", "Science Fiction"],
+      "overview": "Peter Parker is unmasked and no longer able to separate his normal life from the high-stakes of being a super-hero. When he asks for help from Doctor Strange the stakes become even more dangerous, forcing him to discover what it truly means to be Spider-Man.",
+      "poster": "https://image.tmdb.org/t/p/w342/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/iQFcwSGbZXMkeyKrxbPnwnRo5fl.jpg",
+      "runtime": 148,
+      "cast": [
+        "Tom Holland",
+        "Zendaya",
+        "Benedict Cumberbatch",
+        "Jacob Batalon",
+        "Jon Favreau",
+        "Jamie Foxx",
+        "Willem Dafoe",
+        "Alfred Molina"
+      ]
+    },
+    {
+      "id": 447365,
+      "title": "Guardians of the Galaxy Vol. 3",
+      "year": 2023,
+      "rating": 7.9,
+      "genres": ["Science Fiction", "Adventure", "Action"],
+      "overview": "Peter Quill, still reeling from the loss of Gamora, must rally his team around him to defend the universe along with protecting one of their own. A mission that, if not completed successfully, could quite possibly lead to the end of the Guardians as we know them.",
+      "poster": "https://image.tmdb.org/t/p/w342/r2J02Z2OpNTctfOSN1Ydgii51I3.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/5YZbUmjbMa3ClvSW1Wj3D6XGolb.jpg",
+      "runtime": 150,
+      "cast": [
+        "Chris Pratt",
+        "Zoe Saldaña",
+        "Dave Bautista",
+        "Karen Gillan",
+        "Pom Klementieff",
+        "Vin Diesel",
+        "Bradley Cooper",
+        "Sean Gunn"
+      ]
+    },
+    {
+      "id": 299534,
+      "title": "Avengers: Endgame",
+      "year": 2019,
+      "rating": 8.2,
+      "genres": ["Adventure", "Science Fiction", "Action"],
+      "overview": "After the devastating events of Avengers: Infinity War, the universe is in ruins due to the efforts of the Mad Titan, Thanos. With the help of remaining allies, the Avengers must assemble once more in order to undo Thanos' actions and restore order to the universe once and for all, no matter what consequences may be in store.",
+      "poster": "https://image.tmdb.org/t/p/w342/jtDv3lCnST0fZRvdYFwR5CVwK2x.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/7RyHsO4yDXtBv1zUU3mTpHeQ0d5.jpg",
+      "runtime": 181,
+      "cast": [
+        "Robert Downey Jr.",
+        "Chris Evans",
+        "Mark Ruffalo",
+        "Chris Hemsworth",
+        "Scarlett Johansson",
+        "Jeremy Renner",
+        "Josh Brolin",
+        "Don Cheadle"
+      ]
+    },
+    {
+      "id": 299536,
+      "title": "Avengers: Infinity War",
+      "year": 2018,
+      "rating": 8.2,
+      "genres": ["Adventure", "Action", "Science Fiction"],
+      "overview": "As the Avengers and their allies have continued to protect the world from threats too large for any one hero to handle, a new danger has emerged from the cosmic shadows: Thanos. A despot of intergalactic infamy, his goal is to collect all six Infinity Stones, artifacts of unimaginable power, and use them to inflict his twisted will on all of reality. Everything the Avengers have fought for has led up to this moment - the fate of Earth and existence itself has never been more uncertain.",
+      "poster": "https://image.tmdb.org/t/p/w342/7WsyChQLEftFiDOVTGkv3hFpyyt.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/mDfJG3LC3Dqb67AZ52x3Z0jU0uB.jpg",
+      "runtime": 149,
+      "cast": [
+        "Robert Downey Jr.",
+        "Chris Evans",
+        "Chris Hemsworth",
+        "Josh Brolin",
+        "Mark Ruffalo",
+        "Scarlett Johansson",
+        "Don Cheadle",
+        "Benedict Cumberbatch"
+      ]
+    },
+    {
+      "id": 284054,
+      "title": "Black Panther",
+      "year": 2018,
+      "rating": 7.4,
+      "genres": ["Action", "Adventure", "Science Fiction"],
+      "overview": "King T'Challa returns home to the reclusive, technologically advanced African nation of Wakanda to serve as his country's new leader. However, T'Challa soon finds that he is challenged for the throne by factions within his own country as well as without. Using powers reserved to Wakandan kings, T'Challa assumes the Black Panther mantle to join with ex-girlfriend Nakia, the queen-mother, his princess-kid sister, members of the Dora Milaje (the Wakandan 'special forces') and an American secret agent, to prevent Wakanda from being dragged into a world war.",
+      "poster": "https://image.tmdb.org/t/p/w342/uxzzxijgPIY7slzFvMotPv8wjKA.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/b6ZJZHUdMEFECvGiDpJjlfUWela.jpg",
+      "runtime": 135,
+      "cast": [
+        "Chadwick Boseman",
+        "Michael B. Jordan",
+        "Lupita Nyong'o",
+        "Danai Gurira",
+        "Martin Freeman",
+        "Daniel Kaluuya",
+        "Letitia Wright",
+        "Winston Duke"
+      ]
+    },
+    {
+      "id": 497698,
+      "title": "Black Widow",
+      "year": 2021,
+      "rating": 7.1,
+      "genres": ["Action", "Adventure", "Science Fiction"],
+      "overview": "Natasha Romanoff, also known as Black Widow, confronts the darker parts of her ledger when a dangerous conspiracy with ties to her past arises. Pursued by a force that will stop at nothing to bring her down, Natasha must deal with her history as a spy and the broken relationships left in her wake long before she became an Avenger.",
+      "poster": "https://image.tmdb.org/t/p/w342/qAZ0pzat24kLdO3o8ejmbLxyOac.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/keIxh0wPr2Ymj0Btjh4gW7JJ89e.jpg",
+      "runtime": 134,
+      "cast": [
+        "Scarlett Johansson",
+        "Florence Pugh",
+        "Rachel Weisz",
+        "David Harbour",
+        "Ray Winstone",
+        "Ever Anderson",
+        "Violet McGraw",
+        "O-T Fagbenle"
+      ]
+    },
+    {
+      "id": 616037,
+      "title": "Thor: Love and Thunder",
+      "year": 2022,
+      "rating": 6.3,
+      "genres": ["Fantasy", "Action", "Comedy"],
+      "overview": "After his retirement is interrupted by Gorr the God Butcher, a galactic killer who seeks the extinction of the gods, Thor Odinson enlists the help of King Valkyrie, Korg, and ex-girlfriend Jane Foster, who now wields Mjolnir as the Mighty Thor. Together they embark upon a harrowing cosmic adventure to uncover the mystery of the God Butcher’s vengeance and stop him before it’s too late.",
+      "poster": "https://image.tmdb.org/t/p/w342/pIkRyD18kl4FhoCNQuWxWu5cBLM.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/jsoz1HlxczSuTx0mDl2h0lxy36l.jpg",
+      "runtime": 119,
+      "cast": [
+        "Chris Hemsworth",
+        "Natalie Portman",
+        "Christian Bale",
+        "Tessa Thompson",
+        "Taika Waititi",
+        "Russell Crowe",
+        "Jaimie Alexander",
+        "Idris Elba"
+      ]
+    },
+    {
+      "id": 438631,
+      "title": "Dune",
+      "year": 2021,
+      "rating": 7.8,
+      "genres": ["Science Fiction", "Adventure"],
+      "overview": "Paul Atreides, a brilliant and gifted young man born into a great destiny beyond his understanding, must travel to the most dangerous planet in the universe to ensure the future of his family and his people. As malevolent forces explode into conflict over the planet's exclusive supply of the most precious resource in existence - a commodity capable of unlocking humanity's greatest potential - only those who can conquer their fear will survive.",
+      "poster": "https://image.tmdb.org/t/p/w342/v1tRXZ4JtD2Iv6fjkPvT4GiwslV.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/qVgZu5BTx6pu4owCvVOm4zjTfOi.jpg",
+      "runtime": 155,
+      "cast": [
+        "Timothée Chalamet",
+        "Rebecca Ferguson",
+        "Oscar Isaac",
+        "Jason Momoa",
+        "Stellan Skarsgård",
+        "Stephen McKinley Henderson",
+        "Josh Brolin",
+        "Javier Bardem"
+      ]
+    },
+    {
+      "id": 99861,
+      "title": "Avengers: Age of Ultron",
+      "year": 2015,
+      "rating": 7.3,
+      "genres": ["Action", "Adventure", "Science Fiction"],
+      "overview": "When Tony Stark tries to jumpstart a dormant peacekeeping program, things go awry and Earth’s Mightiest Heroes are put to the ultimate test as the fate of the planet hangs in the balance. As the villainous Ultron emerges, it is up to The Avengers to stop him from enacting his terrible plans, and soon uneasy alliances and unexpected action pave the way for an epic and unique global adventure.",
+      "poster": "https://image.tmdb.org/t/p/w342/4ssDuvEDkSArWEdyBl2X5EHvYKU.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/kIBK5SKwgqIIuRKhhWrJn3XkbPq.jpg",
+      "runtime": 141,
+      "cast": [
+        "Robert Downey Jr.",
+        "Chris Hemsworth",
+        "Mark Ruffalo",
+        "Chris Evans",
+        "Scarlett Johansson",
+        "Jeremy Renner",
+        "James Spader",
+        "Samuel L. Jackson"
+      ]
+    }
+  ],
+  "topRated": [
+    {
+      "id": 278,
+      "title": "The Shawshank Redemption",
+      "year": 1994,
+      "rating": 8.7,
+      "genres": ["Drama", "Crime"],
+      "overview": "Imprisoned in the 1940s for the double murder of his wife and her lover, upstanding banker Andy Dufresne begins a new life at the Shawshank prison, where he puts his accounting skills to work for an amoral warden. During his long stretch in prison, Dufresne comes to be admired by the other inmates -- including an older prisoner named Red -- for his integrity and unquenchable sense of hope.",
+      "poster": "https://image.tmdb.org/t/p/w342/9cqNxx0GxF0bflZmeSMuL5tnGzr.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/pNjh59JSxChQktamG3LMp9ZoQzp.jpg",
+      "runtime": 142,
+      "cast": [
+        "Tim Robbins",
+        "Morgan Freeman",
+        "Bob Gunton",
+        "William Sadler",
+        "Clancy Brown",
+        "Gil Bellows",
+        "James Whitmore",
+        "Mark Rolston"
+      ]
+    },
+    {
+      "id": 238,
+      "title": "The Godfather",
+      "year": 1972,
+      "rating": 8.7,
+      "genres": ["Drama", "Crime"],
+      "overview": "Spanning the years 1945 to 1955, a chronicle of the fictional Italian-American Corleone crime family. When organized crime family patriarch, Vito Corleone barely survives an attempt on his life, his youngest son, Michael steps in to take care of the would-be killers, launching a campaign of bloody revenge.",
+      "poster": "https://image.tmdb.org/t/p/w342/3bhkrj58Vtu7enYsRolD1fZdja1.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/tSPT36ZKlP2WVHJLM4cQPLSzv3b.jpg",
+      "runtime": 175,
+      "cast": [
+        "Marlon Brando",
+        "Al Pacino",
+        "James Caan",
+        "Robert Duvall",
+        "Richard S. Castellano",
+        "Diane Keaton",
+        "Talia Shire",
+        "Gianni Russo"
+      ]
+    },
+    {
+      "id": 155,
+      "title": "The Dark Knight",
+      "year": 2008,
+      "rating": 8.5,
+      "genres": ["Action", "Thriller", "Crime"],
+      "overview": "Batman raises the stakes in his war on crime. With the help of Lt. Jim Gordon and District Attorney Harvey Dent, Batman sets out to dismantle the remaining criminal organizations that plague the streets. The partnership proves to be effective, but they soon find themselves prey to a reign of chaos unleashed by a rising criminal mastermind known to the terrified citizens of Gotham as the Joker.",
+      "poster": "https://image.tmdb.org/t/p/w342/qJ2tW6WMUDux911r6m7haRef0WH.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/cfT29Im5VDvjE0RpyKOSdCKZal7.jpg",
+      "runtime": 152,
+      "cast": [
+        "Christian Bale",
+        "Heath Ledger",
+        "Aaron Eckhart",
+        "Michael Caine",
+        "Maggie Gyllenhaal",
+        "Gary Oldman",
+        "Morgan Freeman",
+        "Monique Gabriela Curnen"
+      ]
+    },
+    {
+      "id": 680,
+      "title": "Pulp Fiction",
+      "year": 1994,
+      "rating": 8.5,
+      "genres": ["Thriller", "Crime", "Comedy"],
+      "overview": "A burger-loving hit man, his philosophical partner, a drug-addled gangster's moll and a washed-up boxer converge in this sprawling, comedic crime caper. Their adventures unfurl in three stories that ingeniously trip back and forth in time.",
+      "poster": "https://image.tmdb.org/t/p/w342/vQWk5YBFWF4bZaofAbv0tShwBvQ.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/suaEOtk1N1sgg2MTM7oZd2cfVp3.jpg",
+      "runtime": 154,
+      "cast": [
+        "John Travolta",
+        "Samuel L. Jackson",
+        "Uma Thurman",
+        "Bruce Willis",
+        "Ving Rhames",
+        "Harvey Keitel",
+        "Eric Stoltz",
+        "Tim Roth"
+      ]
+    },
+    {
+      "id": 550,
+      "title": "Fight Club",
+      "year": 1999,
+      "rating": 8.4,
+      "genres": ["Drama", "Thriller"],
+      "overview": "A ticking-time-bomb insomniac and a slippery soap salesman channel primal male aggression into a shocking new form of therapy. Their concept catches on, with underground \"fight clubs\" forming in every town, until an eccentric gets in the way and ignites an out-of-control spiral toward oblivion.",
+      "poster": "https://image.tmdb.org/t/p/w342/jSziioSwPVrOy9Yow3XhWIBDjq1.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/c6OLXfKAk5BKeR6broC8pYiCquX.jpg",
+      "runtime": 139,
+      "cast": [
+        "Edward Norton",
+        "Brad Pitt",
+        "Helena Bonham Carter",
+        "Meat Loaf",
+        "Jared Leto",
+        "Zach Grenier",
+        "Holt McCallany",
+        "Eion Bailey"
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Forrest Gump",
+      "year": 1994,
+      "rating": 8.5,
+      "genres": ["Comedy", "Drama", "Romance"],
+      "overview": "A man with a low IQ has accomplished great things in his life and been present during significant historic events—in each case, far exceeding what anyone imagined he could do. But despite all he has achieved, his one true love eludes him.",
+      "poster": "https://image.tmdb.org/t/p/w342/saHP97rTPS5eLmrLQEcANmKrsFl.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/66Kn4XWhkuPkJxOJyPEx4U2CUfN.jpg",
+      "runtime": 142,
+      "cast": [
+        "Tom Hanks",
+        "Robin Wright",
+        "Gary Sinise",
+        "Sally Field",
+        "Mykelti Williamson",
+        "Michael Conner Humphreys",
+        "Hanna Hall",
+        "Haley Joel Osment"
+      ]
+    },
+    {
+      "id": 27205,
+      "title": "Inception",
+      "year": 2010,
+      "rating": 8.4,
+      "genres": ["Action", "Science Fiction", "Crime"],
+      "overview": "Cobb, a skilled thief who commits corporate espionage by infiltrating the subconscious of his targets is offered a chance to regain his old life as payment for a task considered to be impossible: \"inception\", the implantation of another person's idea into a target's subconscious.",
+      "poster": "https://image.tmdb.org/t/p/w342/xlaY2zyzMfkhk0HSC5VUwzoZPU1.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/8ZTVqvKDQ8emSGUEMjsS4yHAwrp.jpg",
+      "runtime": 148,
+      "cast": [
+        "Leonardo DiCaprio",
+        "Joseph Gordon-Levitt",
+        "Ken Watanabe",
+        "Tom Hardy",
+        "Elliot Page",
+        "Dileep Rao",
+        "Cillian Murphy",
+        "Tom Berenger"
+      ]
+    },
+    {
+      "id": 157336,
+      "title": "Interstellar",
+      "year": 2014,
+      "rating": 8.5,
+      "genres": ["Adventure", "Drama", "Science Fiction"],
+      "overview": "The adventures of a group of explorers who make use of a newly discovered wormhole to surpass the limitations on human space travel and conquer the vast distances involved in an interstellar voyage.",
+      "poster": "https://image.tmdb.org/t/p/w342/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/8sNiAPPYU14PUepFNeSNGUTiHW.jpg",
+      "runtime": 169,
+      "cast": [
+        "Matthew McConaughey",
+        "Anne Hathaway",
+        "Michael Caine",
+        "Jessica Chastain",
+        "Casey Affleck",
+        "Wes Bentley",
+        "Topher Grace",
+        "Mackenzie Foy"
+      ]
+    },
+    {
+      "id": 129,
+      "title": "Spirited Away",
+      "year": 2001,
+      "rating": 8.5,
+      "genres": ["Animation", "Family", "Fantasy"],
+      "overview": "A young girl, Chihiro, becomes trapped in a strange new world of spirits. When her parents undergo a mysterious transformation, she must call upon the courage she never knew she had to free her family.",
+      "poster": "https://image.tmdb.org/t/p/w342/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/m4TUa2ciEWSlk37rOsjiSIvZDXE.jpg",
+      "runtime": 125,
+      "cast": [
+        "Rumi Hiiragi",
+        "Miyu Irino",
+        "Mari Natsuki",
+        "Takashi Naito",
+        "Yasuko Sawaguchi",
+        "Tatsuya Gashuin",
+        "Ryunosuke Kamiki",
+        "Yumi Tamai"
+      ]
+    },
+    {
+      "id": 424,
+      "title": "Schindler's List",
+      "year": 1993,
+      "rating": 8.6,
+      "genres": ["Drama", "History", "War"],
+      "overview": "The true story of how businessman Oskar Schindler saved over a thousand Jewish lives from the Nazis while they worked as slaves in his factory during World War II.",
+      "poster": "https://image.tmdb.org/t/p/w342/sF1U4EUQS8YHUYjNl3pMGNIQyr0.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/zb6fM1CX41D9rF9hdgclu0peUmy.jpg",
+      "runtime": 195,
+      "cast": [
+        "Liam Neeson",
+        "Ben Kingsley",
+        "Ralph Fiennes",
+        "Caroline Goodall",
+        "Jonathan Sagall",
+        "Embeth Davidtz",
+        "Małgorzata Gebel",
+        "Shmuel Levy"
+      ]
+    }
+  ],
+  "nowPlaying": [
+    {
+      "id": 653346,
+      "title": "Kingdom of the Planet of the Apes",
+      "year": 2024,
+      "rating": 7.0,
+      "genres": ["Science Fiction", "Adventure", "Action"],
+      "overview": "Several generations following Caesar's reign, apes – now the dominant species – live harmoniously while humans have been reduced to living in the shadows. As a new tyrannical ape leader builds his empire, one young ape undertakes a harrowing journey that will cause him to question all he's known about the past and to make choices that will define a future for apes and humans alike.",
+      "poster": "https://image.tmdb.org/t/p/w342/gKkl37BQuKTanygYQG1pyYgLVgf.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/fqv8v6AycXKsivp1T5yKtLbGXce.jpg",
+      "runtime": 145,
+      "cast": [
+        "Owen Teague",
+        "Freya Allan",
+        "Kevin Durand",
+        "Peter Macon",
+        "William H. Macy",
+        "Eka Darville",
+        "Travis Jeffery",
+        "Lydia Peckham"
+      ]
+    },
+    {
+      "id": 823464,
+      "title": "Godzilla x Kong: The New Empire",
+      "year": 2024,
+      "rating": 7.0,
+      "genres": ["Action", "Adventure", "Science Fiction"],
+      "overview": "Following their explosive showdown, Godzilla and Kong must reunite against a colossal undiscovered threat hidden within our world, challenging their very existence – and our own.",
+      "poster": "https://image.tmdb.org/t/p/w342/z1p34vh7dEOnLDmyCrlUVLuoDzd.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/gvLG3Fnznkxl4SmYfcK8gUuqxM8.jpg",
+      "runtime": 115,
+      "cast": [
+        "Rebecca Hall",
+        "Brian Tyree Henry",
+        "Dan Stevens",
+        "Kaylee Hottle",
+        "Alex Ferns",
+        "Fala Chen",
+        "Rachel House",
+        "Ron Smyck"
+      ]
+    },
+    {
+      "id": 1011985,
+      "title": "Kung Fu Panda 4",
+      "year": 2024,
+      "rating": 7.0,
+      "genres": ["Animation", "Comedy", "Adventure"],
+      "overview": "Po is gearing up to become the spiritual leader of his Valley of Peace, but also needs someone to take his place as Dragon Warrior. As such, he will train a new kung fu practitioner for the spot and will encounter a villain called the Chameleon who conjures villains from the past.",
+      "poster": "https://image.tmdb.org/t/p/w342/kDp1vUBnMpe8ak4rjgl3cLELqjU.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/3ffPx9jqg0yj9y1KWeagT7D20CB.jpg",
+      "runtime": 94,
+      "cast": [
+        "Jack Black",
+        "Awkwafina",
+        "Viola Davis",
+        "Dustin Hoffman",
+        "Bryan Cranston",
+        "James Hong",
+        "Ian McShane",
+        "Ke Huy Quan"
+      ]
+    },
+    {
+      "id": 573435,
+      "title": "Bad Boys: Ride or Die",
+      "year": 2024,
+      "rating": 7.3,
+      "genres": ["Action", "Comedy", "Crime"],
+      "overview": "After their late former Captain is framed, Lowrey and Burnett try to clear his name, only to end up on the run themselves.",
+      "poster": "https://image.tmdb.org/t/p/w342/oGythE98MYleE6mZlGs5oBGkux1.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/3q01ACG0MWm0DekhvkPFCXyPZSu.jpg",
+      "runtime": 116,
+      "cast": [
+        "Will Smith",
+        "Martin Lawrence",
+        "Vanessa Hudgens",
+        "Alexander Ludwig",
+        "Paola Nuñez",
+        "Eric Dane",
+        "Ioan Gruffudd",
+        "Jacob Scipio"
+      ]
+    },
+    {
+      "id": 929590,
+      "title": "Civil War",
+      "year": 2024,
+      "rating": 6.8,
+      "genres": ["War", "Action", "Drama"],
+      "overview": "In the near future, a group of war journalists attempt to survive while reporting the truth as the United States stands on the brink of civil war.",
+      "poster": "https://image.tmdb.org/t/p/w342/sh7Rg8Er3tFcN9BpKIPOMvALgZd.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/t2SXZ7KLriaLyf5QT8Iar6fSOGp.jpg",
+      "runtime": 109,
+      "cast": [
+        "Kirsten Dunst",
+        "Wagner Moura",
+        "Cailee Spaeny",
+        "Stephen McKinley Henderson",
+        "Nelson Lee",
+        "Nick Offerman",
+        "Jefferson White",
+        "Evan Lai"
+      ]
+    },
+    {
+      "id": 748783,
+      "title": "The Garfield Movie",
+      "year": 2024,
+      "rating": 6.9,
+      "genres": ["Adventure", "Animation", "Comedy"],
+      "overview": "Garfield, the world-famous, Monday-hating, lasagna-loving indoor cat, is about to have a wild outdoor adventure! After an unexpected reunion with his long-lost father – scruffy street cat Vic – Garfield and his canine friend Odie are forced from their perfectly pampered life into joining Vic in a hilarious, high-stakes heist.",
+      "poster": "https://image.tmdb.org/t/p/w342/p6AbOJvMQhBmffd0PIv0u8ghWeY.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/P82NAcEsLIYgQtrtn36tYsj41m.jpg",
+      "runtime": 101,
+      "cast": [
+        "Chris Pratt",
+        "Samuel L. Jackson",
+        "Hannah Waddingham",
+        "Ving Rhames",
+        "Nicholas Hoult",
+        "Cecily Strong",
+        "Harvey Guillén",
+        "Brett Goldstein"
+      ]
+    },
+    {
+      "id": 519182,
+      "title": "Despicable Me 4",
+      "year": 2024,
+      "rating": 6.9,
+      "genres": ["Animation", "Comedy", "Action"],
+      "overview": "Gru and Lucy and their girls—Margo, Edith and Agnes—welcome a new member to the Gru family, Gru Jr., who is intent on tormenting his dad. Gru also faces a new nemesis in Maxime Le Mal and his femme fatale girlfriend Valentina, forcing the family to go on the run.",
+      "poster": "https://image.tmdb.org/t/p/w342/wWba3TaojhK7NdycRhoQpsG0FaH.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/twsxsfao6ZOVvT8LfudH603MMi6.jpg",
+      "runtime": 94,
+      "cast": [
+        "Steve Carell",
+        "Kristen Wiig",
+        "Will Ferrell",
+        "Sofía Vergara",
+        "Miranda Cosgrove",
+        "Dana Gaier Ellis",
+        "Madison Skyy Polan",
+        "Pierre Coffin"
+      ]
+    },
+    {
+      "id": 917496,
+      "title": "Beetlejuice Beetlejuice",
+      "year": 2024,
+      "rating": 6.9,
+      "genres": ["Comedy", "Fantasy", "Horror"],
+      "overview": "After a family tragedy, three generations of the Deetz family return home to Winter River. Still haunted by Betelgeuse, Lydia's life is turned upside down when her teenage daughter, Astrid, accidentally opens the portal to the Afterlife.",
+      "poster": "https://image.tmdb.org/t/p/w342/kKgQzkUCnQmeTPkyIwHly2t6ZFI.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/A1dZ6faTjg0e6HYftBmEKujuXGQ.jpg",
+      "runtime": 105,
+      "cast": [
+        "Michael Keaton",
+        "Winona Ryder",
+        "Catherine O'Hara",
+        "Jenna Ortega",
+        "Justin Theroux",
+        "Willem Dafoe",
+        "Monica Bellucci",
+        "Arthur Conti"
+      ]
+    },
+    {
+      "id": 1184918,
+      "title": "The Wild Robot",
+      "year": 2024,
+      "rating": 8.3,
+      "genres": ["Family", "Animation", "Science Fiction"],
+      "overview": "After a shipwreck, an intelligent robot called Roz is stranded on an uninhabited island. To survive the harsh environment, Roz bonds with the island's animals and cares for an orphaned baby goose.",
+      "poster": "https://image.tmdb.org/t/p/w342/wTnV3PCVW5O92JMrFvvrRcV39RU.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/1pmXyN3sKeYoUhu5VBZiDU4BX21.jpg",
+      "runtime": 102,
+      "cast": [
+        "Lupita Nyong'o",
+        "Pedro Pascal",
+        "Kit Connor",
+        "Bill Nighy",
+        "Stephanie Hsu",
+        "Matt Berry",
+        "Ving Rhames",
+        "Mark Hamill"
+      ]
+    },
+    {
+      "id": 102382,
+      "title": "The Amazing Spider-Man 2",
+      "year": 2014,
+      "rating": 6.6,
+      "genres": ["Action", "Adventure", "Science Fiction"],
+      "overview": "For Peter Parker, life is busy. Between taking out the bad guys as Spider-Man and spending time with the person he loves, Gwen Stacy, high school graduation cannot come quickly enough. Peter has not forgotten about the promise he made to Gwen’s father to protect her by staying away, but that is a promise he cannot keep. Things will change for Peter when a new villain, Electro, emerges, an old friend, Harry Osborn, returns, and Peter uncovers new clues about his past.",
+      "poster": "https://image.tmdb.org/t/p/w342/bU7nTmvmy0h3VUP01v1T2imgH6N.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/w780/k0hlAzTryCYX1O1LyC6P8tAa8s0.jpg",
+      "runtime": 141,
+      "cast": [
+        "Andrew Garfield",
+        "Emma Stone",
+        "Jamie Foxx",
+        "Dane DeHaan",
+        "Colm Feore",
+        "Felicity Jones",
+        "Paul Giamatti",
+        "Sally Field"
+      ]
+    }
+  ]
+}

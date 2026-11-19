@@ -1,0 +1,15 @@
+{
+  "id": "dev.solidapp.amobiledemo",
+  "name": "mobile-demo",
+  "version": "0.1.0",
+  "targets": ["android"],
+  "app": {
+    "theme": "dark"
+  },
+  "deepLinks": {
+    "schemes": [],
+    "hosts": []
+  },
+  "services": [],
+  "signing": {}
+}
