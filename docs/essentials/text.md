@@ -49,6 +49,20 @@ transitions) and the text props below.
 Inside a flex container a `<text>` reports its size once it has loaded, and the
 container lays out again.
 
+## Keeping text inside its box
+
+A `<text>` never paints outside the box its parent reserves for it. When it has
+been measured and turns out wider or taller than the room left — the parent's
+width or height, less the text's `x`/`y`, the parent's padding and the text's
+margins — it is bounded to that room: it wraps (a long word is broken), and
+when the remaining height has room for fewer lines the rest is cut with
+`overflowSuffix`. Text that fits keeps no bound, and text the app bounds with
+`contain` or `maxWidth` keeps the app's box instead. A glyph that overhangs its
+advance by more than a pixel is clipped to the text's box.
+
+This is what CSS, React Native, Flutter, Android and Roku do: content is
+wrapped or cut at the container's edge, never silently painted past it.
+
 ## Defaults for all text
 
 `Config.fontSettings` holds the defaults for every `<text>`. Set it once at

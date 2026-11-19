@@ -3,12 +3,14 @@ import type { FrameEvents } from '../FrameEvents.js';
 import { same, type NodeStore } from '../nodes/NodeStore.js';
 import type { TextState } from '../nodes/TextNode.js';
 import {
+  DIRTY_CLIP,
   DIRTY_LAYOUT,
   DIRTY_LOCAL,
   DIRTY_RENDERABLE,
   NULL,
   ST_RTL,
   ST_TEXT_BOX,
+  ST_TEXT_CLIP,
   ST_TEXT_READY,
   VIS_INIT,
   visibilityOf,
@@ -18,6 +20,7 @@ import type { SdfFont } from './sdfFont.js';
 import {
   LayoutCache,
   effectiveAlign,
+  inkExceedsBox,
   layoutText,
   type TextBaselineMode,
   type TextLayout,
@@ -363,8 +366,9 @@ export class TextNodes {
    * with `contain` on an axis and a max size there, mount and pivot use the
    * max size and the block aligns inside it by `textAlign`; a height above
    * the text's (`maxHeight`) places it by `verticalAlign`; `offsetY` moves
-   * it down. Returns DIRTY_LOCAL when that changed (NaN equal to NaN, so a
-   * NaN size settles), else 0.
+   * it down. Sets (or clears) ST_TEXT_CLIP when the layout's ink leaves the
+   * box by more than a pixel. Returns DIRTY_LOCAL and/or DIRTY_CLIP when
+   * either changed (NaN equal to NaN, so a NaN size settles), else 0.
    */
   private place(id: number, t: TextState, layout: TextLayout): number {
     const s = this.nodes;
@@ -402,24 +406,45 @@ export class TextNodes {
       same(boxH, h) === false ||
       same(x, 0) === false ||
       same(y, 0) === false;
-    const state = s.u32[id * I_STRIDE + I_STATE]!;
+    let state = s.u32[id * I_STRIDE + I_STATE]!;
+    let raised = 0;
     if (
-      boxed === ((state & ST_TEXT_BOX) !== 0) &&
-      (boxed === false ||
-        (same(t.boxW, boxW) === true &&
-          same(t.boxH, boxH) === true &&
-          same(t.boxX, x) === true &&
-          same(t.boxY, y) === true))
+      boxed !== ((state & ST_TEXT_BOX) !== 0) ||
+      (boxed === true &&
+        (same(t.boxW, boxW) === false ||
+          same(t.boxH, boxH) === false ||
+          same(t.boxX, x) === false ||
+          same(t.boxY, y) === false))
     ) {
-      return 0;
+      t.boxW = boxW;
+      t.boxH = boxH;
+      t.boxX = x;
+      t.boxY = y;
+      state =
+        boxed === true ? state | ST_TEXT_BOX : state & ~ST_TEXT_BOX;
+      s.u32[id * I_STRIDE + I_STATE] = state;
+      raised = DIRTY_LOCAL;
     }
-    t.boxW = boxW;
-    t.boxH = boxH;
-    t.boxX = x;
-    t.boxY = y;
-    s.u32[id * I_STRIDE + I_STATE] =
-      boxed === true ? state | ST_TEXT_BOX : state & ~ST_TEXT_BOX;
-    return DIRTY_LOCAL;
+    // The ink rule: a glyph that paints past the box (its bitmap's padding or
+    // an italic overhang, more than the pixel tolerance) is clipped to it.
+    // Ordinary side bearings stay under the tolerance, so a text that fits
+    // takes no clip record and no pass of its own.
+    const overflows = inkExceedsBox(
+      layout,
+      t.boxX,
+      t.boxY,
+      t.boxW,
+      t.boxH,
+    );
+    const clipped = (state & ST_TEXT_CLIP) !== 0;
+    if (overflows !== clipped) {
+      s.u32[id * I_STRIDE + I_STATE] =
+        overflows === true
+          ? state | ST_TEXT_CLIP
+          : state & ~ST_TEXT_CLIP;
+      raised |= DIRTY_CLIP;
+    }
+    return raised;
   }
 
   private park(id: number, t: TextState, name: string): void {

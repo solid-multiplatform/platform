@@ -275,7 +275,7 @@ A `tested` cell names the test file that covers it, the workflow and job that ru
 - Host contract (`startApp` / `HostDefinition`), ios, apple-tv: packages/platform/tests/cli/apple-smoke.sh (test.yml: apple; the generated app starts through `startApp(nativeHost(...))` in a simulator)
 - Host contract (`startApp` / `HostDefinition`), desktop-linux: packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; the generated entry calls `startApp(desktopHost())` and the host suite drives it)
 - Flex layout (`src/core/flexLayout.ts`), web: packages/platform/tests/webgl/flex-text.test.tsx (test.yml: browser; flex rows and columns with measured text in Chromium)
-- Text rendering, web: packages/platform/tests/webgl/flex-text.test.tsx (test.yml: browser; text is laid out and measured by the WebGL backend in Chromium)
+- Text rendering, web: packages/platform/tests/webgl/flex-text.test.tsx and text-fit.test.tsx (test.yml: browser; text is laid out and measured by the WebGL backend in Chromium, and its ink stays inside the box its parent reserved)
 - Text rendering, desktop-linux: packages/host-desktop/tests/scene/run.mjs (desktop-runtime.yml: linux; the fixture's glyph pixels and per-cell text map are compared with Chromium's)
 - Focus and key handling, web: packages/platform/tests/cli/browser-smoke.mjs (test.yml: projects, called by tests/cli/projects-smoke.sh; Enter on the focused row of the generated web app in Chromium)
 - Focus and key handling, desktop-linux: packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; keys go through SDL's queue and, with xdotool, are real X events; focus moves with Right and Left)
