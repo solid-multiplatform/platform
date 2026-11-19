@@ -82,12 +82,13 @@ v.test('a row of text children with gap and padding', async () => {
   await settle();
   info('row of 3 texts, first render: frames', frameCount() - f0);
 
-  // Padding on the main axis only: y stays 0.
-  expectBox(home, 10, 0, 79.71, LINE_30);
-  expectBox(movies, 109.71, 0, 95.67, LINE_30); // 10 + 79.71 + 20
-  expectBox(shows, 225.38, 0, 225.63, LINE_30); // 109.71 + 95.67 + 20
-  // Width fits the children: 225.38 + 225.63 + 10. Height: the tallest.
-  expectBox(row, 0, 0, 461.01, LINE_30);
+  // Padding on both axes: the texts start at the top padding.
+  expectBox(home, 10, 10, 79.71, LINE_30);
+  expectBox(movies, 109.71, 10, 95.67, LINE_30); // 10 + 79.71 + 20
+  expectBox(shows, 225.38, 10, 225.63, LINE_30); // 109.71 + 95.67 + 20
+  // Width fits the children: 225.38 + 225.63 + 10. Height: the tallest plus
+  // the top and bottom padding.
+  expectBox(row, 0, 0, 461.01, LINE_30 + 20);
 
   dispose();
 });
@@ -259,10 +260,11 @@ v.test(
     await settle();
 
     // Space: (800 - 2 * 20 - (60.96 + 160.77 + 70.92)) / 2 = 233.675
-    expectBox(first, 20, 0, 60.96, LINE_30);
-    expectBox(second, 314.635, 0, 160.77, LINE_30); // 20 + 60.96 + 233.675
-    expectBox(third, 709.08, 0, 70.92, LINE_30); // 800 - 20 - 70.92
-    expectBox(row, 0, 0, 800, LINE_30);
+    // No height: the row fits the text plus the top and bottom padding.
+    expectBox(first, 20, 20, 60.96, LINE_30);
+    expectBox(second, 314.635, 20, 160.77, LINE_30); // 20 + 60.96 + 233.675
+    expectBox(third, 709.08, 20, 70.92, LINE_30); // 800 - 20 - 70.92
+    expectBox(row, 0, 0, 800, LINE_30 + 40);
 
     dispose();
   },
@@ -557,14 +559,14 @@ v.test('nested flex containers with text', async () => {
   expectBox(alpha, 0, 0, 76.53, LINE_30);
   expectBox(beta, 91.53, 0, 61.53, LINE_30); // 76.53 + 15
   expectBox(rowOne, 0, 87.6, 153.06, LINE_30); // y: 20 + 57.6 + 10
-  expectBox(gamma, 5, 0, 81.36, 34.56);
-  expectBox(delta, 101.36, 0, 208.692, 51.84); // 5 + 81.36 + 15
+  expectBox(gamma, 5, 5, 81.36, 34.56);
+  expectBox(delta, 101.36, 5, 208.692, 51.84); // 5 + 81.36 + 15
   // y: 87.6 + 43.2 + 10; width: 101.36 + 208.692 + 5; height: the tallest
-  // text (no cross-axis padding).
-  expectBox(rowTwo, 0, 140.8, 315.052, 51.84);
+  // text plus the top and bottom padding.
+  expectBox(rowTwo, 0, 140.8, 315.052, 61.84);
   // A column fills its parent's width (1920 - 100); its height fits:
-  // 140.8 + 51.84 + 20.
-  expectBox(column, 100, 50, 1820, 212.64);
+  // 140.8 + 61.84 + 20.
+  expectBox(column, 100, 50, 1820, 222.64);
 
   dispose();
 });
@@ -609,10 +611,10 @@ v.test(
     await settle();
 
     // The same as with the font loaded first (the first test).
-    expectBox(home, 10, 0, 79.71, LINE_30);
-    expectBox(movies, 109.71, 0, 95.67, LINE_30);
-    expectBox(shows, 225.38, 0, 225.63, LINE_30);
-    expectBox(row, 0, 0, 461.01, LINE_30);
+    expectBox(home, 10, 10, 79.71, LINE_30);
+    expectBox(movies, 109.71, 10, 95.67, LINE_30);
+    expectBox(shows, 225.38, 10, 225.63, LINE_30);
+    expectBox(row, 0, 0, 461.01, LINE_30 + 20);
 
     dispose();
   },

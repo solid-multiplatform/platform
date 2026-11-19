@@ -499,7 +499,7 @@ describe('contract: autosize', () => {
 });
 
 describe('contract: text in a flex container (DOM renderer)', () => {
-  it('unmeasured text (jsdom 0 x 0): the flex pass gives up, siblings are not placed, onLayout still fires', async () => {
+  it('unmeasured text (jsdom 0 x 0): the flex pass lays out at size 0 and places siblings, onLayout fires', async () => {
     let count = 0;
     let row!: lng.ElementNode;
     let t!: lng.ElementNode;
@@ -515,11 +515,12 @@ describe('contract: text in a flex container (DOM renderer)', () => {
     expect(t.width).toBe(0);
     expect(t.height).toBe(0);
     expect(raw(t).loaded).toBe(true);
-    // Not laid out: the last child keeps the render default x = 0 and the
-    // container keeps its render-time width (0 for a fit-to-content row).
-    expect(t.x).toBe(0);
-    expect(last.x).toBe(0);
-    expect(row.width).toBe(0);
+    // Laid out with the text's current (zero) size: it takes no main-axis
+    // space, so the last child follows one gap after the first (50 + 10).
+    expect(t.x).toBe(60);
+    expect(last.x).toBe(70);
+    // 50 + 0 + 50 + 2 * 10 minus the trailing gap.
+    expect(row.width).toBe(120);
     expect(count).toBe(1);
     dispose();
   });
@@ -564,7 +565,7 @@ describe('contract: text in a flex container (DOM renderer)', () => {
     dispose();
   });
 
-  it('flex waits for the text size: nothing is placed until the text is measured, then loaded relays out', async () => {
+  it('flex lays out with the text size it has, then loaded relays out with the measured size', async () => {
     const spy = mockTextMeasure();
     // Hold the font-ready measurement and report 0 x 0 until then.
     spy.mockImplementation(
@@ -599,8 +600,10 @@ describe('contract: text in a flex container (DOM renderer)', () => {
       ));
       await waitForUpdate();
       expect(raw(t).loaded).toBe(false);
-      expect(last.x).toBe(0);
-      expect(row.width).toBe(0);
+      // The text is placed at its current 0 width; the view follows the gap.
+      expect(t.x).toBe(0);
+      expect(last.x).toBe(10);
+      expect(row.width).toBe(60);
       expect(count).toBe(1);
 
       spy.mockRestore();

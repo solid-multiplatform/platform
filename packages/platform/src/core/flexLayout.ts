@@ -1,6 +1,6 @@
 import { isDev } from './config.js';
 import { type ElementNode } from './elementNode.js';
-import { isTextNode, isElementText } from './utils.js';
+import { isTextNode } from './utils.js';
 
 function getArrayValue(
   val: number | number[] | undefined,
@@ -61,10 +61,6 @@ export default function (node: ElementNode): boolean {
 
   for (let i = 0; i < numChildren; i++) {
     const c = children[i]!;
-
-    if (isElementText(c) && c.text && !(c.width || c.height)) {
-      return false; // specific text layout constraint
-    }
 
     if (isTextNode(c) || c.flexItem === false) {
       continue;
@@ -131,7 +127,7 @@ export default function (node: ElementNode): boolean {
   const isWrapReverse = node.flexWrap === 'wrap-reverse';
   const gap = node.gap || 0;
   const justify = node.justifyContent || 'flexStart';
-  const align = node.alignItems || (node.flexWrap ? 'flexStart' : undefined);
+  let align = node.alignItems || (node.flexWrap ? 'flexStart' : undefined);
   let containerUpdated = false;
 
   // Resolve sizes matching old processed calculation
@@ -201,7 +197,10 @@ export default function (node: ElementNode): boolean {
     const totalGapSpace =
       numProcessedChildren > 0 ? gap * (numProcessedChildren - 1) : 0;
     const availableSpace =
-      containerSize - sumOfFlexBaseSizesWithMargins - totalGapSpace;
+      containerSize -
+      nodePaddingTotal -
+      sumOfFlexBaseSizesWithMargins -
+      totalGapSpace;
 
     if (availableSpace > 0 && totalFlexGrow > 0) {
       for (let idx = 0; idx < numProcessedChildren; idx++) {
@@ -319,11 +318,22 @@ export default function (node: ElementNode): boolean {
   };
 
   if (isRow && node._calcHeight && !node.flexCrossBoundary) {
+    // The height fits the tallest child with its margins, inside the padding.
     let maxHeight = 0;
     for (let idx = 0; idx < numProcessedChildren; idx++) {
-      if (childCrossSizes[idx]! > maxHeight) maxHeight = childCrossSizes[idx]!;
+      const outer =
+        childCrossSizes[idx]! +
+        childMarginCrossStarts[idx]! +
+        childMarginCrossEnds[idx]!;
+      if (outer > maxHeight) maxHeight = outer;
     }
-    const newHeight = maxHeight || node.height;
+    // Children start below the top padding unless they are aligned otherwise.
+    if (paddingCrossStart !== 0) align ??= 'flexStart';
+    // Fit even when nothing is measured yet: an unmeasured text child leaves
+    // the row zero-high instead of keeping the parent-derived height, so a
+    // pointer cannot hit the wrong row while the texts load. The row is laid
+    // out again from the `loaded` event.
+    const newHeight = maxHeight + paddingCrossStart + paddingCrossEnd;
     if (newHeight !== node.height) {
       containerUpdated = true;
       node.height = containerCrossSize = newHeight;
