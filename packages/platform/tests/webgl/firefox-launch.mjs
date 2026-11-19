@@ -22,6 +22,10 @@ export function firefoxLaunch() {
     env: {
       ...process.env,
       LIBGL_ALWAYS_SOFTWARE: '1',
+      // Pick Mesa's software rasteriser by name as well: a runner with no
+      // GPU otherwise reports FEATURE_FAILURE_WEBGL_EXHAUSTED_DRIVERS.
+      GALLIUM_DRIVER: 'llvmpipe',
+      MESA_LOADER_DRIVER_OVERRIDE: 'llvmpipe',
       MOZ_ENABLE_WAYLAND: '0',
     },
   };
