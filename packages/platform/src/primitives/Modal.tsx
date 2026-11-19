@@ -1,9 +1,27 @@
 import { Show, createEffect, onCleanup, type JSX } from 'solid-js';
 import type { ElementNode } from '../core/elementNode.js';
 import { activeElement } from '../core/activeElement.js';
+import type { ForwardFocusHandler } from '../core/focusKeyTypes.js';
 import { pushFocusTrap } from '../core/focusManager.js';
+import { isElementNode } from '../core/utils.js';
 import { viewport } from '../sdk/viewport.js';
 import { Portal } from './portal.jsx';
+
+// Focus on the dialog goes to its content: the first child of the safe-area
+// view that takes focus. With none the dialog keeps it, so that Back closes.
+const focusPanel: ForwardFocusHandler = function () {
+  const content = this.children[0];
+  if (!isElementNode(content)) return false;
+  const children = content.children;
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i];
+    if (isElementNode(child) && !child.skipFocus) {
+      child.setFocus();
+      return true;
+    }
+  }
+  return false;
+};
 
 export interface ModalProps {
   /** Controlled visibility. Pass an accessor to follow application state. */
@@ -20,7 +38,11 @@ export interface ModalProps {
   label: string;
   /** `alertdialog` for a message that interrupts. Defaults to `dialog`. */
   role?: 'dialog' | 'alertdialog';
-  /** Element to focus when the modal opens; defaults to the dialog itself. */
+  /**
+   * Element to focus when the modal opens. Defaults to the modal's first
+   * child that takes focus (a `Row` or `Column` passes it on to its own),
+   * and to the dialog itself when there is none.
+   */
   initialFocus?: ElementNode | (() => ElementNode | undefined);
   /** Tapping the backdrop requests close. Defaults to true. */
   dismissOnBackdrop?: boolean;
@@ -56,8 +78,10 @@ export function Modal(props: ModalProps): JSX.Element {
       queueMicrotask(() => {
         if (dialog && !releaseTrap) releaseTrap = pushFocusTrap(dialog);
         const focus = props.initialFocus;
+        // An `initialFocus` that names nothing (a ref not set) leaves focus
+        // to the dialog, which hands it to its content: never outside.
         const target =
-          typeof focus === 'function' ? focus() : focus ?? dialog;
+          (typeof focus === 'function' ? focus() : focus) ?? dialog;
         target?.setFocus();
       });
     } else if (open) {
@@ -97,6 +121,7 @@ export function Modal(props: ModalProps): JSX.Element {
             props.ref?.(node as ElementNode);
           }}
           role={props.role ?? 'dialog'}
+          forwardFocus={focusPanel}
           ariaLabel={props.label}
           width={viewport().width}
           height={viewport().height}

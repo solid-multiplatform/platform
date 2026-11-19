@@ -1,5 +1,12 @@
 import { For, createSignal, type JSX } from 'solid-js';
 import { useTheme } from '../sdk/theme.jsx';
+import {
+  handleNavigation,
+  navigableForwardFocus,
+} from './utils/handleNavigation.js';
+
+const onUp = handleNavigation('up');
+const onDown = handleNavigation('down');
 
 const valueOf = <T,>(value: T | (() => T)): T =>
   typeof value === 'function' ? (value as () => T)() : value;
@@ -199,12 +206,26 @@ export interface RadioGroupProps<T> {
 export function RadioGroup<T>(props: RadioGroupProps<T>): JSX.Element {
   const rowHeight = () => props.rowHeight ?? 48;
   const gap = () => props.gap ?? 4;
+  const count = () => props.options.length;
   return (
+    // Sized by its rows, so that it is a row of a `Column` like any other,
+    // and a focus container: focus enters on the chosen radio, Up and Down
+    // move between the radios and leave the group at its ends.
     <view
       x={props.x ?? 0}
       y={props.y ?? 0}
       width={props.width ?? 320}
+      height={Math.max(0, count() * (rowHeight() + gap()) - gap())}
       role="group"
+      selected={Math.max(
+        0,
+        props.options.findIndex(
+          (option) => option.value === valueOf(props.value),
+        ),
+      )}
+      forwardFocus={navigableForwardFocus}
+      onUp={onUp}
+      onDown={onDown}
     >
       <For each={props.options}>
         {(option, index) => (

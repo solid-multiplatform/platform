@@ -1,8 +1,71 @@
 import { For, Show, createEffect, createSignal, type JSX } from 'solid-js';
+import { activeElement } from '../core/activeElement.js';
+import type { ElementNode } from '../core/elementNode.js';
+import type { ForwardFocusHandler } from '../core/focusKeyTypes.js';
 import { formatDate } from '../sdk/i18n.js';
 import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
 import { Modal } from './Modal.jsx';
+import {
+  handleNavigation,
+  navigableForwardFocus,
+} from './utils/handleNavigation.js';
+
+// The panel and its rows are the containers `Row` and `Column` are, without
+// their flex layout: the calendar keeps its own positions.
+const onUp = handleNavigation('up');
+const onDown = handleNavigation('down');
+const onLeft = handleNavigation('left');
+const onRight = handleNavigation('right');
+
+/** A button of the picker: outlined while it has focus. */
+function PickerButton(props: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  label: string;
+  /** Read by assistive technology when the label is a symbol. */
+  ariaLabel?: string;
+  primary?: boolean;
+  fontSize: number;
+  onPress(): void;
+}): JSX.Element {
+  const theme = () => useTheme();
+  const [focused, setFocused] = createSignal(false);
+  return (
+    <view
+      x={props.x}
+      y={props.y}
+      width={props.width}
+      height={props.height}
+      color={
+        props.primary ? theme().colors.primary : theme().colors.surfaceRaised
+      }
+      borderRadius={theme().radius.small}
+      border={{ width: focused() ? 3 : 0, color: theme().colors.text }}
+      role="button"
+      ariaLabel={props.ariaLabel ?? props.label}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      onEnter={() => props.onPress()}
+      onMouseClick={() => props.onPress()}
+      cursorStyle="pointer"
+    >
+      <text
+        x={0}
+        y={(props.height - props.fontSize) / 2 - 2}
+        width={props.width}
+        contain="width"
+        textAlign="center"
+        fontSize={props.fontSize}
+        color={props.primary ? theme().colors.onPrimary : theme().colors.text}
+      >
+        {props.label}
+      </text>
+    </view>
+  );
+}
 
 const valueOf = (
   value:
@@ -125,14 +188,74 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
   const cellWidth = 54;
   const cellHeight = 40;
 
+  let panel: ElementNode | undefined;
+  let grid: ElementNode | undefined;
+
+  // The grid's children are the days of the month in order: day 1 is first.
+  const focusDay = (day: number) =>
+    (grid?.children[day - 1] as ElementNode | undefined)?.setFocus();
+
+  // Focus enters the grid on the chosen day, or on the 1st of another month.
+  const enterGrid: ForwardFocusHandler = () => {
+    const chosen = working();
+    const shown = month();
+    const day =
+      chosen.getFullYear() === shown.getFullYear() &&
+      chosen.getMonth() === shown.getMonth()
+        ? chosen.getDate()
+        : 1;
+    if (grid?.children[day - 1] === undefined) return false;
+    focusDay(day);
+    return true;
+  };
+
+  /**
+   * Left and Right move by a day and cross into the next month; Up and Down
+   * move by a week and, past the first or last week, leave the grid for the
+   * row above or below it (the key is not taken).
+   */
+  const moveDay = (delta: number): boolean => {
+    if (grid === undefined) return false;
+    const day = grid.children.indexOf(activeElement() as ElementNode) + 1;
+    if (day < 1) return false;
+    const target = day + delta;
+    const outside = target < 1 || target > daysInMonth();
+    if (outside && (delta === 7 || delta === -7)) return false;
+    const next = new Date(month().getFullYear(), month().getMonth(), target);
+    if (disabled(next)) return true;
+    if (outside) {
+      // The other month's days exist once this key's updates have run.
+      pendingDay = next.getDate();
+      setMonth(new Date(next.getFullYear(), next.getMonth(), 1));
+    } else {
+      focusDay(target);
+    }
+    return true;
+  };
+  let pendingDay: number | undefined;
+  createEffect(() => {
+    month();
+    if (pendingDay === undefined) return;
+    const day = pendingDay;
+    pendingDay = undefined;
+    focusDay(day);
+  });
+
   return (
     <Modal
       visible={visible()}
       onRequestClose={() => props.onRequestClose?.()}
       label={props.title ?? 'Select date'}
       transparent
+      initialFocus={() => panel}
     >
+      {/* Rows top to bottom: title, month, weekdays, days, time, actions.
+          Up and Down move between the ones that take focus; it opens on the
+          days (index 3). */}
       <view
+        ref={(node) => {
+          panel = node as ElementNode;
+        }}
         x={panelX()}
         y={panelY()}
         width={panelWidth}
@@ -140,10 +263,15 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
         color={theme().colors.surface}
         borderRadius={theme().radius.medium}
         role="none"
+        selected={3}
+        forwardFocus={navigableForwardFocus}
+        onUp={onUp}
+        onDown={onDown}
         onMouseClick={() => true}
         onEnter={() => true}
       >
         <text
+          skipFocus
           x={24}
           y={20}
           width={panelWidth - 48}
@@ -154,261 +282,255 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
           {props.title ?? 'Select date'}
         </text>
 
+        {/* Left on the first button and Right on the last change the month
+            as the buttons themselves do. */}
         <view
           x={16}
           y={68}
-          width={44}
+          width={panelWidth - 32}
           height={44}
-          color={theme().colors.surfaceRaised}
-          borderRadius={theme().radius.small}
-          ariaLabel="Previous month"
-          onEnter={() => shiftMonth(-1)}
-          onMouseClick={() => shiftMonth(-1)}
-          cursorStyle="pointer"
+          selected={0}
+          forwardFocus={navigableForwardFocus}
+          onLeft={function (this: ElementNode, ...args) {
+            if (onLeft.apply(this, args) !== true) shiftMonth(-1);
+            return true;
+          }}
+          onRight={function (this: ElementNode, ...args) {
+            if (onRight.apply(this, args) !== true) shiftMonth(1);
+            return true;
+          }}
         >
-          <text
+          <PickerButton
             x={0}
-            y={8}
+            y={0}
             width={44}
+            height={44}
+            label="<"
+            ariaLabel="Previous month"
+            fontSize={24}
+            onPress={() => shiftMonth(-1)}
+          />
+          <text
+            skipFocus
+            x={48}
+            y={12}
+            width={panelWidth - 128}
             contain="width"
             textAlign="center"
-            fontSize={24}
+            fontSize={theme().typography.label}
             color={theme().colors.text}
           >
-            ‹
+            {monthLabel()}
           </text>
+          <PickerButton
+            x={panelWidth - 76}
+            y={0}
+            width={44}
+            height={44}
+            label=">"
+            ariaLabel="Next month"
+            fontSize={24}
+            onPress={() => shiftMonth(1)}
+          />
         </view>
-        <text
-          x={64}
-          y={80}
-          width={panelWidth - 128}
-          contain="width"
-          textAlign="center"
-          fontSize={theme().typography.label}
-          color={theme().colors.text}
-        >
-          {monthLabel()}
-        </text>
+
+        <view skipFocus x={20} y={124} width={7 * cellWidth} height={20}>
+          <For each={weekdayLabels()}>
+            {(label, index) => (
+              <text
+                x={index() * cellWidth}
+                y={0}
+                width={cellWidth}
+                contain="width"
+                textAlign="center"
+                fontSize={16}
+                color={theme().colors.textMuted}
+              >
+                {label}
+              </text>
+            )}
+          </For>
+        </view>
+
         <view
-          x={panelWidth - 60}
-          y={68}
-          width={44}
-          height={44}
-          color={theme().colors.surfaceRaised}
-          borderRadius={theme().radius.small}
-          ariaLabel="Next month"
-          onEnter={() => shiftMonth(1)}
-          onMouseClick={() => shiftMonth(1)}
-          cursorStyle="pointer"
+          ref={(node) => {
+            grid = node as ElementNode;
+          }}
+          x={20}
+          y={150}
+          width={7 * cellWidth}
+          height={6 * cellHeight}
+          forwardFocus={enterGrid}
+          onLeft={() => moveDay(-1)}
+          onRight={() => moveDay(1)}
+          onUp={() => moveDay(-7)}
+          onDown={() => moveDay(7)}
         >
-          <text
-            x={0}
-            y={8}
-            width={44}
-            contain="width"
-            textAlign="center"
-            fontSize={24}
-            color={theme().colors.text}
-          >
-            ›
-          </text>
-        </view>
-
-        <For each={weekdayLabels()}>
-          {(label, index) => (
-            <text
-              x={20 + index() * cellWidth}
-              y={124}
-              width={cellWidth}
-              contain="width"
-              textAlign="center"
-              fontSize={16}
-              color={theme().colors.textMuted}
-            >
-              {label}
-            </text>
-          )}
-        </For>
-
-        <For each={Array.from({ length: 42 }, (_, index) => index)}>
-          {(index) => {
-            const day = () => index - firstWeekday() + 1;
-            const date = () =>
-              new Date(month().getFullYear(), month().getMonth(), day());
-            const selected = () =>
-              day() >= 1 &&
-              day() <= daysInMonth() &&
-              sameDay(date(), working());
-            const isDisabled = () =>
-              day() < 1 || day() > daysInMonth() || disabled(date());
-            return (
-              <Show when={day() >= 1 && day() <= daysInMonth()}>
-                <view
-                  x={20 + (index % 7) * cellWidth}
-                  y={150 + Math.floor(index / 7) * cellHeight}
-                  width={cellWidth}
-                  height={cellHeight}
-                  color={
-                    selected() ? theme().colors.primary : theme().colors.surface
-                  }
-                  borderRadius={theme().radius.small}
-                  ariaSelected={selected()}
-                  ariaDisabled={isDisabled()}
-                  onEnter={() => chooseDay(day())}
-                  onMouseClick={() => chooseDay(day())}
-                  cursorStyle={isDisabled() ? 'not-allowed' : 'pointer'}
-                >
-                  <text
-                    x={0}
-                    y={8}
+          <For each={Array.from({ length: 42 }, (_, index) => index)}>
+            {(index) => {
+              const day = () => index - firstWeekday() + 1;
+              const date = () =>
+                new Date(month().getFullYear(), month().getMonth(), day());
+              const selected = () =>
+                day() >= 1 &&
+                day() <= daysInMonth() &&
+                sameDay(date(), working());
+              const isDisabled = () =>
+                day() < 1 || day() > daysInMonth() || disabled(date());
+              const [focused, setFocused] = createSignal(false);
+              return (
+                <Show when={day() >= 1 && day() <= daysInMonth()}>
+                  <view
+                    x={(index % 7) * cellWidth}
+                    y={Math.floor(index / 7) * cellHeight}
                     width={cellWidth}
-                    contain="width"
-                    textAlign="center"
-                    fontSize={20}
+                    height={cellHeight}
                     color={
                       selected()
-                        ? theme().colors.onPrimary
-                        : isDisabled()
-                          ? theme().colors.textMuted
-                          : theme().colors.text
+                        ? theme().colors.primary
+                        : focused()
+                          ? theme().colors.surfaceRaised
+                          : theme().colors.surface
                     }
+                    borderRadius={theme().radius.small}
+                    border={{
+                      width: focused() ? 3 : 0,
+                      color: theme().colors.text,
+                    }}
+                    ariaSelected={selected()}
+                    ariaDisabled={isDisabled()}
+                    onFocus={() => setFocused(true)}
+                    onBlur={() => setFocused(false)}
+                    onEnter={() => chooseDay(day())}
+                    onMouseClick={() => chooseDay(day())}
+                    cursorStyle={isDisabled() ? 'not-allowed' : 'pointer'}
                   >
-                    {String(day())}
-                  </text>
-                </view>
-              </Show>
-            );
-          }}
-        </For>
+                    <text
+                      x={0}
+                      y={8}
+                      width={cellWidth}
+                      contain="width"
+                      textAlign="center"
+                      fontSize={20}
+                      color={
+                        selected()
+                          ? theme().colors.onPrimary
+                          : isDisabled()
+                            ? theme().colors.textMuted
+                            : theme().colors.text
+                      }
+                    >
+                      {String(day())}
+                    </text>
+                  </view>
+                </Show>
+              );
+            }}
+          </For>
+        </view>
 
-        <Show when={props.withTime}>
-          <text
-            x={24}
-            y={404}
-            width={80}
-            contain="width"
-            fontSize={theme().typography.label}
-            color={theme().colors.textMuted}
-          >
-            Time
-          </text>
-          <text
-            x={112}
-            y={404}
-            width={60}
-            contain="width"
-            textAlign="center"
-            fontSize={theme().typography.label}
-            color={theme().colors.text}
-          >
-            {String(working().getHours()).padStart(2, '0')}
-          </text>
-          <view
-            x={180}
-            y={396}
-            width={40}
-            height={40}
-            color={theme().colors.surfaceRaised}
-            borderRadius={theme().radius.small}
-            ariaLabel="Add an hour"
-            onEnter={() => shiftTime(60)}
-            onMouseClick={() => shiftTime(60)}
-            cursorStyle="pointer"
-          >
+        {/* Always a row of the panel, so that the rows keep their places;
+            without a time it is empty and passed over. */}
+        <view
+          skipFocus={!props.withTime}
+          x={0}
+          y={396}
+          width={panelWidth}
+          height={40}
+          selected={2}
+          forwardFocus={navigableForwardFocus}
+          onLeft={onLeft}
+          onRight={onRight}
+        >
+          <Show when={props.withTime}>
             <text
-              x={0}
-              y={6}
-              width={40}
+              skipFocus
+              x={24}
+              y={8}
+              width={80}
+              contain="width"
+              fontSize={theme().typography.label}
+              color={theme().colors.textMuted}
+            >
+              Time
+            </text>
+            <text
+              skipFocus
+              x={112}
+              y={8}
+              width={60}
               contain="width"
               textAlign="center"
-              fontSize={22}
+              fontSize={theme().typography.label}
               color={theme().colors.text}
             >
-              +
+              {String(working().getHours()).padStart(2, '0')}
             </text>
-          </view>
-          <text
-            x={236}
-            y={404}
-            width={60}
-            contain="width"
-            textAlign="center"
-            fontSize={theme().typography.label}
-            color={theme().colors.text}
-          >
-            {String(working().getMinutes()).padStart(2, '0')}
-          </text>
-          <view
-            x={304}
-            y={396}
-            width={40}
-            height={40}
-            color={theme().colors.surfaceRaised}
-            borderRadius={theme().radius.small}
-            ariaLabel="Add 5 minutes"
-            onEnter={() => shiftTime(5)}
-            onMouseClick={() => shiftTime(5)}
-            cursorStyle="pointer"
-          >
-            <text
-              x={0}
-              y={6}
+            <PickerButton
+              x={180}
+              y={0}
               width={40}
+              height={40}
+              label="+"
+              ariaLabel="Add an hour"
+              fontSize={22}
+              onPress={() => shiftTime(60)}
+            />
+            <text
+              skipFocus
+              x={236}
+              y={8}
+              width={60}
               contain="width"
               textAlign="center"
-              fontSize={22}
+              fontSize={theme().typography.label}
               color={theme().colors.text}
             >
-              +
+              {String(working().getMinutes()).padStart(2, '0')}
             </text>
-          </view>
-        </Show>
+            <PickerButton
+              x={304}
+              y={0}
+              width={40}
+              height={40}
+              label="+"
+              ariaLabel="Add 5 minutes"
+              fontSize={22}
+              onPress={() => shiftTime(5)}
+            />
+          </Show>
+        </view>
 
+        {/* Focus arrives on Done, the action a chosen day leads to. */}
         <view
           x={panelWidth - 220}
           y={footerY()}
-          width={90}
+          width={196}
           height={44}
-          color={theme().colors.surfaceRaised}
-          borderRadius={theme().radius.small}
-          onEnter={() => props.onRequestClose?.()}
-          onMouseClick={() => props.onRequestClose?.()}
-          cursorStyle="pointer"
+          selected={1}
+          forwardFocus={navigableForwardFocus}
+          onLeft={onLeft}
+          onRight={onRight}
         >
-          <text
+          <PickerButton
             x={0}
-            y={10}
+            y={0}
             width={90}
-            contain="width"
-            textAlign="center"
+            height={44}
+            label="Cancel"
             fontSize={18}
-            color={theme().colors.text}
-          >
-            Cancel
-          </text>
-        </view>
-        <view
-          x={panelWidth - 118}
-          y={footerY()}
-          width={94}
-          height={44}
-          color={theme().colors.primary}
-          borderRadius={theme().radius.small}
-          onEnter={done}
-          onMouseClick={done}
-          cursorStyle="pointer"
-        >
-          <text
-            x={0}
-            y={10}
+            onPress={() => props.onRequestClose?.()}
+          />
+          <PickerButton
+            x={102}
+            y={0}
             width={94}
-            contain="width"
-            textAlign="center"
+            height={44}
+            label="Done"
+            primary
             fontSize={18}
-            color={theme().colors.onPrimary}
-          >
-            Done
-          </text>
+            onPress={done}
+          />
         </view>
       </view>
     </Modal>

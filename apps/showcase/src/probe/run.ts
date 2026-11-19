@@ -17,13 +17,8 @@ import type { Showcase } from '../env';
 import { LIST_SIZE } from '../screens/List';
 import { runAllUnattended } from '../services/run';
 import { probeHooks } from './hooks';
-import {
-  failed,
-  ok,
-  unverified,
-  type Outcome,
-  type ProbeResult,
-} from './result';
+import { pressProbeKey } from './keys';
+import { failed, ok, type Outcome, type ProbeResult } from './result';
 
 const [probeStatus, setProbeStatus] = createSignal('');
 /** A line for the home screen: empty outside probe mode. */
@@ -155,19 +150,11 @@ const message = (error: unknown) =>
 async function uiAssertions(
   showcase: Showcase,
 ): Promise<Record<string, Outcome>> {
-  const raise = showcase.env.pressKey;
   const press: Press = async (key) => {
-    raise?.(key);
+    pressProbeKey(key);
     await wait(0);
   };
   const names = ['focusMovesWithKeys', 'virtualListScrolls', 'modalTrapsFocus'];
-  if (raise === undefined)
-    return Object.fromEntries(
-      names.map((name) => [
-        name,
-        unverified('this host entry raises no synthetic keys'),
-      ]),
-    );
   const checks: Record<string, () => Promise<Outcome>> = {
     focusMovesWithKeys: () => focusMoves(press),
     virtualListScrolls: () => listScrolls(showcase, press),
