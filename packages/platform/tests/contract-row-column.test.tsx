@@ -13,6 +13,8 @@ import {
   Row,
   Column,
   useFocusManager,
+  navigableForwardFocus,
+  navigableHandleNavigation,
   type KeyEventTarget,
 } from '@solid-multiplatform/platform/primitives';
 import { renderer } from './setup.js';
@@ -65,6 +67,207 @@ v.afterEach(() => {
   dispose?.();
   dispose = undefined;
   v.vi.restoreAllMocks();
+});
+
+v.describe('Row and Column: text children', () => {
+  const label = (id: string, props: Record<string, unknown> = {}) => (
+    <text id={id} width={100} height={40} {...props}>
+      Label
+    </text>
+  );
+
+  v.it(
+    'Row: a plain <text> is not a focus stop, for the initial focus or for keys',
+    async () => {
+      let row!: lng.ElementNode;
+      const parentLeft = v.vi.fn(() => true);
+      const parentRight = v.vi.fn(() => true);
+      dispose = await mount(() => (
+        <view
+          width={1920}
+          height={1080}
+          onLeft={parentLeft}
+          onRight={parentRight}
+        >
+          <Row ref={row} autofocus scroll="none">
+            {label('t0')}
+            <view id="c0" width={400} height={200} />
+            {label('t1')}
+            <view id="c1" width={400} height={200} />
+            {label('t2')}
+          </Row>
+        </view>
+      ));
+      v.expect([row.selected, focusedId()]).toEqual([1, 'c0']);
+      await press('ArrowRight');
+      v.expect([row.selected, focusedId()]).toEqual([3, 'c1']);
+      // Only a label remains to the right: the key bubbles.
+      await press('ArrowRight');
+      v.expect([row.selected, focusedId()]).toEqual([3, 'c1']);
+      v.expect(parentRight).toHaveBeenCalledTimes(1);
+      await press('ArrowLeft');
+      v.expect([row.selected, focusedId()]).toEqual([1, 'c0']);
+      await press('ArrowLeft');
+      v.expect([row.selected, focusedId()]).toEqual([1, 'c0']);
+      v.expect(parentLeft).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  v.it('Column: a plain <text> is not a focus stop', async () => {
+    let column!: lng.ElementNode;
+    dispose = await mount(() => (
+      <view width={1920} height={1080}>
+        <Column ref={column} autofocus scroll="none">
+          {label('t0')}
+          <view id="c0" width={400} height={200} />
+          {label('t1')}
+          <view id="c1" width={400} height={200} />
+        </Column>
+      </view>
+    ));
+    v.expect([column.selected, focusedId()]).toEqual([1, 'c0']);
+    await press('ArrowDown');
+    v.expect([column.selected, focusedId()]).toEqual([3, 'c1']);
+    await press('ArrowUp', 'ArrowUp');
+    v.expect([column.selected, focusedId()]).toEqual([1, 'c0']);
+  });
+
+  v.it('Row: wrap passes over a plain <text>', async () => {
+    dispose = await mount(() => (
+      <view width={1920} height={1080}>
+        <Row autofocus wrap scroll="none">
+          {label('t0')}
+          <view id="c0" width={400} height={200} />
+          <view id="c1" width={400} height={200} />
+        </Row>
+      </view>
+    ));
+    await press('ArrowRight', 'ArrowRight');
+    v.expect(focusedId()).toBe('c0');
+  });
+
+  v.it.each([
+    ['onEnter', { onEnter: () => true }],
+    ['onFocus', { onFocus: () => undefined }],
+    ['a $focus style', { style: { $focus: { alpha: 0.5 } } }],
+    ['skipFocus={false}', { skipFocus: false }],
+  ])('Row: a <text> with %s is a focus stop', async (_name, props) => {
+    let row!: lng.ElementNode;
+    dispose = await mount(() => (
+      <view width={1920} height={1080}>
+        <Row ref={row} autofocus scroll="none">
+          {label('t0', props)}
+          <view id="c0" width={400} height={200} />
+        </Row>
+      </view>
+    ));
+    v.expect([row.selected, focusedId()]).toEqual([0, 't0']);
+    await press('ArrowRight');
+    v.expect([row.selected, focusedId()]).toEqual([1, 'c0']);
+    await press('ArrowLeft');
+    v.expect([row.selected, focusedId()]).toEqual([0, 't0']);
+  });
+
+  v.it('Row: skipFocus on a <text> wins over its focus handlers', async () => {
+    dispose = await mount(() => (
+      <view width={1920} height={1080}>
+        <Row autofocus scroll="none">
+          {label('t0', { skipFocus: true, onEnter: () => true })}
+          <view id="c0" width={400} height={200} />
+        </Row>
+      </view>
+    ));
+    v.expect(focusedId()).toBe('c0');
+  });
+
+  v.it(
+    'Column: a <Show when={false}> between two rows is passed over without throwing',
+    async () => {
+      let column!: lng.ElementNode;
+      const errors: unknown[] = [];
+      const onError = (e: ErrorEvent) => errors.push(e.error ?? e.message);
+      window.addEventListener('error', onError);
+      dispose = await mount(() => (
+        <view width={1920} height={1080}>
+          <Column ref={column} autofocus scroll="none">
+            <Row scroll="none">{items(2)}</Row>
+            <s.Show when={false}>
+              <view id="hidden" width={400} height={200} />
+            </s.Show>
+            <Row scroll="none">
+              <view id="d0" width={400} height={200} />
+            </Row>
+          </Column>
+        </view>
+      ));
+      // A Column's children are an array: the empty <Show> leaves no child.
+      v.expect(column.children.length).toBe(2);
+      v.expect([column.selected, focusedId()]).toEqual([0, 'c0']);
+      await press('ArrowDown');
+      v.expect([column.selected, focusedId()]).toEqual([1, 'd0']);
+      await press('ArrowUp');
+      v.expect([column.selected, focusedId()]).toEqual([0, 'c0']);
+      window.removeEventListener('error', onError);
+      v.expect(errors).toEqual([]);
+    },
+  );
+
+  v.it(
+    'a navigable <view>: the placeholder of a <Show when={false}> between two rows is passed over without throwing',
+    async () => {
+      let column!: lng.ElementNode;
+      const errors: unknown[] = [];
+      const onError = (e: ErrorEvent) => errors.push(e.error ?? e.message);
+      window.addEventListener('error', onError);
+      dispose = await mount(() => (
+        <view width={1920} height={1080}>
+          <view
+            ref={column}
+            autofocus
+            selected={0}
+            forwardFocus={navigableForwardFocus}
+            onUp={navigableHandleNavigation}
+            onDown={navigableHandleNavigation}
+          >
+            <Row scroll="none">{items(2)}</Row>
+            <s.Show when={false}>
+              <view id="hidden" width={400} height={200} />
+            </s.Show>
+            <Row scroll="none">
+              <view id="d0" width={400} height={200} />
+            </Row>
+          </view>
+        </view>
+      ));
+      // The placeholder is a child of the view, and not an element.
+      v.expect(column.children.length).toBe(3);
+      v.expect(column.children[1] instanceof lng.ElementNode).toBe(false);
+      v.expect([column.selected, focusedId()]).toEqual([0, 'c0']);
+      await press('ArrowDown');
+      v.expect([column.selected, focusedId()]).toEqual([2, 'd0']);
+      await press('ArrowUp');
+      v.expect([column.selected, focusedId()]).toEqual([0, 'c0']);
+      window.removeEventListener('error', onError);
+      v.expect(errors).toEqual([]);
+    },
+  );
+
+  v.it(
+    'Row: a plain <view> with no handlers is still a focus stop',
+    async () => {
+      let row!: lng.ElementNode;
+      dispose = await mount(() => (
+        <view width={1920} height={1080}>
+          <Row ref={row} autofocus scroll="none">
+            {items(2)}
+          </Row>
+        </view>
+      ));
+      v.expect([row.selected, focusedId()]).toEqual([0, 'c0']);
+      await press('ArrowRight');
+      v.expect([row.selected, focusedId()]).toEqual([1, 'c1']);
+    },
+  );
 });
 
 v.describe('Row and Column: navigation', () => {

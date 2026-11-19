@@ -829,13 +829,15 @@ const cases: FlexCase[] = [
     ]),
   },
   {
-    name: 'text in flex: a <text> child with text and no size aborts the WHOLE pass',
+    name: 'text in flex: a <text> child with text and no measured size is laid out at size 0; the pass still runs',
     container: { width: 300, height: 100 },
     kids: [A(), { kind: 'text', props: { text: 'Hello' } }, B()],
-    expected: res(false, { w: 300, h: 100 }, [
-      { x: U, y: U, w: 50, h: 50 },
-      { x: U, y: U, w: U, h: U },
-      { x: U, y: U, w: 60, h: 40 },
+    // The text has no size yet, so it takes no main-axis space (B at 50) and
+    // the row still shrinks to the content width: 50 + 0 + 60.
+    expected: res(true, { w: 110, h: 100 }, [
+      { x: 0, y: U, w: 50, h: 50 },
+      { x: 50, y: U, w: U, h: U },
+      { x: 50, y: U, w: 60, h: 40 },
     ]),
   },
   {
@@ -1468,5 +1470,264 @@ describe('contract: flex through the renderer', () => {
     expect(second.x).toBe(50);
     expect(row.width).toBe(110);
     dispose();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Part 3: padding in the fitted cross size and in the free space
+// ---------------------------------------------------------------------------
+
+describe('contract: flex padding in fitted cross size', () => {
+  it('a row with no height: height = tallest child + top and bottom padding, children start at the top padding', async () => {
+    let row!: lng.ElementNode;
+    let a!: lng.ElementNode;
+    let b!: lng.ElementNode;
+    const dispose = renderer.render(() => (
+      <view ref={row} display="flex" padding={10}>
+        <view ref={a} width={50} height={50} />
+        <view ref={b} width={60} height={40} />
+      </view>
+    ));
+    await waitForUpdate();
+    expect([row.width, row.height]).toEqual([130, 70]);
+    expect([a.x, a.y]).toEqual([10, 10]);
+    expect([b.x, b.y]).toEqual([60, 10]);
+    dispose();
+  });
+
+  it('a row with no height: uneven padding and alignItems center', async () => {
+    let row!: lng.ElementNode;
+    let a!: lng.ElementNode;
+    let b!: lng.ElementNode;
+    const dispose = renderer.render(() => (
+      <view
+        ref={row}
+        display="flex"
+        padding={[5, 20, 15, 10]}
+        alignItems="center"
+      >
+        <view ref={a} width={50} height={50} />
+        <view ref={b} width={60} height={40} />
+      </view>
+    ));
+    await waitForUpdate();
+    // 5 + 50 + 15
+    expect(row.height).toBe(70);
+    expect(a.y).toBe(5);
+    expect(b.y).toBe(10);
+    dispose();
+  });
+
+  it('a row with no height: alignItems flexEnd ends at the bottom padding', async () => {
+    let row!: lng.ElementNode;
+    let b!: lng.ElementNode;
+    const dispose = renderer.render(() => (
+      <view ref={row} display="flex" paddingBottom={20} alignItems="flexEnd">
+        <view width={50} height={50} />
+        <view ref={b} width={60} height={40} />
+      </view>
+    ));
+    await waitForUpdate();
+    expect(row.height).toBe(70);
+    expect(b.y).toBe(10);
+    dispose();
+  });
+
+  it('a row with no height: the tallest child counts with its top and bottom margins', async () => {
+    let row!: lng.ElementNode;
+    let a!: lng.ElementNode;
+    let b!: lng.ElementNode;
+    const dispose = renderer.render(() => (
+      <view ref={row} display="flex" padding={10}>
+        <view ref={a} width={50} height={50} marginTop={4} marginBottom={6} />
+        <view ref={b} width={60} height={40} />
+      </view>
+    ));
+    await waitForUpdate();
+    // 10 + (4 + 50 + 6) + 10
+    expect(row.height).toBe(80);
+    expect(a.y).toBe(14);
+    expect(b.y).toBe(10);
+    dispose();
+  });
+
+  it('a row with no height and no padding: children keep their own y', async () => {
+    let row!: lng.ElementNode;
+    let a!: lng.ElementNode;
+    const dispose = renderer.render(() => (
+      <view ref={row} display="flex">
+        <view ref={a} width={50} height={50} y={7} />
+        <view width={60} height={40} />
+      </view>
+    ));
+    await waitForUpdate();
+    expect(row.height).toBe(50);
+    expect(a.y).toBe(7);
+    dispose();
+  });
+
+  it('a second layout pass leaves the fitted height and the children where they are', async () => {
+    let row!: lng.ElementNode;
+    let a!: lng.ElementNode;
+    const dispose = renderer.render(() => (
+      <view ref={row} display="flex" padding={10}>
+        <view ref={a} width={50} height={50} />
+      </view>
+    ));
+    await waitForUpdate();
+    row.updateLayout();
+    await waitForUpdate();
+    expect(row.height).toBe(70);
+    expect(a.y).toBe(10);
+    dispose();
+  });
+
+  it('an explicit height is kept, and without alignItems the children keep their own y', async () => {
+    let row!: lng.ElementNode;
+    let a!: lng.ElementNode;
+    const dispose = renderer.render(() => (
+      <view ref={row} display="flex" height={300} padding={10}>
+        <view ref={a} width={50} height={50} />
+      </view>
+    ));
+    await waitForUpdate();
+    expect(row.height).toBe(300);
+    expect([a.x, a.y]).toEqual([10, 0]);
+    dispose();
+  });
+
+  it('flexCrossBoundary "fixed" keeps the parent-derived height with padding', async () => {
+    let row!: lng.ElementNode;
+    const dispose = renderer.render(() => (
+      <view width={800} height={600}>
+        <view ref={row} display="flex" padding={10} flexCrossBoundary="fixed">
+          <view width={50} height={50} />
+        </view>
+      </view>
+    ));
+    await waitForUpdate();
+    expect(row.height).toBe(600);
+    dispose();
+  });
+
+  it('a column with no width keeps the parent width: its cross size never comes from its children', async () => {
+    let col!: lng.ElementNode;
+    let a!: lng.ElementNode;
+    let b!: lng.ElementNode;
+    const dispose = renderer.render(() => (
+      <view width={800} height={600}>
+        <view ref={col} display="flex" flexDirection="column" padding={10}>
+          <view ref={a} width={50} height={50} />
+          <view ref={b} width={60} height={40} alignSelf="flexEnd" />
+        </view>
+      </view>
+    ));
+    await waitForUpdate();
+    expect([col.width, col.height]).toEqual([800, 110]);
+    expect([a.x, a.y]).toEqual([0, 10]);
+    // 800 - 10 - 60
+    expect([b.x, b.y]).toEqual([730, 60]);
+    dispose();
+  });
+});
+
+describe('contract: flex while text is unmeasured', () => {
+  it('a row fitting its height does not keep the parent-derived height when its only child is unmeasured text', () => {
+    const r = run(flex, {
+      container: {
+        width: 300,
+        height: 1080,
+        _calcHeight: true,
+        flexBoundary: 'fixed',
+      },
+      kids: [{ kind: 'text', props: { text: 'Hello' } }],
+    });
+    // Nothing is measured yet: the row is zero-high, so a pointer over it
+    // cannot land on the wrong row while the text loads.
+    expect(r.container).toEqual({ w: 300, h: 0 });
+    expect(r.children).toEqual([{ x: 0, y: U, w: U, h: U }]);
+  });
+
+  it('unmeasured text in a padded row is placed at the top padding and the height is the padding alone', () => {
+    const r = run(flex, {
+      container: {
+        width: 300,
+        height: 1080,
+        padding: 10,
+        _calcHeight: true,
+        flexBoundary: 'fixed',
+      },
+      kids: [
+        { kind: 'text', props: { text: 'Hello' } },
+        { kind: 'text', props: { text: 'World' } },
+      ],
+    });
+    expect(r.container).toEqual({ w: 300, h: 20 });
+    expect(r.children).toEqual([
+      { x: 10, y: 10, w: U, h: U },
+      { x: 10, y: 10, w: U, h: U },
+    ]);
+  });
+});
+
+describe('contract: flex grow and shrink inside padding', () => {
+  it('flexGrow (row): the free space excludes the left and right padding', () => {
+    const r = run(flex, {
+      container: { width: 300, height: 100, padding: 10 },
+      kids: [A({ flexGrow: 1 }), B()],
+    });
+    // free = 300 - 20 - 50 - 60 = 170; B ends at 290 = 300 - 10.
+    expect(r).toEqual(
+      res(false, { w: 300, h: 100 }, [
+        { x: 10, y: U, w: 220, h: 50 },
+        { x: 230, y: U, w: 60, h: 40 },
+      ]),
+    );
+  });
+
+  it('flexGrow (column): padding, gap and margins all come out of the free space', () => {
+    const r = run(flex, {
+      container: {
+        width: 200,
+        height: 400,
+        flexDirection: 'column',
+        paddingTop: 20,
+        paddingBottom: 30,
+        gap: 10,
+      },
+      kids: [A({ flexGrow: 1, marginTop: 5 }), B({ flexGrow: 3 })],
+    });
+    // free = 400 - 50 - 10 - (5 + 50) - 40 = 245, split 1:3.
+    // B ends at 146.25 + 223.75 = 370 = 400 - 30.
+    expect(r).toEqual(
+      res(false, { w: 200, h: 400 }, [
+        { x: U, y: 25, w: 50, h: 111.25 },
+        { x: U, y: 146.25, w: 60, h: 223.75 },
+      ]),
+    );
+  });
+
+  it('flexGrow: no padding gives the same split as before', () => {
+    const r = run(flex, {
+      container: { width: 300, height: 100 },
+      kids: [A({ flexGrow: 1 }), B()],
+    });
+    expect(r.children.map((c) => [c.x, c.w])).toEqual([
+      [0, 240],
+      [240, 60],
+    ]);
+  });
+
+  it('flexShrink: items shrink to fit inside the padding', () => {
+    const { node, children } = build({ width: 100, height: 100, padding: 10 }, [
+      A({ flexShrink: 1 }),
+      B({ flexShrink: 1 }),
+    ]);
+    flex(node);
+    const [a, b] = children as ElementNode[];
+    // 110 of content into 100 - 20: 30 to lose, by size (50:60).
+    expect(a!.width).toBeCloseTo(50 - (30 * 50) / 110, 3);
+    expect(b!.width).toBeCloseTo(60 - (30 * 60) / 110, 3);
+    expect(b!.x + b!.width).toBeCloseTo(90, 3);
   });
 });

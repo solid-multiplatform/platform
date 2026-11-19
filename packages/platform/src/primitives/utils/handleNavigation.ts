@@ -34,6 +34,19 @@ function idxInArray(idx: number, arr: readonly unknown[]): boolean {
   return idx >= 0 && idx < arr.length;
 }
 
+/**
+ * Whether navigation passes over a child. `skipFocus` decides when it is set.
+ * Otherwise a text is a label, not a focus stop, unless it takes focus the way
+ * a pointer target does: `onEnter`, `onFocus` or a focus-state style.
+ */
+function skipsFocus(child: lng.ElementNode['children'][number]): boolean {
+  const skip = child.skipFocus as boolean | undefined;
+  if (skip !== undefined || child._type === lng.NodeType.Element) {
+    return !!skip;
+  }
+  return !(child.onEnter || child.onFocus || child[lng.Config.focusStateKey]);
+}
+
 function findFirstFocusableChildIdx(
   el: lngp.NavigableElement,
   from = 0,
@@ -52,7 +65,7 @@ function findFirstFocusableChildIdx(
       } else break;
     }
     const child = children[i];
-    if (child !== undefined && !child.skipFocus) {
+    if (child !== undefined && !skipsFocus(child)) {
       return i;
     }
   }
@@ -62,7 +75,7 @@ function findFirstFocusableChildIdx(
 function selectChild(el: lngp.NavigableElement, index: number): boolean {
   const child = el.children[index];
 
-  if (child == null || child.skipFocus) {
+  if (child == null || skipsFocus(child)) {
     el.selected = -1;
     return false;
   }
@@ -203,7 +216,7 @@ export function moveSelection(
   if (selected === -1) {
     if (
       !idxInArray(el.selected, el.children) ||
-      el.children[el.selected]?.skipFocus ||
+      skipsFocus(el.children[el.selected]!) ||
       lng.isFocused(el.children[el.selected]!)
     ) {
       return false;
@@ -248,7 +261,7 @@ function findClosestFocusableChildIdx(
   const children = el.children;
   for (let idx = 0; idx < children.length; idx++) {
     const child = children[idx]!;
-    if (!child.skipFocus) {
+    if (!skipsFocus(child)) {
       lng.getElementScreenRect(child, el, childRect);
       childRect.x += elRect.x;
       childRect.y += elRect.y;
@@ -352,7 +365,7 @@ export const spatialHandleNavigation: lng.KeyHandler = function (e) {
       i += flexDelta
     ) {
       const child = this.children[i]!;
-      if (child.skipFocus) continue;
+      if (skipsFocus(child)) continue;
 
       // Different column/row
       if (child[crossDir] !== prevChild[crossDir]) break;
@@ -371,7 +384,7 @@ export const spatialHandleNavigation: lng.KeyHandler = function (e) {
       i += crossDelta
     ) {
       const child = this.children[i]!;
-      if (child.skipFocus) continue;
+      if (skipsFocus(child)) continue;
 
       // Same column/row, skip
       if (child[crossDir] === prevChild[crossDir]) continue;
