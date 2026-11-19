@@ -227,7 +227,25 @@ export async function runServicesProbe(form: 'phone' | 'tv'): Promise<void> {
       expect(port !== undefined, 'not synchronous');
       const near = (value: number, wanted: number) =>
         Math.abs(value - wanted) < 0.01;
-      const once = await port!.getCurrent({ timeout: 20000 });
+      // CoreLocation answers `locationUnknown` (kCLErrorDomain 1) until the
+      // simulator has a fix, so a first call can fail a few seconds in.
+      let once:
+        | Awaited<ReturnType<NonNullable<typeof port>['getCurrent']>>
+        | undefined;
+      for (let attempt = 0; attempt < 6 && once === undefined; attempt++) {
+        try {
+          once = await port!.getCurrent({ timeout: 20000 });
+        } catch (error) {
+          const message = String((error as Error)?.message ?? error);
+          if (
+            attempt === 5 ||
+            !/kCLError|locationUnknown|error 1/.test(message)
+          )
+            throw error;
+          await wait(1000);
+        }
+      }
+      if (once === undefined) throw new Error('no position after six attempts');
       expect(near(once.latitude, 48.8584), 'latitude ' + once.latitude);
       expect(near(once.longitude, 2.2945), 'longitude ' + once.longitude);
       let watched: number | undefined;
