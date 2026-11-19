@@ -3,8 +3,6 @@ import { ElementNode, type RendererNode } from './elementNode.js';
 import type { TextNode } from './nodeTypes.js';
 import { NodeStates } from './states.js';
 import {
-  ShaderBorderProps,
-  ShaderHolePunchProps,
   ShaderLinearGradientProps,
   ShaderRadialGradientProps,
   ShaderRoundedProps,
@@ -44,17 +42,25 @@ export type SingleBorderStyle = SingleBorderStyleObject;
 export type BorderRadius = number | number[];
 
 export interface Effects {
+  /**
+   * A gradient is a shader of its own: it replaces the node's rounded, border
+   * and shadow shader, exactly as the `linearGradient` / `radialGradient`
+   * node props do. When both are given, `linearGradient` is used.
+   */
   linearGradient?: Partial<ShaderLinearGradientProps>;
   radialGradient?: Partial<ShaderRadialGradientProps>;
-  holePunch?: Partial<ShaderHolePunchProps>;
   shadow?: Partial<ShaderShadowProps>;
   rounded?: number | Partial<ShaderRoundedProps>;
   borderRadius?: Partial<BorderRadius>;
-  border?: Partial<ShaderBorderProps>;
-  borderTop?: Partial<ShaderBorderProps>;
-  borderBottom?: Partial<ShaderBorderProps>;
-  borderLeft?: Partial<ShaderBorderProps>;
-  borderRight?: Partial<ShaderBorderProps>;
+  /**
+   * Borders take the same object as the `border` / `border<Side>` node
+   * props. The thickness is `width`; `w` is accepted as an alias.
+   */
+  border?: BorderStyle;
+  borderTop?: SingleBorderStyle;
+  borderBottom?: SingleBorderStyle;
+  borderLeft?: SingleBorderStyle;
+  borderRight?: SingleBorderStyle;
 }
 
 export type StyleEffects = Effects;

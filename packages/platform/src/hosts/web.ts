@@ -1,8 +1,9 @@
 /**
  * The browser host: WebGL on a page element, DOM key events, pointer and
- * touch input, native text fields, and the browser viewport (size, safe area,
- * on-screen keyboard, colour scheme). Browser TVs use it with their own
- * `target`.
+ * touch input, an ARIA mirror of the scene for screen readers, native text
+ * fields, and the browser viewport (size, safe area, on-screen keyboard,
+ * colour scheme). Browser TVs use it with their own `target`, wrapped by
+ * `tvHost` for the fixed TV stage and the remote.
  */
 import {
   RendererMain,
@@ -16,9 +17,11 @@ import type {
 } from '../host.js';
 import { bindBrowserViewport } from '../sdk/browser-viewport.js';
 import type { PlatformTarget } from '../sdk/capabilities.js';
+import { resetCursor, setCursor } from '../sdk/cursor.js';
 import { browserEditorHost } from '../sdk/editor.js';
-import { bindPointerEvents, createInputScope } from '../sdk/input.js';
+import { bindPointerEvents, type PointerSource } from '../sdk/input.js';
 import { installServices } from '../sdk/registry.js';
+import { browserSemantics } from '../sdk/semantics.js';
 import { webAppServices, webServices } from './web-services/index.js';
 
 export interface WebHostOptions {
@@ -30,6 +33,28 @@ export interface WebHostOptions {
    * Defaults to `app`.
    */
   namespace?: string;
+  /**
+   * Mouse, touch and pen input. On unless `false`; a remote-only build that
+   * turns it off listens for no pointer events and never searches the scene
+   * for one.
+   */
+  pointer?: boolean;
+  /**
+   * The ARIA mirror of the scene that screen readers read. On for `web` and
+   * off for browser TVs unless set.
+   */
+  semantics?: boolean;
+  /**
+   * Replaces the browser viewport binding. A browser TV fits a fixed stage in
+   * the window instead of following the element's size.
+   */
+  viewport?: (surface: HTMLElement) => WebViewport;
+}
+
+export interface WebViewport {
+  /** Called once the renderer exists. */
+  attach?(): void;
+  dispose(): void;
 }
 
 /** The page element a web host draws in. */
@@ -62,16 +87,32 @@ export function createWebHost(
         ...webServices,
         ...webAppServices(options.namespace ?? 'app'),
       });
-      const stopViewport = bindBrowserViewport(surface);
-      const pointer = createInputScope();
-      const stopPointer = bindPointerEvents(surface, pointer, (x, y) => {
-        const box = surface.getBoundingClientRect();
-        return { x: x - box.left, y: y - box.top };
-      });
+      const viewport = options.viewport?.(surface) ?? {
+        dispose: bindBrowserViewport(surface),
+      };
+      const semantics =
+        (options.semantics ?? target === 'web')
+          ? browserSemantics(surface)
+          : undefined;
+      // One point for every event: the scene reads it and keeps nothing.
+      const point = { x: 0, y: 0 };
+      const pointer: PointerSource | undefined =
+        options.pointer === false
+          ? undefined
+          : {
+              connect: (sink) =>
+                bindPointerEvents(surface, sink, (x, y) => {
+                  const box = surface.getBoundingClientRect();
+                  point.x = x - box.left;
+                  point.y = y - box.top;
+                  return point;
+                }),
+              setCursor: (style) =>
+                style === undefined ? resetCursor() : setCursor(style),
+            };
       const release = () => {
-        stopPointer();
-        pointer.dispose();
-        stopViewport();
+        semantics?.dispose();
+        viewport.dispose();
         removeServices();
       };
       let stop: () => void;
@@ -82,10 +123,12 @@ export function createWebHost(
           native: surface,
           keys: document,
           pointer,
+          semantics,
           text: browserEditorHost(surface),
           loadFonts,
           createRenderer: (settings) => createRenderer(settings, surface),
         });
+        viewport.attach?.();
       } catch (error) {
         release();
         throw error;

@@ -1,0 +1,27 @@
+{
+  "name": "showcase",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Kitchen-sink app and on-device probe for Solid Multiplatform",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "build": "vite build",
+    "build:tizen": "vite build --mode tizen",
+    "build:webos": "vite build --mode webos",
+    "test": "vite build && node tests/showcase.e2e.mjs dist/web",
+    "test:tizen": "vite build --mode tizen && node tests/showcase.e2e.mjs dist/tizen tizen",
+    "test:webos": "vite build --mode webos && node tests/showcase.e2e.mjs dist/webos webos"
+  },
+  "dependencies": {
+    "@solid-multiplatform/platform": "workspace:*",
+    "@solid-multiplatform/renderer": "workspace:*",
+    "solid-js": "1.9.17"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.0.13",
+    "vite-plugin-solid": "^2.11.12"
+  }
+}

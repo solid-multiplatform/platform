@@ -1,17 +1,8 @@
 import type { ElementText, TextNode } from '../core/index.js';
-import {
-  Config,
-  ElementNode,
-  activeElement,
-  isElementNode,
-  isFunction,
-  rootNode,
-} from '../index.js';
-import { makeEventListener } from '@solid-primitives/event-listener';
-import { useMousePosition } from '@solid-primitives/mouse';
-import { cursorForElement, resetCursor, setCursor } from '../sdk/cursor.js';
-import { createScheduled, throttle } from '@solid-primitives/scheduled';
-import { createEffect, createSignal, getOwner, runWithOwner } from 'solid-js';
+import { Config, ElementNode, rootNode } from '../index.js';
+import { resetCursor, setCursor } from '../sdk/cursor.js';
+import { createScenePointer, hasScenePointer } from '../sdk/input.js';
+import { createSignal, onCleanup } from 'solid-js';
 
 type CustomState = `$${string}`;
 
@@ -45,48 +36,6 @@ export function hasCustomState(
   state: CustomState,
 ): boolean {
   return (element as ElementNode).states?.has(state);
-}
-
-function createKeyboardEvent(
-  key: string,
-  keyCode: number,
-  eventName: string = 'keydown',
-): KeyboardEvent {
-  const KeyboardEventCtor = (
-    globalThis as { KeyboardEvent?: typeof KeyboardEvent }
-  ).KeyboardEvent;
-  const event = KeyboardEventCtor
-    ? new KeyboardEventCtor(eventName, {
-        key,
-        keyCode,
-        which: keyCode,
-        ctrlKey: false,
-        altKey: false,
-        shiftKey: false,
-        metaKey: false,
-        bubbles: true,
-      })
-    : Object.assign(new Event(eventName, { bubbles: true }), {
-        key,
-        keyCode,
-        which: keyCode,
-        ctrlKey: false,
-        altKey: false,
-        shiftKey: false,
-        metaKey: false,
-      });
-
-  // Chrome < 51 (LG webOS 3.x runs Chrome 38) ignores the key/keyCode/which
-  // members of KeyboardEventInit, so the event arrives with key '' / keyCode 0
-  // and the focusManager drops it. Force the values onto the instance so Magic
-  // Remote clicks and scrolls still map to keys on those devices.
-  if (event.key !== key || event.keyCode !== keyCode) {
-    Object.defineProperty(event, 'key', { get: () => key });
-    Object.defineProperty(event, 'keyCode', { get: () => keyCode });
-    Object.defineProperty(event, 'which', { get: () => keyCode });
-  }
-
-  return event as KeyboardEvent;
 }
 
 const [cursorVisible, setCursorVisible] = createSignal(false);
@@ -124,327 +73,61 @@ export const isCursorVisible = () => {
   return cursorVisible();
 };
 
-let scrollTimeout: ReturnType<typeof setTimeout>;
-const handleScroll = throttle((e: WheelEvent): void => {
-  const deltaY = e.deltaY;
-  if (deltaY < 0) {
-    document.body?.dispatchEvent(createKeyboardEvent('ArrowUp', 38));
-  } else if (deltaY > 0) {
-    document.body?.dispatchEvent(createKeyboardEvent('ArrowDown', 40));
-  }
-
-  // clear the last timeout if the user is still scrolling
-  clearTimeout(scrollTimeout);
-  // after 250ms of no scroll events, we send a keyup event to stop the scrolling
-  scrollTimeout = setTimeout(() => {
-    document.body.dispatchEvent(createKeyboardEvent('ArrowUp', 38, 'keyup'));
-    document.body.dispatchEvent(createKeyboardEvent('ArrowDown', 40, 'keyup'));
-  }, 250);
-}, 250);
-
-function findElementWithCustomState<TApp extends ElementNode>(
-  myApp: TApp,
-  x: number,
-  y: number,
-  customState: CustomState,
-): ElementNode | undefined {
-  const path = getChildrenByPosition(myApp, x, y);
-  let element: ElementNode | undefined;
-  for (let i = path.length - 1; i >= 0; i--) {
-    if (hasCustomState(path[i]!, customState)) {
-      element = path[i];
-      break;
-    }
-  }
-  if (!element) return undefined;
-
-  let p = element.parent;
-  while (p?.forwardStates && hasCustomState(p, customState)) {
-    element = p;
-    p = p.parent;
-  }
-  return element;
-}
-
-function findElementByActiveElement(e: MouseEvent): ElementNode | null {
-  const active = activeElement();
-  const precision = Config.rendererOptions?.deviceLogicalPixelRatio || 1;
-  const px = e.clientX / precision;
-  const py = e.clientY / precision;
-
-  if (
-    active instanceof ElementNode &&
-    testCollision(
-      px,
-      py,
-      (active.lng.absX as number) || 0,
-      (active.lng.absY as number) || 0,
-      active.width || 0,
-      active.height || 0,
-    )
-  ) {
-    return active;
-  }
-
-  let parent = active?.parent;
-  while (parent) {
-    if (
-      (isFunction(parent.onMouseClick) || isFunction(parent.onEnter)) &&
-      testCollision(
-        px,
-        py,
-        (parent.lng.absX as number) || 0,
-        (parent.lng.absY as number) || 0,
-        parent.width || 0,
-        parent.height || 0,
-      )
-    ) {
-      return parent;
-    }
-    parent = parent.parent;
-  }
-
-  return null;
-}
-
-function applyPressedState(
-  element: ElementNode,
-  pressedState: CustomState,
-): void {
-  addCustomStateToElement(element, pressedState);
-}
-
-function handleElementClick(
-  clickedElement: ElementNode,
-  e: MouseEvent,
-  customStates?: MouseStateOptions,
-  pressedElementRef?: { current: ElementNode | null },
-): void {
-  if (customStates?.pressedState && pressedElementRef?.current) {
-    removeCustomStateFromElement(
-      pressedElementRef.current,
-      customStates.pressedState,
-    );
-    pressedElementRef.current = null;
-  }
-
-  // onMouseClick is mouse-specific, so call it directly.
-  if (isFunction(clickedElement.onMouseClick)) {
-    clickedElement.onMouseClick(e, clickedElement);
-    return;
-  }
-
-  // Otherwise focus the element and dispatch a synthetic Enter so the
-  // focusManager handles it exactly like a remote/keyboard Enter press:
-  clickedElement.setFocus();
-  setTimeout(() => {
-    document.dispatchEvent(createKeyboardEvent('Enter', 13));
-    setTimeout(
-      () =>
-        document.body.dispatchEvent(createKeyboardEvent('Enter', 13, 'keyup')),
-      1,
-    );
-  }, 1);
-}
-
-function createHandleClick<TApp extends ElementNode>(
-  myApp: TApp,
-  customStates?: MouseStateOptions,
-  pressedElementRef?: { current: ElementNode | null },
-) {
-  return (e: MouseEvent): void => {
-    const clickedElement = customStates
-      ? findElementWithCustomState(
-          myApp,
-          e.clientX,
-          e.clientY,
-          customStates.hoverState,
-        )
-      : findElementByActiveElement(e);
-
-    if (!clickedElement) {
-      return;
-    }
-
-    handleElementClick(clickedElement, e, customStates, pressedElementRef);
-  };
-}
-
-function createHandleMouseDown<TApp extends ElementNode>(
-  myApp: TApp,
-  customStates?: MouseStateOptions,
-  pressedElementRef?: { current: ElementNode | null },
-) {
-  return (e: MouseEvent): void => {
-    if (!customStates) {
-      return;
-    }
-
-    const pressedElement = findElementWithCustomState(
-      myApp,
-      e.clientX,
-      e.clientY,
-      customStates.hoverState,
-    );
-
-    if (!pressedElement) {
-      return;
-    }
-
-    applyPressedState(pressedElement, customStates.pressedState);
-    if (pressedElementRef) {
-      pressedElementRef.current = pressedElement;
-    }
-  };
-}
-
-function testCollision(
-  px: number,
-  py: number,
-  cx: number,
-  cy: number,
-  cw: number = 0,
-  ch: number = 0,
-): boolean {
-  return px >= cx && px <= cx + cw && py >= cy && py <= cy + ch;
-}
-
-function isNodeAtPosition(
-  node: ElementNode | ElementText | TextNode,
-  x: number,
-  y: number,
-): node is ElementNode {
-  if (!isElementNode(node)) {
-    return false;
-  }
-
-  return (
-    node.alpha !== 0 &&
-    !node.skipFocus &&
-    testCollision(
-      x,
-      y,
-      (node.lng.absX as number) || 0,
-      (node.lng.absY as number) || 0,
-      node.width || 0,
-      node.height || 0,
-    )
-  );
-}
-
-function getChildrenByPosition<TElement extends ElementNode = ElementNode>(
-  node: TElement,
-  x: number,
-  y: number,
-): TElement[] {
-  const result: TElement[] = [];
-  const precision = Config.rendererOptions?.deviceLogicalPixelRatio || 1;
-  const px = x / precision;
-  const py = y / precision;
-
-  let current: ElementNode | ElementText | TextNode | undefined = node;
-  while (current && isNodeAtPosition(current, px, py)) {
-    result.push(current as TElement);
-
-    let best: ElementNode | undefined;
-    let bestZ = -Infinity;
-    for (const child of current.children) {
-      if (!isNodeAtPosition(child, px, py)) continue;
-      const z = child.zIndex ?? -1;
-      if (z >= bestZ) {
-        bestZ = z;
-        best = child;
-      }
-    }
-    if (!best) break;
-    current = best;
-  }
-
-  return result;
-}
-
+/**
+ * Mouse input for a web app that starts with `createRenderer`. An app started
+ * with `startApp` has its host's pointer connected already and must not call
+ * this; where it finds the scene's pointer in place it does nothing.
+ *
+ * It feeds the window's mouse and wheel events to the scene's one pointer
+ * path (`createScenePointer`), which finds the node under the mouse and
+ * handles hover, press, click and scroll: see `sdk/input.ts` for the rules.
+ * Without `customStates` the hovered element is focused, as a pointer remote
+ * does on a TV; with them it gets the hover state instead and a click
+ * focuses.
+ *
+ * @param myApp The node whose tree takes the mouse.
+ * @param _throttleBy No longer used: the hit test runs per mouse event.
+ */
 export function useMouse<TApp extends ElementNode = ElementNode>(
   myApp: TApp = rootNode as TApp,
-  throttleBy: number = 100,
+  _throttleBy: number = 100,
   options?: UseMouseOptions,
 ): void {
-  const pos = useMousePosition();
-  const scheduled = createScheduled((fn) => throttle(fn, throttleBy));
-  let previousElement: ElementNode | null = null;
-  const pressedElementRef: { current: ElementNode | null } = { current: null };
-  const customStates = options?.customStates;
-  const hoverState = customStates?.hoverState;
-  const handleClick = createHandleClick(myApp, customStates, pressedElementRef);
-  const handleMouseDown = createHandleMouseDown(
-    myApp,
-    customStates,
-    pressedElementRef,
-  );
-  const owner = getOwner();
-  const handleClickContext = (e: MouseEvent) => {
-    runWithOwner(owner, () => handleClick(e));
+  if (hasScenePointer(myApp) || hasScenePointer(rootNode)) return;
+  const states = options?.customStates;
+  const pointer = createScenePointer(myApp, {
+    hoverState: states?.hoverState,
+    pressedState: states?.pressedState,
+    hoverFocus: !states,
+    cursor: (style) => (style === undefined ? resetCursor() : setCursor(style)),
+  });
+  // One point for every event: the scene reads it and keeps nothing.
+  const point = { x: 0, y: 0 };
+  const at = (e: MouseEvent) => {
+    const precision = Config.rendererOptions?.deviceLogicalPixelRatio || 1;
+    point.x = e.clientX / precision;
+    point.y = e.clientY / precision;
+    return point;
   };
-  const handleMouseDownContext = (e: MouseEvent) => {
-    runWithOwner(owner, () => handleMouseDown(e));
+  const down = (e: MouseEvent) => {
+    if (e.button === 0) pointer.down(1, at(e));
   };
-
-  const focusKey = Config.focusStateKey;
-
-  makeEventListener(window, 'wheel', handleScroll);
-  makeEventListener(window, 'click', handleClickContext);
-  makeEventListener(window, 'mousedown', handleMouseDownContext);
-  createEffect(() => {
-    if (!scheduled()) return;
-
-    const path = getChildrenByPosition(myApp, pos.x, pos.y);
-    let activeElm: ElementNode | undefined;
-    for (let i = path.length - 1; i >= 0; i--) {
-      const el = path[i]!;
-      if (
-        el.onEnter ||
-        el.onMouseClick ||
-        el.onFocus ||
-        el.cursorStyle ||
-        el[focusKey] ||
-        (hoverState && el[hoverState])
-      ) {
-        activeElm = el;
-        break;
-      }
-    }
-
-    if (!activeElm) {
-      if (previousElement && hoverState) {
-        removeCustomStateFromElement(previousElement, hoverState);
-        previousElement = null;
-      }
-      resetCursor();
-      return;
-    }
-
-    let p = activeElm.parent;
-    while (p?.forwardStates) {
-      activeElm = p;
-      p = p.parent;
-    }
-
-    // Update Row & Column Selected property
-    const activeElmParent = activeElm.parent;
-    if (activeElmParent?.selected !== undefined) {
-      activeElmParent.selected = activeElmParent.children.indexOf(activeElm);
-    }
-
-    if (previousElement && previousElement !== activeElm && hoverState) {
-      removeCustomStateFromElement(previousElement, hoverState);
-    }
-
-    if (hoverState) {
-      addCustomStateToElement(activeElm, hoverState);
-    } else {
-      activeElm.setFocus();
-    }
-
-    previousElement = activeElm;
-    setCursor(cursorForElement(activeElm));
+  const move = (e: MouseEvent) => pointer.move(1, at(e));
+  const up = (e: MouseEvent) => {
+    if (e.button === 0) pointer.up(1, at(e));
+  };
+  const wheel = (e: WheelEvent) => {
+    pointer.wheel(at(e), e.deltaX, e.deltaY);
+  };
+  window.addEventListener('mousedown', down);
+  window.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', up);
+  window.addEventListener('wheel', wheel);
+  onCleanup(() => {
+    window.removeEventListener('mousedown', down);
+    window.removeEventListener('mousemove', move);
+    window.removeEventListener('mouseup', up);
+    window.removeEventListener('wheel', wheel);
+    pointer.dispose();
   });
 }

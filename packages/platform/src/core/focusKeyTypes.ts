@@ -58,11 +58,24 @@ export type EventHandlers<Map> = {
 
 export type KeyHandlerReturn = boolean | void;
 
+/**
+ * A key handler (`on<Key>`, `on<Key>Release`, `onCapture<Key>`, `onCaptureKey`).
+ * Called in the capture phase (root to leaf) and in the bubble phase (leaf to
+ * root) with the same arguments:
+ *
+ * - `e`: the key event.
+ * - `handlerElm`: the element the handler is set on (also `this`).
+ * - `focusedElm`: the focused leaf element the key was sent to.
+ * - `mappedEvent`: the key map name for the key (`'Enter'`, `'Left'`, ...),
+ *   `undefined` when the key is not in the key map.
+ *
+ * Returning `true` stops the event.
+ */
 export type KeyHandler = (
   this: ElementNode,
   e: KeyboardEvent,
-  target: ElementNode,
   handlerElm: ElementNode,
+  focusedElm: ElementNode,
   mappedEvent?: string,
 ) => KeyHandlerReturn;
 

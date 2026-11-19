@@ -247,7 +247,7 @@ v.describe('contract: capture → bubble → onKeyPress order', () => {
   );
 
   v.it(
-    'arguments: capture (e, node, focusedLeaf, mappedName); on<Key> (e, node, focusedLeaf); onKeyPress (e, mappedName, node, focusedLeaf)',
+    'arguments: capture and on<Key> (e, node, focusedLeaf, mappedName); onKeyPress (e, mappedName, node, focusedLeaf)',
     async () => {
       const r = recorder();
       const { n, target, dispose } = await mountChain(allEnterHandlers(r));
@@ -260,7 +260,7 @@ v.describe('contract: capture → bubble → onKeyPress order', () => {
         n.leaf,
         'Enter',
       ]);
-      v.expect(call('mid.onEnter').args).toEqual([e, n.mid, n.leaf]);
+      v.expect(call('mid.onEnter').args).toEqual([e, n.mid, n.leaf, 'Enter']);
       v.expect(call('mid.onKeyPress').args).toEqual([
         e,
         'Enter',
@@ -350,7 +350,7 @@ v.describe('contract: capture → bubble → onKeyPress order', () => {
         'outer.onEnterRelease',
       ]);
       v.expect(r.calls[0]!.args).toEqual([e, n.outer, n.leaf, 'Enter']);
-      v.expect(r.calls[3]!.args).toEqual([e, n.leaf, n.leaf]);
+      v.expect(r.calls[3]!.args).toEqual([e, n.leaf, n.leaf, 'Enter']);
       dispose();
     },
   );

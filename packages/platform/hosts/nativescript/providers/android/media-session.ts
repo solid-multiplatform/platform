@@ -1,5 +1,6 @@
 import type {
   MediaAction,
+  MediaActionHandler,
   MediaMetadata,
   MediaPositionState,
   MediaSessionPort,
@@ -35,7 +36,7 @@ export function mediaSession(app: AndroidApp): MediaSessionPort {
     nexttrack: State.ACTION_SKIP_TO_NEXT,
     previoustrack: State.ACTION_SKIP_TO_PREVIOUS,
   };
-  const handlers = new Map<MediaAction, () => void>();
+  const handlers = new Map<MediaAction, MediaActionHandler>();
   let session: android.media.session.MediaSession | undefined;
   let metadata: MediaMetadata | undefined;
   let state: PlaybackState = 'none';
@@ -62,9 +63,11 @@ export function mediaSession(app: AndroidApp): MediaSessionPort {
       });
       dispatch = (action, seconds) =>
         // The web's handler for `seekto` is given the time; so is this one.
-        (handlers.get(action) as ((details?: object) => void) | undefined)?.(
-          seconds === undefined ? undefined : { seekTime: seconds },
-        );
+        (
+          handlers.get(action) as
+            | ((details?: { seekTime: number }) => void)
+            | undefined
+        )?.(seconds === undefined ? undefined : { seekTime: seconds });
       session = new android.media.session.MediaSession(
         app.context,
         'solid-multiplatform',

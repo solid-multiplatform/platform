@@ -1,3 +1,45 @@
+/**
+ * Pointer and touch input.
+ *
+ * A host turns its platform's events into `down`/`move`/`up`/`wheel` calls in
+ * scene coordinates (a {@link PointerSource} feeding a {@link PointerSink}).
+ * The framework does the rest in one place, {@link createScenePointer}: it
+ * finds the node under the pointer by walking the scene, and recognises
+ * hover, press, click, hold, drag and scroll. `startApp` connects the two, so
+ * an application registers nothing.
+ *
+ * Which nodes take a pointer (a "pointer target"): a rendered node with any of
+ * `onEnter`, `onMouseClick`, `onPointerHold`, `onPointerDrag`,
+ * `onPointerScroll`, `onFocus`, `cursorStyle`, or a style for the focus,
+ * hover or pressed state (`$focus`, `$hover`, `$pressed`).
+ *
+ * Which target is under a point: the front-most one, where a node is in
+ * front of its parent and of the siblings painted before it (higher `zIndex`,
+ * then later in the child list). A node is only looked at where its ancestors
+ * are: outside an ancestor's box it cannot be hit, which is also what
+ * `clipping` shows. `alpha` 0 and `skipFocus` take a node and everything
+ * inside it out; nodes that are not targets let the pointer through to what
+ * is behind them; a target with `ariaDisabled` stops the pointer and does
+ * nothing. While a focus trap is active (a modal), only the trap is searched.
+ *
+ * Nothing here runs unless the host calls in: no listeners, no frame work and
+ * no polling. The one timer is the hold timeout, set while a press is down on
+ * a node with `onPointerHold`. A pointer move allocates nothing.
+ */
+import { getOwner, runWithOwner } from 'solid-js';
+import { activeElement } from '../core/activeElement.js';
+import { Config } from '../core/config.js';
+import type { ElementNode } from '../core/elementNode.js';
+import {
+  currentFocusTrap,
+  focusPath,
+  pressKey,
+  type KeyEventLike,
+} from '../core/focusManager.js';
+import type { DollarString } from '../core/intrinsicTypes.js';
+import { isElementNode, isFunction } from '../core/utils.js';
+import { cursorForElement, type CursorStyle } from './cursor.js';
+
 export interface Rect {
   x: number;
   y: number;
@@ -8,208 +50,588 @@ export interface Point {
   x: number;
   y: number;
 }
-export interface InputControl {
-  bounds(): Rect;
-  disabled?(): boolean;
-  focus?(): void;
-  hover?(active: boolean): void;
-  pressed?(active: boolean): void;
-  activate?(point?: Point): void;
-  hold?(): void;
-  drag?(
-    phase: 'start' | 'move' | 'end' | 'cancel',
-    point: Point,
-    origin: Point,
-  ): void;
-  scroll?(x: number, y: number): void;
+
+/** What a host calls with pointer input. Points are in scene coordinates. */
+export interface PointerSink {
+  /** A pointer went down. True when it landed on something. */
+  down(id: number, point: Point): boolean;
+  /** A pointer moved. `canHover` is false for touch, which does not hover. */
+  move(id: number, point: Point, canHover?: boolean): void;
+  /** A pointer went up: a click, unless it was a hold or a drag. */
+  up(id: number, point: Point): void;
+  /** The platform took one pointer away, or all of them: no click. */
+  cancel(id: number): void;
+  cancelAll(): void;
+  /** The pointer left the surface. */
+  leave(): void;
+  /** A wheel or trackpad scroll. True when the scene used it. */
+  wheel(point: Point, x: number, y: number): boolean;
 }
+
+/** A host's pointer input: mouse, touch, pen, a pointer remote. */
+export interface PointerSource {
+  /**
+   * Starts delivering pointer input to `sink` and returns how to stop. A
+   * host listens for nothing before this is called.
+   */
+  connect(sink: PointerSink): () => void;
+  /** Shows the cursor of the hovered node; `undefined` puts the default back. */
+  setCursor?(style: CursorStyle | undefined): void;
+}
+
+export interface ScenePointerOptions {
+  /** Milliseconds a press stays down before `onPointerHold`. Defaults to 550. */
+  holdMs?: number;
+  /**
+   * How far a press may move, in scene units, before it drags what can be
+   * dragged. Defaults to 8.
+   */
+  slop?: number;
+  /** State of the hovered node. Defaults to `$hover`. */
+  hoverState?: DollarString;
+  /** State of a pressed node. Defaults to `$pressed`. */
+  pressedState?: DollarString;
+  /**
+   * Focus what the pointer hovers, as a pointer remote does on a TV. Off by
+   * default: a click focuses.
+   */
+  hoverFocus?: boolean;
+  /** Shows a cursor; `undefined` puts the platform's own back. */
+  cursor?(style: CursorStyle | undefined): void;
+}
+
+export interface ScenePointer extends PointerSink {
+  /**
+   * Moves focus to the next node a click could focus, in tree order, and
+   * around at the ends: Tab on a keyboard. False when there is none.
+   */
+  focusNext(reverse?: boolean): boolean;
+  dispose(): void;
+}
+
 interface Press {
-  control: InputControl;
+  node: ElementNode;
+  /** The node that shows the pressed state: `node`, or who forwards states to it. */
+  shown: ElementNode;
+  /** The node being dragged, once the press has become a drag. */
+  dragged: ElementNode | undefined;
+  /** The press left the slop and nothing around it can be dragged. */
+  fixed: boolean;
+  held: boolean;
   origin: Point;
   point: Point;
-  held: boolean;
-  dragged: boolean;
-  timer?: ReturnType<typeof setTimeout>;
+  timer: ReturnType<typeof setTimeout> | undefined;
 }
-export function createInputScope(
-  options: { holdMs?: number; slop?: number } = {},
-) {
-  const controls = new Set<InputControl>();
+
+// A key event for input that is not a key. Handlers written for a browser
+// may call these two methods.
+const keyEvent = (key: string, keyCode: number): KeyEventLike =>
+  Object.freeze({
+    key,
+    keyCode,
+    which: keyCode,
+    repeat: false,
+    preventDefault() {},
+    stopPropagation() {},
+  });
+const ENTER = keyEvent('Enter', 13);
+const ARROW_UP = keyEvent('ArrowUp', 38);
+const ARROW_DOWN = keyEvent('ArrowDown', 40);
+
+/** Milliseconds between two focus steps made by a wheel nothing scrolled with. */
+const WHEEL_STEP_MS = 250;
+
+/** The node that shows a state for `node`: the outermost that forwards its states to it. */
+function stateOwner(node: ElementNode): ElementNode {
+  let parent = node.parent;
+  while (parent !== undefined && parent.forwardStates) {
+    node = parent;
+    parent = parent.parent;
+  }
+  return node;
+}
+
+/** Keeps a `Row` or `Column` pointing at the child that is about to be focused. */
+function selectInParent(node: ElementNode): void {
+  const parent = node.parent;
+  if (parent !== undefined && parent.selected !== undefined) {
+    parent.selected = parent.children.indexOf(node);
+  }
+}
+
+/**
+ * Activates `node` the way a remote's OK key does: focuses it, then presses
+ * Enter on the focus path (`onEnter`). Nothing is pressed when focus could
+ * not go there, as with a node outside a modal's focus trap.
+ */
+export function activateNode(node: ElementNode): void {
+  selectInParent(node);
+  node.setFocus();
+  // setFocus applies in the post-mutation microtask queued before this one.
+  queueMicrotask(() => {
+    if (focusPath().indexOf(node) !== -1) pressKey('Enter', ENTER);
+  });
+}
+
+const attached = new Set<ElementNode>();
+
+/** Whether a scene pointer is hit-testing `root`. */
+export function hasScenePointer(root: ElementNode): boolean {
+  return attached.has(root);
+}
+
+/**
+ * The scene's pointer handling for the tree under `root`: the hit test and
+ * the gesture recogniser. A host's {@link PointerSource} feeds it.
+ */
+export function createScenePointer(
+  root: ElementNode,
+  options: ScenePointerOptions = {},
+): ScenePointer {
+  const holdMs = options.holdMs ?? 550;
+  const slop = options.slop ?? 8;
+  const hoverState = options.hoverState ?? '$hover';
+  const pressedState = options.pressedState ?? '$pressed';
+  const hoverFocus = options.hoverFocus === true;
+  const showCursor = options.cursor;
+  const owner = getOwner();
   const presses = new Map<number, Press>();
-  let hovered: InputControl | undefined;
-  let focused: InputControl | undefined;
-  let keyHeld: 'Enter' | ' ' | undefined;
-  const keyboard = -1;
-  const hit = (point: Point) => {
-    let match: InputControl | undefined;
-    for (const c of controls) {
-      if (c.disabled?.()) continue;
-      const b = c.bounds();
-      if (
-        point.x >= b.x &&
-        point.y >= b.y &&
-        point.x < b.x + b.width &&
-        point.y < b.y + b.height
-      )
-        match = c;
-    }
-    return match;
+  let hovered: ElementNode | undefined;
+  let cursor: CursorStyle | undefined;
+  let lastWheelStep = -WHEEL_STEP_MS;
+  attached.add(root);
+
+  // ---- Hit test. The point is kept here so that the walk takes no
+  // arguments and builds nothing.
+  let px = 0;
+  let py = 0;
+
+  const isTarget = (node: ElementNode): boolean =>
+    !!(
+      node.onEnter ||
+      node.onMouseClick ||
+      node.onPointerHold ||
+      node.onPointerDrag ||
+      node.onPointerScroll ||
+      node.onFocus ||
+      node.cursorStyle ||
+      node[Config.focusStateKey] ||
+      node[hoverState] ||
+      node[pressedState]
+    );
+
+  const inside = (node: ElementNode): boolean => {
+    const x = node.absX || 0;
+    const y = node.absY || 0;
+    return (
+      px >= x &&
+      py >= y &&
+      px < x + (node.width || 0) &&
+      py < y + (node.height || 0)
+    );
   };
-  function focus(c: InputControl | undefined) {
-    if (c && controls.has(c) && !c.disabled?.()) {
-      focused = c;
-      c.focus?.();
+
+  /** The front-most target under the point in `node`, which the point is in. */
+  function probe(node: ElementNode): ElementNode | undefined {
+    const children = node.children;
+    const count = children.length;
+    // Front to back. Usually every child has the same zIndex, and that is
+    // last to first.
+    let top = -Infinity;
+    let mixed = false;
+    for (let i = 0; i < count; i++) {
+      const z = (children[i]!.zIndex as number | undefined) || 0;
+      if (z !== top) {
+        if (top !== -Infinity) mixed = true;
+        if (z > top) top = z;
+      }
+    }
+    if (!mixed) {
+      for (let i = count - 1; i >= 0; i--) {
+        const hit = probeChild(children[i]!);
+        if (hit !== undefined) return hit;
+      }
+    } else {
+      // Next lower (zIndex, index) each round: no sorted copy of the list.
+      let lastZ = Infinity;
+      let lastIndex = count;
+      for (;;) {
+        let pick = -1;
+        let pickZ = -Infinity;
+        for (let i = 0; i < count; i++) {
+          const z = (children[i]!.zIndex as number | undefined) || 0;
+          if ((z < lastZ || (z === lastZ && i < lastIndex)) && z >= pickZ) {
+            pick = i;
+            pickZ = z;
+          }
+        }
+        if (pick === -1) break;
+        lastZ = pickZ;
+        lastIndex = pick;
+        const hit = probeChild(children[pick]!);
+        if (hit !== undefined) return hit;
+      }
+    }
+    return isTarget(node) ? node : undefined;
+  }
+
+  function probeChild(child: ElementNode['children'][number]) {
+    return isElementNode(child) &&
+      child.rendered &&
+      child.alpha !== 0 &&
+      !child.skipFocus &&
+      inside(child)
+      ? probe(child)
+      : undefined;
+  }
+
+  /** The target under a point, disabled or not. */
+  function hit(x: number, y: number): ElementNode | undefined {
+    px = x;
+    py = y;
+    const start = currentFocusTrap() ?? root;
+    if (!start.rendered || start.alpha === 0) return undefined;
+    // The root need not contain the point for its children to be searched.
+    const found = probe(start);
+    return found === start && !inside(start) ? undefined : found;
+  }
+
+  // ---- Hover and cursor.
+  function setCursor(style: CursorStyle | undefined) {
+    if (style !== cursor) {
+      cursor = style;
+      showCursor?.(style);
     }
   }
-  function hover(c?: InputControl) {
-    if (hovered !== c) {
-      hovered?.hover?.(false);
-      hovered = c;
-      c?.hover?.(true);
+
+  function setHover(node: ElementNode | undefined) {
+    const shown = node === undefined ? undefined : stateOwner(node);
+    if (shown === hovered) return;
+    hovered?.states.remove(hoverState);
+    hovered = shown;
+    if (shown === undefined) return;
+    shown.states.add(hoverState);
+    if (hoverFocus) {
+      selectInParent(shown);
+      shown.setFocus();
     }
   }
+
+  function hoverAt(x: number, y: number) {
+    const node = hit(x, y);
+    if (node === undefined) {
+      setHover(undefined);
+      setCursor(undefined);
+    } else if (node.ariaDisabled === true) {
+      setHover(undefined);
+      setCursor(node.cursorStyle);
+    } else {
+      setHover(node);
+      setCursor(cursorForElement(node));
+    }
+  }
+
+  // ---- Presses.
+  function release(press: Press) {
+    clearTimeout(press.timer);
+    press.timer = undefined;
+    press.shown.states.remove(pressedState);
+  }
+
   function cancel(id: number) {
-    const p = presses.get(id);
-    if (!p) return;
+    const press = presses.get(id);
+    if (press === undefined) return;
     presses.delete(id);
-    clearTimeout(p.timer);
-    p.control.pressed?.(false);
-    if (p.dragged) p.control.drag?.('cancel', p.point, p.origin);
-    if (id === keyboard) keyHeld = undefined;
+    release(press);
+    const dragged = press.dragged;
+    if (dragged !== undefined) {
+      dragged.onPointerDrag!('cancel', press.point, press.origin, dragged);
+    }
   }
-  function begin(id: number, c: InputControl, point: Point) {
+
+  function begin(id: number, node: ElementNode, x: number, y: number) {
     cancel(id);
-    const p: Press = {
-      control: c,
-      origin: point,
-      point,
+    const press: Press = {
+      node,
+      shown: stateOwner(node),
+      dragged: undefined,
+      fixed: false,
       held: false,
-      dragged: false,
+      origin: { x, y },
+      point: { x, y },
+      timer: undefined,
     };
-    presses.set(id, p);
-    focus(c);
-    c.pressed?.(true);
-    if (c.hold)
-      p.timer = setTimeout(() => {
-        if (c.disabled?.()) {
+    presses.set(id, press);
+    press.shown.states.add(pressedState);
+    if (isFunction(node.onPointerHold)) {
+      press.timer = setTimeout(() => {
+        press.timer = undefined;
+        if (presses.get(id) !== press) return;
+        if (node.ariaDisabled === true) {
           cancel(id);
           return;
         }
-        p.held = true;
-        c.hold?.();
-      }, options.holdMs ?? 550);
+        press.held = true;
+        runWithOwner(owner, () => node.onPointerHold!(node));
+      }, holdMs);
+    }
   }
-  function finish(id: number, point: Point, inside: boolean) {
-    const p = presses.get(id);
-    if (!p) return;
-    presses.delete(id);
-    clearTimeout(p.timer);
-    p.control.pressed?.(false);
-    if (p.dragged) p.control.drag?.('end', point, p.origin);
-    else if (!p.held && inside && !p.control.disabled?.())
-      p.control.activate?.(id === keyboard ? undefined : point);
+
+  /** The nearest node from `node` out that can be dragged. */
+  function draggable(node: ElementNode | undefined): ElementNode | undefined {
+    while (node !== undefined && !isFunction(node.onPointerDrag)) {
+      node = node.parent;
+    }
+    return node;
   }
-  function cancelAll() {
-    for (const id of presses.keys()) cancel(id);
-    hover();
-  }
+
+  // ---- The sink. Each call's arguments are parked in these so that it can
+  // run in the app's owner (handlers may create computations) without a
+  // closure per event.
+  let argId = 0;
+  let argX = 0;
+  let argY = 0;
+  let argHover = true;
+  let argDeltaX = 0;
+  let argDeltaY = 0;
+  let result = false;
+  const wheelEvent = { deltaX: 0, deltaY: 0 };
+
+  const onDown = () => {
+    const node = hit(argX, argY);
+    result = node !== undefined && node.ariaDisabled !== true;
+    if (result) begin(argId, node!, argX, argY);
+  };
+
+  const onMove = () => {
+    const press = presses.get(argId);
+    if (press === undefined) {
+      if (argHover) hoverAt(argX, argY);
+      return;
+    }
+    press.point.x = argX;
+    press.point.y = argY;
+    if (press.node.ariaDisabled === true) {
+      cancel(argId);
+      return;
+    }
+    let dragged = press.dragged;
+    if (dragged === undefined && !press.held && !press.fixed) {
+      const dx = argX - press.origin.x;
+      const dy = argY - press.origin.y;
+      if (dx * dx + dy * dy > slop * slop) {
+        dragged = draggable(press.node);
+        if (dragged === undefined) {
+          press.fixed = true;
+        } else {
+          // The press is a drag now: no hold, no pressed look, no click.
+          release(press);
+          press.dragged = dragged;
+          dragged.onPointerDrag!('start', press.point, press.origin, dragged);
+        }
+      }
+    }
+    if (dragged !== undefined) {
+      dragged.onPointerDrag!('move', press.point, press.origin, dragged);
+    }
+  };
+
+  const onUp = () => {
+    const press = presses.get(argId);
+    if (press === undefined) return;
+    presses.delete(argId);
+    release(press);
+    press.point.x = argX;
+    press.point.y = argY;
+    const node = press.node;
+    const dragged = press.dragged;
+    if (dragged !== undefined) {
+      dragged.onPointerDrag!('end', press.point, press.origin, dragged);
+    } else if (
+      !press.held &&
+      node.ariaDisabled !== true &&
+      hit(argX, argY) === node
+    ) {
+      if (isFunction(node.onMouseClick)) {
+        node.onMouseClick(press.point, node);
+      } else {
+        activateNode(node);
+      }
+    }
+  };
+
+  const onWheel = () => {
+    wheelEvent.deltaX = argDeltaX;
+    wheelEvent.deltaY = argDeltaY;
+    let node = hit(argX, argY);
+    while (node !== undefined) {
+      const scroll = node.onPointerScroll;
+      if (isFunction(scroll) && scroll.call(node, wheelEvent, node) !== false) {
+        result = true;
+        return;
+      }
+      node = node.parent;
+    }
+    // Nothing scrolls here: step focus up or down, as the arrow keys would.
+    if (argDeltaY === 0) {
+      result = false;
+      return;
+    }
+    const now = performance.now();
+    if (now - lastWheelStep < WHEEL_STEP_MS) {
+      result = true;
+      return;
+    }
+    lastWheelStep = now;
+    result =
+      argDeltaY < 0 ? pressKey('Up', ARROW_UP) : pressKey('Down', ARROW_DOWN);
+  };
+
+  const onCancelAll = () => {
+    for (const id of [...presses.keys()]) cancel(id);
+    setHover(undefined);
+    setCursor(undefined);
+  };
+
+  const onLeave = () => {
+    setHover(undefined);
+    setCursor(undefined);
+  };
+
+  const onCancel = () => cancel(argId);
+
   return {
-    register(c: InputControl) {
-      controls.add(c);
-      return () => {
-        controls.delete(c);
-        for (const [id, p] of presses) if (p.control === c) cancel(id);
-        if (hovered === c) hover();
-        if (focused === c) focused = undefined;
-      };
+    down(id, point) {
+      argId = id;
+      argX = point.x;
+      argY = point.y;
+      runWithOwner(owner, onDown);
+      return result;
     },
-    focus,
-    down(id: number, point: Point) {
-      const c = hit(point);
-      if (c) begin(id, c, point);
-      return !!c;
+    move(id, point, canHover = true) {
+      argId = id;
+      argX = point.x;
+      argY = point.y;
+      argHover = canHover;
+      runWithOwner(owner, onMove);
     },
-    move(id: number, point: Point, canHover = true) {
-      const p = presses.get(id);
-      if (!p) {
-        if (canHover) hover(hit(point));
-        return;
-      }
-      p.point = point;
-      if (p.control.disabled?.()) {
-        cancel(id);
-        return;
-      }
-      if (
-        !p.dragged &&
-        !p.held &&
-        Math.hypot(point.x - p.origin.x, point.y - p.origin.y) >
-          (options.slop ?? 8)
-      ) {
-        clearTimeout(p.timer);
-        p.dragged = true;
-        p.control.drag?.('start', point, p.origin);
-      }
-      if (p.dragged) p.control.drag?.('move', point, p.origin);
+    up(id, point) {
+      argId = id;
+      argX = point.x;
+      argY = point.y;
+      runWithOwner(owner, onUp);
     },
-    up(id: number, point: Point) {
-      const p = presses.get(id);
-      if (p) finish(id, point, hit(point) === p.control);
+    cancel(id) {
+      argId = id;
+      runWithOwner(owner, onCancel);
+    },
+    cancelAll() {
+      runWithOwner(owner, onCancelAll);
     },
     leave() {
-      hover();
+      runWithOwner(owner, onLeave);
     },
-    cancel,
-    cancelAll,
-    wheel(point: Point, x: number, y: number) {
-      const c = hit(point);
-      if (!c?.scroll) return false;
-      c.scroll(x, y);
+    wheel(point, x, y) {
+      argX = point.x;
+      argY = point.y;
+      argDeltaX = x;
+      argDeltaY = y;
+      runWithOwner(owner, onWheel);
+      return result;
+    },
+    focusNext(reverse = false) {
+      const stops: ElementNode[] = [];
+      const collect = (node: ElementNode) => {
+        if (
+          (node.onEnter || node.onFocus || node[Config.focusStateKey]) &&
+          node.ariaDisabled !== true
+        ) {
+          stops.push(node);
+        }
+        for (const child of node.children) {
+          if (
+            isElementNode(child) &&
+            child.rendered &&
+            child.alpha !== 0 &&
+            !child.skipFocus
+          ) {
+            collect(child);
+          }
+        }
+      };
+      collect(currentFocusTrap() ?? root);
+      if (stops.length === 0) return false;
+      const path = focusPath();
+      let index = stops.indexOf(activeElement()!);
+      // Focus inside a stop counts as being on it.
+      for (let i = 0; index === -1 && i < path.length; i++) {
+        index = stops.indexOf(path[i]!);
+      }
+      const next =
+        index === -1
+          ? reverse
+            ? stops.length - 1
+            : 0
+          : (index + (reverse ? -1 : 1) + stops.length) % stops.length;
+      selectInParent(stops[next]!);
+      stops[next]!.setFocus();
       return true;
     },
-    key(key: string, down: boolean, repeat = false, shift = false) {
-      if (key === 'Tab' && down) {
-        const list = [...controls].filter((c) => !c.disabled?.());
-        if (!list.length) return false;
-        const i = focused ? list.indexOf(focused) : -1;
-        focus(
-          list[
-            i < 0
-              ? shift
-                ? list.length - 1
-                : 0
-              : (i + (shift ? -1 : 1) + list.length) % list.length
-          ],
-        );
-        return true;
-      }
-      if (key !== 'Enter' && key !== ' ') return false;
-      if (down && focused && !focused.disabled?.()) {
-        if (!repeat && !keyHeld) {
-          begin(keyboard, focused, { x: 0, y: 0 });
-          keyHeld = key;
-        }
-        return true;
-      }
-      if (!down && keyHeld === key) {
-        keyHeld = undefined;
-        finish(keyboard, { x: 0, y: 0 }, true);
-        return true;
-      }
-      return false;
+    dispose() {
+      onCancelAll();
+      attached.delete(root);
+    },
+  };
+}
+
+/**
+ * For a host that pushes pointer input by hand and has not moved to
+ * `startApp`: native touch, the desktop window, browser TVs. The host calls
+ * `down`/`move`/`up`/`wheel` on it as it did; it is also the
+ * {@link PointerSource} the app is mounted with, and input reaches the scene
+ * once that connects it. Nothing is registered on it any more.
+ */
+export function createInputScope() {
+  let sink: PointerSink | undefined;
+  const cancelAll = () => sink?.cancelAll();
+  return {
+    connect(next: PointerSink) {
+      sink = next;
+      return () => {
+        if (sink === next) sink = undefined;
+      };
+    },
+    down: (id: number, point: Point) => sink?.down(id, point) ?? false,
+    move: (id: number, point: Point, canHover = true) =>
+      sink?.move(id, point, canHover),
+    up: (id: number, point: Point) => sink?.up(id, point),
+    leave: () => sink?.leave(),
+    cancel: (id: number) => sink?.cancel(id),
+    cancelAll,
+    wheel: (point: Point, x: number, y: number) =>
+      sink?.wheel(point, x, y) ?? false,
+    /** Tab and Shift+Tab move focus through the scene; other keys are the focus manager's. */
+    key(key: string, down: boolean, _repeat = false, shift = false) {
+      if (key !== 'Tab' || !down) return false;
+      return (
+        (sink as Partial<ScenePointer> | undefined)?.focusNext?.(shift) ?? false
+      );
     },
     dispose() {
       cancelAll();
-      controls.clear();
-      focused = undefined;
+      sink = undefined;
     },
   };
 }
 export type InputScope = ReturnType<typeof createInputScope>;
-/** Coordinates are converted to logical scene units before hit testing or capture. */
+
+/**
+ * Feeds a page element's pointer events to `sink`. `project` turns client
+ * coordinates into scene coordinates.
+ */
 export function bindPointerEvents(
   element: HTMLElement,
-  scope: InputScope,
+  sink: PointerSink,
   project: (x: number, y: number) => Point,
 ) {
   const events = new AbortController();
@@ -218,7 +640,7 @@ export function bindPointerEvents(
     'pointerdown',
     (e) => {
       if (e.button !== 0) return;
-      if (scope.down(e.pointerId, project(e.clientX, e.clientY))) {
+      if (sink.down(e.pointerId, project(e.clientX, e.clientY))) {
         element.setPointerCapture(e.pointerId);
         e.preventDefault();
       }
@@ -228,7 +650,7 @@ export function bindPointerEvents(
   element.addEventListener(
     'pointermove',
     (e) =>
-      scope.move(
+      sink.move(
         e.pointerId,
         project(e.clientX, e.clientY),
         e.pointerType !== 'touch',
@@ -237,27 +659,27 @@ export function bindPointerEvents(
   );
   element.addEventListener(
     'pointerup',
-    (e) => scope.up(e.pointerId, project(e.clientX, e.clientY)),
+    (e) => sink.up(e.pointerId, project(e.clientX, e.clientY)),
     opts,
   );
   element.addEventListener(
     'pointercancel',
-    (e) => scope.cancel(e.pointerId),
+    (e) => sink.cancel(e.pointerId),
     opts,
   );
   element.addEventListener(
     'lostpointercapture',
-    (e) => scope.cancel(e.pointerId),
+    (e) => sink.cancel(e.pointerId),
     opts,
   );
-  element.addEventListener('pointerleave', () => scope.leave(), opts);
+  element.addEventListener('pointerleave', () => sink.leave(), opts);
   element.addEventListener(
     'wheel',
     (e) => {
       const unit =
         e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? element.clientHeight : 1;
       if (
-        scope.wheel(
+        sink.wheel(
           project(e.clientX, e.clientY),
           e.deltaX * unit,
           e.deltaY * unit,
@@ -267,9 +689,10 @@ export function bindPointerEvents(
     },
     { ...opts, passive: false },
   );
-  window.addEventListener('blur', scope.cancelAll, opts);
+  const cancelAll = () => sink.cancelAll();
+  window.addEventListener('blur', cancelAll, opts);
   return () => {
     events.abort();
-    scope.cancelAll();
+    sink.cancelAll();
   };
 }

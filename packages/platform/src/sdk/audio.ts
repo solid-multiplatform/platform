@@ -23,6 +23,13 @@ export interface AudioPlayOptions {
   volume?: number;
 }
 
+/**
+ * What the host's player is doing. `interrupted` is a pause the app did not
+ * ask for: another app took audio focus, a call came in, the output went
+ * away. `playing` follows when the host resumes by itself.
+ */
+export type AudioPlaybackState = 'playing' | 'paused' | 'ended' | 'interrupted';
+
 export interface AudioPort {
   play(track: AudioTrack, options?: AudioPlayOptions): Promise<void>;
   pause(): Promise<void>;
@@ -30,6 +37,12 @@ export interface AudioPort {
   stop(): Promise<void>;
   seek(position: number): Promise<void>;
   setVolume(volume: number): void;
+  /**
+   * Reports playback changes: at least the ones the app did not make
+   * itself (an interruption, the host resuming, the track's end). Returns
+   * the function that stops reporting. A host without them leaves this out.
+   */
+  subscribe?(listener: (state: AudioPlaybackState) => void): () => void;
 }
 
 declare module './registry.js' {
@@ -66,6 +79,22 @@ export function createAudioPlayer(
   const [playing, setPlaying] = createSignal(false);
   const [volume, setVolumeSignal] = createSignal(options.volume ?? 1);
 
+  // The port's own playback changes (loss of audio focus, the track's end),
+  // followed only from `play` or `resume` until `stop` or the track's end:
+  // a player that plays nothing listens to nothing.
+  let unfollow: (() => void) | undefined;
+  const stopFollowing = () => {
+    unfollow?.();
+    unfollow = undefined;
+  };
+  const follow = (port: AudioPort) => {
+    if (unfollow !== undefined || !port.subscribe) return;
+    unfollow = port.subscribe((state) => {
+      setPlaying(state === 'playing');
+      if (state === 'ended') stopFollowing();
+    });
+  };
+
   return {
     track,
     playing,
@@ -78,6 +107,7 @@ export function createAudioPlayer(
       });
       setTrack(next);
       setPlaying(true);
+      follow(port);
     },
     async pause() {
       const port = ready() ?? (await loadService('audio'));
@@ -88,9 +118,11 @@ export function createAudioPlayer(
       const port = ready() ?? (await loadService('audio'));
       await port.resume();
       setPlaying(true);
+      follow(port);
     },
     async stop() {
       const port = ready() ?? (await loadService('audio'));
+      stopFollowing();
       await port.stop();
       setPlaying(false);
       setTrack(undefined);

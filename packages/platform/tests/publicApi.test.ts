@@ -26,7 +26,7 @@ import * as webServices from '@solid-multiplatform/platform/services/web';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 288 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 287 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -143,7 +143,6 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'fileExists',
       'findMenuItem',
       'flattenSections',
-      'flattenStyles',
       'formatDate',
       'formatDisplayName',
       'formatList',
@@ -152,6 +151,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'gamepadEdges',
       'getCalendarEvents',
       'getContacts',
+      'getContactsPage',
       'getCurrentPosition',
       'getElementScreenRect',
       'getIcon',
@@ -215,7 +215,6 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'openDirections',
       'openExternal',
       'openMap',
-      'openMicrophone',
       'parseCombo',
       'parseVersion',
       'pickContact',
@@ -282,8 +281,8 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'spliceItem',
       'spread',
       'startLightningRenderer',
+      'startRecording',
       'stickyHeaderAt',
-      'stopMicrophone',
       'supports',
       'supportsDrm',
       'supportsOnlyWebGL2',
@@ -467,9 +466,13 @@ v.describe('Exports: runtime export names of every entry point', () => {
   );
 
   v.test(
-    '@solid-multiplatform/platform/services/web (src/hosts/web-services/index.ts): 2 names',
+    '@solid-multiplatform/platform/services/web (src/hosts/web-services/index.ts): 3 names',
     () => {
-      v.expect(names(webServices)).toEqual(['webAppServices', 'webServices']);
+      v.expect(names(webServices)).toEqual([
+        'openMicrophoneStream',
+        'webAppServices',
+        'webServices',
+      ]);
     },
   );
 
@@ -500,12 +503,13 @@ v.describe('Exports: runtime export names of every entry point', () => {
   );
 
   v.test(
-    '@solid-multiplatform/platform/focusManager (src/core/focusManager.ts): 10 names',
+    '@solid-multiplatform/platform/focusManager (src/core/focusManager.ts): 11 names',
     () => {
       v.expect(names(focusManager)).toEqual([
         'currentFocusTrap',
         'focusPath',
         'getFocusHistory',
+        'pressKey',
         'printFocusHistory',
         'pushFocusTrap',
         'releaseKeySuppression',

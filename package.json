@@ -9,6 +9,7 @@
   "scripts": {
     "build": "npm --prefix packages/renderer run build && npm --prefix packages/platform run build",
     "test": "npm --prefix packages/renderer test && npm --prefix packages/platform test && npm --prefix packages/video test",
+    "test:showcase": "npm --prefix apps/showcase test",
     "lint": "prettier --check \"**/*.{ts,js,cjs,md}\" && oxlint",
     "lint:fix": "prettier --write \"**/*.{ts,js,cjs,md}\" && oxlint --fix",
     "docs:check": "node scripts/feature-matrix.mjs --check",

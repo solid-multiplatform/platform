@@ -15,8 +15,50 @@ import { pathToFileURL } from 'node:url';
 
 const host = path.dirname(fileURLToPath(import.meta.url));
 
-/** Run from the Roku project. The shared entry exports mount() and returns a disposer. */
-export function rokuConfig({ entry, assets, title, manifestEntries = {} }) {
+// The sizes the channel store requires of each image.
+const IMAGE_SIZES = {
+  mm_icon_focus_fhd: [540, 405],
+  mm_icon_focus_hd: [290, 218],
+  splash_screen_fhd: [1920, 1080],
+  splash_screen_hd: [1280, 720],
+  splash_screen_sd: [720, 480],
+};
+
+/** Copies a PNG into the package and checks it has the size its manifest key requires. */
+function manifestImage(key, file, staticDir) {
+  const data = readFileSync(path.resolve(file));
+  if (data.length < 24 || data.toString('latin1', 1, 4) !== 'PNG')
+    throw new Error(`${key}: ${file} is not a PNG file.`);
+  const [width, height] = IMAGE_SIZES[key];
+  const got = [data.readUInt32BE(16), data.readUInt32BE(20)];
+  if (got[0] !== width || got[1] !== height)
+    throw new Error(
+      `${key}: ${file} is ${got[0]}x${got[1]}, and must be ${width}x${height}.`,
+    );
+  mkdirSync(path.join(staticDir, 'images'), { recursive: true });
+  cpSync(path.resolve(file), path.join(staticDir, 'images', key + '.png'));
+  return `pkg:/images/${key}.png`;
+}
+
+/**
+ * Run from the Roku project. `entry` is the app's own entry module: the one
+ * that calls `startApp(rokuHost(), App)`.
+ */
+export function rokuConfig({
+  entry,
+  assets,
+  title,
+  version = '1.0.1',
+  icons = {},
+  splash = {},
+  instantResume = false,
+  manifestEntries = {},
+}) {
+  const [major, minor, build] = String(version).split('.').map(Number);
+  if (![major, minor, build].every(Number.isInteger))
+    throw new Error(
+      `version must be major.minor.build, such as 1.0.1; got ${version}.`,
+    );
   const root = process.cwd();
   const app = createRequire(path.join(root, 'package.json'));
   const shared = realpathSync(path.resolve(entry));
@@ -40,6 +82,16 @@ export function rokuConfig({ entry, assets, title, manifestEntries = {} }) {
       cpSync(path.join(drawn, name), path.join(staticDir, 'assets/smp', name));
   }
   if (assets) cpSync(path.resolve(assets), staticDir, { recursive: true });
+  const images = {};
+  for (const [key, file] of [
+    ['mm_icon_focus_fhd', icons.fhd],
+    ['mm_icon_focus_hd', icons.hd],
+    ['splash_screen_fhd', splash.fhd],
+    ['splash_screen_hd', splash.hd],
+    ['splash_screen_sd', splash.sd],
+  ])
+    if (file) images[key] = manifestImage(key, file, staticDir);
+  if (splash.color) images.splash_color = splash.color;
   // An imported font file (`import url from './X.ttf'`). The SDK's font plugin
   // copies the file into the package and gives its pkg:/fonts URI. This wraps
   // that module: the file is also read here, and the widths, kerning and line
@@ -101,9 +153,6 @@ export function rokuConfig({ entry, assets, title, manifestEntries = {} }) {
         'import.meta.env.PROD': 'true',
         'import.meta.env.BASE_URL': '"pkg:/"',
       };
-      build.onResolve({ filter: /^solid-app-entry$/ }, () => ({
-        path: shared,
-      }));
       // Resolve app and host imports against the same installed framework, including
       // shared entries that live outside the Roku project directory.
       build.onResolve({ filter: /^@solid-multiplatform\// }, async (args) => {
@@ -173,16 +222,23 @@ export function rokuConfig({ entry, assets, title, manifestEntries = {} }) {
   };
   return {
     app: {
-      entryPoint: path.join(host, 'main.ts'),
+      entryPoint: shared,
       staticAssetsDir: staticDir,
       manifestEntries: {
         title,
-        major_version: 1,
-        minor_version: 0,
-        build_version: 1,
+        major_version: major,
+        minor_version: minor,
+        build_version: build,
         ui_resolutions: 'fhd',
         rsg_version: '2.0',
+        // The app's JavaScript runs in the channel's own process.
         run_as_process: 1,
+        // Deep links reach a running app as input events, not a relaunch.
+        supports_input_launch: 1,
+        // Instant Resume: the firmware suspends the app instead of ending
+        // it, and the host then provides the `lifecycle` service.
+        ...(instantResume ? { sdk_instant_resume: 1 } : {}),
+        ...images,
         ...manifestEntries,
       },
     },

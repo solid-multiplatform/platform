@@ -1,4 +1,5 @@
 import type {
+  ShareFile,
   ShareOptions,
   SharePort,
   ShareResult,
@@ -8,10 +9,13 @@ import { confinePath } from './paths.js';
 import { startForResult } from './results.js';
 import { mainHandler, sdk, type AndroidApp } from './runtime.js';
 
-/** Android can also share files from the app's own directories. */
-export interface AndroidShareOptions extends ShareOptions {
-  /** Paths inside the app's files or cache directory. */
-  files?: readonly string[];
+/**
+ * Android shares files from the app's own directories: each `path` (or, as
+ * before, a bare path string) inside the app's files or cache directory. A
+ * file given only as a `blob` is skipped.
+ */
+export interface AndroidShareOptions extends Omit<ShareOptions, 'files'> {
+  files?: readonly (string | ShareFile)[];
 }
 
 let Receiver: (new () => android.content.BroadcastReceiver) | undefined;
@@ -27,7 +31,12 @@ export function share(app: AndroidApp): SharePort {
   const context = app.context;
   const build = (options: AndroidShareOptions): android.content.Intent => {
     const text = [options.text, options.url].filter(Boolean).join('\n');
-    const files = (options.files ?? []).map((path) => {
+    const paths: string[] = [];
+    for (const file of options.files ?? []) {
+      const path = typeof file === 'string' ? file : file.path;
+      if (path) paths.push(path);
+    }
+    const files = paths.map((path) => {
       const roots = [
         String(context.getFilesDir().getAbsolutePath()),
         String(context.getCacheDir().getAbsolutePath()),

@@ -15,8 +15,29 @@ export type DevicePlatform =
   | 'tv'
   | 'roku';
 
+/**
+ * The operating system under the host. `platform` names the kind of host
+ * (`desktop`, `tv`, ...); this names what it runs on, which `platform` alone
+ * cannot say for a desktop or a browser TV.
+ */
+export type DeviceOS =
+  | 'linux'
+  | 'windows'
+  | 'macos'
+  | 'android'
+  | 'ios'
+  | 'tvos'
+  | 'roku'
+  | 'tizen'
+  | 'webos'
+  | (string & {});
+
 export interface DeviceInfo {
   platform: DevicePlatform;
+  /** The operating system, when the host knows it. */
+  os?: DeviceOS;
+  /** The CPU architecture as the host names it (`x64`, `arm64`). */
+  arch?: string;
   /** Hardware model or browser name. */
   model?: string;
   osVersion?: string;
@@ -51,10 +72,22 @@ export interface SystemBarsPort {
   apply(style: SystemBarStyle): () => void;
 }
 
+/**
+ * A file to share: its `path` on a native host, or its `blob` where the host
+ * shares from memory (web). A host skips a file it has no way to read.
+ */
+export interface ShareFile {
+  path?: string;
+  blob?: Blob;
+  name?: string;
+  mimeType?: string;
+}
+
 export interface ShareOptions {
   title?: string;
   text?: string;
   url?: string;
+  files?: readonly ShareFile[];
 }
 
 /** `shared` when the OS sheet accepted it, `copied` for the web fallback. */

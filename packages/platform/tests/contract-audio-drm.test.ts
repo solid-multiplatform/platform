@@ -107,6 +107,38 @@ v.describe('audio player', () => {
     },
   );
 
+  v.it(
+    'follows a port that reports its state, only while it plays',
+    async () => {
+      const { port } = fakePort();
+      const listeners = new Set<(state: never) => void>();
+      const emit = (state: string) => {
+        for (const listener of [...listeners]) listener(state as never);
+      };
+      port.subscribe = (listener) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      };
+      const player = createAudioPlayer({ port });
+      // Nothing plays: nothing is listened to.
+      v.expect(listeners.size).toBe(0);
+      await player.play(track);
+      v.expect(listeners.size).toBe(1);
+      // Another app took audio focus, then gave it back.
+      emit('interrupted');
+      v.expect(player.playing()).toBe(false);
+      emit('playing');
+      v.expect(player.playing()).toBe(true);
+      await player.stop();
+      v.expect(listeners.size).toBe(0);
+
+      await player.play(track);
+      emit('ended');
+      v.expect(player.playing()).toBe(false);
+      v.expect(listeners.size).toBe(0);
+    },
+  );
+
   v.it('the web provider drives one audio element', async () => {
     const elements: FakeAudio[] = [];
     class FakeAudio {
@@ -115,8 +147,13 @@ v.describe('audio player', () => {
       volume = 1;
       currentTime = 0;
       calls: string[] = [];
+      ended = false;
+      handlers: Record<string, () => void> = {};
       constructor() {
         elements.push(this);
+      }
+      addEventListener(type: string, handler: () => void) {
+        this.handlers[type] = handler;
       }
       async play() {
         this.calls.push('play');
@@ -147,6 +184,16 @@ v.describe('audio player', () => {
         0.4,
         12,
       ]);
+      // The element's own events reach the player. A pause nobody asked the
+      // port for is an interruption; the browser resuming shows as playing.
+      const heard: string[] = [];
+      const unsubscribe = webServices.audio.subscribe!((s) => heard.push(s));
+      element.handlers.pause!();
+      v.expect(player.playing()).toBe(false);
+      element.handlers.playing!();
+      v.expect(player.playing()).toBe(true);
+      v.expect(heard).toEqual(['interrupted', 'playing']);
+      unsubscribe();
       await player.pause();
       await player.resume();
       await player.seek(30);
@@ -164,6 +211,9 @@ v.describe('audio player', () => {
         'remove:src',
         'load',
       ]);
+      // A stopped player no longer follows the element.
+      element.handlers.playing!();
+      v.expect(player.playing()).toBe(false);
     } finally {
       v.vi.unstubAllGlobals();
     }

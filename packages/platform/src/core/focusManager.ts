@@ -443,7 +443,8 @@ const propagateKeyPress = (
       const eventHandler = elm[eventHandlerKey];
       if (isFunction(eventHandler)) {
         lastHandlerSeen = elm;
-        handled = eventHandler.call(elm, e, elm, finalFocusElm) === true;
+        handled =
+          eventHandler.call(elm, e, elm, finalFocusElm, mappedEvent) === true;
       }
     }
     if (!handled && !isUp) {
@@ -732,6 +733,22 @@ const dispatchKeyUp = (): void => {
   ) {
     event.preventDefault?.();
   }
+};
+
+/**
+ * Sends one mapped key through the focus path as a key press from the host
+ * would, then releases it: `pressKey('Enter', …)` runs the same capture,
+ * `onEnter` and `onKeyPress` handlers, throttling included. It is how input
+ * that is not a key acts as one: a pointer click, a wheel step, an action
+ * from assistive technology. Returns whether a handler took the press.
+ */
+export const pressKey = (mapped: string, event: KeyEventLike): boolean => {
+  let handled = false;
+  _signalWrapper(() => {
+    handled = propagateKeyPress(event as KeyboardEvent, mapped);
+    propagateKeyPress(event as KeyboardEvent, mapped, true);
+  });
+  return handled;
 };
 
 export const useFocusManager = (

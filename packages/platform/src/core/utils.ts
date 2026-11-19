@@ -1,6 +1,6 @@
 import type { SceneNode } from '@solid-multiplatform/renderer/contracts';
 import { Config, isDev } from './config.js';
-import type { Styles, ElementText } from './intrinsicTypes.js';
+import type { ElementText } from './intrinsicTypes.js';
 import { ElementNode } from './elementNode.js';
 import { NodeType, TextNode } from './nodeTypes.js';
 
@@ -89,27 +89,6 @@ export function spliceItem<T>(
     arr.splice(index, deleteCount, ...insert);
   }
   return index;
-}
-
-export function flattenStyles(
-  obj: Styles | undefined | (Styles | undefined)[],
-  result: Styles = {},
-): Styles {
-  if (isArray(obj)) {
-    for (let i = 0; i < obj.length; i++) {
-      flattenStyles(obj[i], result);
-    }
-  } else if (obj) {
-    // handle the case where the object is not an array
-    for (const key in obj) {
-      // be careful of 0 values
-      if (result[key] === undefined) {
-        result[key as keyof Styles] = obj[key as keyof Styles]!;
-      }
-    }
-  }
-
-  return result;
 }
 
 export function logRenderTree(node: ElementNode) {
