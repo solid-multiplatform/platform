@@ -74,7 +74,7 @@ v.describe('DatePicker', () => {
     const next = findAll(
       renderer.rootNode,
       (node) =>
-        typeof node.onMouseClick === 'function' && texts(node).includes('›'),
+        typeof node.onMouseClick === 'function' && texts(node).includes('>'),
     ).at(-1)!;
     next.onMouseClick?.(new MouseEvent('click'), next);
     await waitForUpdate();
