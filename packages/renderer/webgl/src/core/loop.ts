@@ -70,6 +70,13 @@ export class FrameLoop {
   /** Minimum ms between frames; 0 is uncapped. */
   targetFrameTime = 0;
   /**
+   * The nominal frame period (ms) while uncapped: the delta of the first
+   * frame after a sleep or a resume, when there is no previous frame to
+   * measure. 60 fps by default; a host with a display API sets it to the
+   * panel's real period (a 120 Hz panel: 8.33 ms).
+   */
+  nominalFrameTime = NOMINAL_FRAME;
+  /**
    * ms a request made while no animation frame is on its way waits for one
    * before a timer runs the frame instead (settings.wakeFallbackDelay); 0
    * arms no timer.
@@ -326,7 +333,7 @@ export class FrameLoop {
       const last = this.last;
       this.last = time;
       this.asleep = false;
-      const nominal = target > 0 ? target : NOMINAL_FRAME;
+      const nominal = target > 0 ? target : this.nominalFrameTime;
       this.inFrame = true;
       host.frame(time, last < 0 ? nominal : time - last, nominal);
       this.inFrame = false;

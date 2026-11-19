@@ -332,6 +332,7 @@ describe('androidServices', () => {
       'clipboard',
       'colorScheme',
       'deviceInfo',
+      'display',
       'fileSystem',
       'fullscreen',
       'keepAwake',

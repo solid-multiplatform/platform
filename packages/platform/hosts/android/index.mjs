@@ -12,7 +12,7 @@ export function runAndroid(loadApp, { services } = {}) {
     'android',
     loadApp,
     (canvas, bridge, platform, root, history, back) => {
-      bindAndroidCanvas(canvas);
+      const unbindDisplay = bindAndroidCanvas(canvas);
       // Hardware Back goes through the host's dispatcher; at the root its
       // exit action finishes the activity.
       const stopBack = bindAndroidBack(history, back);
@@ -33,6 +33,7 @@ export function runAndroid(loadApp, { services } = {}) {
           stopBack();
           touch.dispose();
           stopViewport();
+          unbindDisplay();
           removeServices();
         },
       };

@@ -12,31 +12,31 @@ A cell says `tested` only when an automated test in this repository runs that fe
 
 ## Counts
 
-1079 cells: 83 features on 13 targets.
+1092 cells: 84 features on 13 targets.
 
 | Status      | Cells |
 | ----------- | ----- |
 | tested      | 151   |
 | device      | 74    |
-| preview     | 410   |
+| preview     | 412   |
 | in progress | 0     |
-| no          | 444   |
+| no          | 455   |
 
 | Target            | tested | device | preview | in progress | no  |
 | ----------------- | ------ | ------ | ------- | ----------- | --- |
-| `web`             | 35     | 0      | 30      | 0           | 18  |
-| `tizen`           | 5      | 0      | 56      | 0           | 22  |
-| `webos`           | 6      | 0      | 55      | 0           | 22  |
-| `vizio`           | 5      | 0      | 55      | 0           | 23  |
-| `ps4`             | 6      | 0      | 21      | 0           | 56  |
-| `roku`            | 5      | 19     | 11      | 0           | 48  |
-| `android`         | 0      | 33     | 29      | 0           | 21  |
-| `android-tv`      | 5      | 22     | 21      | 0           | 35  |
-| `ios`             | 29     | 0      | 23      | 0           | 31  |
-| `apple-tv`        | 21     | 0      | 19      | 0           | 43  |
-| `desktop-linux`   | 34     | 0      | 20      | 0           | 29  |
-| `desktop-windows` | 0      | 0      | 35      | 0           | 48  |
-| `desktop-macos`   | 0      | 0      | 35      | 0           | 48  |
+| `web`             | 35     | 0      | 30      | 0           | 19  |
+| `tizen`           | 5      | 0      | 56      | 0           | 23  |
+| `webos`           | 6      | 0      | 55      | 0           | 23  |
+| `vizio`           | 5      | 0      | 55      | 0           | 24  |
+| `ps4`             | 6      | 0      | 21      | 0           | 57  |
+| `roku`            | 5      | 19     | 11      | 0           | 49  |
+| `android`         | 0      | 33     | 30      | 0           | 21  |
+| `android-tv`      | 5      | 22     | 22      | 0           | 35  |
+| `ios`             | 29     | 0      | 23      | 0           | 32  |
+| `apple-tv`        | 21     | 0      | 19      | 0           | 44  |
+| `desktop-linux`   | 34     | 0      | 20      | 0           | 30  |
+| `desktop-windows` | 0      | 0      | 35      | 0           | 49  |
+| `desktop-macos`   | 0      | 0      | 35      | 0           | 49  |
 
 ## Rendering backends
 
@@ -139,6 +139,7 @@ One row per port declared on `ServiceProviders` (`src/sdk/registry.ts`). `tested
 | `deviceInfo` (`src/sdk/device.ts`)       | tested  | preview | preview | preview | no      | device | device  | device     | tested  | tested   | tested        | no              | no            |
 | `battery` (`src/sdk/device.ts`)          | tested  | preview | preview | preview | no      | no     | device  | no         | tested  | no       | tested        | no              | no            |
 | `memory` (`src/sdk/device.ts`)           | tested  | preview | preview | preview | no      | device | device  | device     | tested  | tested   | tested        | no              | no            |
+| `display` (`src/sdk/display.ts`)         | no      | no      | no      | no      | no      | no     | preview | preview    | no      | no       | no            | no              | no            |
 | `keepAwake` (`src/sdk/device.ts`)        | preview | preview | preview | preview | no      | no     | device  | device     | tested  | tested   | tested        | no              | no            |
 | `openExternal` (`src/sdk/device.ts`)     | preview | preview | preview | preview | no      | no     | device  | device     | tested  | tested   | tested        | no              | no            |
 | `orientation` (`src/sdk/device.ts`)      | preview | preview | preview | preview | no      | no     | device  | no         | tested  | no       | no            | no              | no            |
@@ -179,6 +180,7 @@ Notes:
 - `share` (`src/sdk/device.ts`), web: The showcase probe reports unverified: it opens the system share sheet.
 - `share` (`src/sdk/device.ts`), ios: Availability only: the simulator probe does not present the share sheet.
 - `haptics` (`src/sdk/device.ts`), web: The showcase probe reports unverified: only a person can feel a vibration.
+- `display` (`src/sdk/display.ts`), android, android-tv: Android provider: `getMode().getRefreshRate()`, every mode's rate, and a `DisplayManager.DisplayListener` for changes; the host asks the window for the panel's highest mode at start-up and again after a mode switch. Unit tests: packages/platform/tests/display-service.test.ts and packages/renderer/tests/frame-loop.test.mjs (unit job). Measured on a phone emulator with the guest vsync at 120 Hz: 8.33 ms p50 frame deltas; at 60 Hz: 16.67 ms; an idle scene drew 0 frames. A multi-mode panel switch was not reproduced: the emulator exposes one mode.
 - `keepAwake` (`src/sdk/device.ts`), web: The showcase probe reports denied: headless Chromium refuses the screen wake lock.
 - `openExternal` (`src/sdk/device.ts`), web: The showcase probe reports unverified: it opens another application.
 - `orientation` (`src/sdk/device.ts`), web: The showcase probe reports unverified: it rotates the screen.

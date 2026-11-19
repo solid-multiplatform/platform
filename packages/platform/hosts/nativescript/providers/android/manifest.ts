@@ -31,6 +31,7 @@ import type {
 import type { ProviderMap } from '../../../../src/sdk/services.js';
 import type { KeyEventsPort } from '../../../../src/sdk/shortcuts.js';
 import { colorScheme } from './color-scheme.js';
+import { display } from './display.js';
 import { download } from './download.js';
 import { detectAndroidFeatures, type AndroidFeatures } from './features.js';
 import { fileSystem } from './file-system.js';
@@ -139,6 +140,8 @@ function everyService(options: AndroidServicesOptions): Providers {
       import('./media-capabilities.js').then((m) => m.mediaCapabilities(app)),
     // Read by synchronous SDK functions: made on first use, without a load.
     memory: () => memory(app),
+    // Synchronous: the renderer reads the frame period before its loop runs.
+    display: () => display(app),
     locale: () => locale(app),
     colorScheme: () => colorScheme(app),
     fileSystem: () => fileSystem(app),

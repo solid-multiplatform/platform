@@ -17,6 +17,25 @@ corepack pnpm build android-tv
 
 This runs `ns build android`. The debug APK is at `targets/android-tv/platforms/android/app/build/outputs/apk/debug/app-debug.apk`. You need JDK 21 and the Android SDK; CI installs `platforms;android-36`, `build-tools;36.0.0`, `ndk;28.2.13676358` and `cmake;3.22.1`. `dev` is not available: install the APK with `adb`.
 
+## Refresh rate and frame pacing
+
+The WebGL renderer draws on every vsync when `targetFPS` is 0 (the default); it caps only when an app sets one. On Android the frame comes from NativeScript core's `requestAnimationFrame` (`animation-frame/index.js`), which forwards to `Choreographer.postFrameCallback` (or the runtime's `__postFrameCallback`, also a `Choreographer` callback). The canvas plugin's own GL loop presents through `AChoreographer_postFrameCallback` in `libcanvasnative.so`. Nothing in the host or the renderer posts at a fixed 16.67 ms, and the loop arms a frame only while something needs one.
+
+What is 60 Hz is the **display mode**. Android keeps a window in the display's default mode until the app asks for another: on a 120 Hz panel the window stays at 60 Hz and every vsync is 16.67 ms. The fix is a request, not a different callback:
+
+- `bindAndroidCanvas` calls `bindDisplayRefreshRate` (`hosts/android-tv/refresh-rate.mjs`), which reads the default display's modes and, when one is above 60 Hz, sets `WindowManager.LayoutParams.preferredRefreshRate`, `Window.setFrameRate(rate, FRAME_RATE_COMPATIBILITY_DEFAULT)` (API 30) and `Surface.setFrameRate` on the canvas SurfaceView. It repeats the request after a display-mode change. A panel whose highest mode is 60 Hz (every Android TV measured) is left alone.
+- The `display` service (`src/sdk/display.ts`) reports `getMode().getRefreshRate()` and every supported rate, and notifies through `DisplayManager.DisplayListener`. `preferDisplayRefreshRate(rate | 'highest')` is the same request for apps that need it at runtime.
+- The uncapped loop takes its wake-frame nominal from `Platform.framePeriod()` (`AndroidPlatform` returns `1000 / refresh rate`), and follows a mode switch through `Platform.onFramePeriodChange`; frame deltas after that are the real vsync deltas, so an uncapped 120 Hz scene steps 8.33 ms. Idle is unchanged: no animation frame is requested, and the only timer is the one-shot idle maintenance timer.
+
+Measured on an API 36 phone emulator (`viptv-design-phone`, headless, SwiftShader), one 5 s linear animation and 3 s of idle, frame timestamps taken by wrapping the global `requestAnimationFrame` the loop calls:
+
+| Guest vsync | Frames in 5 s | p50 delta | min / max        | Idle frames |
+| ----------- | ------------- | --------- | ---------------- | ----------- |
+| 60 Hz       | 301           | 16.67 ms  | 16.67 / 16.67 ms | 0           |
+| 120 Hz      | 571           | 8.33 ms   | 8.33 / 16.67 ms  | 0           |
+
+The 120 Hz row used the emulator's `-vsync-rate 120`, which makes the guest display report and run at 120 Hz (`presDeadline 8333333`). The emulator exposes a single display mode, so a real 60 → 120 mode switch on a multi-mode panel was not reproduced here; the request path is covered by the service and loop unit tests.
+
 ## How it is tested
 
 - `android` job (`android.yml`): `tests/cli/android-smoke.sh` creates an `android-tv` app with `init`, adds the video package and one plugin of each Android kind, builds it twice, and inspects the APK: the plugin metadata, the video layout resource, and JNI and sidecar libraries for three ABIs. CI passes no emulator serial, so the script stops there. The app is not launched in CI.
