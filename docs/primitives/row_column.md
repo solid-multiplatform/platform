@@ -22,21 +22,21 @@ style is `display: 'flex'` with `gap: 30`; `Column` also sets
 
 ## Props
 
-| Prop                                 | Type                                                 | Description                                                                |
-| ------------------------------------ | ---------------------------------------------------- | -------------------------------------------------------------------------- |
-| `selected`                           | `number`                                             | Index of the child that takes focus. Defaults to `0`.                      |
-| `scroll`                             | `'auto' \| 'edge' \| 'always' \| 'center' \| 'none'` | When the container shifts its children. See below.                         |
-| `scrollIndex`                        | `number`                                             | With `auto`, the child index at which scrolling starts.                    |
-| `scrollStopLast`                     | `boolean`                                            | With `edge` or `auto`, do not scroll to remove space after the last child. |
-| `offset`                             | `number`                                             | Shifts the start position on the scroll axis.                              |
-| `wrap`                               | `boolean`                                            | Moving past the last child goes to the first, and the reverse.             |
-| `plinko`                             | `boolean`                                            | A sibling row takes the selected index of the row focus came from.         |
-| `onSelectedChanged`                  | `OnSelectedChanged`                                  | Called with `(selectedIndex, container, activeChild, lastSelectedIndex)`.  |
-| `onScrolled`                         | `(elm, offset, isInitial) => void`                   | Called when the container scrolls.                                         |
-| `onLeft` / `onRight`                 | `KeyHandler`                                         | `Row` only. Runs before the built-in navigation; return `true` to stop it. |
-| `onUp` / `onDown`                    | `KeyHandler`                                         | `Column` only. Runs before the built-in navigation.                        |
-| `transitionLeft` / `transitionRight` | `NodeStyles['transition']`                           | `Row` only. Transition used when scrolling in that direction.              |
-| `transitionUp` / `transitionDown`    | `NodeStyles['transition']`                           | `Column` only. Transition used when scrolling in that direction.           |
+| Prop                                 | Type                                                                         | Description                                                                |
+| ------------------------------------ | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `selected`                           | `number`                                                                     | Index of the child that takes focus. Defaults to `0`.                      |
+| `scroll`                             | `'auto' \| 'edge' \| 'always' \| 'center' \| 'bounded' \| 'none' \| 'touch'` | When the container shifts its children. See below.                         |
+| `scrollIndex`                        | `number`                                                                     | With `auto`, the child index at which scrolling starts.                    |
+| `scrollStopLast`                     | `boolean`                                                                    | With `edge` or `auto`, do not scroll to remove space after the last child. |
+| `offset`                             | `number`                                                                     | Shifts the start position on the scroll axis.                              |
+| `wrap`                               | `boolean`                                                                    | Moving past the last child goes to the first, and the reverse.             |
+| `plinko`                             | `boolean`                                                                    | A sibling row takes the selected index of the row focus came from.         |
+| `onSelectedChanged`                  | `OnSelectedChanged`                                                          | Called with `(selectedIndex, container, activeChild, lastSelectedIndex)`.  |
+| `onScrolled`                         | `(elm, offset, isInitial) => void`                                           | Called when the container scrolls.                                         |
+| `onLeft` / `onRight`                 | `KeyHandler`                                                                 | `Row` only. Runs before the built-in navigation; return `true` to stop it. |
+| `onUp` / `onDown`                    | `KeyHandler`                                                                 | `Column` only. Runs before the built-in navigation.                        |
+| `transitionLeft` / `transitionRight` | `NodeStyles['transition']`                                                   | `Row` only. Transition used when scrolling in that direction.              |
+| `transitionUp` / `transitionDown`    | `NodeStyles['transition']`                                                   | `Column` only. Transition used when scrolling in that direction.           |
 
 ## Scroll modes
 
@@ -45,9 +45,31 @@ style is `display: 'flex'` with `gap: 30`; `Column` also sets
 - `always`: the selected child stays at the first position.
 - `center`: the selected child is centered.
 - `none`: never scroll.
+- `bounded`: like `always`, but the last `upCount` children do not pin.
+- `touch`: pointer drag with momentum, a rubber band past either edge and,
+  on a horizontal `Row`, snapping to one item plus the gap. Focus keys still
+  scroll the same view. It is opt-in, binds only on a pointer-touch host and
+  is never enabled on a television; TV remotes, browser TVs and the
+  virtualised lists keep their focus-driven scrolling.
 
 With `auto` and `edge` the container stops scrolling once the last child is on
 screen.
+
+A `touch` rail needs a clipping viewport, so the content shows partial items
+at its edge and the drag has a visible boundary:
+
+```tsx
+<view width={640} height={200} clipping>
+  <Row gap={16} scroll="touch">
+    <For each={cards}>{(card) => <Card card={card} />}</For>
+  </Row>
+</view>
+```
+
+A horizontal `Row scroll="touch"` nested in a vertical `Column scroll="touch"`
+needs no extra code: after 10 units the gesture locks to its dominant axis,
+so the rail claims horizontal drags and the page claims vertical ones. See
+[Scrolling](/app-api.md#scrolling) for the engine, its constants and sources.
 
 ## Skipping a child
 

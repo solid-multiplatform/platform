@@ -170,6 +170,7 @@ const SECTIONS = [
   'Transitions',
   'Row, Column, Grid',
   'Virtual list',
+  'Touch scrolling',
   'Dialogs',
   'Controls',
   'Services',
@@ -448,7 +449,8 @@ async function interactive(browser) {
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
-  await expectFocus(page, 'button:Controls', 'Down, Down, Right');
+  await page.keyboard.press('ArrowRight');
+  await expectFocus(page, 'button:Controls', 'Down, Down, Right, Right');
 
   // Gallery: the controls screen, by keyboard.
   await page.keyboard.press('Enter');
@@ -530,7 +532,11 @@ async function interactive(browser) {
   // The tooltip: focus shows it, and a mouse click over the hint reaches the
   // control behind it. The tooltip never takes focus or swallows the click.
   await page.keyboard.press('ArrowUp');
-  await expectFocus(page, 'button:Tooltip while focused', 'Up to the tooltip button');
+  await expectFocus(
+    page,
+    'button:Tooltip while focused',
+    'Up to the tooltip button',
+  );
   await page
     .getByRole('tooltip', { name: 'A tooltip never takes focus' })
     .waitFor({ state: 'attached', timeout: 3000 });
@@ -547,7 +553,11 @@ async function interactive(browser) {
     `a click over the tooltip focused ${clicked}`,
   );
   await page.keyboard.press('Enter');
-  await expectFocus(page, 'button:Text field: ab', 'the click reached the text field behind the tooltip');
+  await expectFocus(
+    page,
+    'button:Text field: ab',
+    'the click reached the text field behind the tooltip',
+  );
 
   // The mouse: Back, then the Services tile. Focus returns to the tile left.
   await click(page, backButton);
@@ -612,14 +622,30 @@ async function interactive(browser) {
   await page.keyboard.press('ArrowDown');
   await expectFocus(page, 'button:Open drawer', 'Down to the drawer button');
   await page.keyboard.press('Enter');
-  await expectFocus(page, 'button:First action', 'the drawer opens on its content');
+  await expectFocus(
+    page,
+    'button:First action',
+    'the drawer opens on its content',
+  );
   await page.keyboard.press('ArrowDown');
-  await expectFocus(page, 'button:Second action', 'Down through the drawer content');
+  await expectFocus(
+    page,
+    'button:Second action',
+    'Down through the drawer content',
+  );
   // Down past the content reaches the close button; Enter activates it.
   await page.keyboard.press('ArrowDown');
-  await expectFocus(page, 'button:Close', 'Down reaches the drawer close button');
+  await expectFocus(
+    page,
+    'button:Close',
+    'Down reaches the drawer close button',
+  );
   await page.keyboard.press('Enter');
-  await expectFocus(page, 'button:Open drawer', 'focus returns from the drawer');
+  await expectFocus(
+    page,
+    'button:Open drawer',
+    'focus returns from the drawer',
+  );
   await expectStatus(page, /^Last result: drawer: closed$/, 'drawer result');
   await page.keyboard.press('ArrowDown');
   await expectFocus(page, 'button:Pick a date', 'Down to the date button');
@@ -700,7 +726,11 @@ async function interactive(browser) {
   await page.keyboard.press('Enter');
   await expectFocus(page, 'button:Detail', 'Enter opens the detail route');
   await page.keyboard.press('Backspace');
-  await expectFocus(page, 'button:Card B', 'Back restores the same card by key');
+  await expectFocus(
+    page,
+    'button:Card B',
+    'Back restores the same card by key',
+  );
   await shot(page, '5-history-restored');
   await page.keyboard.press('Backspace');
   await expectFocus(

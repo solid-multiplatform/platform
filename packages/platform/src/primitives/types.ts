@@ -26,8 +26,11 @@ export interface NavigableProps extends NodeProps {
    * center - selected element will be centered to the screen
    * none - disable scrolling behavior, focus shifts as expected
    * bounded - like always, but scrolling stops for the last `upCount` items
-   * in both `auto` and `edge` items will only scroll until the last item is on screen */
-  scroll?: 'always' | 'none' | 'edge' | 'auto' | 'center' | 'bounded';
+   * in both `auto` and `edge` items will only scroll until the last item is on screen
+   * touch - pointer drag with momentum, rubber band and snapping; focus keys
+   *   still work and scroll the same view. Opt-in; hosts without a pointer
+   *   (TV remotes, Roku) keep the focus-driven behaviour. */
+  scroll?: 'always' | 'none' | 'edge' | 'auto' | 'center' | 'bounded' | 'touch';
 
   /** When auto scrolling, item index at which scrolling begins */
   scrollIndex?: number;

@@ -195,6 +195,70 @@ On a host without an editor the field still draws its label, placeholder and val
   Forward. Add `focusKey` to containers and `itemKey` to lists; focus follows
   the card, never its index. See [Screen history and keyed focus](/essentials/screen-history.md).
 
+## Scrolling
+
+`Row` and `Column` scroll with the focus keys by default: `scroll="auto"`,
+`"edge"`, `"always"`, `"center"`, `"bounded"` or `"none"`. On a host with a
+pointer, pass `scroll="touch"` to add direct manipulation — drag, fling,
+rubber band and, on a horizontal rail, snapping to one item plus the gap:
+
+```tsx
+// Before: a rail moved only with Left/Right, and hand-written pointer code.
+<view width={640} height={200} clipping>
+  <Row gap={16}>
+    <For each={cards}>{(card) => <Card card={card} />}</For>
+  </Row>
+</view>
+
+// After: the same rail also drags, flings and snaps; keys still work.
+<view width={640} height={200} clipping>
+  <Row gap={16} scroll="touch">
+    <For each={cards}>{(card) => <Card card={card} />}</For>
+  </Row>
+</view>
+```
+
+A vertical `Column` scrolls continuously; a horizontal `Row` snaps to
+`item + gap`. A nested horizontal `Row` inside a vertical `Column` works
+without per-screen code: after a 10-unit slop the gesture locks to its
+dominant axis and stays locked, so the rail takes horizontal drags and the
+page takes vertical ones. Two nested scrollers with the same orientation are
+ambiguous and discouraged, as Apple's guidance says; the innermost one wins.
+
+Focus navigation keeps working on the same view. Moving focus reveals the
+item only as far as needed, without jumping it to the start. A television — a
+remote or browser TV, where focus movement is the model — ignores
+`scroll="touch"` and keeps its focus-driven scrolling; the same is true of
+`VirtualRow`, `VirtualColumn` and `VirtualGrid`, which need offset-driven
+windowing before touch scrolling can be added. Desktop wheel and keyboard
+scrolling are unchanged: wheel events still step focus or reach an app
+handler, and the arrow keys keep their page/line semantics.
+
+The engine is `createScrollEngine` in `@solid-multiplatform/platform/scroll`.
+Its model and constants, kept in one module with no new dependency:
+
+| Part             | Value / rule                                                                                                                |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Release velocity | Displacement over the last 100 ms of pointer samples, in scene units per millisecond.                                       |
+| Deceleration     | `UIScrollView.DecelerationRate.normal`: velocity keeps `0.998` per millisecond, so a fling travels `v / (1 - 0.998)`.       |
+| Rubber band      | `f(x, d, c) = (x · d · c) / (d + c · x)` with `c = 0.55` and `d` the viewport length, the UIScrollView formula.             |
+| Snap             | A release projects the fling, rounds to the nearest slot, and settles with a 220–620 ms cubic ease.                         |
+| Snap-back        | A release past an edge returns with a 220 ms cubic ease.                                                                    |
+| Axis lock        | Horizontal or vertical, decided once the gesture passes 10 scene units; ties go horizontal.                                 |
+| Idle             | `requestAnimationFrame` only during a fling or settle; a drag follows pointer events. A resting scroller schedules nothing. |
+
+Sources: Apple's [Scroll views](https://developer.apple.com/design/human-interface-guidelines/scroll-views)
+(page-by-page only where it fits; show partial content at the edge; no
+same-orientation nesting; scroll automatically only as far as needed), the
+[UIScrollView](https://developer.apple.com/documentation/uikit/uiscrollview)
+reference (`decelerationRate`, bouncing) and [Motion](https://developer.apple.com/design/human-interface-guidelines/motion)
+(short, purposeful motion that can be cancelled). The local UIKit reference
+does not print the deceleration number; `0.998` per millisecond is the value
+in use until the mobile demo's rewritten engine is the reference. That
+rewrite is also the reference for the cubic settle in
+`apps/mobile-demo/src/scroller.ts`. `src/sdk/scroll.ts` records the same
+constants.
+
 ## Hooks
 
 - `useHost()`: `{ target, capabilities, native }`, the target's name, what the host can do, and its native root.

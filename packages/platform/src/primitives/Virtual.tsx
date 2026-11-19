@@ -55,7 +55,11 @@ function createVirtual<T>(
   const scrollIndex = s.createMemo(() => props.scrollIndex || 0);
   const items = s.createMemo(() => props.each || []);
   const itemCount = s.createMemo(() => items().length);
-  const scrollType = s.createMemo(() => props.scroll || 'auto');
+  // Touch scrolling needs a content offset the virtualiser owns; this pass
+  // keeps the focus-driven window (`auto`) and documents the deferral.
+  const scrollType = s.createMemo(() =>
+    props.scroll === 'touch' ? 'auto' : props.scroll || 'auto',
+  );
   const indexByKey = s.createMemo(() =>
     keyIndex(items(), props.itemKey, isRow ? 'VirtualRow' : 'VirtualColumn'),
   );
