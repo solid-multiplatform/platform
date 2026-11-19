@@ -16,11 +16,11 @@ A cell says `tested` only when an automated test in this repository runs that fe
 
 | Status      | Cells |
 | ----------- | ----- |
-| tested      | 139   |
+| tested      | 140   |
 | device      | 74    |
-| preview     | 362   |
+| preview     | 359   |
 | in progress | 0     |
-| no          | 373   |
+| no          | 375   |
 
 | Target            | tested | device | preview | in progress | no  |
 | ----------------- | ------ | ------ | ------- | ----------- | --- |
@@ -33,9 +33,9 @@ A cell says `tested` only when an automated test in this repository runs that fe
 | `android-tv`      | 5      | 22     | 18      | 0           | 34  |
 | `ios`             | 29     | 0      | 20      | 0           | 30  |
 | `apple-tv`        | 21     | 0      | 16      | 0           | 42  |
-| `desktop-linux`   | 31     | 0      | 20      | 0           | 28  |
-| `desktop-windows` | 0      | 0      | 33      | 0           | 46  |
-| `desktop-macos`   | 0      | 0      | 33      | 0           | 46  |
+| `desktop-linux`   | 32     | 0      | 19      | 0           | 28  |
+| `desktop-windows` | 0      | 0      | 32      | 0           | 47  |
+| `desktop-macos`   | 0      | 0      | 32      | 0           | 47  |
 
 ## Rendering backends
 
@@ -108,7 +108,7 @@ One row per port declared on `ServiceProviders` (`src/sdk/registry.ts`). `tested
 | Feature                                  | web     | tizen   | webos   | vizio   | roku   | android | android-tv | ios     | apple-tv | desktop-linux | desktop-windows | desktop-macos |
 | ---------------------------------------- | ------- | ------- | ------- | ------- | ------ | ------- | ---------- | ------- | -------- | ------------- | --------------- | ------------- |
 | `settings` (`src/sdk/services.ts`)       | tested  | preview | preview | preview | device | device  | device     | tested  | tested   | tested        | preview         | preview       |
-| `secureStorage` (`src/sdk/services.ts`)  | no      | no      | no      | no      | device | device  | device     | tested  | tested   | preview       | preview         | preview       |
+| `secureStorage` (`src/sdk/services.ts`)  | no      | no      | no      | no      | device | device  | device     | tested  | tested   | tested        | no              | no            |
 | `lifecycle` (`src/sdk/services.ts`)      | tested  | preview | preview | preview | device | device  | device     | tested  | tested   | tested        | no              | no            |
 | `connectivity` (`src/sdk/services.ts`)   | tested  | preview | preview | preview | device | device  | device     | tested  | tested   | tested        | no              | no            |
 | `links` (`src/sdk/services.ts`)          | tested  | preview | preview | preview | device | device  | device     | tested  | tested   | tested        | no              | no            |
@@ -152,7 +152,6 @@ One row per port declared on `ServiceProviders` (`src/sdk/registry.ts`). `tested
 
 Notes:
 
-- `secureStorage` (`src/sdk/services.ts`), desktop-linux, desktop-windows, desktop-macos: Only when the app passes a keyring module to `desktopServices`.
 - `links` (`src/sdk/services.ts`), ios, apple-tv: The in-app open arrives. `simctl openurl` delivery was not delivered in the simulator and stays unverified.
 - `notifications` (`src/sdk/services.ts`), web: The showcase probe reports unverified: a permission prompt is required.
 - `notifications` (`src/sdk/services.ts`), ios: The probe reads the permission state; displaying a notification is not verified in the simulator.
@@ -295,6 +294,7 @@ A `tested` cell names the test file that covers it, the workflow and job that ru
 - `settings` (`src/sdk/services.ts`), desktop-linux: packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; set, get and remove, and the settings file's contents are checked)
 - `secureStorage` (`src/sdk/services.ts`), ios: packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (ios); the service probe sets, reads and removes a secret in a simulator)
 - `secureStorage` (`src/sdk/services.ts`), apple-tv: packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe sets, reads and removes a secret in a simulator)
+- `secureStorage` (`src/sdk/services.ts`), desktop-linux: packages/host-desktop/tests/services/run.mjs (desktop-runtime.yml: linux; a private session bus with a Secret Service stand-in: round trip, overwrite, removal, a key with odd characters, values hashed not plaintext on disk, absent without the service, nothing built before first use, and a locked collection refused)
 - `lifecycle` (`src/sdk/services.ts`), web: apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; the probe requires `lifecycle` to report ok in headless Chromium)
 - `lifecycle` (`src/sdk/services.ts`), ios: packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (ios); the service probe waits for active and subscribes in a simulator)
 - `lifecycle` (`src/sdk/services.ts`), apple-tv: packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe waits for active and subscribes in a simulator)

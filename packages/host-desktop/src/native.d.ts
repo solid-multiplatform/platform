@@ -299,6 +299,19 @@ interface SolidNative {
     ): void;
   };
   /**
+   * An app's secrets in the freedesktop Secret Service on the session bus
+   * (native/src/secrets.rs); absent in a runtime built without it.
+   */
+  readonly secrets?: {
+    /** Whether the session bus has the service: one question to the bus. */
+    available(): boolean;
+    /** The value, or `null` when the app has none under that key. */
+    get(app: string, key: string, done: SolidDone<string | null>): void;
+    set(app: string, key: string, value: string, done: SolidDone<void>): void;
+    /** Removing a key that is not there succeeds. */
+    remove(app: string, key: string, done: SolidDone<void>): void;
+  };
+  /**
    * NetworkManager on the system bus (native/src/network.rs); absent in a
    * runtime built without it.
    */

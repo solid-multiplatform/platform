@@ -5,17 +5,19 @@
 // Provided: clipboard, openExternal, deviceInfo, battery, memory, keepAwake,
 // colorScheme, locale, keyEvents, lifecycle, settings, fileSystem,
 // filePicker, download, request, links (the link the app was opened with),
-// notifications where the session bus has a notification service, and
-// connectivity where NetworkManager is on the system bus.
+// notifications where the session bus has a notification service,
+// connectivity where NetworkManager is on the system bus, and secureStorage
+// where the session bus has a Secret Service.
 //
-// Not provided, so `unavailable`: secureStorage, share, haptics,
-// orientation, systemBars, appReview, push, jobs.
+// Not provided, so `unavailable`: share, haptics, orientation, systemBars,
+// appReview, push, jobs.
 //
-// Two things are asked when these are installed, because whether those two
-// services are there at all depends on the answers: whether the session
-// bus has a notification service, and whether the system bus has
-// NetworkManager. Each is one question to a bus (under a millisecond on a
-// running desktop, nothing where there is no bus).
+// Three things are asked when these are installed, because whether those
+// services are there at all depends on the answers: whether the session bus
+// has a notification service, whether the system bus has NetworkManager,
+// and whether the session bus has a Secret Service. Each is one question to
+// a bus (under a millisecond on a running desktop, nothing where there is
+// no bus).
 //
 // On a browser some of these must be there before the user's gesture; here
 // there is no such rule. They are functions that return the port at once all
@@ -39,6 +41,7 @@ import { download, filePicker, fileSystem } from './files.js';
 import { links } from './links.js';
 import { notifications, notificationsAvailable } from './notifications.js';
 import { desktopFetch } from './request.js';
+import { secureStorage, secureStorageAvailable } from './secrets.js';
 import { settings } from './storage.js';
 
 export interface DesktopApp {
@@ -67,6 +70,9 @@ export function desktopServices(app: DesktopApp): ProviderMap {
       ? { notifications: () => notifications(app.name ?? app.id) }
       : {}),
     ...(connectivityAvailable() ? { connectivity } : {}),
+    ...(secureStorageAvailable()
+      ? { secureStorage: () => secureStorage(app.id) }
+      : {}),
     // These need the window.
     ...(__solid.window === undefined
       ? {}

@@ -457,9 +457,9 @@
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe sets, reads and removes a secret in a simulator)"
             },
-            "desktop-linux,desktop-windows,desktop-macos": {
-              "status": "preview",
-              "note": "Only when the app passes a keyring module to `desktopServices`."
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/services/run.mjs (desktop-runtime.yml: linux; a private session bus with a Secret Service stand-in: round trip, overwrite, removal, a key with odd characters, values hashed not plaintext on disk, absent without the service, nothing built before first use, and a locked collection refused)"
             }
           }
         },

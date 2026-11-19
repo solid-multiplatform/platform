@@ -21,6 +21,8 @@ mod network;
 #[cfg(all(feature = "notifications", target_os = "linux"))]
 mod notify;
 mod runtime;
+#[cfg(all(feature = "secure-storage", target_os = "linux"))]
+mod secrets;
 mod storage;
 mod system;
 mod testing;
@@ -67,6 +69,8 @@ unsafe fn diagnostics() -> ! {
     println!("notifications {}", if notifications { "dbus" } else { "none" });
     let connectivity = cfg!(all(feature = "connectivity", target_os = "linux"));
     println!("connectivity {}", if connectivity { "networkmanager" } else { "none" });
+    let secure_storage = cfg!(all(feature = "secure-storage", target_os = "linux"));
+    println!("secure-storage {}", if secure_storage { "dbus" } else { "none" });
     exit(0);
 }
 
@@ -247,6 +251,8 @@ fn main() {
         notify::install(env, host);
         #[cfg(all(feature = "connectivity", target_os = "linux"))]
         network::install(env, host);
+        #[cfg(all(feature = "secure-storage", target_os = "linux"))]
+        secrets::install(env, host);
         if !window.is_null() {
             gl::install(env, host);
             window::install(env, host, window);
