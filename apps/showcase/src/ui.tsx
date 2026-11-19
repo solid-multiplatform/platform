@@ -31,6 +31,8 @@ export const interactive: NodeStyles = {
 export function Button(props: {
   label: string;
   width?: number;
+  /** Takes focus when it mounts, instead of the container choosing a row. */
+  autofocus?: boolean;
   onEnter?: () => void;
   onFocus?: () => void;
   onBlur?: () => void;
@@ -48,6 +50,7 @@ export function Button(props: {
       width={width()}
       height={48}
       style={interactive}
+      autofocus={props.autofocus}
       onEnter={() => props.onEnter?.()}
       onFocus={() => props.onFocus?.()}
       onBlur={() => props.onBlur?.()}

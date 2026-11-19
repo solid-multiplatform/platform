@@ -9,9 +9,22 @@ import {
   defaultTransitionDown,
   defaultTransitionUp,
 } from './utils/handleNavigation.js';
+import {
+  keyIndex,
+  registerFocusKey,
+  registerItemSource,
+  setItemKey,
+  unregisterFocusKey,
+  unregisterItemSource,
+} from './screenHistory.js';
 
 export type VirtualProps<T> = lng.NewOmit<lngp.RowProps, 'children'> & {
   each: readonly T[] | undefined | null | false;
+  /**
+   * Stable key for one entry; restore resolves it against the current `each`.
+   * The key to index map is rebuilt only when `each` changes.
+   */
+  itemKey?: (item: T) => string;
   displaySize: number;
   bufferSize?: number;
   wrap?: boolean;
@@ -43,11 +56,12 @@ function createVirtual<T>(
   const items = s.createMemo(() => props.each || []);
   const itemCount = s.createMemo(() => items().length);
   const scrollType = s.createMemo(() => props.scroll || 'auto');
+  const indexByKey = s.createMemo(() =>
+    keyIndex(items(), props.itemKey, isRow ? 'VirtualRow' : 'VirtualColumn'),
+  );
 
   const initiallyLocked =
-    !!props.skipInitialWrap &&
-    !!props.wrap &&
-    (props.selected ?? 0) === 0;
+    !!props.skipInitialWrap && !!props.wrap && (props.selected ?? 0) === 0;
   const [wrapUnlocked, setWrapUnlocked] = s.createSignal(!initiallyLocked);
   const effectiveWrap = s.createMemo(() => !!props.wrap && wrapUnlocked());
 
@@ -149,15 +163,7 @@ function createVirtual<T>(
 
     if (total <= props.displaySize) {
       const clamped = utils.clamp(c, 0, total - 1);
-      return applySlice(
-        0,
-        items() as T[],
-        clamped,
-        delta,
-        0,
-        c <= 0,
-        clamped,
-      );
+      return applySlice(0, items() as T[], clamped, delta, 0, c <= 0, clamped);
     }
 
     const length = props.displaySize + bufferSize();
@@ -412,6 +418,12 @@ function createVirtual<T>(
 
   let viewRef!: lngp.NavigableElement;
 
+  s.onCleanup(() => {
+    if (viewRef === undefined) return;
+    unregisterFocusKey(viewRef, props.focusKey);
+    unregisterItemSource(viewRef);
+  });
+
   function scrollToIndex(this: lng.ElementNode, index: number) {
     s.untrack(() => {
       if (itemCount() === 0) return;
@@ -638,6 +650,8 @@ function createVirtual<T>(
       {...keyHandlers}
       ref={lngp.chainRefs((el) => {
         viewRef = el as lngp.NavigableElement;
+        registerFocusKey(el, props.focusKey);
+        registerItemSource(el, indexByKey);
       }, props.ref)}
       wrap={effectiveWrap()}
       selected={selected()}
@@ -647,21 +661,33 @@ function createVirtual<T>(
       onLayout={/* @once */ onLayout}
       style={
         /* @once */ lng.combineStyles(
-        props.style,
-        component === lngp.Row
-          ? {
-            display: 'flex',
-            gap: 30,
-          }
-          : {
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 30,
-          },
-      )
+          props.style,
+          component === lngp.Row
+            ? {
+                display: 'flex',
+                gap: 30,
+              }
+            : {
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 30,
+              },
+        )
       }
     >
-      <List each={sliceItems()}>{props.children}</List>
+      <List each={sliceItems()}>
+        {(item, index) => {
+          const node = props.children(item, index);
+          const el = node as unknown;
+          if (lng.isElementNode(el) && props.itemKey !== undefined) {
+            // Windowed slots are reused: keep the key in step with the item
+            // each slot currently shows.
+            const itemKey = props.itemKey;
+            s.createRenderEffect(() => setItemKey(el, itemKey(item())));
+          }
+          return node;
+        }}
+      </List>
     </view>
   );
 

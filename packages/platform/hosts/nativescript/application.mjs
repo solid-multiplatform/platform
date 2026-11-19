@@ -3,6 +3,7 @@
 // surface, so the host module itself stays importable where there is no
 // NativeScript runtime.
 import { RendererMain } from '@solid-multiplatform/renderer';
+import { createBackDispatcher } from '@solid-multiplatform/platform';
 import { createMemoryHistory } from './history.mjs';
 
 /** Runs `run` on a Canvas this module creates. Returns how to stop. */
@@ -42,6 +43,20 @@ export function launchApplication(form, options, run) {
     releases.push(viewport.bindMobileViewport(root, form.target));
     if (form.target === 'ios') root.ios.overrideUserInterfaceStyle = 2;
     const text = editors.nativeEditorHost(root, form.target);
+    const history = options.history ?? createMemoryHistory();
+    // A TV's hardware Back and the phone's hardware Back both report here.
+    const exit = form.android
+      ? () => {
+          try {
+            Application.android.foregroundActivity?.finish?.();
+          } catch {
+            // The activity is already gone.
+          }
+        }
+      : undefined;
+    const back = createBackDispatcher(
+      exit === undefined ? {} : { onExit: exit },
+    );
     let pointer;
     if (form.inputs.includes('touch')) {
       const binding = touch.bindSceneTouch(canvas, form.device);
@@ -55,7 +70,7 @@ export function launchApplication(form, options, run) {
         import('../android-tv/input.android.ts'),
       ]);
       bindAndroidCanvas(canvas, true);
-      releases.push(bindAndroidInput(bridge, canvas.android));
+      releases.push(bindAndroidInput(bridge, canvas.android, history, back));
     } else if (form.target === 'apple-tv') {
       const remote = ns.bindRemote(bridge, Application.ios.window);
       releases.push(remote.unbind);
@@ -84,7 +99,9 @@ export function launchApplication(form, options, run) {
       pointer,
       text,
       // The router's stack, owned by the host: nothing here shims a browser.
-      history: options.history ?? createMemoryHistory(),
+      history,
+      back,
+      exit,
     });
   };
 

@@ -19,6 +19,16 @@ export * from './Preserve.jsx';
 export * from './Suspense.jsx';
 export * from './Marquee.jsx';
 export * from './createFocusStack.jsx';
+export {
+  createScreenHistory,
+  type ScreenEntry,
+  type ScreenFocusSnapshot,
+  type ScreenHistory,
+  type ScreenHistoryOptions,
+  type ScreenRestoreContext,
+  type ScreenRestoreResult,
+  type ScreenRestoreStatus,
+} from './screenHistory.js';
 export * from './useHold.js';
 export * from './KeyboardAvoidingView.jsx';
 export * from './Modal.jsx';

@@ -9,12 +9,26 @@
 //   - deviceInfo and locale answer from the device;
 //   - nothing is scheduled once the scene has settled;
 //   - launched with contentId=boot-error, the app throws while starting.
-import { createSignal, onMount, Show, type JSXElement } from 'solid-js';
-import { deviceInfo, type ElementNode } from '@solid-multiplatform/platform';
 import {
-  startApp,
-  type HostContext,
-} from '@solid-multiplatform/platform/host';
+  createEffect,
+  createSignal,
+  onMount,
+  Show,
+  type JSXElement,
+} from 'solid-js';
+import {
+  activeElement,
+  deviceInfo,
+  type ElementNode,
+} from '@solid-multiplatform/platform';
+import {
+  createScreenHistory,
+  List,
+  Modal as Dialog,
+  type ScreenHistory,
+} from '@solid-multiplatform/platform/app';
+import { AppShell } from '@solid-multiplatform/platform/app/entry';
+import { startApp, type HostContext } from '@solid-multiplatform/platform/host';
 import { Row } from '@solid-multiplatform/platform/primitives';
 import {
   rokuHost,
@@ -59,7 +73,9 @@ async function report(): Promise<void> {
         .join(' '),
   );
   log('SERVICES ' + installedServices().join(','));
-  const info = (await deviceInfo()) as Awaited<ReturnType<typeof deviceInfo>> & {
+  const info = (await deviceInfo()) as Awaited<
+    ReturnType<typeof deviceInfo>
+  > & {
     displayMode?: string;
   };
   log(
@@ -103,7 +119,9 @@ async function report(): Promise<void> {
       log('KEYEVENTS keyup ' + (event as unknown as { key: string }).key),
     );
   const connectivity = useService('connectivity');
-  connectivity.subscribe((online) => log('CONNECTIVITY event online=' + online));
+  connectivity.subscribe((online) =>
+    log('CONNECTIVITY event online=' + online),
+  );
   log('CONNECTIVITY online=' + connectivity.online());
 
   if (serviceAvailable('lifecycle') === 'available') {
@@ -154,6 +172,105 @@ function Modal(props: { close: () => void }): JSXElement {
   );
 }
 
+/**
+ * The device case for screen history: a keyed card list, two detail routes, a
+ * modal on the second, and the shared exit confirmation at the root. The
+ * runner drives it with Select and Back and reads the keys restore logged.
+ */
+function ScreenHistoryApp(props: {
+  links: { subscribe(listener: (link: string) => void): () => void };
+}): JSXElement {
+  const [items, setItems] = createSignal([
+    { id: 'a' },
+    { id: 'b' },
+    { id: 'c' },
+  ]);
+  const [modal, setModal] = createSignal(true);
+  let screen!: ScreenHistory<Record<string, never>>;
+  screen = createScreenHistory<Record<string, never>>({
+    capture: () => ({}),
+    restore: (entry, context) => {
+      log(
+        `SH RESTORE reason=${context.reason} keys=${
+          entry.focus?.keys.join(',') ?? 'none'
+        }`,
+      );
+      // Revalidate and reorder: the focused card keeps its key but not its
+      // index.
+      if (entry.path === '/cards')
+        setItems([{ id: 'c' }, { id: 'a' }, { id: 'b' }]);
+    },
+    fallbackPath: '/cards',
+    onBackEmpty: 'confirm-exit',
+  });
+  createEffect(() => log('SH PATH ' + screen.current().path));
+  createEffect(() => {
+    const el = activeElement();
+    if (el !== undefined && screen.current().path === '/cards')
+      log('SH ACTIVE ' + el.id);
+  });
+  props.links.subscribe((link) => {
+    if (!link.includes('contentId=screen-idle')) return;
+    const before = scheduled;
+    void sleep(2000).then(() => log('SH IDLE timers=' + (scheduled - before)));
+  });
+  onMount(() => log('SH READY'));
+
+  return (
+    <AppShell>
+      <Show
+        when={screen.current().path === '/detail/2'}
+        fallback={
+          <Show
+            when={screen.current().path === '/detail/1'}
+            fallback={
+              <List
+                focusKey="cards"
+                autofocus
+                selected={1}
+                each={items()}
+                itemKey={(item: { id: string }) => item.id}
+                onSelect={() => {
+                  log('SH SELECT');
+                  screen.push('/detail/1');
+                }}
+              >
+                {(item: { id: string }) => (
+                  <view id={item.id} width={300} height={150} />
+                )}
+              </List>
+            }
+          >
+            <view
+              id="detail1"
+              width={400}
+              height={150}
+              autofocus
+              onEnter={() => {
+                log('SH OPEN2');
+                screen.push('/detail/2');
+              }}
+            />
+          </Show>
+        }
+      >
+        <view id="detail2" width={400} height={150}>
+          <Dialog
+            visible={modal()}
+            label="Screen history"
+            onRequestClose={() => {
+              setModal(false);
+              log('SH MODAL closed path=' + screen.current().path);
+            }}
+          >
+            <view id="modal-card" width={400} height={150} />
+          </Dialog>
+        </view>
+      </Show>
+    </AppShell>
+  );
+}
+
 function App(context: HostContext<RokuSurface>): JSXElement {
   log('START');
   /** The device keyboard, for an e-mail address. */
@@ -176,6 +293,8 @@ function App(context: HostContext<RokuSurface>): JSXElement {
   log('LINK initial ' + initial);
   if (initial?.includes('contentId=boot-error'))
     throw new Error('HOST deliberate boot error');
+  if (initial?.includes('contentId=screen-history'))
+    return <ScreenHistoryApp links={links} />;
   links.subscribe((link) => {
     log('LINK event ' + link);
     if (link.includes('contentId=idle-check')) {

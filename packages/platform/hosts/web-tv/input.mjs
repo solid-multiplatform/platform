@@ -151,10 +151,10 @@ export function bindPS4(root, toScene) {
     scope.cancelAll();
   });
   // The console's Back button arrives as a browser Back key. Cancel its
-  // default (the webview must not navigate) and send it down the focus path
-  // as Escape; Backspace and Escape already map there and only need their
-  // default cancelled. This is a key fallback, not a declared input kind:
-  // capabilities still say mouse only.
+  // default (the webview must not navigate); the host's Back dispatcher,
+  // listening on the same document, sees the key next and gives it to the
+  // focus path, screen history and the root policy. This is a key fallback,
+  // not a declared input kind: capabilities still say mouse only.
   on(
     document,
     'keydown',
@@ -163,11 +163,10 @@ export function bindPS4(root, toScene) {
         e.key === 'BrowserBack' ||
         e.key === 'GoBack' ||
         e.keyCode === 166 ||
-        e.keyCode === 461
+        e.keyCode === 461 ||
+        e.key === 'Backspace' ||
+        e.key === 'Escape'
       ) {
-        e.preventDefault();
-        pressKey('Escape', ESCAPE);
-      } else if (e.key === 'Backspace' || e.key === 'Escape') {
         e.preventDefault();
       }
     },
@@ -186,14 +185,6 @@ const ENTER = Object.freeze({
   key: 'Enter',
   keyCode: 13,
   which: 13,
-  repeat: false,
-  preventDefault() {},
-  stopPropagation() {},
-});
-const ESCAPE = Object.freeze({
-  key: 'Escape',
-  keyCode: 27,
-  which: 27,
   repeat: false,
   preventDefault() {},
   stopPropagation() {},

@@ -379,6 +379,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'checkIsInNonScrollableZone',
         'createBlurredImage',
         'createInfiniteItems',
+        'createScreenHistory',
         'createSpriteMap',
         'defaultTransitionBack',
         'defaultTransitionDown',
@@ -572,6 +573,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'available',
       'createEffect',
       'createMemo',
+      'createScreenHistory',
       'createSignal',
       'defineTheme',
       'deviceColorScheme',
@@ -599,7 +601,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'useViewport',
       'writeClipboard',
     ]);
-    v.expect(names(appEntryModule)).toEqual(['appEntry']);
+    v.expect(names(appEntryModule)).toEqual(['AppShell', 'appEntry']);
   });
 
   v.test(

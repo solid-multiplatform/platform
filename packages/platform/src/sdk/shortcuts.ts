@@ -1,3 +1,4 @@
+import { pressKey, type KeyEventLike } from '../core/focusManager.js';
 import { peekService } from './registry.js';
 
 export interface Shortcut {
@@ -151,34 +152,108 @@ export function createShortcuts(
 
 export type BackHandler = () => boolean | void;
 
+export interface BackHandlerOptions {
+  /**
+   * Runs before the focus path and before navigation: a pending stream or
+   * admission can consume Back while cancelling itself. Most recent first.
+   */
+  beforeFocus?: boolean;
+}
+
+export interface BackHandleOptions {
+  /**
+   * The location already moved (a browser toolbar/gesture Back). Focus
+   * handlers still run; navigation and exit do not, because the host already
+   * performed the traversal. The router compensates the URL when this
+   * returns true.
+   */
+  traversal?: boolean;
+  /** The caller already delivered Back through the focus path. */
+  synthesize?: boolean;
+  /** How many entries the host moved, for a traversal. */
+  delta?: number;
+  /**
+   * The real key event, where the press has one. The synthetic mapped Back
+   * the focus path sees carries it, so raw `onKeyPress` handlers read the
+   * key the user pressed. A press without an event (Android's hardware
+   * Back) uses a plain Back event.
+   */
+  event?: KeyEventLike;
+}
+
 export interface BackDispatcher {
   /** Register a handler. The most recently registered handler runs first. */
-  push(handler: BackHandler): () => void;
-  /** Run the top handler. Returns true when one consumed the press. */
-  handle(): boolean;
+  push(handler: BackHandler, options?: BackHandlerOptions): () => void;
+  /**
+   * Register the navigation fallback: a screen history's `back()`. It runs
+   * after the focus path declines and before exit, and only once per press.
+   */
+  onBack(handler: BackHandler): () => void;
+  /** Run the precedence chain. Returns true when one consumer took the press. */
+  handle(options?: BackHandleOptions): boolean;
 }
+
+// One mapped Back per press: an event like a host's, mapped to `Back` so the
+// focus path's `onBack`/`onKeyPress` handlers see it.
+const SYNTHETIC_BACK = Object.freeze({
+  key: 'Backspace',
+  keyCode: 8,
+  repeat: false,
+  preventDefault() {},
+});
 
 /**
  * App-wide hardware-back contract. Screens push handlers while mounted; the
- * topmost can consume Back, otherwise navigation's own `back()` or the host
- * exit action runs. This mirrors Android `OnBackPressedDispatcher`.
+ * topmost can consume Back. Then one synthetic mapped Back goes through the
+ * focus path (a modal or a fullscreen player's chrome consumes it). Then
+ * navigation's own `back()` runs, and at the root the host exit action does.
+ * This mirrors Android `OnBackPressedDispatcher`.
  */
 export function createBackDispatcher(
   options: { onExit?(): void } = {},
 ): BackDispatcher {
   const handlers: BackHandler[] = [];
+  const beforeFocus: BackHandler[] = [];
+  let navigation: BackHandler | undefined;
+
+  const run = (list: BackHandler[]): boolean => {
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i]!() === true) return true;
+    }
+    return false;
+  };
+
   return {
-    push(handler) {
-      handlers.push(handler);
+    push(handler, registration = {}) {
+      const list = registration.beforeFocus ? beforeFocus : handlers;
+      list.push(handler);
       return () => {
-        const index = handlers.lastIndexOf(handler);
-        if (index >= 0) handlers.splice(index, 1);
+        const index = list.lastIndexOf(handler);
+        if (index >= 0) list.splice(index, 1);
       };
     },
-    handle() {
-      for (let i = handlers.length - 1; i >= 0; i--) {
-        if (handlers[i]!() === true) return true;
-      }
+    onBack(handler) {
+      navigation = handler;
+      return () => {
+        if (navigation === handler) navigation = undefined;
+      };
+    },
+    handle(handleOptions = {}) {
+      // 1. Work already in flight consumes Back while it cancels.
+      if (run(beforeFocus)) return true;
+      // Explicit screen handlers, most recent first.
+      if (run(handlers)) return true;
+      // 2. One synthetic mapped Back through the focus path.
+      if (
+        handleOptions.synthesize !== false &&
+        pressKey('Back', handleOptions.event ?? SYNTHETIC_BACK)
+      )
+        return true;
+      // A traversal has already happened: there is nothing left to navigate.
+      if (handleOptions.traversal === true) return false;
+      // 3. Screen history's back(), exactly once.
+      if (navigation !== undefined && navigation() === true) return true;
+      // 4. Root policy: the host exit action, where it has one.
       if (options.onExit) {
         options.onExit();
         return true;
@@ -190,8 +265,9 @@ export function createBackDispatcher(
 
 /**
  * Translate Escape/Backspace/GoBack keydowns into `dispatcher.handle()`.
- * Hosts call this once after creating their dispatcher; the browser/desktop
- * key bridge already delivers these keys.
+ * Hosts with a browser key target call this once after creating their
+ * dispatcher; the dispatcher's synthetic pass is the focus path's one
+ * delivery, so the real key never reaches the scene's own key handler.
  */
 export function bindBackKey(
   target: EventTarget,
@@ -204,11 +280,19 @@ export function bindBackKey(
     if (
       event.key !== 'Escape' &&
       event.key !== 'Backspace' &&
-      event.key !== 'GoBack'
+      event.key !== 'GoBack' &&
+      event.key !== 'BrowserBack' &&
+      event.keyCode !== 166
     ) {
       return;
     }
-    if (dispatcher.handle()) event.preventDefault();
+    // The dispatcher owns Back on the target it is bound to: it delivers the
+    // one synthetic mapped Back to the focus path itself, so the real key
+    // must not reach the scene's own key handler and deliver it a second
+    // time. Swallowing it whatever the result keeps one consumer per press.
+    dispatcher.handle({ event });
+    event.preventDefault();
+    event.stopImmediatePropagation?.();
   };
   target.addEventListener('keydown', listener);
   return () => target.removeEventListener('keydown', listener);

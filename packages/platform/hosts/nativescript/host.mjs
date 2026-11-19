@@ -15,6 +15,7 @@
 // each need a real implementation, and a host that cannot do them right
 // omits the sink rather than stubbing it.
 import { RendererMain } from '@solid-multiplatform/renderer';
+import { createBackDispatcher } from '@solid-multiplatform/platform';
 import { createMemoryHistory } from './history.mjs';
 
 /** The form a target uses, its platform target, and the input it delivers. */
@@ -86,6 +87,13 @@ function launchEstablished(form, options, run) {
   const surface = options.surface ?? host.canvas ?? options.canvas;
   if (surface === undefined)
     throw new Error('nativeHost: no Canvas surface to draw on');
+  // The bootstrap may have made the dispatcher the hardware Back button
+  // already drives; otherwise this host owns one.
+  const exit = options.exit ?? host.exit;
+  const back =
+    options.back ??
+    host.back ??
+    createBackDispatcher(exit === undefined ? {} : { onExit: exit });
   const stop = run({
     target: form.target,
     surface,
@@ -103,6 +111,8 @@ function launchEstablished(form, options, run) {
     // The bootstrap's history, when it made one; otherwise a stack this host
     // owns. The router never reads `window.history` here.
     history: options.history ?? host.history ?? createMemoryHistory(),
+    back,
+    exit,
     // No `semantics`: see the file comment.
   });
   return () => {

@@ -1,5 +1,9 @@
-import { type Component } from 'solid-js';
-import { ElementNode, combineStyles, type NodeStyles } from '@solid-multiplatform/platform';
+import { onCleanup, type Component } from 'solid-js';
+import {
+  ElementNode,
+  combineStyles,
+  type NodeStyles,
+} from '@solid-multiplatform/platform';
 import {
   navigableForwardFocus,
   handleNavigation,
@@ -7,7 +11,8 @@ import {
   defaultTransitionUp,
 } from './utils/handleNavigation.js';
 import { scrollColumn } from './utils/withScrolling.js';
-import { chainFunctions } from './utils/chainFunctions.js';
+import { chainFunctions, chainRefs } from './utils/chainFunctions.js';
+import { registerFocusKey, unregisterFocusKey } from './screenHistory.js';
 import type { ColumnProps } from './types.js';
 
 const ColumnStyles: NodeStyles = {
@@ -23,7 +28,12 @@ function scrollToIndex(
 ): void {
   const lastSelected = this.selected;
   this.selected = index;
-  scrollColumn(index, this, undefined, lastSelected === index ? undefined : lastSelected);
+  scrollColumn(
+    index,
+    this,
+    undefined,
+    lastSelected === index ? undefined : lastSelected,
+  );
   if (!options?.noFocus) {
     this.children[index]?.setFocus();
   }
@@ -33,12 +43,23 @@ const onUp = handleNavigation('up');
 const onDown = handleNavigation('down');
 
 export const Column: Component<ColumnProps> = (props) => {
+  let columnNode: ElementNode | undefined;
+  onCleanup(() => {
+    if (columnNode !== undefined)
+      unregisterFocusKey(columnNode, props.focusKey);
+  });
   return (
     <view
       role="list"
       transitionUp={defaultTransitionUp}
       transitionDown={defaultTransitionDown}
       {...props}
+      ref={
+        /* @once */ chainRefs((node) => {
+          columnNode = node;
+          registerFocusKey(node, props.focusKey);
+        }, props.ref)
+      }
       onUp={/* @once */ chainFunctions(props.onUp, onUp)}
       onDown={/* @once */ chainFunctions(props.onDown, onDown)}
       selected={props.selected || 0}

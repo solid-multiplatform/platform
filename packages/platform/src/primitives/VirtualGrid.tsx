@@ -8,6 +8,14 @@ import * as utils from '../utils.js';
 // the import entry (circular init — index.ts re-exports withScrolling after
 // VirtualGrid).
 import { withScrolling } from './utils/withScrolling.js';
+import {
+  keyIndex,
+  registerFocusKey,
+  registerItemSource,
+  setItemKey,
+  unregisterFocusKey,
+  unregisterItemSource,
+} from './screenHistory.js';
 
 const columnScroll = withScrolling(false);
 
@@ -21,6 +29,8 @@ const rowStyles: lng.NodeStyles = {
 
 export type VirtualGridProps<T> = lng.NewOmit<lngp.RowProps, 'children'> & {
   each: readonly T[] | undefined | null | false;
+  /** Stable key for one entry; screen-history restore resolves it against `each`. */
+  itemKey?: (item: T) => string;
   columns: number; // items per row
   rows?: number; // number of visible rows (default: 1)
   buffer?: number;
@@ -31,9 +41,12 @@ export type VirtualGridProps<T> = lng.NewOmit<lngp.RowProps, 'children'> & {
 
 export function VirtualGrid<T>(props: VirtualGridProps<T>): s.JSX.Element {
   const bufferSize = () => props.buffer ?? 2;
-  const [ cursor, setCursor ] = s.createSignal(props.selected ?? 0);
+  const [cursor, setCursor] = s.createSignal(props.selected ?? 0);
   const items = s.createMemo(() => props.each || []);
   const itemCount = () => items().length;
+  const indexByKey = s.createMemo(() =>
+    keyIndex(items(), props.itemKey, 'VirtualGrid'),
+  );
   const itemsPerRow = () => props.columns;
   const numberOfRows = () => props.rows ?? 1;
   const totalVisibleItems = () => itemsPerRow() * numberOfRows();
@@ -63,6 +76,12 @@ export function VirtualGrid<T>(props: VirtualGridProps<T>): s.JSX.Element {
 
   let viewRef!: lngp.NavigableElement;
 
+  s.onCleanup(() => {
+    if (viewRef === undefined) return;
+    unregisterFocusKey(viewRef, props.focusKey);
+    unregisterItemSource(viewRef);
+  });
+
   function onVerticalNav(dir: -1 | 1): lngp.KeyHandler {
     return function () {
       const perRow = itemsPerRow();
@@ -73,9 +92,10 @@ export function VirtualGrid<T>(props: VirtualGridProps<T>): s.JSX.Element {
       const maxRows = Math.floor((count - 1) / perRow);
 
       if (
-        currentRowIndex === 0 && dir === -1
-        || currentRowIndex === maxRows && dir === 1
-      ) return;
+        (currentRowIndex === 0 && dir === -1) ||
+        (currentRowIndex === maxRows && dir === 1)
+      )
+        return;
 
       const selected = this.selected || 0;
       const offset = dir * perRow;
@@ -93,7 +113,7 @@ export function VirtualGrid<T>(props: VirtualGridProps<T>): s.JSX.Element {
           newIndex,
           this as lngp.NavigableElement,
           active,
-          selected
+          selected,
         );
         return true;
       }
@@ -109,7 +129,12 @@ export function VirtualGrid<T>(props: VirtualGridProps<T>): s.JSX.Element {
   // scroll to that row runs.
   let forceRowScroll = false;
 
-  const onSelectedChanged: lngp.OnSelectedChanged = function (_idx, elm, active, _lastIdx,) {
+  const onSelectedChanged: lngp.OnSelectedChanged = function (
+    _idx,
+    elm,
+    active,
+    _lastIdx,
+  ) {
     let idx = _idx;
     let lastIdx = forceRowScroll ? undefined : _lastIdx;
     forceRowScroll = false;
@@ -130,7 +155,10 @@ export function VirtualGrid<T>(props: VirtualGridProps<T>): s.JSX.Element {
     idx += idxCorrection;
     this.selected += idxCorrection;
 
-    if (props.onEndReachedThreshold !== undefined && cursor() >= items().length - props.onEndReachedThreshold) {
+    if (
+      props.onEndReachedThreshold !== undefined &&
+      cursor() >= items().length - props.onEndReachedThreshold
+    ) {
       props.onEndReached?.();
     }
 
@@ -160,7 +188,10 @@ export function VirtualGrid<T>(props: VirtualGridProps<T>): s.JSX.Element {
     columnScroll(shiftIdx, view, active, shiftLastIdx);
   }
 
-  const chainedOnSelectedChanged = lngp.chainFunctions(props.onSelectedChanged, onSelectedChanged)!;
+  const chainedOnSelectedChanged = lngp.chainFunctions(
+    props.onSelectedChanged,
+    onSelectedChanged,
+  )!;
 
   // B15: an initial `selected` has not been applied (scrolled to) yet. It
   // stays pending through runs that find no child (items still loading, or
@@ -195,7 +226,7 @@ export function VirtualGrid<T>(props: VirtualGridProps<T>): s.JSX.Element {
     }
 
     const item = items()[selected];
-    let active = viewRef.children.find(x => x.item === item);
+    let active = viewRef.children.find((x) => x.item === item);
     const lastSelected = viewRef.selected;
 
     if (active instanceof lng.ElementNode) {
@@ -211,7 +242,7 @@ export function VirtualGrid<T>(props: VirtualGridProps<T>): s.JSX.Element {
 
       queueMicrotask(() => {
         if (layoutPending) viewRef.updateLayout();
-        active = viewRef.children.find(x => x.item === item);
+        active = viewRef.children.find((x) => x.item === item);
         if (active instanceof lng.ElementNode) {
           viewRef.selected = viewRef.children.indexOf(active);
           if (lng.hasFocus(viewRef)) {
@@ -225,36 +256,39 @@ export function VirtualGrid<T>(props: VirtualGridProps<T>): s.JSX.Element {
 
   const scrollToIndex = (index: number) => {
     s.untrack(() => updateSelected([index]));
-  }
+  };
 
   s.createEffect(s.on([() => props.selected, items], updateSelected));
 
   s.createEffect(
-    s.on(items, (gridItems, _prevGridItems, prevSize) => {
-      if (!viewRef) return;
+    s.on(
+      items,
+      (gridItems, _prevGridItems, prevSize) => {
+        if (!viewRef) return;
 
-      if (cachedSelected !== undefined) {
-        // This occurs when VG is reloaded and user wants to select a paginated item
-        updateSelected([cachedSelected]);
+        if (cachedSelected !== undefined) {
+          // This occurs when VG is reloaded and user wants to select a paginated item
+          updateSelected([cachedSelected]);
+          return gridItems.length;
+        }
+
+        if (gridItems.length === 0) {
+          setCursor(0);
+          cachedSelected = undefined;
+          setSlice([]);
+        } else if (cursor() >= itemCount()) {
+          updateSelected([Math.max(0, itemCount() - 1)]);
+        } else if (prevSize === 0) {
+          updateSelected([0]);
+        } else {
+          setSlice(items().slice(start(), end()));
+        }
+
         return gridItems.length;
-      }
-
-      if (gridItems.length === 0) {
-        setCursor(0);
-        cachedSelected = undefined;
-        setSlice([]);
-      } else if (cursor() >= itemCount()) {
-        updateSelected([Math.max(0, itemCount() - 1)]);
-      } else if (prevSize === 0) {
-        updateSelected([0]);
-      } else {
-        setSlice(items().slice(start(), end()));
-      }
-
-      return gridItems.length;
-    }, { defer: true })
+      },
+      { defer: true },
+    ),
   );
-
 
   // Clears layoutPending: the grid's flex pass has run since the window
   // changed. The app's onLayout still runs, read when called.
@@ -275,20 +309,48 @@ export function VirtualGrid<T>(props: VirtualGridProps<T>): s.JSX.Element {
     <view
       {...props}
       scroll={props.scroll || 'always'}
-      ref={lngp.chainRefs(el => { viewRef = el as lngp.NavigableElement; }, props.ref)}
+      ref={lngp.chainRefs((el) => {
+        viewRef = el as lngp.NavigableElement;
+        registerFocusKey(el, props.focusKey);
+        registerItemSource(el, indexByKey);
+      }, props.ref)}
       selected={/* @once */ initialSelected}
       onLayout={/* @once */ onLayout}
-      onLeft={/* @once */ lngp.chainFunctions(props.onLeft, lngp.navigableHandleNavigation)}
-      onRight={/* @once */ lngp.chainFunctions(props.onRight, lngp.navigableHandleNavigation)}
+      onLeft={
+        /* @once */ lngp.chainFunctions(
+          props.onLeft,
+          lngp.navigableHandleNavigation,
+        )
+      }
+      onRight={
+        /* @once */ lngp.chainFunctions(
+          props.onRight,
+          lngp.navigableHandleNavigation,
+        )
+      }
       onUp={/* @once */ lngp.chainFunctions(props.onUp, onUp)}
       onDown={/* @once */ lngp.chainFunctions(props.onDown, onDown)}
       forwardFocus={/* @once */ lngp.navigableForwardFocus}
-      onCreate={/* @once */ props.selected ? lngp.chainFunctions(props.onCreate, columnScroll) : props.onCreate}
+      onCreate={
+        /* @once */ props.selected
+          ? lngp.chainFunctions(props.onCreate, columnScroll)
+          : props.onCreate
+      }
       scrollToIndex={/* @once */ scrollToIndex}
       onSelectedChanged={/* @once */ chainedOnSelectedChanged}
       style={/* @once */ lng.combineStyles(props.style, rowStyles)}
     >
-      <List each={slice()}>{props.children}</List>
+      <List each={slice()}>
+        {(item, index) => {
+          const node = props.children(item, index);
+          const el = node as unknown;
+          if (lng.isElementNode(el) && props.itemKey !== undefined) {
+            const itemKey = props.itemKey;
+            s.createRenderEffect(() => setItemKey(el, itemKey(item())));
+          }
+          return node;
+        }}
+      </List>
     </view>
   );
 

@@ -11,10 +11,11 @@ export function runAndroid(loadApp, { services } = {}) {
   runNativeApp(
     'android',
     loadApp,
-    (canvas, bridge, platform, root, history) => {
+    (canvas, bridge, platform, root, history, back) => {
       bindAndroidCanvas(canvas);
-      // Hardware Back moves the app's history; at the root it leaves the app.
-      const stopBack = bindAndroidBack(history);
+      // Hardware Back goes through the host's dispatcher; at the root its
+      // exit action finishes the activity.
+      const stopBack = bindAndroidBack(history, back);
       // The device's services, installed once. Nothing in them runs until
       // the app first uses one.
       const removeServices = installServices(
