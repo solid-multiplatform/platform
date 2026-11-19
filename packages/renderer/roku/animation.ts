@@ -319,8 +319,32 @@ export class Animator {
       map.set(key, { animation, remove: !!settings.remove });
       entries.push(animation);
     }
-    if (Object.keys(props).every((key) => typeof props[key] !== 'number')) {
-      // Non-numeric props (shaderProps, textureOptions) still need a completion
+    const shaderTarget = props.shaderProps;
+    if (shaderTarget && typeof shaderTarget === 'object' && typeof node.shaderPropsBlend === 'function') {
+      // Shader props (a radius, a border width or colour) run on one 0..1
+      // progress: the node blends from the values it has now.
+      const existing = map.get('shaderProps');
+      if (existing) existing.animation.stop();
+      const blend = node.shaderPropsBlend(shaderTarget) as (progress: number) => void;
+      const animation = new Animation({
+        value: 0,
+        target: 1,
+        duration: settings.duration,
+        delay: settings.delay,
+        easing: settings.easing ?? settings.timingFunction,
+        loop: settings.loop,
+        repeat: settings.repeat,
+        repeatDelay: settings.repeatDelay,
+        onWake: wake,
+        onUpdate: (progress) => {
+          blend(progress);
+          node.requestRender();
+        },
+      });
+      map.set('shaderProps', { animation, remove: !!settings.remove });
+      entries.push(animation);
+    } else if (Object.keys(props).every((key) => typeof props[key] !== 'number')) {
+      // Other non-numeric props (textureOptions) still need a completion
       // signal; the visual values were already written by the caller.
       const animation = new Animation({
         value: 0,

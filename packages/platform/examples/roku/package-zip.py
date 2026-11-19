@@ -14,13 +14,15 @@ modules = {
 runtimes = [name for name in modules if name.endswith("/solid-js/dist/solid.js")]
 if len(runtimes) != 1:
     raise SystemExit(f"Expected one Solid runtime, found {runtimes}")
-forbidden = ("/dom-renderer/domRenderer.js", "/webgl/src/Renderer.js",
+forbidden = ("/dom/domRenderer.js", "/webgl/src/Renderer.js",
              "/webgl/src/core/RendererCore.js", "/canvas/src/main-api/Renderer.js")
 if any(name.endswith(forbidden) for name in modules):
     raise SystemExit("A browser renderer entered the Roku bundle")
 if not any(name.endswith("/roku/renderer.js") for name in modules):
     raise SystemExit("Missing SceneGraph renderer")
-for name in ("manifest", "source/Main.brs", "source/compiled/index.js", "components/BaseAppScene.xml"):
+# assets/smp: the images the SceneGraph renderer draws gradients and shadows with.
+for name in ("manifest", "source/Main.brs", "source/compiled/index.js", "components/BaseAppScene.xml",
+             "assets/smp/ramp-v.png", "assets/smp/weight-br.png", "assets/smp/shadow-r16-b16.9.png"):
     if not (channel / name).is_file():
         raise SystemExit(f"Missing channel file {name}")
 if b"viptv.syek.tech" in (channel / "source/compiled/index.js").read_bytes():

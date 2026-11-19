@@ -5,8 +5,13 @@ scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT
 corepack pnpm pack --pack-destination "$scratch"
 tar -xzf "$scratch"/solid-multiplatform-platform-*.tgz -C "$scratch"
-node "$scratch/package/cli/main.mjs" init "$scratch/smoke-app" --targets web,desktop,roku,tizen
+node "$scratch/package/cli/main.mjs" init "$scratch/smoke-app" --targets web,desktop,roku,tizen,webos,vizio
 cd "$scratch/smoke-app"
+test -f solid-platform.config.json
+# A command a target does not implement is refused with exit code 2.
+code=0; node "$scratch/package/cli/main.mjs" logs web 2>"$scratch/refused.log" || code=$?
+[[ $code -eq 2 ]] && grep -Fq 'web does not implement logs' "$scratch/refused.log"
+node "$scratch/package/cli/main.mjs" doctor web tizen webos vizio
 node --input-type=module -e '
   import assert from "node:assert/strict";
   import {readFileSync} from "node:fs";
@@ -33,6 +38,13 @@ corepack pnpm build tizen
 node "$framework/tests/cli/browser-smoke.mjs" targets/tizen/dist --tv
 corepack pnpm build tizen --legacy
 node "$framework/tests/cli/browser-smoke.mjs" targets/tizen/dist-legacy --tv
+for tv in webos vizio; do
+  cp plugins/greeting/web/index.mjs "plugins/greeting/$tv/index.mjs"
+  corepack pnpm build "$tv"
+  node "$framework/tests/cli/browser-smoke.mjs" "targets/$tv/dist" --tv
+done
+# The webOS build ends in an .ipk named by the id and version in the config.
+test -f targets/webos/dist-package/dev.solidapp.asmokeapp_0.1.0_all.ipk
 corepack pnpm build roku
 python3 - <<'PY'
 from zipfile import ZipFile
@@ -40,3 +52,15 @@ with ZipFile("targets/roku/dist-roku/solid-multiplatform.zip") as app:
     assert b'pkg:/components/greeting/PGreetingTask.brs' in app.read('components/greeting/PGreetingTask.xml')
     assert b'greeting Roku' in app.read('components/greeting/PGreetingTask.brs')
 PY
+# An app created before solid-platform.config.json has only solid-platform.json
+# (name and targets) and must keep building.
+node --input-type=module -e '
+  import {readFileSync, rmSync, writeFileSync} from "node:fs";
+  const {name, targets} = JSON.parse(readFileSync("solid-platform.config.json"));
+  writeFileSync("solid-platform.json", JSON.stringify({name, targets}));
+  rmSync("solid-platform.config.json");
+'
+corepack pnpm build web
+node "$framework/tests/cli/browser-smoke.mjs" targets/web/dist
+corepack pnpm build tizen
+grep -Fq 'version="0.2.0"' targets/tizen/dist/config.xml

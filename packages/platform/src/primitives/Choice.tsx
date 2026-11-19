@@ -41,6 +41,10 @@ export function Checkbox(props: CheckboxProps): JSX.Element {
       height={height()}
       color={focused() ? theme().colors.focus : 0x00000000}
       borderRadius={theme().radius.small}
+      role="checkbox"
+      ariaLabel={props.label}
+      ariaChecked={checked()}
+      ariaDisabled={props.disabled}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onEnter={activate}
@@ -120,6 +124,10 @@ export function Radio(props: RadioProps): JSX.Element {
       height={height()}
       color={focused() ? theme().colors.focus : 0x00000000}
       borderRadius={size / 2}
+      role="radio"
+      ariaLabel={props.label}
+      ariaChecked={selected()}
+      ariaDisabled={props.disabled}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       onEnter={activate}
@@ -192,7 +200,12 @@ export function RadioGroup<T>(props: RadioGroupProps<T>): JSX.Element {
   const rowHeight = () => props.rowHeight ?? 48;
   const gap = () => props.gap ?? 4;
   return (
-    <view x={props.x ?? 0} y={props.y ?? 0} width={props.width ?? 320}>
+    <view
+      x={props.x ?? 0}
+      y={props.y ?? 0}
+      width={props.width ?? 320}
+      role="group"
+    >
       <For each={props.options}>
         {(option, index) => (
           <Radio

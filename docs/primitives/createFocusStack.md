@@ -1,85 +1,55 @@
-# Focus Stack Utility
+# Focus stack
 
-## Overview
+The focus stack stores elements so you can return focus to them later. Use it
+when focus leaves an area, for example to a side menu, and must come back to
+where it was.
 
-The Focus Stack Utility helps manage focus navigation by storing and restoring focused elements in a stack. This is useful for handling focus transitions in UI navigation.
+## Setup
+
+Wrap your app in `FocusStackProvider`:
+
+```tsx
+import type { JSX } from 'solid-js';
+import { FocusStackProvider } from '@solid-multiplatform/platform/primitives';
+
+export const Root = (props: { children: JSX.Element }) => (
+  <FocusStackProvider>{props.children}</FocusStackProvider>
+);
+```
 
 ## Usage
 
-### Importing and Setup
-
 ```tsx
-import { FocusStackProvider, useFocusStack } from '@solidtv/solid/primitives';
-```
+import { useFocusStack } from '@solid-multiplatform/platform/primitives';
 
-Wrap your application in the `FocusStackProvider` to provide focus management:
-
-```tsx
-<FocusStackProvider>
-  <App />
-</FocusStackProvider>
-```
-
-or
-
-```tsx
-<FocusStackProvider>
-  <HashRouter>...</HashRouter>
-</FocusStackProvider>
-```
-
-### Storing and Restoring Focus
-
-In your Pages and components:
-
-```tsx
-const { storeFocus, restoreFocus, clearFocusStack } = useFocusStack();
-
-function handleBack() {
-  if (!restoreFocus()) {
-    console.log('No previous focus to restore');
-  }
-}
-
-function resetFocusStack() {
-  clearFocusStack();
-}
-
-<view forwardFocus={restoreFocus} onBlur={storeFocus}>
-```
-
-## API
-
-### `useFocusStack(autoClear?: boolean = true)`
-
-useFocusStack automatically creates an onCleanup to clearFocusStack when parent component is cleaned up. This allows nodes to be cleaned up.
-You can prevent by passing in false to useFocusStack.
-
-### `storeFocus(element: ElementNode, prevElement?: ElementNode)`
-
-Stores the currently focused element. If the element is already active, it does nothing. You can attach storeFocus to an `onFocus` or `onBlur` handler directly.
-
-### `restoreFocus(): boolean`
-
-Restores focus to the last stored element and removes it from the stack. Elements destroyed since they were stored are removed and skipped, so focus goes to the most recent element that still exists.
-
-- Returns `true` if focus was successfully restored, otherwise `false`.
-
-### `clearFocusStack()`
-
-Empties the focus stack, removing all stored elements.
-
-## Example
-
-```tsx
-function MyComponent() {
-  const { storeFocus, restoreFocus, clearFocusStack } = useFocusStack();
+export const Page = () => {
+  const { storeFocus, restoreFocus } = useFocusStack();
 
   return (
     <view>
-      <LeftNav onFocus={storeFocus} />
-      <Button onClick={restoreFocus}>Restore Focus</Button>
+      <view id="menu" onFocus={storeFocus} onRight={() => restoreFocus()} />
+      <view id="content" autofocus />
     </view>
   );
-}
+};
 ```
+
+When the menu takes focus, `onFocus` passes the element that had focus before
+as the second argument, and `storeFocus` stores it. Right on the menu sends
+focus back to it.
+
+`useFocusStack` throws when there is no `FocusStackProvider` above it.
+
+## API
+
+- `useFocusStack(autoClear = true)`: returns the three functions below. With
+  `autoClear`, the stack is emptied shortly after the calling component is
+  cleaned up, so destroyed elements are not kept. Pass `false` to keep the
+  stack.
+- `storeFocus(element, prevElement?)`: pushes `prevElement` when it is given,
+  otherwise `element`. It has the argument order of `onFocus` and `onBlur`, so
+  you can pass it to either.
+- `restoreFocus()`: pops the last stored element and focuses it. Elements that
+  were destroyed since they were stored are skipped. Returns `true` when an
+  element was focused.
+- `clearFocusStack()`: empties the stack.

@@ -1,106 +1,49 @@
-# **Task Scheduler for Deferred Execution**
+# Task scheduler
 
-This module provides a simple task scheduling system that allows deferring function execution based on priority. Tasks are processed only when `tasksEnabled` is `true`, ensuring that the system can temporarily halt processing during critical operations like user interactions.
-
-## **Installation & Import**
-
-```ts
-import { setTasksEnabled, clearTasks, scheduleTask } from './taskScheduler';
-```
-
-## **API Reference**
-
-### **`scheduleTask(callback: Task, priority?: 'high' | 'low')`**
-
-Schedules a function to run later, either at **high** or **low** priority.
-
-- **High-priority tasks** are added to the front of the queue and processed first.
-- **Low-priority tasks** are added to the back of the queue.
-
-#### **Parameters**
-
-| Parameter  | Type                  | Default      | Description                        |
-| ---------- | --------------------- | ------------ | ---------------------------------- | ----------------------------------------------------------- |
-| `callback` | `Task` (`() => void`) | **Required** | The function to be executed later. |
-| `priority` | `'high'               | 'low'`       | `'low'`                            | Determines whether the task is queued at the front or back. |
-
-#### **Example Usage**
+The task scheduler runs work later, one task at a time, and stays out of the
+way while the user is pressing keys. Use it for work that can wait: preloading
+the next row, warming a cache.
 
 ```ts
-scheduleTask(() => console.log('Low-priority task'), 'low');
-scheduleTask(() => console.log('High-priority task'), 'high');
+import {
+  clearTasks,
+  scheduleTask,
+  setTasksEnabled,
+} from '@solid-multiplatform/platform';
 ```
 
----
+## `scheduleTask(callback, priority?)`
 
-### **`setTasksEnabled(enabled: boolean): void`**
+Queues a function.
 
-Enables or disables task processing.
-
-- When **`false`**, tasks remain in the queue but are not executed.
-- When **`true`**, queued tasks begin processing.
-
-#### **Parameters**
-
-| Parameter | Type      | Description                                              |
-| --------- | --------- | -------------------------------------------------------- |
-| `enabled` | `boolean` | `true` to enable task processing, `false` to disable it. |
-
-#### **Example Usage**
+- `callback`: `() => void`.
+- `priority`: `'low'` (default) adds it to the back of the queue. `'high'` adds
+  it to the front.
 
 ```ts
-setTasksEnabled(false); // Pause task execution
-setTasksEnabled(true); // Resume task execution
+scheduleTask(() => preloadRow(3));
+scheduleTask(() => preloadHero(), 'high');
 ```
 
-This maybe useful to do when navigating to a new page and you can enable tasks again onMount of a new page.
+## `setTasksEnabled(enabled)`
 
----
-
-### **`clearTasks(): void`**
-
-Clears all pending tasks from the queue.
-
-#### **Example Usage**
+Pauses or resumes the queue. Paused tasks stay queued.
 
 ```ts
-clearTasks(); // Removes all scheduled tasks
+setTasksEnabled(false);
+setTasksEnabled(true);
 ```
 
----
+## `clearTasks()`
 
-## **Task Processing Behavior**
+Drops every queued task. Call it when you leave a page whose tasks no longer
+matter.
 
-Tasks are processed when `tasksEnabled` is `true`. The system uses a `setTimeout` with a `Config.taskDelay` or **50ms delay** to process tasks asynchronously.
+## How it runs
 
-Additionally, `tasksEnabled` is automatically **disabled during keypresses** and re-enabled when the renderer is idle. This behavior ensures smooth UI updates without interference from background tasks.
+- Tasks run one per timer, `Config.taskDelay` ms apart (50 ms when unset).
+- The queue stops when focus moves, because that means the user pressed a key.
+- It starts again when the renderer reports `idle`.
+- A timer exists only while tasks are queued. An empty queue schedules nothing.
 
-### **Automatic Task Disabling on Keypress**
-
-```ts
-createRenderEffect(() => {
-  activeElement(); // Triggers when focus changes due to user input
-  tasksEnabled = false; // Disable task execution while user interacts
-});
-```
-
-## **Full Example**
-
-```ts
-import { scheduleTask, setTasksEnabled, clearTasks } from './taskScheduler';
-
-setTasksEnabled(true); // Enable task processing
-
-scheduleTask(() => console.log('Task 1 - Low priority'), 'low');
-scheduleTask(() => console.log('Task 2 - High priority'), 'high');
-
-setTimeout(() => {
-  console.log('Disabling tasks temporarily');
-  setTasksEnabled(false);
-
-  setTimeout(() => {
-    console.log('Re-enabling tasks');
-    setTasksEnabled(true);
-  }, 500);
-}, 1000);
-```
+The idle hook is installed by `createRenderer`.

@@ -1,29 +1,10 @@
-import type { ElementNode } from '@solid-multiplatform/platform';
-import type { Viewport } from '@solid-multiplatform/platform/viewport';
-export interface ScreenHost {
-  target: string;
-  root?: object;
-  /** Roku only: app-provided video adapter bound to the scene root. */
-  video?: {
-    create(options?: {
-      x?: number;
-      y?: number;
-      width?: number;
-      height?: number;
-    }): unknown;
-  };
-  semantics?: {
-    register(
-      value: import('@solid-multiplatform/platform/semantics').Semantics,
-    ): { dispose(): void; focus?(): void };
-  };
-}
 export interface ScreenProps {
-  host?: ScreenHost;
+  /** One control per plugin. */
   names: string[];
-  message(): string;
-  viewport(): Viewport;
-  register(name: string, node: ElementNode): void;
-  activate(name: string): true;
-  next(offset: number): true;
+  message: string;
+  /** Runs a plugin and shows what it returns. */
+  onRun(name: string): void;
+  /** The target's name and, on native targets, the view native controls go in. */
+  target: string;
+  native?: object;
 }

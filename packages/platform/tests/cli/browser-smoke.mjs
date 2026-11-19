@@ -93,6 +93,30 @@ try {
       );
     }
   }
+  if (!process.argv.includes('--tv')) {
+    // The web host mirrors the scene for screen readers: the starter's row is
+    // a button named by its text, with no accessibility code in the app.
+    await page
+      .getByRole('button', { name: 'greeting', exact: true })
+      .waitFor({ state: 'attached', timeout: 4000 });
+    // A real pointer click on the row, which the app did not register.
+    await page.mouse.click(100, 120);
+    await page.waitForFunction(
+      () => document.documentElement.dataset.pluginResult === 'greeting',
+      undefined,
+      { timeout: 3000 },
+    );
+    // A click away from every control does nothing.
+    await page.evaluate(
+      () => delete document.documentElement.dataset.pluginResult,
+    );
+    await page.mouse.click(700, 500);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    assert.equal(
+      await page.locator('html').getAttribute('data-plugin-result'),
+      null,
+    );
+  }
   await page.evaluate(
     () => delete document.documentElement.dataset.pluginResult,
   );

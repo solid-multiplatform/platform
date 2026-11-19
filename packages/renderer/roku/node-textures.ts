@@ -1,12 +1,9 @@
 import { Events } from './events.js';
 import { finiteNumber as num } from './node-values.js';
 
-const SHEET_SIZES: Record<string, [number, number]> = {
-  'pkg:/assets/icons_white.png': [375, 100],
-  'pkg:/assets/icons.png': [375, 100]
-};
-export function sheetSize(src: string): [number, number] | null {
-  return SHEET_SIZES[normalizeUri(src)] || null;
+/** Whether a Poster cannot decode this image (compressed GPU textures). */
+export function unsupportedImage(src: string): boolean {
+  return /\.(ktx2?|pvr|astc|basis)(\?|$)/i.test(src);
 }
 export function normalizeUri(src: string): string {
   if (!src) return '';

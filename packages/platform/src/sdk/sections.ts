@@ -124,7 +124,7 @@ export interface SwipeActions {
   offset: Accessor<number>;
   direction: Accessor<'start' | 'end' | null>;
   open: Accessor<boolean>;
-  /** Pass to `InputControl.drag`. */
+  /** Pass to a node's `onPointerDrag`. */
   drag(
     phase: 'start' | 'move' | 'end' | 'cancel',
     point: Point,

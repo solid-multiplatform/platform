@@ -1,68 +1,64 @@
-# Virtual Row & Column Primitives
+# VirtualRow and VirtualColumn
 
-`VirtualRow` & `VirtualColumn` renders a dynamic slice of items from a larger dataset, displaying them in a horizontal row / column. It's designed to optimize performance for long lists by only rendering the items currently visible or nearby.
-
-### Behavior
-
-- Renders a 1D list of items.
-- Uses `displaySize` to define the number of visible items.
-- Uses `bufferSize` to pre-render additional items to the left and right of the visible window for smoother scrolling.
-- Only a subset of the total items is rendered, improving performance.
-- Triggers `onEndReached` when the user approaches the end of the list, allowing for infinite scrolling or fetching more data.
-- Focus is updated and maintained internally, with optional control via `scrollToIndex`.
-- `selected` can be set to an index in the total array of items.
-
-### Example Usage
+`VirtualRow` and `VirtualColumn` render a window of a long list. Only the
+visible items and a buffer on each side exist as nodes. Moving the selection
+shifts the window.
 
 ```tsx
-import { VirtualRow, VirtualColumn } from './primitives/Virtual';
+import { VirtualRow } from '@solid-multiplatform/platform/primitives';
 
-<VirtualRow
-  x={100}
-  y={100}
-  displaySize={5}
-  bufferSize={2}
-  each={myItemsArray}
-  onEndReached={loadMoreItems}
-  onEndReachedThreshold={3}
-  onSelectedChanged={updateContent}
-  autofocus
->
-  {(item, index) => <Thumbnail item={item()} index={index()} />}
-</VirtualRow>;
+export const Rail = (props: { items: string[]; loadMore: () => void }) => (
+  <VirtualRow
+    x={100}
+    y={100}
+    displaySize={5}
+    bufferSize={2}
+    each={props.items}
+    onEndReached={props.loadMore}
+    onEndReachedThreshold={3}
+    autofocus
+  >
+    {(item, index) => (
+      <view width={300} height={170} color="#264653ff">
+        <text>{`${index()}: ${item()}`}</text>
+      </view>
+    )}
+  </VirtualRow>
+);
 ```
 
-### Props
+`children` is a function. It receives two accessors, the item and its index in
+the full list. Nodes are reused as the window moves, so read both through the
+accessors.
 
-- **each** (`readonly T[] | undefined | null | false`): The full list of items to be rendered.
-- **displaySize** (`number`): Number of items per row (required).
-- **bufferSize** (`number`): Number of items to pre-render above and below the visible area (default: `2`).
-- **wrap** (`boolean`): If `true`, navigation wraps around the ends of the list and scrolling loops infinitely.
-- **scrollIndex** (`number`): Specifies the index within the visible window where the focus should be anchored during scrolling.
-- **onEndReached** (`() => void`): Callback triggered when selection moves near the end of the list Requires `onEndReachedThreshold` to be set.
-- **onEndReachedThreshold** (`number`): Number from end of items when `onEndReached` will be called (default: `undefined`).
-- **debugInfo** (`boolean`): Logs internal slice recalculations and bounds shifts to console.
-- **factorScale** (`boolean`): If `true`, scrolling calculations will take item focus scale into account.
-- **uniformSize** (`boolean`): If `true` (default), assumes all items are uniform size to calculate scrolling, improving performance.
-- **children** (`(item: Accessor<T>, index: Accessor<number>) => JSX.Element`): Function that renders each item.
-- **selected** (`number`): Initial selected index.
-- **autofocus** (`boolean`): If `true`, the component will auto-focus the first item on mount.
-- **onSelectedChanged** (`OnSelectedChanged`): Optional callback triggered when selection changes.
+## Props
 
-Use `cursor` property on the node to get the absolute index in the list of items.
+Both components take the [Row and Column](/primitives/row_column.md) props,
+plus:
 
-### Performance Optimization
+- `each` (`readonly T[] | undefined | null | false`): the full list.
+- `displaySize` (`number`, required): number of items visible at once.
+- `bufferSize` (`number`, default `2`): extra items kept rendered on each side
+  of the visible window.
+- `wrap` (`boolean`): navigation wraps around the ends of the list.
+- `skipInitialWrap` (`boolean`): with `wrap`, wrapping starts after the first
+  forward press. Ignored when `selected` is not `0` at mount.
+- `scrollIndex` (`number`): position inside the visible window where the
+  selection is held while scrolling.
+- `onEndReached` (`() => void`): called when the selection comes close to the
+  end. Needs `onEndReachedThreshold`.
+- `onEndReachedThreshold` (`number`): how many items from the end
+  `onEndReached` fires.
+- `uniformSize` (`boolean`, default `true`): treat all items as the same size
+  when computing the scroll distance.
+- `debugInfo` (`boolean`): log window changes to the console.
+- `selected` (`number`): initial selected index in the full list.
 
-- Renders only a subset of the full list (`slice`) for improved memory and render-time performance.
-- Automatically re-calculates the slice on selection or data change.
-- Reuses Children components
-- Merges styles with internal layout defaults:
-  - `display: flex`, `flexWrap: wrap`, `gap: 30`
-  - `transition: { y: 250ms ease-out }`
+`factorScale` is still accepted but is deprecated and has no effect.
 
-### Focus & Navigation
+## Position in the full list
 
-- Focus is managed via `selected` and handled automatically when navigating.
-- Navigation jumps vertically by row (`onUp`, `onDown`) and horizontally by item (`onLeft`, `onRight`).
-- When the selected index crosses a row boundary, the slice is updated and the grid scrolls accordingly.
-- Internal `onSelectedChanged` adjusts for slice-relative index offset to maintain correct selection.
+The container node has a `cursor` property with the selected index in the full
+list. `selected` on the node is the index inside the rendered window.
+
+A ref has `scrollToIndex(index)`, which takes an index in the full list.

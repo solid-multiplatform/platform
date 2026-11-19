@@ -1,5 +1,6 @@
 import type { JSX } from 'solid-js';
 import type { Rect } from '../sdk/input.js';
+import type { SemanticsRole } from '../sdk/semantics.js';
 import { viewport } from '../sdk/viewport.js';
 import { Modal } from './Modal.jsx';
 
@@ -11,6 +12,8 @@ export interface PopoverProps {
   anchor: Rect | (() => Rect);
   placement?: PopoverPlacement;
   label: string;
+  /** What the panel is to assistive technology: `menu` for a menu. */
+  role?: SemanticsRole;
   width?: number;
   height?: number;
   onRequestClose?(): void;
@@ -58,7 +61,14 @@ export function Popover(props: PopoverProps): JSX.Element {
       label={props.label}
       transparent
     >
-      <view {...rect()} color={0x1d2937ff} onMouseClick={() => true} onEnter={() => true}>
+      <view
+        {...rect()}
+        color={0x1d2937ff}
+        role={props.role ?? 'none'}
+        ariaLabel={props.role ? props.label : undefined}
+        onMouseClick={() => true}
+        onEnter={() => true}
+      >
         {props.children}
       </view>
     </Modal>
