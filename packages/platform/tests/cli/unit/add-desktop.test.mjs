@@ -7,6 +7,7 @@ import {
   LATEST_RELEASE,
   addHostPackage,
   installRuntime,
+  RECENT_RELEASES,
   latestRuntimeAsset,
   platformTag,
   runtimeAsset,
@@ -82,6 +83,43 @@ test('the latest release is read through a fake fetch', async () => {
   const asset = await latestRuntimeAsset({ tag: 'linux-x64', fetchImpl });
   assert.deepEqual(seen, [LATEST_RELEASE]);
   assert.equal(asset.name, 'solid-desktop-linux-x64.tar.gz');
+});
+
+test('a pre-release is used when the latest release carries no runtime', async () => {
+  const seen = [];
+  const fetchImpl = async (url) => {
+    seen.push(url);
+    if (url === LATEST_RELEASE)
+      return { ok: false, status: 404, statusText: 'Not Found' };
+    return {
+      ok: true,
+      arrayBuffer: async () =>
+        Buffer.from(
+          JSON.stringify([
+            {
+              tag_name: 'v0.3.0-beta.1',
+              prerelease: true,
+              assets: release.assets,
+            },
+          ]),
+        ),
+    };
+  };
+  const asset = await latestRuntimeAsset({ tag: 'linux-x64', fetchImpl });
+  assert.deepEqual(seen, [LATEST_RELEASE, RECENT_RELEASES]);
+  assert.equal(asset.name, 'solid-desktop-linux-x64.tar.gz');
+});
+
+test('no release carries the runtime: one clear error', async () => {
+  const fetchImpl = async (url) => ({
+    ok: true,
+    arrayBuffer: async () =>
+      Buffer.from(JSON.stringify(url === LATEST_RELEASE ? { assets: [] } : [])),
+  });
+  await assert.rejects(
+    latestRuntimeAsset({ tag: 'linux-x64', fetchImpl }),
+    /No release on GitHub carries solid-desktop-linux-x64\.tar\.gz/,
+  );
 });
 
 test('SOLID_DESKTOP_RUNTIME wins and nothing is downloaded', async () => {
