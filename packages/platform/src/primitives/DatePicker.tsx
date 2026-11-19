@@ -83,6 +83,35 @@ const valueOf = (
 const startOfDay = (date: Date) =>
   new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
+// The host may have no `Intl` (the desktop runtime embeds Hermes without it):
+// `formatDate` then throws for both the locale and its own fallback. The
+// labels are what a picker cannot open without, so each has an English one
+// the exception falls back to — the dialog must render and take keys.
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+// Narrow weekday initials, Sunday first, as formatDate({ weekday: 'narrow' }).
+const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+const formatOr = (date: Date, options: Intl.DateTimeFormatOptions, fallback: string): string => {
+  try {
+    return formatDate(date, options);
+  } catch {
+    return fallback;
+  }
+};
+
 const sameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() &&
   a.getMonth() === b.getMonth() &&
@@ -144,10 +173,18 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
   const firstWeekday = () => month().getDay();
   const weekdayLabels = () =>
     Array.from({ length: 7 }, (_, index) =>
-      formatDate(new Date(2024, 0, 7 + index), { weekday: 'narrow' }),
+      formatOr(
+        new Date(2024, 0, 7 + index),
+        { weekday: 'narrow' },
+        WEEKDAYS[index]!,
+      ),
     );
   const monthLabel = () =>
-    formatDate(month(), { month: 'long', year: 'numeric' });
+    formatOr(
+      month(),
+      { month: 'long', year: 'numeric' },
+      `${MONTHS[month().getMonth()]} ${month().getFullYear()}`,
+    );
 
   const disabled = (date: Date) => {
     if (props.min && startOfDay(date) < startOfDay(props.min)) return true;

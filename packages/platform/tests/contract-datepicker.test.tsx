@@ -103,6 +103,59 @@ v.describe('DatePicker', () => {
     dispose();
   });
 
+  v.it('opens and keeps the keyboard alive on a host without Intl', async () => {
+    // The desktop runtime embeds Hermes without `Intl`: formatDate throws for
+    // the locale and again for its own 'en' fallback, which used to abort the
+    // panel's render — the picker never opened and every key but Back was
+    // dead. The labels fall back to English instead.
+    const globalIntl = (globalThis as { Intl?: unknown }).Intl;
+    delete (globalThis as { Intl?: unknown }).Intl;
+    const selected: Date[] = [];
+    try {
+      const { target, dispose } = await mount(() => (
+        <DatePicker
+          visible
+          value={new Date(2026, 0, 15)}
+          onChange={(date) => selected.push(date)}
+        />
+      ));
+      await flush();
+      await flush();
+      // The panel rendered: the month label exists, in the fallback language.
+      v.expect(texts(renderer.rootNode).join('|')).toContain('January 2026');
+      // Focus opened on the chosen day, not on the bare panel.
+      const activeText = () => texts(lng.activeElement()).join('');
+      v.expect(activeText()).toBe('15');
+
+      // The keyboard is alive: arrows move, Enter picks, Done commits.
+      target.down('ArrowRight');
+      target.up('ArrowRight');
+      await flush();
+      v.expect(activeText()).toBe('16');
+      target.down('Enter');
+      target.up('Enter');
+      await flush();
+      target.down('ArrowRight');
+      target.up('ArrowRight');
+      await flush();
+      v.expect(activeText()).toBe('17');
+
+      const done = findAll(
+        renderer.rootNode,
+        (node) =>
+          typeof node.onMouseClick === 'function' && texts(node).includes('Done'),
+      ).at(-1)!;
+      done.onMouseClick?.(new MouseEvent('click'), done);
+      await flush();
+      // Done commits the day Enter chose (16), not the one focus moved to.
+      v.expect(selected).toHaveLength(1);
+      v.expect(selected[0]!.getDate()).toBe(16);
+      dispose();
+    } finally {
+      (globalThis as { Intl?: unknown }).Intl = globalIntl;
+    }
+  });
+
   v.it('navigates and picks a date with the keyboard only', async () => {
     const selected: Date[] = [];
     const { target, dispose } = await mount(() => (

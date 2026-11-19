@@ -247,6 +247,16 @@ v.describe('dialog surfaces', () => {
         <Drawer visible label="Drawer">
           <view width={10} height={10} />
         </Drawer>
+        {/* The modal's own surface: the panel an app puts in it honours the
+            theme radius the way Alert's does, and Modal leaves it alone. */}
+        <Modal visible label="Modal">
+          <view
+            width={480}
+            height={260}
+            color={0x142235ff}
+            borderRadius={theme.radius.medium}
+          />
+        </Modal>
       </>
     ));
     await waitForUpdate();
@@ -266,6 +276,8 @@ v.describe('dialog surfaces', () => {
       (node) => node.width === 360 && node.height === 1080,
     );
 
+    const modal = find((node) => node.color === 0x142235ff);
+    v.expect(modal.borderRadius).toBe(theme.radius.medium);
     v.expect(alert.borderRadius).toBe(theme.radius.medium);
     v.expect(popover.borderRadius).toBe(theme.radius.medium);
     v.expect(sheet.borderRadius).toEqual([
