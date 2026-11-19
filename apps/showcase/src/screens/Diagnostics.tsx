@@ -10,6 +10,7 @@ import { installedServices } from '@solid-multiplatform/platform/services';
 import { viewport } from '@solid-multiplatform/platform/viewport';
 import { useShowcase } from '../env';
 import { frameCounterAttached, framesInLast, totalFrames } from '../frames';
+import { layoutFor } from '../layout';
 import { Button, contentWidth, MUTED, Screen, TEXT } from '../ui';
 
 export function DiagnosticsScreen() {
@@ -28,6 +29,7 @@ export function DiagnosticsScreen() {
       `Target: ${env.target}`,
       `Renderer backend: ${env.backend}`,
       `Viewport: ${v.width} x ${v.height}, scale ${v.scale}, framebuffer ${v.framebufferWidth} x ${v.framebufferHeight}`,
+      `Layout: ${layoutFor(v.width)} (mobile at most 500 wide, tv above 1600)`,
       `Capabilities: ${JSON.stringify(useCapabilities())}`,
       `Installed services (${services.length}): ${services.join(', ')}`,
     ];

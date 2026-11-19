@@ -362,6 +362,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'Sheet',
         'Suspense',
         'Svg',
+        'TelemetryCounter',
         'Toast',
         'Tooltip',
         'VirtualColumn',
