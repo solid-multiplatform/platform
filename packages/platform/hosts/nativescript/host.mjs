@@ -15,6 +15,7 @@
 // each need a real implementation, and a host that cannot do them right
 // omits the sink rather than stubbing it.
 import { RendererMain } from '@solid-multiplatform/renderer';
+import { registerDefaultShaders } from '@solid-multiplatform/platform/shaders';
 import { createBackDispatcher } from '@solid-multiplatform/platform';
 import { createMemoryHistory } from './history.mjs';
 
@@ -102,7 +103,13 @@ function launchEstablished(form, options, run) {
     // WebGL backend, drawing into the Canvas `bindCanvas` registered. No
     // `target` is passed: a NativeScript Canvas is in the layout already and
     // has no DOM `appendChild`, which a target would call.
-    createRenderer: (settings) => new RendererMain(settings),
+    createRenderer: (settings) => {
+      // Rounded corners, borders, shadows and gradients are shaders of the
+      // WebGL backend; an app on this host draws them without asking.
+      const renderer = new RendererMain(settings);
+      registerDefaultShaders(renderer);
+      return renderer;
+    },
     keys: options.keys ?? host.keys,
     // `createInputScope` is a `PointerSource`: the target's touch binding
     // feeds it before the scene connects it. No gestures live in the host.
