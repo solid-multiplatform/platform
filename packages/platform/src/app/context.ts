@@ -4,6 +4,7 @@
  * generated entry provides them through `appEntry`).
  */
 import { createContext } from 'solid-js';
+import type { HistorySource } from '../core/history.js';
 import type { PlatformTarget } from '../sdk/capabilities.js';
 import type { EditorHost } from '../sdk/editor.js';
 
@@ -18,6 +19,8 @@ export const HostScope = createContext<{
   native?: unknown;
   /** The host's native text entry, where it has one. */
   text?: EditorHost;
+  /** The host's history, where it has one: the router reads it, not `window`. */
+  history?: HistorySource;
 }>();
 
 export const AppScope = createContext<{

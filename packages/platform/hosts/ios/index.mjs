@@ -11,6 +11,8 @@ import { runNativeApp } from '../nativescript/boot.mjs';
 export function runIOS(loadApp) {
   const links = captureAppleLinks();
   const orientation = captureAppleOrientation();
+  // The host's history is created by `runNativeApp` and passed to the app;
+  // iOS has no hardware Back to drive it (the system swipe is out of scope).
   runNativeApp('ios', loadApp, (canvas, _bridge, platform, root) => {
     // Lazy providers: nothing is constructed until the app uses a service.
     const removeServices = installServices(

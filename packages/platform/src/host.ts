@@ -10,6 +10,7 @@ import { createComponent, type JSXElement } from 'solid-js';
 import type { SceneRenderer } from '@solid-multiplatform/renderer/contracts';
 import { HostScope } from './app/context.js';
 import { Config } from './core/config.js';
+import type { HistorySource } from './core/history.js';
 import { isElementNode } from './core/utils.js';
 import {
   getRenderer,
@@ -39,6 +40,9 @@ import { attachSemantics, type SemanticsSink } from './sdk/semantics.js';
 
 export type Disposer = () => void;
 
+export type { HistoryLocation, HistorySource } from './core/history.js';
+export { createMemoryHistory } from './core/history.js';
+
 /** Renderer settings an app passes; each backend reads the ones it knows. */
 export type HostRendererSettings = Parameters<RendererFactory>[0];
 
@@ -67,6 +71,13 @@ export interface HostContext<Surface = unknown> {
   readonly semantics?: SemanticsSink;
   /** Native text entry: IME, on-screen keyboard, autofill. */
   readonly text?: EditorHost;
+  /**
+   * Where the router keeps its history. The web host supplies the browser's
+   * `window.history`; a host with no browser supplies an in-memory stack that
+   * its Back handling drives. The router reads `window` only when neither is
+   * available, and only on the web.
+   */
+  readonly history?: HistorySource;
   /** Whatever plugins on this target attach to (native root view, window). */
   readonly native?: unknown;
 }
@@ -106,7 +117,7 @@ export interface AppOptions {
 export type HostWiring = Partial<
   Pick<
     HostContext,
-    'keys' | 'pointer' | 'semantics' | 'target' | 'native' | 'text'
+    'keys' | 'pointer' | 'semantics' | 'target' | 'native' | 'text' | 'history'
   >
 >;
 

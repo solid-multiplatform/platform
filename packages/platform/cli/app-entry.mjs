@@ -76,7 +76,8 @@ export function appSettings(root, target, fontRoot) {
       );
       fonts.push(`{ fontFamily: ${family}, fontUrl: font${i} }`);
     } else if (font.atlas && fontRoot) {
-      const url = (ext) => `${fontRoot} + ${JSON.stringify('/' + font.atlas + ext)}`;
+      const url = (ext) =>
+        `${fontRoot} + ${JSON.stringify('/' + font.atlas + ext)}`;
       fonts.push(
         `{ type: 'msdf', fontFamily: ${family}, atlasUrl: ${url('.png')}, atlasDataUrl: ${url('.json')} }`,
       );
@@ -87,7 +88,10 @@ export function appSettings(root, target, fontRoot) {
   if (designSize && variantOrder(target).includes('tv'))
     settings.push(`designSize: ${JSON.stringify(designSize)}`);
   if (theme) settings.push(`theme: ${JSON.stringify(theme)}`);
-  return { imports: imports.join('\n'), settings: `{ ${settings.join(', ')} }` };
+  return {
+    imports: imports.join('\n'),
+    settings: `{ ${settings.join(', ')} }`,
+  };
 }
 
 /**
@@ -127,7 +131,7 @@ export function mountComponent(settings, hasOptions, pointer = 'host.input') {
   return `const entry = appEntry(App, plugins, ${settings}${hasOptions ? ', options' : ''});
     const dispose = mountApp(
       entry.root,
-      { keys: host.keys, pointer: ${pointer}, semantics: host.semantics, target: host.target, native: host.root },
+      { keys: host.keys, pointer: ${pointer}, semantics: host.semantics, history: host.history, target: host.target, native: host.root },
       entry.options,
     );`;
 }
