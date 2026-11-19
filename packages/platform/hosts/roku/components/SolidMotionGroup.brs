@@ -89,7 +89,7 @@ sub requestMotion(key as string, request as object)
     action = request.action
     immediate = false
     if action = "start" then
-        # A new run always starts from what is on screen now.
+        ' A new run always starts from what is on screen now.
         writeValue(key, value)
         armAnimation(key, channel)
         channel.interp.keyValue = [value, request.to]
@@ -112,7 +112,7 @@ sub requestMotion(key as string, request as object)
             return
         end if
         if action = "snap" then value = request.to
-        # Pin both keys before stop, which otherwise resets to the span's start.
+        ' Pin both keys before stop, which otherwise resets to the span's start.
         channel.interp.keyValue = [value, value]
         channel.anim.control = "stop"
         writeValue(key, value)
