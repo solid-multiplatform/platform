@@ -31,6 +31,7 @@ import {
   type PlatformTarget,
 } from './sdk/capabilities.js';
 import type { EditorHost } from './sdk/editor.js';
+import type { BackDispatcher } from './sdk/shortcuts.js';
 import {
   createScenePointer,
   type PointerSource,
@@ -89,6 +90,19 @@ export interface HostContext<Surface = unknown> {
    * controls. A target without a window omits it.
    */
   readonly chrome?: WindowChrome;
+  /**
+   * The host's one Back dispatcher. Roku Back, Android hardware Back, a
+   * browser TV's Back key and the PS4 cancel button all deliver through it;
+   * a screen history registers its navigation with it, and the focus path
+   * gets one synthetic mapped Back. Omitted on a host with no Back.
+   */
+  readonly back?: BackDispatcher;
+  /**
+   * Leaves the app, where the target can: Roku `exitApp`, Android activity
+   * finish, a browser TV's platform exit. Plain web and PS4 omit it rather
+   * than pretend `window.close` worked.
+   */
+  exit?(): void;
   /** Whatever plugins on this target attach to (native root view, window). */
   readonly native?: unknown;
 }
@@ -136,6 +150,8 @@ export type HostWiring = Partial<
     | 'text'
     | 'history'
     | 'chrome'
+    | 'back'
+    | 'exit'
   >
 >;
 

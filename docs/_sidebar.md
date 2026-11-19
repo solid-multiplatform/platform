@@ -19,6 +19,7 @@
   - [Events](/essentials/events.md)
   - [Text fields](/app-api.md#textfield-and-searchfield)
   - [Focus and keys](/essentials/focus.md)
+  - [Screen history and keyed focus](/essentials/screen-history.md)
   - [Transitions and animations](/essentials/transitions.md)
   - [Destroy animations](/flow/ondestroy.md)
   - [Showing and hiding](/flow/show_hide.md)

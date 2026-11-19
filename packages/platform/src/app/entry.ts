@@ -20,6 +20,9 @@ import {
   type Theme,
 } from '../sdk/theme.jsx';
 import { AppScope, HostScope, type DesignSize } from './context.js';
+import { AppShell } from './ExitConfirm.jsx';
+
+export { AppShell } from './ExitConfirm.jsx';
 
 /** The `app` settings of the project config, and the `options` export of `src/app.tsx`. */
 export interface AppSettings extends AppOptions {
@@ -62,7 +65,11 @@ export function appEntry(
                 ? () => themeFor(theme)
                 : theme,
           get children() {
-            return createComponent(App, {});
+            return createComponent(AppShell, {
+              get children() {
+                return createComponent(App, {});
+              },
+            });
           },
         });
       },

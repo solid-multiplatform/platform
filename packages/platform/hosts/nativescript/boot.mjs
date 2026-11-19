@@ -49,16 +49,39 @@ export function runNativeApp(
         // The bridge is the app's key source: no target, so nothing is
         // dispatched to a fake `document`. The focus manager listens on it.
         const bridge = new KeyBridge();
-        // The router's stack, owned here: the target's Back handling drives
-        // it, and no `window.history` shim exists to read.
+        // The router's stack, owned by the host: the target's Back handling
+        // drives it, and no `window.history` shim exists to read.
         const history = createMemoryHistory();
-        const binding = bindDevice(canvas, bridge, platform, root, history);
+        // Before `exit` reads it: a `const` used above its declaration is a
+        // start-up ReferenceError, not a warning, and the app stays black.
+        const android = target === 'android' || target === 'android-tv';
+        // One dispatcher for hardware Back beside the one history. The exit
+        // action finishes the activity; iOS has no hardware Back.
+        const exit = android
+          ? () => {
+              try {
+                Application.android.foregroundActivity?.finish?.();
+              } catch {
+                // The activity is already gone.
+              }
+            }
+          : undefined;
+        const back = platform.createBackDispatcher(
+          exit === undefined ? {} : { onExit: exit },
+        );
+        const binding = bindDevice(
+          canvas,
+          bridge,
+          platform,
+          root,
+          history,
+          back,
+        );
         const lifecycle = bindLifecycle(
           () => platform.renderer,
           bridge,
           Application,
         );
-        const android = target === 'android' || target === 'android-tv';
         let surfaceLost = false;
         const redraw = () => platform.getRenderer()?.requestRender?.();
         const lost = () => {
@@ -105,6 +128,8 @@ export function runNativeApp(
             canvas,
             keys: bridge,
             history,
+            back,
+            exit,
             text: nativeEditorHost(root, target),
             input: binding.input,
           });

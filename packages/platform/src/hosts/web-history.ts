@@ -31,6 +31,7 @@ const rememberDepth = (): number | undefined => {
 /** A history over the page's hash and `window.history`. */
 export function createBrowserHistory(): HistorySource {
   let depth = rememberDepth();
+  const listeners = new Set<(delta: number) => void>();
 
   return {
     read: () => ({
@@ -54,6 +55,7 @@ export function createBrowserHistory(): HistorySource {
     },
     subscribe(listener) {
       depth = rememberDepth();
+      listeners.add(listener);
       const onHashChange = () => {
         const previous = depth;
         depth = rememberDepth();
@@ -62,7 +64,15 @@ export function createBrowserHistory(): HistorySource {
         );
       };
       window.addEventListener('hashchange', onHashChange);
-      return () => window.removeEventListener('hashchange', onHashChange);
+      return () => {
+        listeners.delete(listener);
+        window.removeEventListener('hashchange', onHashChange);
+      };
+    },
+    emit() {
+      // Navigation around the router used `pushState`, which raises no
+      // `hashchange`; tell subscribers the location they read has changed.
+      for (const listener of listeners) listener(0);
     },
   };
 }

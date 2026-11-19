@@ -4,7 +4,11 @@
 //   (a) a real keyboard and a real mouse go home -> gallery -> services, and
 //       the ARIA mirror names the focused control at every step;
 //   (b) `?probe=1` reports every service and every UI assertion;
-//   (c) once settled, no frame is requested for two seconds.
+//   (c) once settled, no frame is requested for two seconds;
+//   (d) the window reflows to a phone and back, and the frame meter opens
+//       and closes;
+//   (e) screen history restores focus to the same card by key after the
+//       data comes back reordered.
 //
 //   node tests/showcase.e2e.mjs dist/web [web] [chromium|firefox|webkit]
 //   node tests/showcase.e2e.mjs dist/tizen tizen [engine]
@@ -170,6 +174,7 @@ const SECTIONS = [
   'Controls',
   'Services',
   'Diagnostics',
+  'Screen history',
 ];
 
 async function newPage(browser) {
@@ -676,6 +681,33 @@ async function interactive(browser) {
   );
   await page.keyboard.press('Backspace');
   await expectFocus(page, 'button:Dialogs', 'Back from the dialogs screen');
+
+  // (d) Screen history: the keyed card keeps focus across a reordering
+  // refetch. Enter opens a detail route; Back reorders the cards in restore,
+  // and focus must follow the card's key. The index it was captured at
+  // (second) would focus card C; the key focuses card B, now fifth.
+  await click(page, homeTile(SECTIONS.indexOf('Screen history')));
+  await expectFocus(
+    page,
+    'button:Back',
+    'mouse click on the Screen history tile',
+  );
+  await page.keyboard.press('ArrowDown');
+  await expectFocus(page, 'button:Card A', 'the card list');
+  await page.keyboard.press('ArrowDown');
+  await expectFocus(page, 'button:Card B', 'Down to card B');
+  await shot(page, '5-history-cards');
+  await page.keyboard.press('Enter');
+  await expectFocus(page, 'button:Detail', 'Enter opens the detail route');
+  await page.keyboard.press('Backspace');
+  await expectFocus(page, 'button:Card B', 'Back restores the same card by key');
+  await shot(page, '5-history-restored');
+  await page.keyboard.press('Backspace');
+  await expectFocus(
+    page,
+    'button:Screen history',
+    'Back at the section root leaves it',
+  );
 
   // (c) on every screen: opened by mouse, left alone, closed by the Back key.
   for (const [index, name] of SECTIONS.entries()) {

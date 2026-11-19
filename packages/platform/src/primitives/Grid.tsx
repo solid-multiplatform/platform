@@ -1,33 +1,66 @@
-import { createSignal, createMemo, createEffect, JSX, untrack, Index } from "solid-js";
-import { type NodeProps, ElementNode, NewOmit, hasFocus } from "@solid-multiplatform/platform";
-import { chainFunctions, chainRefs } from "./utils/chainFunctions.js";
+import {
+  createSignal,
+  createMemo,
+  createEffect,
+  createRenderEffect,
+  JSX,
+  untrack,
+  Index,
+  onCleanup,
+} from 'solid-js';
+import {
+  type NodeProps,
+  ElementNode,
+  NewOmit,
+  hasFocus,
+  isElementNode,
+} from '@solid-multiplatform/platform';
+import { chainFunctions, chainRefs } from './utils/chainFunctions.js';
+import {
+  keyIndex,
+  registerFocusKey,
+  registerItemSource,
+  setItemKey,
+  unregisterFocusKey,
+  unregisterItemSource,
+} from './screenHistory.js';
 
 export interface GridItemProps<T> {
-  item:   T
-  index:  number
-  width:  number
-  height: number
-  x:      number
-  y:      number
+  item: T;
+  index: number;
+  width: number;
+  height: number;
+  x: number;
+  y: number;
 }
 
 export interface GridProps<T> extends NewOmit<NodeProps, 'children'> {
+  /** Stable key for screen-history focus restore. */
+  focusKey?: string;
   items: readonly T[];
-  children: (props: GridItemProps<T>) => JSX.Element,
+  /** Stable key for one entry; screen-history restore resolves it against `items`. */
+  itemKey?: (item: T) => string;
+  children: (props: GridItemProps<T>) => JSX.Element;
   itemHeight?: number;
   itemWidth?: number;
   itemOffset?: number;
   columns?: number;
   looping?: boolean;
-  scroll?: "auto" | "none";
+  scroll?: 'auto' | 'none';
   selected?: number;
-  onSelectedChanged?: (index: number, grid: ElementNode, elm?: ElementNode) => void;
+  onSelectedChanged?: (
+    index: number,
+    grid: ElementNode,
+    elm?: ElementNode,
+  ) => void;
 }
 
 export function Grid<T>(props: GridProps<T>): JSX.Element {
-
   const [focusedIndex, setFocusedIndex] = createSignal(0);
   const baseColumns = 4;
+  const indexByKey = createMemo(() =>
+    keyIndex(props.items, props.itemKey, 'Grid'),
+  );
 
   createEffect(() => {
     const currentIndex = untrack(focusedIndex);
@@ -37,8 +70,8 @@ export function Grid<T>(props: GridProps<T>): JSX.Element {
     }
   });
 
-  const itemWidth = () => props.itemWidth ?? 300
-  const itemHeight = () => props.itemHeight ?? 300
+  const itemWidth = () => props.itemWidth ?? 300;
+  const itemHeight = () => props.itemHeight ?? 300;
 
   const columns = createMemo(() => props.columns || baseColumns);
   const totalWidth = createMemo(() => itemWidth() + (props.itemOffset ?? 0));
@@ -49,7 +82,12 @@ export function Grid<T>(props: GridProps<T>): JSX.Element {
     const focusedElm = gridRef.children[focusedIndex()];
     if (focusedElm instanceof ElementNode && !hasFocus(focusedElm)) {
       focusedElm.setFocus();
-      props.onSelectedChanged?.call(gridRef, focusedIndex(), gridRef, focusedElm);
+      props.onSelectedChanged?.call(
+        gridRef,
+        focusedIndex(),
+        gridRef,
+        focusedElm,
+      );
       return true;
     }
     return false;
@@ -64,7 +102,8 @@ export function Grid<T>(props: GridProps<T>): JSX.Element {
     } else if (props.looping) {
       const totalItems = props.items.length;
       if (delta < 0) {
-        const lastRowStart = totalItems - (totalItems % columns()) || totalItems - columns();
+        const lastRowStart =
+          totalItems - (totalItems % columns()) || totalItems - columns();
         const target = lastRowStart + (focusedIndex() % columns());
         setFocusedIndex(target < totalItems ? target : target - columns());
       } else {
@@ -74,31 +113,41 @@ export function Grid<T>(props: GridProps<T>): JSX.Element {
       return false;
     }
     return focus();
-  };
+  }
 
   function handleHorizontalFocus(delta: number) {
     if (!props.items || props.items.length === 0) return false;
     const newIndex = focusedIndex() + delta;
-    const isWithinRow = Math.floor(newIndex / columns()) === Math.floor(focusedIndex() / columns());
+    const isWithinRow =
+      Math.floor(newIndex / columns()) ===
+      Math.floor(focusedIndex() / columns());
 
     if (newIndex >= 0 && newIndex < props.items.length && isWithinRow) {
       setFocusedIndex(newIndex);
     } else if (props.looping) {
       const rowStart = Math.floor(focusedIndex() / columns()) * columns();
       const rowEnd = Math.min(rowStart + columns() - 1, props.items.length - 1);
-      setFocusedIndex(delta > 0 ? (newIndex > rowEnd ? rowStart : newIndex) : newIndex < rowStart ? rowEnd : newIndex);
+      setFocusedIndex(
+        delta > 0
+          ? newIndex > rowEnd
+            ? rowStart
+            : newIndex
+          : newIndex < rowStart
+            ? rowEnd
+            : newIndex,
+      );
     } else {
       return false;
     }
     return focus();
-  };
+  }
 
   // Handle focus when items change - important for autofocus
   createEffect(() => {
     if (props.items && props.items.length > 0 && gridRef && hasFocus(gridRef)) {
-      queueMicrotask(focus)
+      queueMicrotask(focus);
     }
-  })
+  });
 
   function scrollToIndex(this: ElementNode, index: number) {
     untrack(() => {
@@ -115,14 +164,27 @@ export function Grid<T>(props: GridProps<T>): JSX.Element {
   }
 
   const scrollY = createMemo(() =>
-    props.scroll === "none" ? props.y ?? 0 : -Math.floor(focusedIndex() / columns()) * totalHeight() + (props.y || 0)
+    props.scroll === 'none'
+      ? (props.y ?? 0)
+      : -Math.floor(focusedIndex() / columns()) * totalHeight() +
+        (props.y || 0),
   );
 
   let gridRef!: ElementNode;
+  onCleanup(() => {
+    if (gridRef === undefined) return;
+    unregisterFocusKey(gridRef, props.focusKey);
+    unregisterItemSource(gridRef);
+  });
   return (
     <view
       {...props}
-      ref={chainRefs(el => gridRef = el, props.ref)}
+      ref={chainRefs((el) => {
+        const node = el as ElementNode;
+        gridRef = node;
+        registerFocusKey(node, props.focusKey);
+        registerItemSource(node, indexByKey);
+      }, props.ref)}
       transition={/* @once */ { y: true }}
       height={totalHeight() * rows()}
       scrollToIndex={/* @once */ scrollToIndex}
@@ -134,17 +196,24 @@ export function Grid<T>(props: GridProps<T>): JSX.Element {
       y={scrollY()}
     >
       <Index each={props.items}>
-        {(item, index) => (
-          <props.children
-            item={item()}
-            index={index}
-            width={itemWidth()}
-            height={itemHeight()}
-            x={(index % columns()) * totalWidth()}
-            y={Math.floor(index / columns()) * totalHeight()}
-          />
-        )}
+        {(item, index) => {
+          const node = (
+            <props.children
+              item={item()}
+              index={index}
+              width={itemWidth()}
+              height={itemHeight()}
+              x={(index % columns()) * totalWidth()}
+              y={Math.floor(index / columns()) * totalHeight()}
+            />
+          ) as unknown;
+          if (isElementNode(node) && props.itemKey !== undefined) {
+            const itemKey = props.itemKey;
+            createRenderEffect(() => setItemKey(node, itemKey(item())));
+          }
+          return node as JSX.Element;
+        }}
       </Index>
     </view>
   );
-};
+}

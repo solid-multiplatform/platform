@@ -303,6 +303,39 @@
           }
         },
         {
+          "id": "screen-history",
+          "feature": "Screen history with keyed focus restore (`createScreenHistory`)",
+          "default": {
+            "status": "preview"
+          },
+          "cells": {
+            "web": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/webgl/screen-history.test.tsx (test.yml: browser; a keyed card opens a detail route, the data is reordered in `restore`, and hardware Back focuses the same card in Chromium, Firefox and WebKit)"
+            },
+            "tizen,webos,vizio": {
+              "status": "preview",
+              "note": "The browser-TV host delivers its Back key through the same dispatcher and uses the platform exit where it exists; no TV hardware run."
+            },
+            "ps4": {
+              "status": "preview",
+              "note": "The console's Back is delivered through the dispatcher; exit reports unavailable."
+            },
+            "roku": {
+              "status": "preview",
+              "note": "Back goes through the dispatcher and the host's exitApp; no device run of keyed restore yet."
+            },
+            "android,android-tv": {
+              "status": "preview",
+              "note": "Hardware Back goes through the dispatcher; no test asserts keyed restore on a device."
+            },
+            "desktop-linux,desktop-windows,desktop-macos": {
+              "status": "unavailable",
+              "note": "The desktop host does not yet supply a dispatcher or exit action; an app's screen history still traverses its history but root Back has no exit."
+            }
+          }
+        },
+        {
           "id": "window-chrome",
           "feature": "Desktop window chrome (`<TitleBar>`, `desktop.titleBar`)",
           "default": {

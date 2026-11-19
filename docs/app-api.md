@@ -190,6 +190,10 @@ On a host without an editor the field still draws its label, placeholder and val
 - Layout and media: `Grid`, `VirtualRow`, `VirtualColumn`, `VirtualGrid`, `Image`, `Visible`. See the [primitives pages](/primitives/row_column.md).
 - Overlays: `Modal`, `Sheet`, `Alert`, `Toast`, `AppErrorBoundary`.
 - Routing: `HashRouter` and `KeepAliveRoute`; `Route` and `useNavigate` come from `@solidjs/router`. See [Router](/primitives/router.md).
+- Back and screen state: `createScreenHistory` captures each screen's data
+  and its focused element's key path, then restores both after Back or
+  Forward. Add `focusKey` to containers and `itemKey` to lists; focus follows
+  the card, never its index. See [Screen history and keyed focus](/essentials/screen-history.md).
 
 ## Hooks
 
