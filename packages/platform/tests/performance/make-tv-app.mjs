@@ -7,13 +7,20 @@ import { init } from '../../cli/init.mjs';
 import { addVideo } from '../../cli/add-video.mjs';
 const { positionals, values } = parseArgs({
   allowPositionals: true,
-  options: { mixed: { type: 'string' }, 'surface-view': { type: 'boolean' } },
+  options: {
+    mixed: { type: 'string' },
+    'surface-view': { type: 'boolean' },
+    'texture-view': { type: 'boolean' },
+  },
 });
 const [destination, reference] = positionals;
 if (positionals.length !== 2) {
   throw new Error(
-    'Usage: node make-tv-app.mjs DEST REFERENCE_CHECKOUT [--mixed VIDEO_ARCHIVE] [--surface-view]',
+    'Usage: node make-tv-app.mjs DEST REFERENCE_CHECKOUT [--mixed VIDEO_ARCHIVE] [--surface-view | --texture-view]',
   );
+}
+if (values['surface-view'] && values['texture-view']) {
+  throw new Error('Choose one canvas surface');
 }
 const videoArchive = values.mixed;
 const root = path.resolve(destination);
@@ -85,14 +92,19 @@ if (videoArchive) {
   );
 }
 
-if (values['surface-view']) {
+const surface = values['texture-view']
+  ? 'texture-view'
+  : values['surface-view']
+    ? 'surface-view'
+    : undefined;
+if (surface) {
   writeFileSync(
     path.join(root, 'targets/android-tv/app/app.ts'),
     `import { runAndroidTV } from '@solid-multiplatform/platform/android-tv';
 runAndroidTV(async host => {
   const app = await import('../work/main');
   return { mount: () => app.mount(host) };
-}, { surface: 'surface-view' });
+}, { surface: '${surface}' });
 `,
   );
 }

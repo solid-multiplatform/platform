@@ -149,7 +149,13 @@ export function mount(_plugins, fontRoot, _input, host) {
     try {
       if (!player) await (warming ?? warmPlayer());
       const entering = page() !== 'player';
-      if (entering) navigation.push({ path: 'player' });
+      if (entering) {
+        navigation.push({ path: 'player' });
+        // Every cycle reuses the player. Start from zero so a delayed key
+        // command cannot run into the 8-second clip's end, where the next
+        // Select (meant to pause) would restart playback instead.
+        await player!.seek(0);
+      }
       if (overVideo && caption) caption.opacity = 1;
       if (entering) focus(transport, 'player-focus');
       await player!.play();
