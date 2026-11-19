@@ -115,10 +115,12 @@ writeFileSync(
 step('Injecting TMDB_API_KEY');
 const key = process.env.TMDB_API_KEY ?? '';
 const configFile = path.join(scratch, 'src/config.ts');
-const injected = readFileSync(configFile, 'utf8').replace(
-  "'__TMDB_API_KEY__'",
-  JSON.stringify(key),
-);
+const injected = readFileSync(configFile, 'utf8')
+  .replace("'__TMDB_API_KEY__'", JSON.stringify(key))
+  .replace(
+    "'__SCROLL_DEBUG__'",
+    process.env.SCROLL_DEBUG === '0' ? "'false'" : "'true'",
+  );
 writeFileSync(configFile, injected);
 process.stdout.write(
   key ? 'TMDB key present\n' : 'No TMDB key: bundled catalogue only\n',
