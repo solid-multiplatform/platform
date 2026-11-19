@@ -20,7 +20,13 @@ sub init()
     if solidApp <> invalid
         print "SolidApp component found and initialized"
         solidApp.setFocus(true) ' Set initial focus to the SolidApp component
+        ' The app sets exitApp when Back was pressed and nothing handled it.
+        solidApp.observeField("exitApp", "onExitApp")
     else
         print "ERROR: SolidApp component (id solidApp) not found; initial focus not set"
     end if
+end sub
+
+sub onExitApp()
+    m.top.exitApp = true
 end sub

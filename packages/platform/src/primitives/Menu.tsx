@@ -31,6 +31,7 @@ export function Menu(props: MenuProps): JSX.Element {
       anchor={props.anchor}
       placement={props.placement}
       label={props.label ?? 'Menu'}
+      role="menu"
       height={Math.min(480, props.items.length * rowHeight + 16)}
       onRequestClose={props.onRequestClose}
     >
@@ -48,6 +49,8 @@ export function Menu(props: MenuProps): JSX.Element {
               width={280}
               height={rowHeight}
               color={item.disabled ? 0x1d2937ff : 0x2f3d4eff}
+              role="menuitem"
+              ariaDisabled={item.disabled}
               onEnter={select}
               onMouseClick={select}
             >

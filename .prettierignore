@@ -19,7 +19,7 @@ packages/platform/bench/.arms
 packages/platform/bench/dist
 packages/platform/bench/public
 packages/platform/examples/**/platforms
-packages/platform/examples/**/dist-roku
+packages/platform/examples/**/dist-*
 packages/platform/examples/**/hooks
 
 packages/video/upstream

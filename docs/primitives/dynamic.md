@@ -1,31 +1,46 @@
-## Dynamic
+# Dynamic
 
-`Dynamic` is a component that lets you insert an arbitrary Component or tag and passes the props through to it. Useful when you have multiple types of components that you dynamically want to render on the screen.
+`Dynamic` renders the component you pass in `component` and gives it the
+remaining props. Use it when the component to render is chosen at run time.
 
-### Example
+Solid's own `Dynamic` comes from `solid-js/web` and creates DOM elements. Use
+the one from `@solid-multiplatform/platform`.
 
-To use the `Dynamic` component:
+```tsx
+import { For } from 'solid-js';
+import { Dynamic } from '@solid-multiplatform/platform';
+import { Row } from '@solid-multiplatform/platform/primitives';
 
-```javascript
-import { Dynamic } from '@solidtv/solid';
-import { Poster, Hero, PosterTitle } from './components';
-const typeToComponent = {
-  Poster: Poster,
-  Hero: Hero,
-  PosterTitle: PosterTitle,
-};
+const Poster = (props: { title: string }) => (
+  <view width={200} height={300} color="#264653ff">
+    <text>{props.title}</text>
+  </view>
+);
 
-<Row y={46} height={props.height}>
-  <For each={props.items}>
-    {(item) => (
-      <Dynamic component={typeToComponent[props.row.type]} {...item} />
-    )}
-  </For>
-</Row>;
+const Hero = (props: { title: string }) => (
+  <view width={600} height={300} color="#2a9d8fff">
+    <text>{props.title}</text>
+  </view>
+);
+
+const byType = { poster: Poster, hero: Hero };
+
+export const Rail = (props: {
+  type: keyof typeof byType;
+  titles: string[];
+}) => (
+  <Row autofocus>
+    <For each={props.titles}>
+      {(title) => <Dynamic component={byType[props.type]} title={title} />}
+    </For>
+  </Row>
+);
 ```
 
-### Props
+## Props
 
-- **component** (`ValidComponent`): The component to be dynamically rendered.
+- `component`: a component function, or the name of an intrinsic element
+  (`'view'` or `'text'`). When it is `undefined` or `null`, nothing is
+  rendered.
 
-Any other props set on Dynamic are passed through to the component.
+Every other prop is passed to the component.

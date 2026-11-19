@@ -149,13 +149,29 @@ export interface MediaPositionState {
   playbackRate?: number;
 }
 
+/** What a `seekto` handler is called with. */
+export interface MediaSeekDetails {
+  /** The position to seek to, in seconds. */
+  seekTime: number;
+}
+
+/**
+ * A media action's handler. The host calls the `seekto` handler with
+ * {@link MediaSeekDetails}; the other actions' handlers take no argument.
+ */
+export type MediaActionHandler = (details: MediaSeekDetails) => void;
+
+export type MediaActionHandlers = {
+  [Action in Exclude<MediaAction, 'seekto'>]?: () => void;
+} & { seekto?: MediaActionHandler };
+
 export interface MediaSessionPort {
   setMetadata(metadata: MediaMetadata): void;
   setPlaybackState(state: 'none' | 'paused' | 'playing'): void;
   setPositionState?(state: MediaPositionState): void;
   setActionHandler(
     action: MediaAction,
-    handler: (() => void) | undefined,
+    handler: MediaActionHandler | undefined,
   ): void;
 }
 
@@ -163,7 +179,7 @@ export interface ConfigureMediaSessionOptions {
   metadata?: MediaMetadata;
   playbackState?: 'none' | 'paused' | 'playing';
   position?: MediaPositionState;
-  actions?: Partial<Record<MediaAction, () => void>>;
+  actions?: MediaActionHandlers;
 }
 
 /**
@@ -257,8 +273,10 @@ export function bindMediaKeys(
   >,
   target: EventTarget | undefined = peekService('keyEvents')?.target(),
 ): () => void {
-  const listener = (event: Event) => {
-    if (!(event instanceof KeyboardEvent)) return;
+  const listener = (input: Event) => {
+    // Native hosts deliver key events that are not browser KeyboardEvents.
+    const event = input as KeyboardEvent;
+    if (typeof event.key !== 'string') return;
     const key = event.key;
     const action =
       key === 'MediaPlayPause' || key === 'PlayPause'

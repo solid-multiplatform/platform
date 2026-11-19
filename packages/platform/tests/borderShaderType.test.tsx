@@ -193,3 +193,32 @@ v.describe('rounded shader type from the border width', () => {
     },
   );
 });
+
+v.describe('effects forwards what its type allows', () => {
+  v.test('effects.linearGradient sets the linearGradient shader', () => {
+    const { node, dispose } = renderView({});
+    const gradient = { colors: [RED, 0x0000ffff], angle: 1 };
+    node.effects = { linearGradient: gradient };
+    v.expect(shaderOf(node).shaderType).toBe('linearGradient');
+    v.expect(shaderOf(node).props).toEqual(gradient);
+    dispose();
+  });
+
+  v.test('effects.radialGradient sets the radialGradient shader', () => {
+    const { node, dispose } = renderView({});
+    node.effects = { radialGradient: { colors: [RED, 0x0000ffff] } };
+    v.expect(shaderOf(node).shaderType).toBe('radialGradient');
+    dispose();
+  });
+
+  v.test('effects.border takes `width` and its alias `w` alike', () => {
+    const a = renderView({ borderRadius: 8 });
+    a.node.effects = { border: { width: 3, color: RED } };
+    v.expect(shaderOf(a.node).props['border-w']).toBe(3);
+    a.dispose();
+    const b = renderView({ borderRadius: 8 });
+    b.node.effects = { border: { w: 5, color: RED } };
+    v.expect(shaderOf(b.node).props['border-w']).toBe(5);
+    b.dispose();
+  });
+});

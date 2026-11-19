@@ -1,105 +1,63 @@
-# Migrating from @lightningtv/solid
+# Migrating from the old names
 
-SolidTV moved from [github.com/lightning-tv/solid](https://github.com/lightning-tv/solid) to [github.com/solid-tv/solid](https://github.com/solid-tv/solid), and its npm packages were renamed. `@lightningtv/solid@3.2.5` is the last release under the old name. All new releases ship as `@solidtv/solid`.
+Solid Multiplatform grew out of the project published as `@lightningtv/solid` and later as `@solidtv/solid` ("SolidTV"). This page lists what changed for an app that used either. It is a rename plus a short list of removals.
 
-<p id="migrate-continue" hidden></p>
+## Packages
 
-Moving an app over is mostly a rename. The steps below cover the packages, imports and build config.
+- `@lightningtv/solid` or `@solidtv/solid` becomes `@solid-multiplatform/platform`.
+- `@lightningjs/renderer`, `@lightningtv/renderer` or `@solidtv/renderer` becomes `@solid-multiplatform/renderer`.
 
-## 1. Swap the packages
+The platform package names the exact renderer version it was built and tested with as a peer dependency. Install that version, not the newest one.
 
-| Old                                                                                                 | New                                               |
-| --------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| `@lightningtv/solid`                                                                                | `@solidtv/solid`                                  |
-| `@lightningjs/renderer`, `@lightningtv/renderer` or an alias like `npm:@lightningtv/renderer@3.3.0` | `@solidtv/renderer`                               |
-| `@lightningtv/vite-hex-transform`                                                                   | unchanged, keep `@lightningtv/vite-hex-transform` |
+## Imports
 
-```bash
-npm uninstall @lightningtv/solid @lightningjs/renderer @lightningtv/renderer
-npm install @solidtv/solid @solidtv/renderer@^1.10.1
-```
+The subpaths an app is likely to use kept their names:
 
-!> Install the renderer version that `@solidtv/solid` lists as its peer dependency, not `@solidtv/renderer@latest`. The `latest` tag on the renderer can be a newer major line than the current `@solidtv/solid` supports. Check with `npm view @solidtv/solid peerDependencies`.
+- `@solid-multiplatform/platform`
+- `@solid-multiplatform/platform/primitives`
+- `@solid-multiplatform/platform/primitives/router`
+- `@solid-multiplatform/platform/devtools`
+- `@solid-multiplatform/platform/shaders`
+- `@solid-multiplatform/platform/jsx-runtime`
 
-## 2. Update imports
-
-Every subpath keeps its name, so a plain find and replace covers it:
-
-- `@lightningtv/solid` → `@solidtv/solid` (also `/primitives`, `/devtools`, `/shaders`, `/jsx-runtime`)
-- `@lightningjs/renderer` → `@solidtv/renderer` (also `/webgl`, `/canvas`, `/inspector`)
-
-```js
+```ts
 // before
-import { render, Config } from '@lightningtv/solid';
-import { Row, Column } from '@lightningtv/solid/primitives';
-import { WebGlCoreRenderer } from '@lightningjs/renderer/webgl';
-
-// after
-import { render, Config } from '@solidtv/solid';
+import { Config } from '@solidtv/solid';
 import { Row, Column } from '@solidtv/solid/primitives';
-import { WebGlCoreRenderer } from '@solidtv/renderer/webgl';
-```
-
-To do it from the shell (macOS and Linux), run this from the project root. It rewrites `src`, the Vite config and `tsconfig.json`:
-
-```bash
-grep -rlE '@lightningtv/solid|@lightningjs/renderer' src vite.config.* tsconfig.json 2>/dev/null | xargs perl -pi -e 's#\@lightningtv/solid#\@solidtv/solid#g; s#\@lightningjs/renderer#\@solidtv/renderer#g'
-```
-
-## 3. Update build config
-
-Point `vite-plugin-solid` at the new package and update `dedupe` and `optimizeDeps`. Drop `@lightningtv/core` if it is still listed; it is not used anymore.
-
-```js
-// vite.config.js
-solidPlugin({
-  solid: {
-    moduleName: '@solidtv/solid',
-    generate: 'universal',
-  },
-}),
-
-resolve: {
-  dedupe: ['solid-js', '@solidtv/solid', '@solidtv/renderer'],
-},
-optimizeDeps: {
-  exclude: ['@solidtv/solid', '@solidtv/renderer'],
-},
-```
-
-A few less common settings were renamed too:
-
-| Where                                  | Old                         | New                       |
-| -------------------------------------- | --------------------------- | ------------------------- |
-| `tsconfig.json` `jsxImportSource`      | `@lightningtv/solid`        | `@solidtv/solid`          |
-| Custom import condition (`conditions`) | `@lightningtv/source`       | `@solidtv/source`         |
-| Vite `define` for the DOM renderer     | `LIGHTNING_DOM_RENDERING`   | `SOLIDTV_DOM_RENDERING`   |
-| Vite `define` to turn off shaders      | `LIGHTNING_DISABLE_SHADERS` | `SOLIDTV_DISABLE_SHADERS` |
-
-?> The old `LIGHTNING_*` defines are ignored without a warning. If you used the [DOM Renderer](/articles/domrenderer.md), rename the define or the app falls back to WebGL.
-
-## 4. Renderer changes since the fork
-
-`@solidtv/renderer` 1.0 was the `@lightningtv/renderer` 3.3 fork under a new name. Later releases removed a few features, such as render-to-texture (`rtt`), the `inBounds` and `outOfBounds` events and some build defines. Read [Upgrading to Renderer 1.9](/articles/renderer-1.9-upgrade.md) for the full list, and [SolidTV Renderer](/articles/solidtv_renderer.md) for the build defines that are still supported.
-
-## 5. Optional: lowercase elements
-
-`<View>` and `<Text>` still work but are deprecated. Prefer the `<view>` and `<text>` intrinsic elements:
-
-```jsx
-// before
-<View x={20}><Text>Hello</Text></View>
 
 // after
-<view x={20}><text>Hello</text></view>
+import { Config } from '@solid-multiplatform/platform';
+import { Row, Column } from '@solid-multiplatform/platform/primitives';
 ```
 
-## Starting fresh
+## Build configuration
 
-The [starter template](https://github.com/solid-tv/solid-starter-template) and the [demo app](https://github.com/solid-tv/solid-demo-app) now live in the `solid-tv` org:
+- `vite-plugin-solid`: set `solid.generate` to `'universal'` and `solid.moduleName` to `'@solid-multiplatform/platform'`.
+- `resolve.dedupe`: `'solid-js'`, `'@solid-multiplatform/platform'`, `'@solid-multiplatform/renderer'`.
+- `tsconfig.json`: set `jsxImportSource` to `'@solid-multiplatform/platform'`.
 
-```bash
-npx degit solid-tv/solid-starter-template my-app
-```
+An app created with `solid-platform init` has all of this already. See [Getting started](/getting-started.md).
 
-Old docs links on `lightning-tv.github.io/solid` redirect here. Questions go to the #SolidTV channel on the [SolidJS Discord](https://discord.com/invite/solidjs).
+## Names that did not change yet
+
+These still carry the old project's name on `main`. Use them as they are. They will be renamed before 1.0.
+
+- The build defines `SOLIDTV_DOM_RENDERING` and `SOLIDTV_DISABLE_SHADERS`. The older `LIGHTNING_*` defines are not read.
+- The `@solidtv/source` import condition.
+- `ElementNode.lng`, the backend node behind an element.
+
+## Removed or changed
+
+- `render` is not exported from the package root. Call `createRenderer()` and use the `render` it returns, or use `startApp` from `@solid-multiplatform/platform/host`. See [Starting an app](/essentials/render.md).
+- The renderer settings `renderEngine` and `fontEngines` are ignored, with a console warning. The WebGL backend has one engine and SDF text. The Canvas 2D backend is a separate entry (`useCanvas()` from `@solid-multiplatform/platform/browser-tv/canvas`).
+- `renderer.stage.shManager.registerShaderType(...)` still works through an alias that warns. Call `renderer.registerShaderType(...)`.
+- There is one flex engine. The `VITE_USE_NEW_FLEX` switch is gone.
+- `HashRouter`, `KeepAlive` and `KeepAliveRoute` are exported from `@solid-multiplatform/platform/primitives/router`, not from the package root.
+- `<View>` and `<Text>` still work but are deprecated. Use the `<view>` and `<text>` intrinsic elements.
+- `LazyUp` was removed. Use `LazyRow` and `LazyColumn`.
+
+## What is new
+
+- Targets beyond browser TVs, a CLI and a project layout: [Getting started](/getting-started.md) and [Targets](/targets/README.md).
+- Device services behind one registry: [Services](/services.md).
+- A typed contract between the platform and its drawing backends: [Architecture](/architecture.md).

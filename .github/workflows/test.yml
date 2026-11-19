@@ -27,6 +27,8 @@ jobs:
         working-directory: packages/platform/examples/roku
         run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      - name: The feature matrix is generated and its evidence exists
+        run: pnpm docs:check && node --test scripts/*.test.mjs
       - name: Parse every host, CLI and video module
         run: |
           git ls-files 'packages/platform/hosts/**/*.mjs' 'packages/platform/cli/**/*.mjs' 'packages/video/*.mjs' |
@@ -59,6 +61,7 @@ jobs:
       - working-directory: packages/platform
         run: |
           npm test
+          npm run typecheck:native
           node --test tests/cli/variants.test.mjs
           python tests/performance/test_frame_timeline.py
           node --test tests/native/*.test.mjs
@@ -79,6 +82,8 @@ jobs:
       - run: pnpm -w run build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:webgl
+      - name: Showcase app in Chromium (keyboard, mouse, probe mode, idle frames)
+        run: pnpm -w run test:showcase
       - name: Compare actual Canvas and WebGL pixels
         run: node tests/visual/run.mjs "$RUNNER_TEMP/visual"
       - uses: actions/upload-artifact@v4

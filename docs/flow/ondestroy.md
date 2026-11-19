@@ -1,48 +1,52 @@
-# `onDestroy` Lifecycle Hook
+# Destroy animations
 
-`onDestroy` is a hook that triggers when an element is about to be removed from the canvas. It gives developers an opportunity to perform exit animations before the element is destroyed. `onDestroy` is only called on the TOP LEVEL node that is being removed and will not be called on any Children being removed for performance reasons. TOP LEVEL nodes are the first child of `<Show>` components or pages.
+`onDestroy` runs when an element is about to be destroyed. If it returns a
+promise, the element stays on screen until the promise resolves. That gives you
+time to animate it out.
 
-Check out the full working example: https://solid-tv.github.io/solid-demo-app/#/destroy
+`onDestroy` is called only on the top node being removed, not on its children.
+The top node is, for example, the direct child of a `<Show>` or a page.
 
 ## Example
 
-In the following example, `onDestroy` is used to animate the `Hero` component out of view before it is replaced with new content.
+```tsx
+import { Show, type ElementNode } from '@solid-multiplatform/platform';
 
-```jsx
-function animateIn(node) {
+function animateIn(node: ElementNode) {
   node.alpha = 0;
   node.y = -100;
-  return node
+  node
     .animate({ y: 0, alpha: 1 }, { duration: 500, easing: 'ease-in-out' })
-    .start()
-    .waitUntilStopped();
+    .start();
 }
 
-function animateOut(node) {
+function animateOut(node: ElementNode) {
   return node
     .animate({ y: 200, alpha: 0 }, { duration: 500, easing: 'ease-in-out' })
     .start()
     .waitUntilStopped();
 }
 
-<Show when={heroContent()} keyed>
-  <Hero
-    id="Hero"
-    autofocus
-    onDestroy={animateOut}
-    onCreate={animateIn}
-    src={heroContent().src}
-    backdrop={heroContent().backdrop}
-    title={heroContent().title}
-    overview={heroContent().overview}
-  />
+<Show when={hero()} keyed>
+  {(content) => (
+    <view
+      autofocus
+      width={1920}
+      height={600}
+      src={content.backdrop}
+      onCreate={animateIn}
+      onDestroy={animateOut}
+    />
+  )}
 </Show>;
 ```
 
-### How It Works
+## How it works
 
-- **`keyed` Attribute**: The `keyed` attribute on the `<Show>` component forces SolidTV to destroy the old component and create a new one whenever the hero content changes. This ensures that each `Hero` component is uniquely identified and allows for animations to be applied during transitions.
-- **Exit Animation**: The existing node’s `onDestroy` hook triggers `animateOut`, which returns a promise. This promise is important because SolidTV waits for it to resolve before actually removing the element from the DOM, ensuring the exit animation completes.
-- **Entrance Animation**: The new `Hero` component is animated into view using the `onCreate` hook. This is where `animateIn` gradually brings the new hero content into the UI.
+- `keyed` makes `<Show>` destroy the old element and create a new one whenever
+  `hero()` changes.
+- The old element's `onDestroy` calls `animateOut`. It returns the promise from
+  `waitUntilStopped()`, so the element is destroyed when the animation ends.
+- The new element's `onCreate` calls `animateIn`.
 
-Together, these lifecycle hooks allow smooth transitions and animations when switching between content, enhancing the user experience.
+Both elements exist while the exit animation runs. Keep exit animations short.

@@ -58,6 +58,11 @@ import {
   FocusNode,
 } from './focusManager.js';
 import { initClickInspector } from './clickInspector.js';
+import {
+  ACCESSIBILITY_PROPS,
+  semanticsHook,
+  type AccessibilityProps,
+} from './accessibility.js';
 
 // Unified post-mutation scheduler.
 //
@@ -240,7 +245,9 @@ const assignEffects = (v: StyleEffects, props: Record<string, unknown>) => {
   }
   if (v.borderRadius) props.radius = v.borderRadius;
   for (const k of EFFECT_SHADER_KEYS) {
-    if (v[k]) parseAndAssignShaderProps(k, v[k], props);
+    if (v[k]) {
+      parseAndAssignShaderProps(k, v[k] as Record<string, unknown>, props);
+    }
   }
 };
 
@@ -372,7 +379,6 @@ const LightningRendererNonAnimatingProps = [
   'srcWidth',
   'srcX',
   'srcY',
-  'text',
   'textAlign',
   'textBaseline',
   'texture',
@@ -403,7 +409,8 @@ export type RendererNode = AddColorString<
   >
 >;
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface ElementNode extends RendererNode, FocusNode {
+export interface ElementNode
+  extends RendererNode, FocusNode, AccessibilityProps {
   [key: string]: unknown;
 
   // Properties
@@ -419,6 +426,10 @@ export interface ElementNode extends RendererNode, FocusNode {
   _animationRunning?: boolean;
   _animationSettings?: AnimationSettings;
   _aspectRatio?: number;
+  /** The accessibility props set on this node. */
+  _a11y?: AccessibilityProps;
+  /** What `hidden` was last set to; alpha alone does not say (a fade). */
+  _hidden?: boolean;
   _autofocus?: any;
   _containsFlexGrow?: boolean | null;
   /** Main-axis size flex grow/shrink last wrote to this child, and its own size before that. */
@@ -460,7 +471,7 @@ export interface ElementNode extends RendererNode, FocusNode {
    * The distance from the bottom edge of the parent element.
    * When `bottom` is set, `mountY` is automatically set to 1.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout
+   * @see docs/flow/layout.md
    */
   bottom?: number;
   /**
@@ -474,13 +485,13 @@ export interface ElementNode extends RendererNode, FocusNode {
   /**
    * Specifies how much a flex item should grow relative to the rest of the flex items.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout?id=flex-grow
+   * @see docs/flow/layout.md
    */
   flexGrow?: number;
   /**
    * Specifies whether flex items are forced onto one line or can wrap onto multiple lines.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout?id=flex
+   * @see docs/flow/layout.md
    */
   flexWrap?: 'nowrap' | 'wrap' | 'wrap-reverse';
   /**
@@ -491,7 +502,7 @@ export interface ElementNode extends RendererNode, FocusNode {
   /**
    * Specifies the order of a flex item relative to the rest of the flex items.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout?id=flex
+   * @see docs/flow/layout.md
    */
   flexOrder?: number;
   /**
@@ -508,13 +519,13 @@ export interface ElementNode extends RendererNode, FocusNode {
   /**
    * Forwards focus to a child element. It can be a numeric index of the child or a handler function.
    *
-   * @see https://solid-tv.github.io/solid/#/essentials/focus?id=forwardfocus
+   * @see docs/essentials/focus.md
    */
   forwardFocus?: number | ForwardFocusHandler;
   /**
    * If `true`, the states of this node will be propagated to its children.
    *
-   * @see https://solid-tv.github.io/solid/#/essentials/states?id=forwardstates
+   * @see docs/essentials/states.md
    */
   forwardStates?: boolean;
   /**
@@ -538,7 +549,7 @@ export interface ElementNode extends RendererNode, FocusNode {
    * The distance from the right edge of the parent element.
    * When `right` is set, `mountX` is automatically set to 1.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout?id=layout-and-positioning-elements
+   * @see docs/flow/layout.md
    */
   right?: number;
   /**
@@ -560,115 +571,115 @@ export interface ElementNode extends RendererNode, FocusNode {
   /**
    * Aligns flex items along the cross axis of the current line of the flex container.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout?id=flex-properties
+   * @see docs/flow/layout.md
    */
   alignItems?: 'flexStart' | 'flexEnd' | 'center';
   /**
    * Aligns a flex item along the cross axis, overriding the `alignItems` value of the flex container.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout?id=flex-properties
+   * @see docs/flow/layout.md
    */
   alignSelf?: 'flexStart' | 'flexEnd' | 'center';
   /**
    * The border style for all sides of the element. Takes an object with width and color properties.
    *
-   * @see https://solid-tv.github.io/solid/#/essentials/effects?id=border-and-borderradius
+   * @see docs/essentials/effects.md
    */
   border?: BorderStyle;
   /**
    * The border style for the bottom side of the element.
    *
-   * @see https://solid-tv.github.io/solid/#/essentials/effects?id=border-and-borderradius
+   * @see docs/essentials/effects.md
    */
   borderBottom?: SingleBorderStyle;
   /**
    * The border style for the left side of the element.
    *
-   * @see https://solid-tv.github.io/solid/#/essentials/effects?id=border-and-borderradius
+   * @see docs/essentials/effects.md
    */
   borderLeft?: SingleBorderStyle;
   /**
    * The radius of the element's corners.
    *
-   * @see https://solid-tv.github.io/solid/#/essentials/effects?id=border-and-borderradius
+   * @see docs/essentials/effects.md
    */
   borderRadius?: BorderRadius;
   /**
    * The border style for the right side of the element.
    *
-   * @see https://solid-tv.github.io/solid/#/essentials/effects?id=border-and-borderradius
+   * @see docs/essentials/effects.md
    */
   borderRight?: SingleBorderStyle;
   /**
    * The border style for the top side of the element.
    *
-   * @see https://solid-tv.github.io/solid/#/essentials/effects?id=border-and-borderradius
+   * @see docs/essentials/effects.md
    */
   borderTop?: SingleBorderStyle;
   /**
    * A shorthand to set both `centerX` and `centerY` to true.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout?id=layout-and-positioning-elements
+   * @see docs/flow/layout.md
    */
   center?: boolean;
   /**
    * If `true`, centers the element horizontally within its parent.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout?id=layout-and-positioning-elements
+   * @see docs/flow/layout.md
    */
   centerX?: boolean;
   /**
    * If `true`, centers the element vertically within its parent.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout?id=layout-and-positioning-elements
+   * @see docs/flow/layout.md
    */
   centerY?: boolean;
   /**
    * Specifies the direction of the flex items.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout?id=flex
+   * @see docs/flow/layout.md
    */
   direction?: 'ltr' | 'rtl';
   /**
    * Defines how the flex container's size is determined. 'contain' allows it to grow with its content, 'fixed' keeps it at its specified size.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout?id=flex
+   * @see docs/flow/layout.md
    */
   flexBoundary?: 'contain' | 'fixed';
   /**
    * Defines how the flex container's cross-axis size is determined. 'fixed' keeps it at its specified size. Default is 'contain'.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout?id=flex
+   * @see docs/flow/layout.md
    */
   flexCrossBoundary?: 'fixed'; // default is contain
   /**
    * Specifies the direction of the main axis for flex items.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout?id=flex
+   * @see docs/flow/layout.md
    */
   flexDirection?: 'row' | 'column' | 'row-reverse' | 'column-reverse';
   /**
    * The gap between flex items.
    *
-   * @see @see https://solid-tv.github.io/solid/#/flow/layout?id=flex
+   * @see docs/flow/layout.md
    */
   gap?: number;
   /**
    * The gap between flex rows.
    *
-   * @see @see https://solid-tv.github.io/solid/#/flow/layout?id=flex
+   * @see docs/flow/layout.md
    */
   rowGap?: number;
   /**
    * The gap between flex columns.
    *
-   * @see @see https://solid-tv.github.io/solid/#/flow/layout?id=flex
+   * @see docs/flow/layout.md
    */
   columnGap?: number;
   /**
    * Defines the alignment of flex items along the main axis.
    *
-   * @see @see https://solid-tv.github.io/solid/#/flow/layout?id=flex
+   * @see docs/flow/layout.md
    */
   justifyContent?:
     | 'flexStart'
@@ -680,43 +691,43 @@ export interface ElementNode extends RendererNode, FocusNode {
   /**
    * Applies a linear gradient effect to the element.
    *
-   * @see https://solid-tv.github.io/solid/#/essentials/effects
+   * @see docs/essentials/effects.md
    */
   linearGradient?: LinearGradientProps;
   /**
    * Applies a radial gradient effect to the element.
    *
-   * @see https://solid-tv.github.io/solid/#/essentials/effects
+   * @see docs/essentials/effects.md
    */
   radialGradient?: RadialGradientProps;
   /**
    * The margin on the bottom side of the element for a flexItem.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout
+   * @see docs/flow/layout.md
    */
   marginBottom?: number;
   /**
    * The margin on the left side of the element for a flexItem.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout
+   * @see docs/flow/layout.md
    */
   marginLeft?: number;
   /**
    * The margin on the right side of the element for a flexItem.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout
+   * @see docs/flow/layout.md
    */
   marginRight?: number;
   /**
    * The margin on the top side of the element for a flexItem.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout
+   * @see docs/flow/layout.md
    */
   marginTop?: number;
   /**
    * The padding on all sides of the flex element, or an array defining [Top, Right, Bottom, Left] padding.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout
+   * @see docs/flow/layout.md
    */
   padding?:
     | number
@@ -726,7 +737,7 @@ export interface ElementNode extends RendererNode, FocusNode {
   /**
    * The margin on all sides of the flex element, or an array defining [Top, Right, Bottom, Left] margins.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout
+   * @see docs/flow/layout.md
    */
   margin?:
     | number
@@ -736,31 +747,31 @@ export interface ElementNode extends RendererNode, FocusNode {
   /**
    * The x-coordinate of the element's position.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout
+   * @see docs/flow/layout.md
    */
   x: number;
   /**
    * The y-coordinate of the element's position.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout
+   * @see docs/flow/layout.md
    */
   y: number;
   /**
    * Throttles key press events by the specified number of milliseconds.
    *
-   * @see https://solid-tv.github.io/solid/#/primitives/useFocusManager?id=input-throttling-available-core-212
+   * @see docs/primitives/useFocusManager.md
    */
   throttleInput?: number;
   /**
    * The width of the element.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout
+   * @see docs/flow/layout.md
    */
   w: number;
   /**
    * The height of the element.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout
+   * @see docs/flow/layout.md
    */
   h: number;
   /**
@@ -782,13 +793,13 @@ export interface ElementNode extends RendererNode, FocusNode {
   /**
    * The z-index of the element, which affects its stacking order.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout
+   * @see docs/flow/layout.md
    */
   zIndex?: number;
   /**
    * Defines transitions for animatable properties.
    *
-   * @see https://solid-tv.github.io/solid/#/essentials/transitions?id=transitions-animations
+   * @see docs/essentials/transitions.md
    */
   transition?:
     | Record<string, AnimationSettings | undefined | true | false>
@@ -803,31 +814,31 @@ export interface ElementNode extends RendererNode, FocusNode {
    *
    * Each event handler is optional and maps to a corresponding event.
    *
-   * @see https://solid-tv.github.io/solid/#/essentials/transitions?id=animation-callbacks
+   * @see docs/essentials/transitions.md
    */
   onAnimation?: Partial<Record<AnimationEvents, AnimationEventHandler>>;
   /** Optional handler for when the element is created and rendered.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/ondestroy
+   * @see docs/flow/ondestroy.md
    */
   onCreate?: (this: ElementNode, el: ElementNode) => void;
   /**
    * Optional handler for when the element is destroyed.
    * It can return a promise to wait for the cleanup to finish before the element is destroyed.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/ondestroy
+   * @see docs/flow/ondestroy.md
    */
   onDestroy?: (this: ElementNode, el: ElementNode) => Promise<void> | void;
   /**
    * Optional handlers for when the element is rendered—after creation and when switching parents.
    *
-   * @see https://solid-tv.github.io/solid/#/primitives/KeepAlive
+   * @see docs/primitives/KeepAlive.md
    */
   onRender?: (this: ElementNode, el: ElementNode) => void;
   /**
    * Optional handlers for when the element is removed from a parent element.
    *
-   * @see https://solid-tv.github.io/solid/#/primitives/KeepAlive
+   * @see docs/primitives/KeepAlive.md
    */
   onRemove?: (this: ElementNode, el: ElementNode) => void;
   /**
@@ -846,26 +857,51 @@ export interface ElementNode extends RendererNode, FocusNode {
    * @param {Partial<Record<NodeEvents, EventHandler>>} events - An object where the keys are event names from NodeEvents and the values are the respective event handlers.
    * @returns {void}
    *
-   * @see https://solid-tv.github.io/solid/#/essentials/events
+   * @see docs/essentials/events.md
    */
   onEvent?: OnEvent;
 
   /**
-   * Callback event for when the element is clicked with a mouse.
-   * Triggered when `useMouse` is running.
+   * Called when a pointer clicks or taps the element, with where in scene
+   * coordinates. It replaces the default for a click, which is to focus the
+   * element and press Enter on it (`onEnter`).
    */
   onMouseClick?: (
     this: ElementNode,
-    event: MouseEvent,
+    event: ScenePoint,
     node: ElementNode,
   ) => void;
+  /** Called once a press has stayed on the element for the hold time. */
+  onPointerHold?: (this: ElementNode, node: ElementNode) => void;
+  /**
+   * Called while a press that started on the element moves: `start` once it
+   * has left the tap slop, then `move`, then `end` or `cancel`. A drag is not
+   * a click. `dragToScroll` adapts it to a scroll axis.
+   */
+  onPointerDrag?: (
+    this: ElementNode,
+    phase: 'start' | 'move' | 'end' | 'cancel',
+    point: ScenePoint,
+    origin: ScenePoint,
+    node: ElementNode,
+  ) => void;
+  /**
+   * Called for a wheel or trackpad scroll over the element or anything inside
+   * it, innermost handler first. Returning `false` passes the scroll on to
+   * the next handler out. `wheelToScroll` adapts it to a scroll axis.
+   */
+  onPointerScroll?: (
+    this: ElementNode,
+    event: { deltaX: number; deltaY: number },
+    node: ElementNode,
+  ) => boolean | void;
 
   /**
    * The individual padding on each side of an element, acting as an override to the `padding` array property.
    * `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft`.
    * Only in the new flex engine.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout?id=flex
+   * @see docs/flow/layout.md
    */
   paddingTop?: number;
   paddingRight?: number;
@@ -876,6 +912,12 @@ export interface ElementNode extends RendererNode, FocusNode {
    * Overrides the global `Config.stateOrder`.
    */
   stateOrder?: DollarString[];
+}
+
+/** A position in scene coordinates. */
+export interface ScenePoint {
+  x: number;
+  y: number;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -909,6 +951,8 @@ export class ElementNode {
     this._animationRunning = undefined;
     this._animationSettings = undefined;
     this._aspectRatio = undefined;
+    this._a11y = undefined;
+    this._hidden = undefined;
     this._autofocus = undefined;
     this._calcWidth = undefined;
     this._calcHeight = undefined;
@@ -978,6 +1022,16 @@ export class ElementNode {
 
   set effects(v: StyleEffects) {
     if (!SHADERS_ENABLED) return;
+    // A gradient is its own shader kind, as the gradient node props set it.
+    const gradient = v.linearGradient
+      ? 'linearGradient'
+      : v.radialGradient
+        ? 'radialGradient'
+        : undefined;
+    if (gradient !== undefined) {
+      this.shader = [gradient, v[gradient] as IRendererShaderProps];
+      return;
+    }
     let target = this.lng.shader || {};
     if (this.lng.shader?.props) {
       target = this.lng.shader.props;
@@ -1152,6 +1206,7 @@ export class ElementNode {
         if (this.rendered && isElementNode(node)) {
           node.render(true);
           this.placeRenderedChild(node, index + 1);
+          if (semanticsHook !== undefined) semanticsHook(node);
         }
         return;
       }
@@ -1161,13 +1216,15 @@ export class ElementNode {
     if (this.rendered && isElementNode(node)) {
       node.render(true);
       if (movingHere) this.placeRenderedChild(node, this.children.length);
+      if (semanticsHook !== undefined) semanticsHook(node);
     }
   }
 
   removeChild(node: ElementNode | ElementText | TextNode) {
     if (removeItem(this.children, node as ElementNode) > -1) {
-      if (isElementNode(node) && node.onRemove) {
-        node.onRemove.call(node, node);
+      if (isElementNode(node)) {
+        if (node.onRemove) node.onRemove.call(node, node);
+        if (semanticsHook !== undefined && this.rendered) semanticsHook(node);
       }
 
       if (this.requiresLayout()) {
@@ -1378,7 +1435,7 @@ export class ElementNode {
     if (isDev && this._style) {
       // Avoid processing style changes again
       console.warn(
-        'Style already set: https://solid-tv.github.io/solid/#/essentials/styling?id=style-patterns-to-avoid',
+        'Style already set: see docs/essentials/styling.md (style patterns to avoid)',
       );
     }
 
@@ -1487,6 +1544,10 @@ export class ElementNode {
 
   set hidden(val: boolean) {
     this.alpha = val ? 0 : 1;
+    // Kept apart from alpha, which a fade leaves at 0 for a while: `hidden`
+    // is what takes a node out of the accessibility tree.
+    this._hidden = val;
+    if (semanticsHook !== undefined && this.rendered) semanticsHook(this);
   }
 
   get hidden() {
@@ -1527,7 +1588,7 @@ export class ElementNode {
    * Specifies the display behavior of an element. 'flex' enables flexbox layout.
    *
    * @default 'block'
-   * @see https://solid-tv.github.io/solid/#/flow/layout?id=flex
+   * @see docs/flow/layout.md
    */
   get display(): 'flex' | 'block' | undefined {
     return this._display;
@@ -1541,7 +1602,7 @@ export class ElementNode {
   /**
    * Callback run after flex layout is calculated on flex elements.
    *
-   * @see https://solid-tv.github.io/solid/#/flow/layout
+   * @see docs/flow/layout.md
    */
   get onLayout():
     | ((this: ElementNode, target: ElementNode) => void)
@@ -1993,6 +2054,32 @@ LightningRendererNonAnimatingProps.forEach((key) => {
     },
     set(v: unknown) {
       this.lng[key] = v;
+    },
+  });
+});
+
+// `text` is forwarded like the props above; a change also renames whatever
+// is labelled by that text.
+Object.defineProperty(ElementNode.prototype, 'text', {
+  get(this: ElementNode): unknown {
+    return (this.lng as { text?: string }).text;
+  },
+  set(this: ElementNode, v: string) {
+    (this.lng as { text?: string }).text = v;
+    if (semanticsHook !== undefined && this.rendered) semanticsHook(this);
+  },
+});
+
+// Accessibility props are kept on the node; a semantics host, when one is
+// attached, hears of each change to a rendered node.
+ACCESSIBILITY_PROPS.forEach((key) => {
+  Object.defineProperty(ElementNode.prototype, key, {
+    get(this: ElementNode): unknown {
+      return this._a11y === undefined ? undefined : this._a11y[key];
+    },
+    set(this: ElementNode, v: never) {
+      (this._a11y ??= {})[key] = v;
+      if (semanticsHook !== undefined && this.rendered) semanticsHook(this);
     },
   });
 });

@@ -1,90 +1,87 @@
-### Row and Column Components
+# Row and Column
 
-The `Row` and `Column` components are specialized views designed for managing layouts, particularly in the context of TV apps developed with `@solidtv/solid`. These components offer built-in navigation, focus management, and scrolling behavior.
-
-This guide will cover the `Row` component in detail. The `Column` component functions similarly but arranges children vertically instead of horizontally.
-
----
-
-### `Row` and `Column` Component
-
-#### Props
-
-The components accept the following props:
-
-| **Prop**            | **Type**                                                                     | **Description**                                              |
-| ------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `children`          | `JSX.Element[]`                                                              | The child elements to render inside the row.                 |
-| `selected`          | `number`                                                                     | The index of the currently selected child. Defaults to `0`.  |
-| `onLeft`            | `() => void`                                                                 | Callback for when the left navigation key is pressed.        |
-| `onRight`           | `() => void`                                                                 | Callback for when the right navigation key is pressed.       |
-| `onUp`              | `() => void`                                                                 | Callback for when the up navigation key is pressed.          |
-| `onDown`            | `() => void`                                                                 | Callback for when the down navigation key is pressed.        |
-| `onFocus`           | `(event: Event) => void`                                                     | Callback triggered when the row gains focus.                 |
-| `onLayout`          | `(layout: Layout) => void`                                                   | Callback triggered during layout updates.                    |
-| `onSelectedChanged` | `(index: number, self: this, active: boolean, lastSelected: number) => void` | Callback triggered when the selected index changes.          |
-| `onScrolled`        | `(elm: this, offset: number, isInitialPos: boolean) => void`                 | Callback triggered before scrolling occurs                   |
-| `style`             | `NodeStyles`                                                                 | Custom styles to apply to the row.                           |
-| `scroll`            | `'auto' \| 'always' \| 'edge' \| 'center' \| 'none'`                         | Defines the scrolling behavior. Default is `'auto'`.         |
-| `transitionLeft`    | `TransitionSettings`                                                         | (Row) Transition for scrolling left. Default is provided.    |
-| `transitionRight`   | `TransitionSettings`                                                         | (Row) Transition for scrolling right. Default is provided.   |
-| `transitionUp`      | `TransitionSettings`                                                         | (Column) Transition for scrolling up. Default is provided.   |
-| `transitionDown`    | `TransitionSettings`                                                         | (Column) Transition for scrolling down. Default is provided. |
-
-#### Behavior
-
-1. **Navigation**:
-   - The `Row` listens for left and right navigation events.
-   - The `Column` listens for up and down navigation events.
-   - The `onLeft` and `onRight` handlers can be customized, and default navigation logic is provided via `handleNavigation`.
-
-2. **Focus Management**:
-   - Focus events are handled via the `onFocus` prop.
-   - When focus changes, the row ensures that the currently selected child is highlighted and optionally scrolls into view.
-
-3. **Scrolling**:
-   - The `withScrolling` utility is used to handle scrolling behavior when the `scroll` prop is set to `'auto'` or `'always'`.
-
-4. **Styling**:
-   - The `Row` applies default styles for a horizontal layout, with gaps between children and smooth transitions for position changes.
-   - Custom styles can be merged using the `style` prop, which leverages the `combineStyles` utility.
-
-### scrollToIndex
-
-You can also `scrollToIndex` by using a ref to a Row or Column, simply `myRow.scrollToIndex(3)`
-
-#### Example Usage
+`Row` and `Column` are flex containers that move focus between their children.
+`Row` handles Left and Right. `Column` handles Up and Down. Both scroll so the
+selected child stays on screen.
 
 ```tsx
-import { Row } from './Row';
+import { Row } from '@solid-multiplatform/platform/primitives';
 
-export const Example = () => {
-  const items = ['Item 1', 'Item 2', 'Item 3'];
-  let myRow;
-  const handleSelectionChange = (index: number) => {
-    console.log('Selected index:', index);
-  };
+export const Rail = () => (
+  <Row x={100} y={100} gap={40} scroll="auto" autofocus>
+    <view width={400} height={200} color="#264653ff" />
+    <view width={400} height={200} color="#2a9d8fff" />
+    <view width={400} height={200} color="#e9c46aff" />
+  </Row>
+);
+```
 
-  setTimeout(() => {
-    myRow.scrollToIndex(2);
-  }, 100);
+Both components render a `<view>` and accept every `<view>` prop. The default
+style is `display: 'flex'` with `gap: 30`; `Column` also sets
+`flexDirection: 'column'`. Pass `style` to change the defaults.
+
+## Props
+
+| Prop                                 | Type                                                 | Description                                                                |
+| ------------------------------------ | ---------------------------------------------------- | -------------------------------------------------------------------------- |
+| `selected`                           | `number`                                             | Index of the child that takes focus. Defaults to `0`.                      |
+| `scroll`                             | `'auto' \| 'edge' \| 'always' \| 'center' \| 'none'` | When the container shifts its children. See below.                         |
+| `scrollIndex`                        | `number`                                             | With `auto`, the child index at which scrolling starts.                    |
+| `scrollStopLast`                     | `boolean`                                            | With `edge` or `auto`, do not scroll to remove space after the last child. |
+| `offset`                             | `number`                                             | Shifts the start position on the scroll axis.                              |
+| `wrap`                               | `boolean`                                            | Moving past the last child goes to the first, and the reverse.             |
+| `plinko`                             | `boolean`                                            | A sibling row takes the selected index of the row focus came from.         |
+| `onSelectedChanged`                  | `OnSelectedChanged`                                  | Called with `(selectedIndex, container, activeChild, lastSelectedIndex)`.  |
+| `onScrolled`                         | `(elm, offset, isInitial) => void`                   | Called when the container scrolls.                                         |
+| `onLeft` / `onRight`                 | `KeyHandler`                                         | `Row` only. Runs before the built-in navigation; return `true` to stop it. |
+| `onUp` / `onDown`                    | `KeyHandler`                                         | `Column` only. Runs before the built-in navigation.                        |
+| `transitionLeft` / `transitionRight` | `NodeStyles['transition']`                           | `Row` only. Transition used when scrolling in that direction.              |
+| `transitionUp` / `transitionDown`    | `NodeStyles['transition']`                           | `Column` only. Transition used when scrolling in that direction.           |
+
+## Scroll modes
+
+- `auto`: scroll as soon as the selection moves.
+- `edge`: scroll when focus reaches the last child on screen.
+- `always`: the selected child stays at the first position.
+- `center`: the selected child is centered.
+- `none`: never scroll.
+
+With `auto` and `edge` the container stops scrolling once the last child is on
+screen.
+
+## Skipping a child
+
+Set `skipFocus` on a child and navigation steps over it.
+
+## scrollToIndex
+
+A ref to a `Row` or `Column` has `scrollToIndex(index, options)`. It selects
+the child, scrolls to it and focuses it. Pass `{ noFocus: true }` to scroll
+without moving focus.
+
+```tsx
+import {
+  Row,
+  type NavigableElement,
+} from '@solid-multiplatform/platform/primitives';
+
+export const Rail = () => {
+  let row!: NavigableElement;
 
   return (
     <Row
-      ref={myRow}
-      selected={0}
-      onSelectedChanged={handleSelectionChange}
-      scroll="auto"
-      style={{ gap: 40 }}
+      ref={row}
+      onSelectedChanged={(index) => console.log('selected', index)}
+      onEnter={() => row.scrollToIndex(2)}
+      autofocus
     >
-      {items.map((item) => (
-        <div>{item}</div>
-      ))}
+      <view width={400} height={200} />
+      <view width={400} height={200} />
+      <view width={400} height={200} />
     </Row>
   );
 };
 ```
 
----
-
-- Default styles for the `Row` include a `flex` layout with a gap of `30px` and transitions. You can disable `flex` by setting `display={'block'}` on the `Row`. Additionally you can use skipItem on a child to not focus it.
+See [Positioning and Layout](/flow/layout.md) for flex props and
+[Focus and Key Handling](/essentials/focus.md) for how keys reach a handler.

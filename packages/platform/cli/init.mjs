@@ -8,6 +8,7 @@ import {
   framework,
   freshDirectory,
   json,
+  project,
   template,
   validateName,
   write,
@@ -38,10 +39,17 @@ function device(root, target, dependencies) {
       path.join(dest, 'package-zip.py'),
     );
     copy(path.join(origin, 'src'), path.join(dest, 'src'));
+    // Roku draws text with a font file, not the SDF atlas the other targets
+    // load from assets/fonts: the starter app's family (Lato) as a TTF, with
+    // its licence, kept with this target.
+    copy(
+      path.join(framework, 'cli/templates/roku/fonts'),
+      path.join(dest, 'fonts'),
+    );
     write(
       path.join(dest, 'roku-config.ts'),
       `import { rokuConfig } from '@solid-multiplatform/platform/roku/preset';
-export default rokuConfig({ title: ${JSON.stringify(json(path.join(root, 'solid-platform.json')).name)}, entry: 'work/main.ts', assets: 'work/assets' });
+export default rokuConfig({ title: ${JSON.stringify(project(root).name)}, entry: 'work/main.ts', assets: 'work/assets' });
 `,
     );
     pkg.devDependencies.brighterscript = '0.73.8';
@@ -84,7 +92,7 @@ export default rokuConfig({ title: ${JSON.stringify(json(path.join(root, 'solid-
     copyResource('App_Resources');
     copyResource('svg-compat');
   }
-  const appName = json(path.join(root, 'solid-platform.json')).name;
+  const appName = project(root).name;
   const bundleId = 'dev.solidapp.a' + appName.replaceAll('-', '');
   const config = readFileSync(
     path.join(origin, 'nativescript.config.ts'),
@@ -173,9 +181,14 @@ export function init(destination, selected) {
       },
       include: ['src/**/*.ts', 'src/**/*.tsx'],
     });
-    writeJson(path.join(root, 'solid-platform.json'), {
+    writeJson(path.join(root, 'solid-platform.config.json'), {
+      id: 'dev.solidapp.a' + name.replaceAll('-', ''),
       name,
+      version: '0.1.0',
       targets: selected,
+      deepLinks: { schemes: [], hosts: [] },
+      services: [],
+      signing: {},
     });
     write(
       path.join(root, 'src/app.tsx'),
@@ -199,7 +212,7 @@ export function init(destination, selected) {
     );
     write(
       path.join(root, 'README.md'),
-      `# ${name}\n\nInstall with \`corepack pnpm install\`. Create an extension with \`corepack pnpm platform plugin new my-plugin\`. Build a target with \`corepack pnpm build ${selected[0]}\`. App code lives in src, extensions in plugins, and native projects in targets. The CLI regenerates each target's work directory on build.\n\nTargets: ${selected.join(', ')}. Desktop uses SDL3 and the native WebGL renderer.\n`,
+      `# ${name}\n\nInstall with \`corepack pnpm install\`. Create an extension with \`corepack pnpm platform plugin new my-plugin\`. Build a target with \`corepack pnpm build ${selected[0]}\`. App code lives in src, extensions in plugins, and native projects in targets. The CLI regenerates each target's work directory on build.\n\nTargets: ${selected.join(', ')}.\n`,
     );
     for (const target of selected) {
       const dest = path.join(root, 'targets', target);

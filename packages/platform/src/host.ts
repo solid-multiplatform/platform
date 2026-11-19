@@ -9,6 +9,7 @@
 import type { JSXElement } from 'solid-js';
 import type { SceneRenderer } from '@solid-multiplatform/renderer/contracts';
 import { Config } from './core/config.js';
+import { isElementNode } from './core/utils.js';
 import {
   getRenderer,
   loadFonts,
@@ -21,14 +22,19 @@ import {
   type KeyEventTarget,
   type KeyMap,
 } from './core/focusManager.js';
-import { createRenderer } from './render.js';
+import { createRenderer, rootNode } from './render.js';
 import {
   setCapabilities,
   type PlatformCapabilities,
   type PlatformTarget,
 } from './sdk/capabilities.js';
 import type { EditorHost } from './sdk/editor.js';
-import type { InputScope } from './sdk/input.js';
+import {
+  createScenePointer,
+  type PointerSource,
+  type ScenePointerOptions,
+} from './sdk/input.js';
+import { attachSemantics, type SemanticsSink } from './sdk/semantics.js';
 
 export type Disposer = () => void;
 
@@ -46,8 +52,18 @@ export interface HostContext<Surface = unknown> {
   readonly loadFonts?: (fonts: FontLoadOptions[]) => Promise<void>;
   /** Remote, keyboard and gamepad keys, already in the platform's key names. */
   readonly keys: KeyEventTarget;
-  /** Pointer and touch input, where the platform has it. */
-  readonly pointer?: InputScope;
+  /**
+   * Pointer and touch input, where the platform has it. The host reports
+   * where the pointer is; finding the node under it and telling a click from
+   * a hold or a drag is the framework's part. A host without one pays
+   * nothing for pointer support.
+   */
+  readonly pointer?: PointerSource;
+  /**
+   * Where the scene's accessibility semantics go, on a platform whose
+   * assistive technology can read them. Without one the scene keeps none.
+   */
+  readonly semantics?: SemanticsSink;
   /** Native text entry: IME, on-screen keyboard, autofill. */
   readonly text?: EditorHost;
   /** Whatever plugins on this target attach to (native root view, window). */
@@ -75,12 +91,81 @@ export interface AppOptions {
   fonts?: FontLoadOptions[];
   /** Additions to the default key map. */
   keyMap?: Partial<KeyMap>;
+  /**
+   * How a pointer behaves, where the host has one: the hover and pressed
+   * state names, focus on hover, hold time and drag slop.
+   */
+  pointer?: Omit<ScenePointerOptions, 'cursor'>;
+}
+
+/** The input and output of a host that a scene is wired to. */
+export type HostWiring = Partial<
+  Pick<HostContext, 'keys' | 'pointer' | 'semantics'>
+>;
+
+/**
+ * Renders `app` with the renderer already chosen and wires it to `host`:
+ * keys to focus, the pointer to the nodes under it, the scene's semantics to
+ * the host's sink. Interactive nodes need no registration: see `sdk/input.ts`
+ * for which nodes a pointer reaches and `sdk/semantics.ts` for what assistive
+ * technology is told. `startApp` calls this; a host that has not moved to
+ * `startApp` and installs its renderer itself calls it directly.
+ */
+export function mountApp(
+  app: () => JSXElement,
+  host: HostWiring = {},
+  options: AppOptions = {},
+): Disposer {
+  const fonts = options.fonts ? loadFonts(options.fonts) : undefined;
+  const { render } = createRenderer(options.renderer ?? Config.rendererOptions);
+  // A missing font must not stop the app; text falls back when it can.
+  fonts?.catch((error: unknown) => console.error('Font load failed', error));
+  const before = rootNode.children.slice();
+  // Released by hand and not by the render's owner: an app that throws while
+  // rendering leaves no owner to dispose.
+  const release: Disposer[] = [];
+  const releaseAll = () => {
+    while (release.length > 0) release.pop()!();
+  };
+  let dispose: Disposer;
+  try {
+    dispose = render(() => {
+      useFocusManager(options.keyMap, host.keys);
+      const source = host.pointer;
+      if (source !== undefined) {
+        const pointer = createScenePointer(rootNode, {
+          ...options.pointer,
+          cursor: source.setCursor && ((style) => source.setCursor!(style)),
+        });
+        release.push(() => pointer.dispose(), source.connect(pointer));
+      }
+      if (host.semantics !== undefined) {
+        release.push(attachSemantics(rootNode, host.semantics));
+      }
+      return app();
+    });
+  } catch (error) {
+    releaseAll();
+    throw error;
+  }
+  return () => {
+    dispose();
+    releaseAll();
+    // Disposing the render leaves its nodes in the root: take them out, so
+    // that the next app on this root starts from an empty scene.
+    for (const child of rootNode.children.slice()) {
+      if (before.indexOf(child) !== -1) continue;
+      rootNode.removeChild(child);
+      if (isElementNode(child)) child.destroy();
+    }
+  };
 }
 
 /**
  * Runs `app` on `host`: declares the target's capabilities, builds the host's
- * renderer, loads fonts, wires keys to focus and renders. Nothing here runs
- * per frame. Returns the host's own disposer when it has one.
+ * renderer, loads fonts, wires keys, pointer and semantics and renders.
+ * Nothing here runs per frame. Returns the host's own disposer when it has
+ * one.
  */
 export function startApp<Surface>(
   host: HostDefinition<Surface>,
@@ -93,27 +178,16 @@ export function startApp<Surface>(
       (settings) => context.createRenderer(settings),
       context.loadFonts,
     );
-    let dispose: Disposer | undefined;
+    let unmount: Disposer;
     try {
-      const fonts = options.fonts ? loadFonts(options.fonts) : undefined;
-      const { render } = createRenderer(
-        options.renderer ?? Config.rendererOptions,
-      );
-      // A missing font must not stop the app; text falls back when it can.
-      fonts?.catch((error: unknown) =>
-        console.error('Font load failed', error),
-      );
-      dispose = render(() => {
-        useFocusManager(options.keyMap, context.keys);
-        return app(context);
-      });
+      unmount = mountApp(() => app(context), context, options);
     } catch (error) {
       setRendererFactory(undefined);
       throw error;
     }
     return () => {
       try {
-        dispose?.();
+        unmount();
         (getRenderer() as SceneRenderer | undefined)?.destroy();
       } finally {
         setRendererFactory(undefined);

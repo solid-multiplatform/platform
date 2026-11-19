@@ -335,7 +335,6 @@ export function writeSummary(dir) {
     chrome: new Set(),
     coi: new Set(),
     clock: [],
-    flex: new Set(),
     sources: new Map(), // arm -> Set of "solid …, renderer …"
   };
   const failed = [];
@@ -367,7 +366,6 @@ export function writeSummary(dir) {
         .add(`solid ${r.source.solid}, renderer ${r.source.renderer}`);
     }
     meta.throttle.add(r.throttle);
-    meta.flex.add(r.flex);
     meta.load.push(r.loadAvg);
     meta.quick = meta.quick || r.quick === true;
   }
@@ -380,7 +378,6 @@ export function writeSummary(dir) {
   L.push('');
   L.push(`- CPU throttling: ${[...meta.throttle].join(', ')}x`);
   L.push(`- GPU: ${[...meta.gpu].join('; ')}`);
-  L.push(`- Flex: ${[...meta.flex].join(', ')}`);
   for (const a of [...meta.sources.keys()].sort(ARM_ORDER)) {
     L.push(`- Arm ${a}: ${[...meta.sources.get(a)].join('; ')}`);
   }

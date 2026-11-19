@@ -1,119 +1,120 @@
-# useMouse for Mouse Handling
+# useMouse
 
-The `useMouse` primitive enables mouse interaction by setting the `activeElement` to any element the mouse pointer hovers over, provided the element has a `focus` state, `onFocus`, or `onEnter` property, and does not have `skipFocus` set to `true`.
+`useMouse` lets a mouse or pointer remote drive an app that is built for keys.
+It focuses the element under the pointer, turns a click into Enter, and turns
+the wheel into Up and Down.
 
-Additionally, `useMouse` handles wheel scrolling. When the user scrolls with the mouse wheel, it triggers `onUp` and `onDown` events on the current `activeElement`.
-
-This primitive should be enabled for TV's with mouse input like LG's Magic Remote.
+`useMouse` listens on `window` and `document`. It works only on hosts that
+have them: the web and browser TV targets. Pointer input as a framework
+feature for every target is in progress in an open pull request and is not on
+`main`.
 
 ## Usage
 
-### Import and Setup
+Call it once, inside your app:
 
-Import the `useMouse` and call it:
+```tsx
+import { useMouse } from '@solid-multiplatform/platform/primitives';
 
-```jsx
-import { useMouse } from '@solidtv/solid';
+export const App = () => {
+  useMouse();
 
-const App = () => {
-  // rootNode, throttleBy in ms, and options
-  useMouse(undefined, 100, {
-    customStates: {
-      hoverState: '$hover',
-      pressedState: '$pressed',
-      pressedStateDuration: 150, // optional, default is 150ms
-    },
-  });
-
-  // Additional application logic...
+  return <view autofocus />;
 };
 ```
 
-### Custom States
+The signature is `useMouse(root, throttleBy, options)`:
 
-You can configure `useMouse` to apply custom states to elements when they are hovered or pressed. This is useful for styling elements based on mouse interaction.
+- `root` (`ElementNode`, default the root node): the tree to hit-test.
+- `throttleBy` (`number`, default `100`): milliseconds between two hit tests
+  while the pointer moves.
+- `options.customStates`: `{ hoverState, pressedState }`, two state names that
+  start with `$`.
 
-- `hoverState`: Applied to the element currently under the mouse cursor.
-- `pressedState`: Applied to the element when it is clicked.
+## Hover
 
-To use this, pass the `customStates` option to `useMouse`.
+On pointer move, `useMouse` finds the deepest element under the pointer that
+has `onEnter`, `onMouseClick`, `onFocus`, `cursorStyle` or a focus state style.
+That element gets focus. If its parent has a `selected` index, as `Row` and
+`Column` do, the index is updated.
 
-### Click Handling
+With `customStates`, hover does not move focus. The element gets the
+`hoverState` state instead, and `pressedState` while the button is down:
 
-When an element is clicked, `useMouse` handles the interaction as follows:
+```tsx
+import { rootNode } from '@solid-multiplatform/platform';
+import { useMouse } from '@solid-multiplatform/platform/primitives';
 
-1. **`onMouseClick`**: If the element has an `onMouseClick` handler, it is called directly with the mouse event and the element instance. `onMouseClick` is mouse-specific and never fires from a keyboard/remote Enter.
-2. **Everything else**: The element is focused (`setFocus()`) and a synthetic `Enter` key event (keydown + keyup) is dispatched. This routes through the `focusManager` exactly like a remote/keyboard Enter press — the capture phase, leaf→root bubbling, return-value propagation (a handler returning `true` stops it), and per-element throttling all apply. In practice this means a click and a remote Enter invoke the same `onEnter` path.
+export const App = () => {
+  useMouse(rootNode, 100, {
+    customStates: { hoverState: '$hover', pressedState: '$pressed' },
+  });
 
-Example of handling clicks:
-
-```jsx
-const MyButton = (props) => {
   return (
     <view
-      {...props}
-      onMouseClick={(e, elm) => {
-        console.log('Clicked!', elm);
-      }}
+      width={200}
+      height={80}
+      color="#264653ff"
+      $hover={{ color: '#2a9d8fff' }}
+      $pressed={{ color: '#e9c46aff' }}
+      onEnter={() => console.log('activated')}
     />
   );
 };
 ```
 
-## Cursor Visibility (webOS Magic Remote)
+See [States](/essentials/states.md) for how state styles work.
 
-On webOS TVs the Magic Remote can show an on-screen pointer. `isCursorVisible` is a reactive accessor that returns `true` while that pointer is on screen and `false` otherwise. It attaches a single, app-lifetime listener to the webOS `cursorStateChange` event on first read, so it's cheap to call from many components.
+## Click
 
-```jsx
-import { isCursorVisible } from '@solidtv/solid/primitives';
-import { Show } from '@solidtv/solid';
+- If the element has `onMouseClick`, it is called with the mouse event and the
+  element. A key press never calls it.
+- Otherwise the element is focused and an Enter key-down and key-up are
+  dispatched on `document`. The press goes through the focus manager like a
+  remote's Enter, so the same `onEnter` runs.
 
-// Reactive — read it inside JSX or an effect
-<Show when={isCursorVisible()}>{/* pointer-only affordances */}</Show>;
-```
+## Wheel
 
-### Why this matters for Rows
+A wheel movement dispatches `ArrowUp` or `ArrowDown`. The wheel is throttled.
 
-A `Row` scrolls horizontally in response to **Left/Right** key presses that advance its selected index. When the Magic Remote pointer is active, users move focus by **hovering** rather than pressing arrows — so the Row never shifts, and any items outside the initial viewport are unreachable with the pointer alone.
+## isCursorVisible
 
-The recommended pattern is to render on-screen **Left and Right arrow** affordances whenever the cursor is visible, and have them scroll the Row **without moving focus** — the pointer, not the arrows, owns focus. Drive the Row directly with `scrollToIndex` (plain `<Row>`/`<Column>`) or `lazyScrollToIndex` (`<LazyRow>`), passing `{ noFocus: true }`:
+`isCursorVisible()` is a reactive accessor for the webOS pointer. It follows
+the `cursorStateChange` event that webOS raises on `document`. It attaches one
+listener on first use and returns `false` until an event says otherwise.
 
-```jsx
-import { createSignal } from 'solid-js';
-import { Show } from '@solidtv/solid';
-import { isCursorVisible, Row } from '@solidtv/solid/primitives';
+```tsx
+import { Show } from 'solid-js';
+import {
+  isCursorVisible,
+  Row,
+  type NavigableElement,
+} from '@solid-multiplatform/platform/primitives';
 
-const MouseRow = (props) => {
-  let rowRef;
-  const itemCount = () => props.items.length;
-  const [, setSelectedIndex] = createSignal(0);
-
-  // Mouse-only advance: scroll the row one item without moving focus.
-  const advanceRow = (delta) => {
-    const row = rowRef;
-    if (!row || itemCount() === 0) return;
-    const target = Math.min(
-      Math.max((row.selected ?? 0) + delta, 0),
-      itemCount() - 1,
-    );
-    // `<LazyRow>` exposes lazyScrollToIndex; a plain `<Row>` exposes scrollToIndex.
-    (row.lazyScrollToIndex ?? row.scrollToIndex)?.call(row, target, {
-      noFocus: true,
-    });
-    setSelectedIndex(target);
-  };
+export const MouseRow = () => {
+  let row!: NavigableElement;
+  const step = (delta: number) =>
+    row.scrollToIndex(Math.max(0, row.selected + delta), { noFocus: true });
 
   return (
     <view>
-      <Row ref={rowRef} {...props} />
-      {/* Only show arrows when the pointer is on screen */}
+      <Row ref={row} autofocus>
+        <view width={400} height={200} />
+        <view width={400} height={200} />
+        <view width={400} height={200} />
+      </Row>
       <Show when={isCursorVisible()}>
-        <view onMouseClick={() => advanceRow(-1)}>{/* ‹ left arrow */}</view>
-        <view onMouseClick={() => advanceRow(1)}>{/* › right arrow */}</view>
+        <view width={60} height={200} onMouseClick={() => step(-1)} />
+        <view x={1860} width={60} height={200} onMouseClick={() => step(1)} />
       </Show>
     </view>
   );
 };
 ```
 
-`{ noFocus: true }` scrolls the Row and updates its `selected` index without calling `setFocus()` on the target child, so the pointer keeps focus while the rail moves under it. This works regardless of which element is the `activeElement`, unlike dispatching synthetic arrow keys (which only navigate whatever currently has focus).
+A `Row` scrolls on Left and Right. With a pointer the user hovers instead, so
+items outside the screen cannot be reached. Arrow areas like the ones above
+scroll the row without taking focus from the pointer.
+
+This project has no automated test of `useMouse` on a TV. Check pointer
+behavior on your device.

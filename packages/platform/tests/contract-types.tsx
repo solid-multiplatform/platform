@@ -127,6 +127,112 @@ export function keyMapAugmentation() {
   return [keyMap, missing, nullMenu, viaPrimitives, nullViaPrimitives];
 }
 
+// --- Types that state what the runtime does ---------------------------------
+
+export function effectsTypes() {
+  // A border's thickness is `width`, with `w` as its alias, as on `border`.
+  const width: import('@solid-multiplatform/platform').Effects = {
+    border: { width: 2, color: 0xff0000ff },
+    borderTop: { width: 1 },
+    linearGradient: { colors: [0xff0000ff, 0x0000ffff] },
+  };
+  const w: import('@solid-multiplatform/platform').Effects = {
+    border: { w: 2 },
+  };
+  const hole: import('@solid-multiplatform/platform').Effects = {
+    // @ts-expect-error -- effects does not forward holePunch: use `shader`
+    holePunch: { width: 10 },
+  };
+  return [width, w, hole];
+}
+
+export function navigableScroll() {
+  const bounded: import('@solid-multiplatform/platform/primitives').NavigableProps['scroll'] =
+    'bounded';
+  return bounded;
+}
+
+export function hashRouterProps() {
+  const ok: import('@solid-multiplatform/platform/primitives/router').HashRouterProps =
+    { forceProxy: true, queryParams: ['id'] };
+  const bad: import('@solid-multiplatform/platform/primitives/router').HashRouterProps =
+    {
+      // @ts-expect-error -- HashRouter never read explicitLinks
+      explicitLinks: true,
+    };
+  return [ok, bad];
+}
+
+export function keyHandlerArguments() {
+  const handler: import('@solid-multiplatform/platform').KeyHandler = function (
+    e,
+    handlerElm,
+    focusedElm,
+    mappedEvent,
+  ) {
+    const self: ElementNode = handlerElm;
+    const leaf: ElementNode = focusedElm;
+    const name: string | undefined = mappedEvent;
+    return self === this && leaf !== undefined && name === e.key;
+  };
+  return handler;
+}
+
+// --- SDK port shapes a native host can implement ----------------------------
+
+type Platform = typeof import('@solid-multiplatform/platform');
+type PlatformTypes = {
+  DeviceInfo: import('@solid-multiplatform/platform').DeviceInfo;
+  ShareOptions: import('@solid-multiplatform/platform').ShareOptions;
+  MediaActionHandlers: import('@solid-multiplatform/platform').MediaActionHandlers;
+  Recording: import('@solid-multiplatform/platform').Recording;
+  MicrophonePort: import('@solid-multiplatform/platform').MicrophonePort;
+  ContactQuery: import('@solid-multiplatform/platform').ContactQuery;
+  ContactPage: import('@solid-multiplatform/platform').ContactPage;
+  AudioPort: import('@solid-multiplatform/platform').AudioPort;
+  LocalePort: import('@solid-multiplatform/platform').LocalePort;
+};
+
+export function sdkPortShapes(blob: Blob) {
+  const desktop: PlatformTypes['DeviceInfo'] = {
+    platform: 'desktop',
+    os: 'linux',
+    arch: 'x64',
+  };
+  // An operating system outside the listed ones is still a string.
+  const other: PlatformTypes['DeviceInfo'] = { platform: 'tv', os: 'vidaa' };
+  const share: PlatformTypes['ShareOptions'] = {
+    files: [{ path: '/cache/a.pdf' }, { blob, name: 'a.txt' }],
+  };
+  const actions: PlatformTypes['MediaActionHandlers'] = {
+    seekto: (details) => details.seekTime.toFixed(1),
+    pause: () => {},
+  };
+  // A native recording is a file: no browser type is needed.
+  const recording: PlatformTypes['Recording'] = {
+    mimeType: 'audio/mp4',
+    path: '/cache/a.m4a',
+  };
+  const microphone: PlatformTypes['MicrophonePort'] = {
+    start: async () => ({ stop: async () => recording }),
+  };
+  const query: PlatformTypes['ContactQuery'] = { limit: 20, after: 'cursor' };
+  const page: PlatformTypes['ContactPage'] = { contacts: [], next: 'cursor' };
+  const audio: Pick<PlatformTypes['AudioPort'], 'subscribe'> = {
+    subscribe(listener) {
+      listener('interrupted');
+      // @ts-expect-error -- not a playback state
+      listener('buffering');
+      return () => {};
+    },
+  };
+  const locale: Pick<PlatformTypes['LocalePort'], 'subscribe'> = {
+    subscribe: (listener) => () => listener(),
+  };
+  const start: Platform['startRecording'] = async () => microphone.start({});
+  return [desktop, other, share, actions, query, page, audio, locale, start];
+}
+
 // --- Exports: type-only names ----------------------------------------------
 //
 // Every type-only export of each entry point today. Importing a name that is
