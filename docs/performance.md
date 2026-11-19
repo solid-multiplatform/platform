@@ -68,12 +68,46 @@ Measured on 2026-11-19 on a physical Android TV at 60 Hz with the SurfaceView de
 
 ## Measure on Roku
 
-There is no Roku frame-timing procedure on `main`. What exists:
+Roku OS 16's firmware records real frame timing. A Perfetto trace contains the `render` and `swapBuffers` slices on `RenderThr:Main`; `render + swapBuffers` inside 16.67 ms is the frame budget. The SDK documents the slices and the `rk perfetto enable` / `rk perfetto start` workflow; the endpoints are ECP (`POST /perfetto/enable/<channel>` and a WebSocket at `/perfetto-session`). That is the only source of render-thread, compositor and GPU timing. The trace is protobuf and needs Perfetto tooling (the UI or `trace_processor`) to read.
 
-- `node packages/platform/tests/cli/roku-device-check.mjs` reads a device's state over ECP when `ROKU_DEV_IP` is set. It is read-only.
-- `solid-platform certify roku <metrics.json>` checks a metrics file against the budgets in `packages/platform/src/sdk/certification.ts` and exits non-zero if one is exceeded.
+The repository's harness measures a **proxy** on the device, because it runs through the existing sideload/console runners and reads text, not binary traces:
 
-The Roku host, shapes, text, conformance and motion runs were recorded on a physical TV on 2026-11-18; the evidence is under `handoff/roku-device/`. `x`, `y` and `alpha` animate on the SceneGraph render thread through `Animation` + `FloatFieldInterpolator`, and the motion harness passed 9/9 with no JavaScript timer armed while animating or after settling. Colour, `scale`, delay, loop and unknown easing still fall back to the JavaScript clock. Frame pacing during animation has not been measured.
+- `packages/platform/tests/performance/run-pacing.mjs` builds `tests/roku-device/pacing-app.tsx`, sideloads it, relaunches it with `contentId=pacing&case=<case>&seconds=<n>`, reads the `PACING` lines from the console, and restores the app that was on screen.
+- The app runs one fixed workload for the duration: a scrolling rail of 24 poster cards with text (`steady`); that plus a 30-node native `alpha` batch (`animation`); or that plus one deliberate 1000 ms JavaScript block at 10 s (`block`).
+- The measured series is a deadline-corrected 60 Hz `setTimeout` callback with `performance.now()` timestamps on the JavaScript thread; the renderer's `idle` event is timestamped too. It is a proxy: it measures whether the JavaScript thread serviced its 60 Hz cadence, not what the SceneGraph render thread presented.
+
+```sh
+cd packages/platform
+node tests/performance/run-pacing.mjs --case steady --seconds 60 --out <dir>
+node tests/performance/run-pacing.mjs --case animation --seconds 60 --out <dir>
+node tests/performance/run-pacing.mjs --case block --seconds 60 --out <dir>
+node --test tests/performance/test_roku_pacing.mjs
+```
+
+The analyser counts intervals over the 16.67 ms period plus 1 ms tolerance, reports p50/p95/p99/worst and a missed-frame estimate, and excludes the deliberate block from a second set of statistics. `--max-over-budget N` makes the runner exit non-zero; without it a completed measurement exits 0. The analyser's unit test runs on synthetic samples and needs no device.
+
+### What the proxy measured
+
+Measured on 2026-11-19 on a 1080p Roku TV running OS 16.0.4, 60 s per case. Results are in `handoff/roku-pacing/`; they contain no device address or serial.
+
+| case      | frames | p50   | p95   | p99   | worst   | over 17.67 ms     | missed est. |
+| --------- | ------ | ----- | ----- | ----- | ------- | ----------------- | ----------- |
+| steady    | 3592   | 16.92 | 17.82 | 17.96 | 36.78   | 243/3591 (6.77%)  | 3           |
+| animation | 3588   | 16.76 | 17.77 | 22.52 | 77.20   | 485/3587 (13.52%) | 6           |
+| block     | 3530   | 16.63 | 18.35 | 27.98 | 1018.26 | 425/3529 (12.04%) | 130         |
+
+For the block case, excluding the 1000.26 ms block itself: 3528 intervals, p95 18.25 ms, worst 38.49 ms, 424 over budget, missed estimate 70. The block adds one long interval; the cadence on either side is the same, which is consistent with native SceneGraph animation continuing on the render thread while the JavaScript thread is held.
+
+These numbers are not a pass. The strict rule is zero intervals over budget, and none of the three passes meets it under the 1 ms tolerance. Most over-budget intervals are 17.7–18.5 ms — the JavaScript timer's own granularity and drift, not a display measurement. The missed-frame estimate (3, 6, 130) counts whole refresh periods implied by interval lengths; the block's estimate is dominated by its own 1000 ms gap and must not be read as 130 dropped displayed frames.
+
+### What remains unmeasured
+
+- GPU and compositor timing; `render + swapBuffers` on `RenderThr:Main`.
+- Whether a JavaScript-thread gap coincides with a missed display frame.
+- True presented-frame cadence, and 4K or other display modes.
+- The proxy cannot certify the zero-missed-frames gate. A Perfetto trace can: enable tracing before launch, record during the same workload, and measure the slices per the SDK's perfetto-profiling guide.
+
+The Roku host, shapes, text, conformance and motion runs were recorded on a physical TV on 2026-11-18; the evidence is under `handoff/roku-device/`. `x`, `y` and `alpha` animate on the SceneGraph render thread through `Animation` + `FloatFieldInterpolator`, and the motion harness passed 9/9 with no JavaScript timer armed while animating or after settling. Colour, `scale`, delay, loop and unknown easing still fall back to the JavaScript clock. Frame pacing during animation is now measured only by the proxy above.
 
 ## Device data and secrets
 
