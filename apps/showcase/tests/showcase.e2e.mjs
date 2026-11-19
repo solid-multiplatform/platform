@@ -607,20 +607,29 @@ let browser;
 try {
   // Headless Chromium has no GPU: run WebGL on SwiftShader. Firefox and
   // WebKit draw in software themselves and reject Chromium's switches. A CI
-  // runner has no GPU either, and Firefox refuses WebGL there unless told
-  // otherwise, so allow software WebGL explicitly for it.
+  // runner has no GPU either; headless Firefox on Linux still refuses WebGL,
+  // so there CI runs it headed under xvfb-run (SOLIDTV_FIREFOX_HEADED=1) on
+  // Mesa/llvmpipe, with the software prefs as well.
+  const headedFirefox =
+    engine === 'firefox' && process.env.SOLIDTV_FIREFOX_HEADED === '1';
   browser = await engines[engine].launch(
     engine === 'chromium'
       ? { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] }
       : engine === 'firefox'
         ? {
+            headless: !headedFirefox,
             firefoxUserPrefs: {
               'webgl.disabled': false,
               'webgl.force-enabled': true,
               'webgl.out-of-process': false,
               'gfx.webrender.software': true,
             },
-            env: { ...process.env, LIBGL_ALWAYS_SOFTWARE: '1' },
+            env: {
+              ...process.env,
+              LIBGL_ALWAYS_SOFTWARE: '1',
+              MOZ_ENABLE_WAYLAND: '0',
+              GDK_BACKEND: 'x11',
+            },
           }
         : {},
   );

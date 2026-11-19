@@ -28,10 +28,24 @@ function launch(name: 'chromium' | 'firefox' | 'webkit') {
         'webgl.out-of-process': false,
         'gfx.webrender.software': true,
       },
-      env: { ...process.env, LIBGL_ALWAYS_SOFTWARE: '1' },
+      // X11 on the Xvfb display: a Wayland session on the host fails to
+      // start Firefox under xvfb-run.
+      env: {
+        ...process.env,
+        LIBGL_ALWAYS_SOFTWARE: '1',
+        MOZ_ENABLE_WAYLAND: '0',
+        GDK_BACKEND: 'x11',
+      },
     };
   return {};
 }
+
+// Headless Firefox on Linux has no WebGL even with the software prefs. Under
+// an X server (xvfb-run) a headed Firefox draws on Mesa/llvmpipe, so CI sets
+// SOLIDTV_FIREFOX_HEADED and runs this config inside xvfb-run. Locally the
+// variable is unset and every engine stays headless.
+const headedFirefox = (name: 'chromium' | 'firefox' | 'webkit') =>
+  name === 'firefox' && process.env.SOLIDTV_FIREFOX_HEADED === '1';
 
 function engine(name: 'chromium' | 'firefox' | 'webkit') {
   return {
@@ -40,7 +54,7 @@ function engine(name: 'chromium' | 'firefox' | 'webkit') {
       name,
       browser: {
         enabled: true,
-        headless: true,
+        headless: !headedFirefox(name),
         // A failure's screenshot of the canvas says nothing the assertion
         // does not, and would litter the tree with __screenshots__.
         screenshotFailures: false,
