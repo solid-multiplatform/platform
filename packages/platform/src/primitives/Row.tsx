@@ -1,10 +1,11 @@
-import { type Component } from 'solid-js';
+import { onCleanup, type Component } from 'solid-js';
 import {
   combineStyles,
   type NodeStyles,
   type ElementNode,
 } from '@solid-multiplatform/platform';
-import { chainFunctions } from './utils/chainFunctions.js';
+import { chainFunctions, chainRefs } from './utils/chainFunctions.js';
+import { registerFocusKey, unregisterFocusKey } from './screenHistory.js';
 import {
   handleNavigation,
   navigableForwardFocus,
@@ -19,10 +20,19 @@ const RowStyles: NodeStyles = {
   gap: 30,
 };
 
-function scrollToIndex(this: ElementNode, index: number, options?: { noFocus?: boolean }) {
+function scrollToIndex(
+  this: ElementNode,
+  index: number,
+  options?: { noFocus?: boolean },
+) {
   const lastSelected = this.selected;
   this.selected = index;
-  scrollRow(index, this, undefined, lastSelected === index ? undefined : lastSelected);
+  scrollRow(
+    index,
+    this,
+    undefined,
+    lastSelected === index ? undefined : lastSelected,
+  );
   if (!options?.noFocus) {
     this.children[index]?.setFocus();
   }
@@ -32,12 +42,22 @@ const onLeft = handleNavigation('left');
 const onRight = handleNavigation('right');
 
 export const Row: Component<RowProps> = (props) => {
+  let rowNode: ElementNode | undefined;
+  onCleanup(() => {
+    if (rowNode !== undefined) unregisterFocusKey(rowNode, props.focusKey);
+  });
   return (
     <view
       role="list"
       transitionLeft={defaultTransitionBack}
       transitionRight={defaultTransitionForward}
       {...props}
+      ref={
+        /* @once */ chainRefs((node) => {
+          rowNode = node;
+          registerFocusKey(node, props.focusKey);
+        }, props.ref)
+      }
       selected={props.selected || 0}
       onLeft={/* @once */ chainFunctions(props.onLeft, onLeft)}
       onRight={/* @once */ chainFunctions(props.onRight, onRight)}

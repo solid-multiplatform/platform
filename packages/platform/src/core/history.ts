@@ -32,6 +32,13 @@ export interface HistorySource {
    * it.
    */
   subscribe?(listener: (delta: number) => void): () => void;
+  /**
+   * Tell subscribers the location changed although the stack did not move.
+   * Navigation that goes around the router (screen history's `push` and
+   * `replace`) calls it so the router re-reads the host location. A source
+   * that does not implement it is still usable; nothing else calls it.
+   */
+  emit?(): void;
 }
 
 /** One entry in {@link createMemoryHistory}. */
@@ -73,6 +80,9 @@ export function createMemoryHistory(initial = ''): HistorySource {
       return () => {
         listeners.delete(listener);
       };
+    },
+    emit() {
+      for (const listener of listeners) listener(0);
     },
   };
 }

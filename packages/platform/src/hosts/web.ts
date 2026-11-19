@@ -20,6 +20,7 @@ import { bindBrowserViewport } from '../sdk/browser-viewport.js';
 import type { PlatformTarget } from '../sdk/capabilities.js';
 import { resetCursor, setCursor } from '../sdk/cursor.js';
 import { createBrowserHistory } from './web-history.js';
+import { bindBackKey, createBackDispatcher } from '../sdk/shortcuts.js';
 import { browserEditorHost } from '../sdk/editor.js';
 import { bindPointerEvents, type PointerSource } from '../sdk/input.js';
 import { installServices } from '../sdk/registry.js';
@@ -57,6 +58,48 @@ export interface WebViewport {
   /** Called once the renderer exists. */
   attach?(): void;
   dispose(): void;
+}
+
+/**
+ * Leaving a browser TV. A plain page and the PS4 browser have no exit the
+ * framework can perform, so they report it unavailable instead of pretending
+ * `window.close` worked.
+ */
+function browserExit(
+  target: Extract<PlatformTarget, 'web' | 'tizen' | 'webos' | 'vizio' | 'ps4'>,
+): (() => void) | undefined {
+  if (target === 'tizen') {
+    const tizen = (
+      globalThis as {
+        tizen?: {
+          application?: { getCurrentApplication?(): { exit?(): void } };
+        };
+      }
+    ).tizen;
+    const app = tizen?.application?.getCurrentApplication;
+    if (app !== undefined) {
+      return () => {
+        try {
+          app().exit?.();
+        } catch {
+          // The platform refused; nothing else can leave the app.
+        }
+      };
+    }
+  }
+  if (target === 'webos') {
+    const webos = (globalThis as { webOS?: { platformBack?(): void } }).webOS;
+    if (webos?.platformBack !== undefined) {
+      return () => {
+        try {
+          webos.platformBack?.();
+        } catch {
+          // Same: the launcher decides.
+        }
+      };
+    }
+  }
+  return undefined;
 }
 
 /** The page element a web host draws in. */
@@ -112,7 +155,16 @@ export function createWebHost(
               setCursor: (style) =>
                 style === undefined ? resetCursor() : setCursor(style),
             };
+      // One dispatcher beside the one history. Roku, Android, browser-TV and
+      // PS4 all deliver Back here; the browser toolbar goes through the
+      // router's traversal flag.
+      const exit = browserExit(target);
+      const back = createBackDispatcher(
+        exit === undefined ? {} : { onExit: exit },
+      );
+      const releaseBack = bindBackKey(document, back);
       const release = () => {
+        releaseBack();
         semantics?.dispose();
         viewport.dispose();
         removeServices();
@@ -128,6 +180,8 @@ export function createWebHost(
           semantics,
           text: browserEditorHost(surface),
           history: createBrowserHistory(),
+          back,
+          exit,
           loadFonts,
           createRenderer: (settings) => createRenderer(settings, surface),
         });

@@ -10,6 +10,12 @@ export type OnSelectedChanged = (
 ) => void;
 
 export interface NavigableProps extends NodeProps {
+  /**
+   * Stable key for screen-history focus restore. Captured in the focus path,
+   * never an index, and restored against the remounted screen.
+   */
+  focusKey?: string;
+
   /** function to be called when the selected of the component changes */
   onSelectedChanged?: OnSelectedChanged;
 

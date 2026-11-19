@@ -13,6 +13,7 @@ import {
   TextScreen,
 } from './screens/gallery';
 import { ListScreen } from './screens/List';
+import { ScreenHistoryScreen } from './screens/ScreenHistory';
 import { ServicesScreen } from './screens/Services';
 
 export interface Section {
@@ -34,4 +35,9 @@ export const sections: readonly Section[] = [
   { path: '/controls', title: 'Controls', screen: ControlsScreen },
   { path: '/services', title: 'Services', screen: ServicesScreen },
   { path: '/diagnostics', title: 'Diagnostics', screen: DiagnosticsScreen },
+  {
+    path: '/screen-history',
+    title: 'Screen history',
+    screen: ScreenHistoryScreen,
+  },
 ];

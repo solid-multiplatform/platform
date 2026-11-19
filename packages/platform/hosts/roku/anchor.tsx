@@ -15,7 +15,7 @@ import {
   onMount,
   setProp,
 } from '@roku-sdk/solid';
-import { Config } from '@solid-multiplatform/platform';
+import { Config, createBackDispatcher } from '@solid-multiplatform/platform';
 import {
   createMemoryHistory,
   type Disposer,
@@ -123,6 +123,10 @@ export function createAnchor(
       const keys = createKeySource();
       // The router's stack lives here: Roku has no browser history to read.
       const history = createMemoryHistory();
+      // One Back dispatcher beside it. Screen history registers the
+      // navigation; at the root the dispatcher closes the channel.
+      const exit = () => outputs.exitApp(true);
+      const back = createBackDispatcher({ onExit: exit });
       const entry = createNativeTextEntry(root);
       // The keyboard dialog takes the remote as it opens.
       const text: typeof entry = {
@@ -173,7 +177,9 @@ export function createAnchor(
         // output field, events arrive on its input field. Only true firmware
         // features are listed; the adapter fills the rest with its documented
         // set, because an unknown feature key also answers false.
-        const firmware = (globalThis as { roku?: { hasFeature?(key: string): boolean } }).roku;
+        const firmware = (
+          globalThis as { roku?: { hasFeature?(key: string): boolean } }
+        ).roku;
         let features: Record<string, boolean> | undefined;
         if (typeof firmware?.hasFeature === 'function') {
           features = {};
@@ -236,6 +242,8 @@ export function createAnchor(
                 native: root,
                 keys,
                 history,
+                back,
+                exit,
                 text: rokuEditorHost(text, (reason) =>
                   reportError('ROKU_EDITOR', reason),
                 ),
@@ -288,9 +296,10 @@ export function createAnchor(
             if (text.ownsInput()) return;
             const handled = keys.dispatch(key, press);
             if (!handled && press && key === 'back') {
-              // A mounted router's Back goes one entry; at its root, exit.
-              if (history.canGoBack?.()) history.go?.(-1);
-              else outputs.exitApp(true);
+              // The key already went through the focus path: only the
+              // dispatcher's remaining precedence (before-focus work,
+              // navigation, root policy) is left.
+              back.handle({ synthesize: false });
             }
           }}
         >

@@ -51,6 +51,17 @@ export { AppErrorBoundary } from '../primitives/AppErrorBoundary.jsx';
 // Routing. `Route`, `useNavigate` and the rest come from `@solidjs/router`.
 export { HashRouter } from '../primitives/router.js';
 export { KeepAliveRoute } from '../primitives/KeepAlive.jsx';
+// Screen history with keyed focus restore.
+export {
+  createScreenHistory,
+  type ScreenEntry,
+  type ScreenFocusSnapshot,
+  type ScreenHistory,
+  type ScreenHistoryOptions,
+  type ScreenRestoreContext,
+  type ScreenRestoreResult,
+  type ScreenRestoreStatus,
+} from '../primitives/screenHistory.js';
 
 // The host, plugins and services, without props.
 export {

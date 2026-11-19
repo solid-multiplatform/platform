@@ -22,7 +22,7 @@ export function runAndroidTV(
   runNativeApp(
     'android-tv',
     loadApp,
-    (canvas, bridge, _platform, _root, history) => {
+    (canvas, bridge, _platform, _root, history, back) => {
       bindAndroidCanvas(canvas, true);
       // The device's services, installed once. Nothing in them runs until
       // the app first uses one. The key bridge is the app's key source, so
@@ -35,7 +35,12 @@ export function runAndroidTV(
           keyTarget: bridge,
         }),
       );
-      const unbindInput = bindAndroidInput(bridge, canvas.android, history);
+      const unbindInput = bindAndroidInput(
+        bridge,
+        canvas.android,
+        history,
+        back,
+      );
       return () => {
         unbindInput();
         removeServices();

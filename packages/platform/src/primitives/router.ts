@@ -104,8 +104,10 @@ export function bindEvent(
 }
 
 export function HashRouter(props: HashRouterProps): JSX.Element {
+  const scope = useContext(HostScope);
+  const dispatcher = scope?.back;
   const history =
-    useContext(HostScope)?.history ??
+    scope?.history ??
     (typeof window !== 'undefined' ? windowHistory() : undefined);
   if (history === undefined) {
     throw new Error(
@@ -130,6 +132,15 @@ export function HashRouter(props: HashRouterProps): JSX.Element {
       return subscribe.call(history, (delta) => {
         if (undoing) {
           undoing = false;
+          return;
+        }
+        // A browser toolbar/gesture Back has already moved the location. Give
+        // the dispatcher's focus handlers (a modal, a fullscreen player) the
+        // press; when one consumes it, put the location back instead of
+        // navigating a second time.
+        if (delta !== 0 && dispatcher?.handle({ traversal: true, delta })) {
+          undoing = true;
+          history.go?.(-delta);
           return;
         }
         // A browser Back the before-leave guard blocks is undone, as the

@@ -52,7 +52,28 @@ export function runNativeApp(
         // The router's stack, owned here: the target's Back handling drives
         // it, and no `window.history` shim exists to read.
         const history = createMemoryHistory();
-        const binding = bindDevice(canvas, bridge, platform, root, history);
+        // One dispatcher for hardware Back beside the one history. The exit
+        // action finishes the activity; iOS has no hardware Back.
+        const exit = android
+          ? () => {
+              try {
+                Application.android.foregroundActivity?.finish?.();
+              } catch {
+                // The activity is already gone.
+              }
+            }
+          : undefined;
+        const back = platform.createBackDispatcher(
+          exit === undefined ? {} : { onExit: exit },
+        );
+        const binding = bindDevice(
+          canvas,
+          bridge,
+          platform,
+          root,
+          history,
+          back,
+        );
         const lifecycle = bindLifecycle(
           () => platform.renderer,
           bridge,
@@ -105,6 +126,8 @@ export function runNativeApp(
             canvas,
             keys: bridge,
             history,
+            back,
+            exit,
             text: nativeEditorHost(root, target),
             input: binding.input,
           });
