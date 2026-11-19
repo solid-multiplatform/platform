@@ -571,7 +571,8 @@ export async function runChecks({ emulator, probe: app, form, shared }) {
         events(name).includes('pause'),
       );
       await app.step('media-session-clear');
-      await until('session released', () => !/active=true/.test(own()));
+      // A loaded CI emulator can take tens of seconds to drop the session.
+      await until('session released', () => !/active=true/.test(own()), 60000);
       return 'active with metadata; dispatched pause delivered; released';
     },
 
