@@ -4,6 +4,7 @@ import { expect, test, vi } from 'vitest';
 // The host is a host module (plain MJS), so it imports without the package
 // build. Its renderer import is resolved by Vite.
 import { nativeFormOf, nativeHost } from '../../hosts/nativescript/host.mjs';
+import { createMemoryHistory } from '../../src/core/history.js';
 
 const keyboard = () => ({
   addEventListener: vi.fn(),
@@ -38,11 +39,12 @@ test('launch adopts the surface and input the target bootstrap made', () => {
   const keys = keyboard();
   const input = { connect: () => () => {} };
   const text = { createEditor: () => ({}) };
+  const history = createMemoryHistory();
   let context;
   const released = vi.fn();
   const stop = nativeHost({
     form: 'tv',
-    host: { canvas, root, keys, input, text, target: 'android-tv' },
+    host: { canvas, root, keys, input, text, history, target: 'android-tv' },
   }).launch((launched) => {
     context = launched;
     return released;
@@ -58,6 +60,8 @@ test('launch adopts the surface and input the target bootstrap made', () => {
   expect(context.text).toBe(text);
   // Assistive-technology semantics are omitted, not stubbed.
   expect(context.semantics).toBeUndefined();
+  // The bootstrap's history reaches the router through the context.
+  expect(context.history).toBe(history);
   expect(typeof context.createRenderer).toBe('function');
 
   expect(typeof stop).toBe('function');
@@ -72,6 +76,20 @@ test('launch without an established surface creates one itself', () => {
   const host = nativeHost({ form: 'phone' });
   expect(host.target).toBe('android');
   expect(typeof host.launch).toBe('function');
+});
+
+test('a host with no history from its bootstrap makes one itself', () => {
+  let context;
+  nativeHost({
+    form: 'ios',
+    host: { canvas: {}, root: {}, keys: keyboard() },
+  }).launch((launched) => {
+    context = launched;
+    return () => {};
+  });
+  // Never a `window.history` shim: the host owns the router's stack.
+  expect(typeof context.history.read).toBe('function');
+  expect(typeof context.history.push).toBe('function');
 });
 
 test('a touch form has no pointer when its bootstrap did not bind touch', () => {

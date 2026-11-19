@@ -18,11 +18,8 @@
  *   of the polyfill's, whose href is empty and whose protocol has no colon.
  *   The renderer decides at import from `location.protocol` how a relative
  *   URL resolves, so with this every `./assets/...` in an app is a file in
- *   the app folder. Assigning `location.hash` navigates, as in a browser.
- * - `history`: a real stack behind `pushState`, `replaceState` and `go`,
- *   raising `hashchange` and `popstate` on `window` when it moves, so a
- *   `HashRouter` works as in a browser and `history.back()` goes back. The
- *   router reads `history.state` at import, hence the import order above.
+ *   the app folder. The router does not read it: the host supplies the
+ *   router a `HistorySource` (`HostContext.history`).
  * - `window.dispatchEvent`, delivering to listeners added through
  *   `window.addEventListener`, which the polyfill has but cannot reach.
  * - `document.addEventListener`, `removeEventListener` and `dispatchEvent`
@@ -95,22 +92,9 @@ export interface ShimLocation {
   toString(): string;
 }
 
-/** `window.history` as the shim provides it. */
-export interface ShimHistory {
-  readonly length: number;
-  readonly state: unknown;
-  scrollRestoration: 'auto' | 'manual';
-  pushState(state: unknown, unused: string, url?: string | null): void;
-  replaceState(state: unknown, unused: string, url?: string | null): void;
-  go(delta?: number): void;
-  back(): void;
-  forward(): void;
-}
-
 /** `window`, or the host itself where the polyfill made no separate one. */
 export type HostWindow = Partial<ShimEventTarget> & {
   location?: unknown;
-  history?: unknown;
 };
 
 /** The globals `installShims` reads and writes. */
@@ -119,7 +103,6 @@ export interface ShimHost {
   self?: { location?: unknown };
   document?: Partial<ShimEventTarget> & { baseURI?: unknown };
   location?: unknown;
-  history?: unknown;
   XMLHttpRequest?: { prototype: object };
   NSURLSession?: UrlSessionClass;
   console?: ConsoleLike;
@@ -267,12 +250,6 @@ export function shimWindowEvents(window: Partial<ShimEventTarget>): void {
 const asHash = (value: string): string =>
   value === '' || value.charAt(0) === '#' ? value : '#' + value;
 
-interface HistoryEntry {
-  state: unknown;
-  search: string;
-  hash: string;
-}
-
 class Location implements ShimLocation {
   readonly protocol = 'file:';
   readonly host = '';
@@ -282,8 +259,6 @@ class Location implements ShimLocation {
   readonly pathname: string;
   search = '';
   private currentHash = '';
-  /** Set by the history once it exists: a hash assignment navigates. */
-  navigate: ((hash: string) => void) | null = null;
 
   constructor(appPath: string) {
     this.pathname = appPath + '/index.html';
@@ -298,21 +273,7 @@ class Location implements ShimLocation {
   }
 
   set hash(value: string) {
-    const hash = asHash(value);
-    if (hash === this.currentHash) {
-      return;
-    }
-    if (this.navigate !== null) {
-      this.navigate(hash);
-      return;
-    }
-    this.currentHash = hash;
-  }
-
-  /** The history's write: no navigation of its own. */
-  set(search: string, hash: string): void {
-    this.search = search;
-    this.currentHash = hash;
+    this.currentHash = asHash(value);
   }
 
   assign(url: string): void {
@@ -334,119 +295,20 @@ class Location implements ShimLocation {
   }
 }
 
-class History implements ShimHistory {
-  scrollRestoration: 'auto' | 'manual' = 'auto';
-  private readonly entries: HistoryEntry[];
-  private index = 0;
-
-  constructor(
-    private readonly location: Location,
-    private readonly window: Pick<ShimEventTarget, 'dispatchEvent'>,
-  ) {
-    this.entries = [
-      { state: null, search: location.search, hash: location.hash },
-    ];
-    location.navigate = (hash) => {
-      // A hash assignment is a push that also raises hashchange.
-      const oldURL = location.href;
-      this.pushState(null, '', hash);
-      this.moved(oldURL);
-    };
-  }
-
-  get length(): number {
-    return this.entries.length;
-  }
-
-  get state(): unknown {
-    return (this.entries[this.index] as HistoryEntry).state;
-  }
-
-  pushState(state: unknown, _unused: string, url?: string | null): void {
-    const entry = this.entryFor(state, url);
-    this.entries.splice(this.index + 1);
-    this.entries.push(entry);
-    this.index = this.entries.length - 1;
-    this.location.set(entry.search, entry.hash);
-  }
-
-  replaceState(state: unknown, _unused: string, url?: string | null): void {
-    const entry = this.entryFor(state, url);
-    this.entries[this.index] = entry;
-    this.location.set(entry.search, entry.hash);
-  }
-
-  go(delta: number = 0): void {
-    const target = this.index + delta;
-    if (delta === 0 || target < 0 || target >= this.entries.length) {
-      return;
-    }
-    const oldURL = this.location.href;
-    this.index = target;
-    const entry = this.entries[target] as HistoryEntry;
-    this.location.set(entry.search, entry.hash);
-    this.moved(oldURL);
-  }
-
-  back(): void {
-    this.go(-1);
-  }
-
-  forward(): void {
-    this.go(1);
-  }
-
-  /** The current search and hash with `url` applied over them. */
-  private entryFor(state: unknown, url?: string | null): HistoryEntry {
-    const current = this.entries[this.index] as HistoryEntry;
-    if (url === undefined || url === null || url === '') {
-      return { state, search: current.search, hash: current.hash };
-    }
-    const hashIndex = url.indexOf('#');
-    const beforeHash = hashIndex === -1 ? url : url.slice(0, hashIndex);
-    const hash = hashIndex === -1 ? '' : url.slice(hashIndex);
-    const searchIndex = beforeHash.indexOf('?');
-    // A url with only a hash keeps the search; anything else replaces it.
-    const search =
-      hashIndex === 0
-        ? current.search
-        : searchIndex === -1
-          ? ''
-          : beforeHash.slice(searchIndex);
-    return { state, search, hash };
-  }
-
-  private moved(oldURL: string): void {
-    const newURL = this.location.href;
-    this.window.dispatchEvent({
-      type: 'popstate',
-      state: this.state,
-    } as ShimEvent);
-    this.window.dispatchEvent({
-      type: 'hashchange',
-      oldURL,
-      newURL,
-    } as ShimEvent);
-  }
-}
-
 /**
- * Installs `location` and `history` on the host, over the polyfill's
- * location. `appPath` is the app folder, `document.baseURI` on the
- * polyfill; `window` must be able to dispatch events already.
+ * Installs `location` on the host, over the polyfill's location. `appPath` is
+ * the app folder, `document.baseURI` on the polyfill. The router does not use
+ * it: the host supplies a `HistorySource` instead.
  */
 export function shimLocation(host: ShimHost, appPath: string): void {
   const window: HostWindow =
     host.window === undefined ? (host as HostWindow) : host.window;
   const location = new Location(appPath);
-  const history = new History(location, window as ShimEventTarget);
   host.location = location;
   window.location = location;
   if (host.self !== undefined && (host.self as unknown) !== window) {
     host.self.location = location;
   }
-  host.history = history;
-  window.history = history;
 }
 
 /** What the polyfill's HTTP layer resolves a request with. */

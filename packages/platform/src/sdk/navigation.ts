@@ -1,4 +1,6 @@
-import { createSignal, type Accessor } from 'solid-js';
+import { createSignal, useContext, type Accessor } from 'solid-js';
+import { HostScope } from '../app/context.js';
+import type { HistorySource } from '../core/history.js';
 
 export interface Route {
   readonly path: string;
@@ -190,6 +192,11 @@ export interface BrowserHistoryOptions {
   /** The window/history object, injectable for tests. */
   window?: BrowserHistoryTarget;
   /**
+   * The host's history, used instead of `window`. Defaults to the host
+   * context's history; `window` is the fallback only where there is one.
+   */
+  history?: HistorySource;
+  /**
    * Adopt the URL the app was opened with when the stack is still at `/`.
    * Defaults to true, matching BrowserRouter/Expo Router deep-link handling.
    */
@@ -217,6 +224,57 @@ const defaultFromUrl =
     state: url.search + url.hash || undefined,
   });
 
+/** The path part of a URL the router wrote, for a host history. */
+const pathOf = (url: string | null | undefined): string => {
+  if (url === undefined || url === null || url === '') return '';
+  try {
+    const parsed = new URL(url, 'https://solid.local');
+    return parsed.pathname + parsed.search + parsed.hash;
+  } catch {
+    return url;
+  }
+};
+
+/**
+ * A host history as the browser target `bindBrowserHistory` reads, so a
+ * NativeScript or Roku stack follows Back exactly as a page's does.
+ */
+function historyTarget(history: HistorySource): BrowserHistoryTarget {
+  const listeners = new Set<() => void>();
+  let unsubscribe: (() => void) | undefined;
+  const changed = () => {
+    for (const listener of listeners) listener();
+  };
+  return {
+    get location() {
+      return { href: 'https://solid.local' + history.read().path };
+    },
+    history: {
+      pushState(state, _unused, url) {
+        history.push(pathOf(url), state);
+      },
+      replaceState(state, _unused, url) {
+        (history.replace ?? history.push).call(history, pathOf(url), state);
+      },
+    },
+    addEventListener(type, listener) {
+      if (type !== 'popstate') return;
+      listeners.add(listener);
+      if (unsubscribe === undefined && history.subscribe !== undefined) {
+        unsubscribe = history.subscribe(changed);
+      }
+    },
+    removeEventListener(type, listener) {
+      if (type !== 'popstate') return;
+      listeners.delete(listener);
+      if (listeners.size === 0) {
+        unsubscribe?.();
+        unsubscribe = undefined;
+      }
+    },
+  };
+}
+
 /**
  * Keep a navigation stack in sync with the browser URL.
  *
@@ -232,7 +290,10 @@ export function bindBrowserHistory(
   navigation: Navigation,
   options: BrowserHistoryOptions = {},
 ): () => void {
-  const target = options.window ?? browserWindow();
+  const history = options.history ?? useContext(HostScope)?.history;
+  const target =
+    options.window ??
+    (history !== undefined ? historyTarget(history) : browserWindow());
   if (!target?.history) return () => {};
   const base = options.base ?? '';
   const toUrl = options.toUrl
@@ -283,7 +344,10 @@ export function createBrowserNavigation(
   initial: Route = { path: '/' },
   options: BrowserHistoryOptions = {},
 ): Navigation & { dispose(): void } {
-  const target = options.window ?? browserWindow();
+  const history = options.history ?? useContext(HostScope)?.history;
+  const target =
+    options.window ??
+    (history !== undefined ? historyTarget(history) : browserWindow());
   const base = options.base ?? '';
   const fromUrl = options.fromUrl
     ? (url: URL) => options.fromUrl!(url)
@@ -294,6 +358,7 @@ export function createBrowserNavigation(
   const navigation = createNavigation(start);
   const disposeHistory = bindBrowserHistory(navigation, {
     ...options,
+    history: undefined,
     window: target,
     adopt: false,
   });

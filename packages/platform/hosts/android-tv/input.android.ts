@@ -1,8 +1,13 @@
 import { Application } from '@nativescript/core';
+import type { HistorySource } from '@solid-multiplatform/platform/host';
 import type { KeyBridge } from '@solid-multiplatform/platform/nativescript';
 import { createInputController } from './input.mjs';
 
-export function bindAndroidInput(bridge: KeyBridge, view: android.view.View) {
+export function bindAndroidInput(
+  bridge: KeyBridge,
+  view: android.view.View,
+  history?: HistorySource,
+) {
   const input = createInputController(bridge);
   view.setFocusable(true);
   view.setFocusableInTouchMode(true);
@@ -13,7 +18,16 @@ export function bindAndroidInput(bridge: KeyBridge, view: android.view.View) {
     }),
   );
   const back = (args: any) => {
-    args.cancel = input.back();
+    // The app's Back key handler runs first; an unhandled press moves the
+    // host history, and only at its root leaves the app.
+    if (input.back()) {
+      args.cancel = true;
+      return;
+    }
+    if (history?.canGoBack?.() && history.go !== undefined) {
+      args.cancel = true;
+      history.go(-1);
+    }
   };
   const release = () => input.release();
   const focus = () => view.requestFocus();

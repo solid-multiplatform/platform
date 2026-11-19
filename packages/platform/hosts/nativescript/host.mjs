@@ -15,6 +15,7 @@
 // each need a real implementation, and a host that cannot do them right
 // omits the sink rather than stubbing it.
 import { RendererMain } from '@solid-multiplatform/renderer';
+import { createMemoryHistory } from './history.mjs';
 
 /** The form a target uses, its platform target, and the input it delivers. */
 const FORMS = {
@@ -99,6 +100,9 @@ function launchEstablished(form, options, run) {
     // feeds it before the scene connects it. No gestures live in the host.
     pointer: options.pointer ?? host.input,
     text: options.text ?? host.text,
+    // The bootstrap's history, when it made one; otherwise a stack this host
+    // owns. The router never reads `window.history` here.
+    history: options.history ?? host.history ?? createMemoryHistory(),
     // No `semantics`: see the file comment.
   });
   return () => {
