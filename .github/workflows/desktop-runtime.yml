@@ -236,15 +236,10 @@ jobs:
   # `static-sdl` builds SDL (Cocoa, OpenGL through EGL) from source, so
   # nothing has to be installed. The headless tests run everywhere; a window
   # is not opened because macOS supplies no OpenGL ES driver of its own (see
-  # docs/targets/desktop.md).
-  #
-  # continue-on-error: this job has never run before, and a first failure
-  # must not hide the Linux result or block the release of the Linux
-  # runtime. Remove it once it has been green.
+  # docs/targets/desktop.md). Green on run 44474518719.
   macos:
     runs-on: macos-15
     timeout-minutes: 90
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Toolchain
@@ -337,7 +332,12 @@ jobs:
   # path for OpenGL ES) from source. The headless tests run; a window is not
   # opened, since a hosted runner has no GPU and no GL ES driver guaranteed.
   #
-  # continue-on-error: same reason as the macOS job.
+  # continue-on-error, because the job is not green yet. Build step: green
+  # (Hermes MSVC, but the glue is compiled with clang-cl: cl.exe 19.44
+  # rejects Hermes' C compound literals with C4576). Failing step: "Test
+  # (headless)" — the runtime build and diagnostics succeed, and the test
+  # script hangs with no further output. The step is time-bounded and runs
+  # under `bash -x` so the next run's log shows which command stops.
   windows:
     runs-on: windows-2022
     timeout-minutes: 90
@@ -414,9 +414,11 @@ jobs:
           cargo test --release --locked --features static-sdl
       - name: Test (headless)
         shell: bash
+        timeout-minutes: 10
         run: |
           set -euo pipefail
-          SOLID_DESKTOP_HEADLESS_ONLY=1 bash packages/host-desktop/native/tests/run.sh
+          # `-x`: the log shows which command hangs, if one does.
+          SOLID_DESKTOP_HEADLESS_ONLY=1 bash -x packages/host-desktop/native/tests/run.sh
       - name: Archive the runtime for the release
         shell: bash
         run: |
