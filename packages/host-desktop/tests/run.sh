@@ -32,8 +32,13 @@ virtual() {
 virtual node "$here/scene/run.mjs"
 virtual node "$here/host/run.mjs"
 # The scene's title bar: borderless creation, hit-test regions, real drags
-# and resizes under a window manager, insets, and the fallbacks.
-virtual node "$here/chrome/run.mjs"
+# and resizes under a window manager, insets, and the fallbacks. CI runs it
+# as its own step (SOLID_DESKTOP_SKIP_CHROME=1 here): a hosted runner's
+# window manager and software GL make it slow and occasionally unable to
+# give a borderless window a first state, which must not stop the rest.
+if [[ "${SOLID_DESKTOP_SKIP_CHROME:-0}" != 1 ]]; then
+  virtual node "$here/chrome/run.mjs"
+fi
 virtual node "$here/package/run.mjs"
 virtual node "$here/a11y/run.mjs"
 node "$here/services/run.mjs"
