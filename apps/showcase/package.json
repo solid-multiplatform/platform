@@ -14,12 +14,15 @@
     "test:firefox": "vite build && node tests/showcase.e2e.mjs dist/web web firefox",
     "test:webkit": "vite build && node tests/showcase.e2e.mjs dist/web web webkit",
     "test:tizen": "vite build --mode tizen && node tests/showcase.e2e.mjs dist/tizen tizen chromium",
-    "test:webos": "vite build --mode webos && node tests/showcase.e2e.mjs dist/webos webos chromium"
+    "test:webos": "vite build --mode webos && node tests/showcase.e2e.mjs dist/webos webos chromium",
+    "build:desktop": "node ../../packages/host-desktop/cli/index.mjs build src/main.desktop.tsx --out dist/desktop --assets ../../packages/platform/tests/webgl/fonts",
+    "desktop": "echo \"run: ../../packages/host-desktop/native/target/release/solid-desktop --script dist/desktop/app.js\""
   },
   "dependencies": {
     "@solid-multiplatform/platform": "workspace:*",
     "@solid-multiplatform/renderer": "workspace:*",
-    "solid-js": "1.9.17"
+    "solid-js": "1.9.17",
+    "@solid-multiplatform/host-desktop": "workspace:*"
   },
   "devDependencies": {
     "playwright": "1.56.1",

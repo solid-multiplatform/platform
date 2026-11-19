@@ -26,6 +26,9 @@ importers:
 
   apps/showcase:
     dependencies:
+      '@solid-multiplatform/host-desktop':
+        specifier: workspace:*
+        version: link:../../packages/host-desktop
       '@solid-multiplatform/platform':
         specifier: workspace:*
         version: link:../../packages/platform
