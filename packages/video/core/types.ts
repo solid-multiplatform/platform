@@ -3,7 +3,7 @@
  * already-selected delivery URL: choosing a source and choosing a server
  * delivery rung belong to the product/backend, never to a device adapter.
  */
-export type PlayerPlatform = 'tizen' | 'vizio' | 'html5' | 'tauri';
+export type PlayerPlatform = 'tizen' | 'vizio' | 'html5' | 'tauri' | 'roku';
 export type PlaybackKind = 'vod' | 'live';
 export type PlayerState =
   | 'idle'
@@ -33,6 +33,8 @@ export interface PlayerCapabilities {
   readonly canDisableTextTrack: boolean;
   readonly canUseCookies: boolean;
   readonly canUseUserAgent: boolean;
+  /** The engine takes source request headers (Roku `httpHeaders`). */
+  readonly canUseRequestHeaders?: boolean;
   readonly limitations: readonly string[];
 }
 
@@ -121,7 +123,7 @@ export interface PlayerFailure {
 }
 
 export interface PlayerDiagnostics {
-  readonly engine: 'mediabunny' | 'mediabunny-mse' | 'native-html' | 'hls.js' | 'avplay' | 'tauri-native';
+  readonly engine: 'mediabunny' | 'mediabunny-mse' | 'native-html' | 'hls.js' | 'avplay' | 'tauri-native' | 'scenegraph';
   readonly transport: 'hls' | 'file';
   readonly networkTransport?: 'browser-proxy' | 'direct' | 'native-http';
 
