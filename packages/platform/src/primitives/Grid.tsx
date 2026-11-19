@@ -79,15 +79,16 @@ export function Grid<T>(props: GridProps<T>): JSX.Element {
   const rows = createMemo(() => Math.ceil(props.items.length / columns()));
 
   function focus() {
-    const focusedElm = gridRef.children[focusedIndex()];
+    if (!props.items || props.items.length === 0) return false;
+    // Removing entries must not leave the grid pointing past the end: focus
+    // the last remaining item, as tvOS moves focus to a nearby item when the
+    // focused one disappears.
+    const index = Math.min(Math.max(focusedIndex(), 0), props.items.length - 1);
+    if (index !== focusedIndex()) setFocusedIndex(index);
+    const focusedElm = gridRef.children[index];
     if (focusedElm instanceof ElementNode && !hasFocus(focusedElm)) {
       focusedElm.setFocus();
-      props.onSelectedChanged?.call(
-        gridRef,
-        focusedIndex(),
-        gridRef,
-        focusedElm,
-      );
+      props.onSelectedChanged?.call(gridRef, index, gridRef, focusedElm);
       return true;
     }
     return false;
@@ -147,6 +148,13 @@ export function Grid<T>(props: GridProps<T>): JSX.Element {
     if (props.items && props.items.length > 0 && gridRef && hasFocus(gridRef)) {
       queueMicrotask(focus);
     }
+  });
+
+  // Keep the cursor inside the data. Shrinking the list while the grid is
+  // focused would otherwise scroll to a row that no longer exists.
+  createEffect(() => {
+    const count = props.items?.length ?? 0;
+    if (count > 0 && focusedIndex() >= count) setFocusedIndex(count - 1);
   });
 
   function scrollToIndex(this: ElementNode, index: number) {

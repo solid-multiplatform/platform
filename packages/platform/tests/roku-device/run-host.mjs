@@ -26,7 +26,7 @@ import {
   sideload,
 } from '../../cli/roku-device.mjs';
 import { decodeImage, imageKind, pixel } from './image.mjs';
-import { BUTTONS, MODAL } from './host-cases.mjs';
+import { BUTTONS, MODAL, RAIL } from './host-cases.mjs';
 
 const project = fileURLToPath(new URL('../../examples/roku/', import.meta.url));
 const out = path.join(project, 'dist-host');
@@ -668,6 +668,37 @@ try {
   await sleep(1000);
   await keypress(device, 'Select');
   check('confirming exits the app', await exited(8000));
+
+  // ---- tvOS scroll-into-view: a programmatic jump must show the item ----
+  // The rail is wider than the screen. Select jumps to its eighth card; at
+  // the required scroll that card occupies 1520..1920, so a pixel inside
+  // 1700,400 is focused green only when it is wholly on screen.
+  from = notes.length;
+  await launch(device, 'dev', { contentId: 'rail', mediaType: 'movie' });
+  check(
+    'rail app starts',
+    (await waitFor(/^HOST RAIL READY/, 30_000, from)) !== undefined,
+  );
+  check(
+    'the rail focuses its first card',
+    (await waitFor(/^HOST RAIL FOCUS 0/, 12_000, from)) !== undefined,
+  );
+  await keypress(device, 'Select');
+  check(
+    'Select jumps the rail to the eighth card',
+    (await waitFor(/^HOST RAIL FOCUS 8/, 10_000, from)) !== undefined,
+  );
+  await sleep(1200);
+  image = await shoot('rail-jump');
+  const jumped = at(image, RAIL.probe);
+  // The card to its right would be the first one cut off; the probe sits in
+  // the gap when the scroll stopped a step short or a card early.
+  const rightEdge = pixel(image, 1880, RAIL.y + 100);
+  check(
+    'the jumped-to card is wholly on screen',
+    isGreen(jumped) && isGreen(rightEdge),
+    `probe ${jumped}, right edge ${rightEdge}`,
+  );
 } finally {
   reading.stop();
   if (!args.includes('--keep') && previous && previous !== 'dev')

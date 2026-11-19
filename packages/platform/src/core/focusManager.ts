@@ -332,6 +332,55 @@ export const setActiveElementCore = (elm: ElementNode) => {
 
 export const [focusPath, setFocusPath] = createSignal<ElementNode[]>([]);
 
+/**
+ * The nearest live ancestor of `from` that can take focus, focused. Used when
+ * the focused element itself is gone: tvOS moves focus to a nearby remaining
+ * item rather than leaving the indicator nowhere. Returns false when nothing
+ * of the old subtree remains (a screen change owns the next focus).
+ */
+export function focusNearestLiveAncestor(
+  from: ElementNode | undefined,
+): boolean {
+  let node = from?.parent;
+  let plain: ElementNode | undefined;
+  while (node !== undefined) {
+    if (!node.destroyed) {
+      if (plain === undefined) plain = node;
+      if (
+        node.forwardFocus !== undefined ||
+        node.onFocus !== undefined ||
+        node.onEnter !== undefined ||
+        node[Config.focusStateKey] !== undefined
+      ) {
+        node.setFocus();
+        return true;
+      }
+    }
+    node = node.parent;
+  }
+  if (plain !== undefined) {
+    plain.setFocus();
+    return true;
+  }
+  return false;
+}
+
+/**
+ * tvOS moves focus to one of the remaining items when the focused item
+ * disappears during D-pad navigation, so the indicator stays somewhere the
+ * viewer can find it. On pointer-first hosts the indicator is simply hidden,
+ * as browsers do; nothing moves focus there.
+ *
+ * Called by the post-mutation delete flush, after removed nodes are destroyed
+ * and only when no newer programmatic focus is pending.
+ */
+export function restoreFocusAfterRemoval(): void {
+  if (focusVisibility() !== 'always') return;
+  const focused = activeElement();
+  if (focused === undefined || !focused.destroyed) return;
+  focusNearestLiveAncestor(focused);
+}
+
 const updateFocusPath = (
   currentFocusedElm: ElementNode,
   prevFocusedElm: ElementNode | undefined,

@@ -54,6 +54,7 @@ import type {
 import { NodeType, TextNode } from './nodeTypes.js';
 import {
   ForwardFocusHandler,
+  restoreFocusAfterRemoval,
   setActiveElementCore,
   FocusNode,
 } from './focusManager.js';
@@ -109,6 +110,11 @@ function runPostMutation() {
       el._queueDelete = undefined;
     }
     elementDeleteQueue.length = 0;
+    // The focused node may have been removed. A pending programmatic focus
+    // (a new screen's autofocus) is about to apply and owns the slot.
+    if (nextActiveElement === null && deferredFocusElement === null) {
+      restoreFocusAfterRemoval();
+    }
   }
 
   // Phase 2: layout

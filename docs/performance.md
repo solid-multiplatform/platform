@@ -121,6 +121,27 @@ For the block case outside its 1000.37 ms block: 3522 intervals, p95 18.19 ms, w
 
 The Roku host, shapes, text, conformance and motion runs were recorded on a physical TV on 2026-11-18; the evidence is under `handoff/roku-device/`. `x`, `y` and `alpha` animate on the SceneGraph render thread through `Animation` + `FloatFieldInterpolator`, and the motion harness passed 9/9 with no JavaScript timer armed while animating or after settling. Colour, `scale`, delay, loop and unknown easing still fall back to the JavaScript clock. Frame pacing during animation is now measured on the render thread by the Perfetto path above.
 
+## TV focus and scrolling (tvOS guidance)
+
+The focus path follows Apple's tvOS guidance, applied to Roku and Android TV where
+the remote is the only input. Only the tvOS parts of each page apply: the
+framework has no pointer on those targets and no separate scroll objects. Pages
+that describe touch scrolling, pointer hover or macOS focus rings were read and
+deliberately not ported.
+
+| Apple page                                                                                                                                                                                    | Behaviour adopted                                                                                                                                                                                                                                                                                                                        |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Focus and selection](https://developer.apple.com/design/human-interface-guidelines/focus-and-selection)                                                                                      | Directional focus reaches every focus stop; leaving and re-entering a row keeps its last item. When the focused item disappears, focus moves to a nearby remaining item (the nearest live container re-runs its `forwardFocus`) instead of dying with the node. On pointer-first hosts the indicator is simply hidden, as the page says. |
+| [Remotes](https://developer.apple.com/design/human-interface-guidelines/remotes)                                                                                                              | Back dismisses one layer at a time: modal/popover, then screen history, then the host's exit. Play/Pause and the media keys map through `rokuKeyMap`.                                                                                                                                                                                    |
+| [Scroll views](https://developer.apple.com/design/human-interface-guidelines/scroll-views)                                                                                                    | tvOS has no scroll objects or indicators: content scrolls so the focused item is visible. `Row`, `Column`, `Grid` and the virtual lists guarantee that the focused item is wholly on screen, including after `scrollToIndex` and when items differ in size. `scroll: "none"` still opts out.                                             |
+| [Tab bars](https://developer.apple.com/design/human-interface-guidelines/tab-bars)                                                                                                            | No tab-bar primitive exists; the focus behaviour it relies on (one focusable row, selected tab focusable, scrolling to show the focused tab) is what `Row` supplies. The tvOS Menu-key rule does not apply to Roku/Android TV.                                                                                                           |
+| [Collections](https://developer.apple.com/design/human-interface-guidelines/collections) / [Lists and tables](https://developer.apple.com/design/human-interface-guidelines/lists-and-tables) | Directional movement through rows, grids and lists, with no additional tvOS rules on those pages. Shrinking a grid clamps its cursor to the last remaining item.                                                                                                                                                                         |
+| [Designing for tvOS](https://developer.apple.com/design/human-interface-guidelines/designing-for-tvos)                                                                                        | The focus system is the navigation model: focus is always drawn on TV (`focusVisibility: "always"`), and moving focus does not add frames or timers beyond the renderer's existing one.                                                                                                                                                  |
+
+`ensureSelectionVisible` in `packages/platform/src/primitives/utils/withScrolling.ts`
+is the single scroll-into-view rule; it runs on a focus change only and writes
+one position.
+
 ## Device data and secrets
 
 Device credentials live in a `.env` outside the repository. Do not commit device serials, addresses or full system traces.
