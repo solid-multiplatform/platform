@@ -100,7 +100,7 @@ test('every self-rendering host mounts a component with the same statement', () 
   assert.match(body, /appEntry\(App, plugins, \{ fonts: \[\] \}, options\)/);
   assert.match(
     body,
-    /mountApp\(\s*entry\.root,\s*\{ pointer: host\.input, semantics: host\.semantics, target: host\.target, native: host\.root \},\s*entry\.options,\s*\)/,
+    /mountApp\(\s*entry\.root,\s*\{ keys: host\.keys, pointer: host\.input, semantics: host\.semantics, target: host\.target, native: host\.root \},\s*entry\.options,\s*\)/,
   );
   // The desktop scene owns its input scope.
   assert.match(mountComponent('{}', false, 'input'), /pointer: input,/);
