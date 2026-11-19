@@ -3,6 +3,7 @@
 // surface, so the host module itself stays importable where there is no
 // NativeScript runtime.
 import { RendererMain } from '@solid-multiplatform/renderer';
+import { registerDefaultShaders } from '@solid-multiplatform/platform/shaders';
 import { createBackDispatcher } from '@solid-multiplatform/platform';
 import { createMemoryHistory } from './history.mjs';
 
@@ -94,7 +95,13 @@ export function launchApplication(form, options, run) {
       native: root,
       // `bindCanvas` above registered the Canvas with TvPlatform, whose
       // `createCanvas` the renderer uses; no DOM target is passed.
-      createRenderer: (settings) => new RendererMain(settings),
+      createRenderer: (settings) => {
+        // Rounded corners, borders, shadows and gradients are shaders of the
+        // WebGL backend; an app on this host draws them without asking.
+        const renderer = new RendererMain(settings);
+        registerDefaultShaders(renderer);
+        return renderer;
+      },
       keys: bridge,
       pointer,
       text,
