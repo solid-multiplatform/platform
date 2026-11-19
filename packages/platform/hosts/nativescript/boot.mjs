@@ -49,9 +49,12 @@ export function runNativeApp(
         // The bridge is the app's key source: no target, so nothing is
         // dispatched to a fake `document`. The focus manager listens on it.
         const bridge = new KeyBridge();
-        // The router's stack, owned here: the target's Back handling drives
-        // it, and no `window.history` shim exists to read.
+        // The router's stack, owned by the host: the target's Back handling
+        // drives it, and no `window.history` shim exists to read.
         const history = createMemoryHistory();
+        // Before `exit` reads it: a `const` used above its declaration is a
+        // start-up ReferenceError, not a warning, and the app stays black.
+        const android = target === 'android' || target === 'android-tv';
         // One dispatcher for hardware Back beside the one history. The exit
         // action finishes the activity; iOS has no hardware Back.
         const exit = android
@@ -79,7 +82,6 @@ export function runNativeApp(
           bridge,
           Application,
         );
-        const android = target === 'android' || target === 'android-tv';
         let surfaceLost = false;
         const redraw = () => platform.getRenderer()?.requestRender?.();
         const lost = () => {
