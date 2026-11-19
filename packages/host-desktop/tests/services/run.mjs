@@ -102,8 +102,9 @@ const stopped = () =>
         }),
     ),
   );
-/** Starts a program and resolves with the first line it prints. */
-function start(program, args) {
+/** Starts a program and resolves with the first line it prints. A helper
+ * that never prints fails the test instead of hanging the whole run. */
+function start(program, args, timeout = 30_000) {
   const child = spawn(program, args, {
     env: environment,
     stdio: ['ignore', 'pipe', 'inherit'],
@@ -111,13 +112,22 @@ function start(program, args) {
   started.push(child);
   return new Promise((resolve, reject) => {
     let text = '';
+    const timer = setTimeout(
+      () => reject(new Error(`${program} printed no line within ${timeout} ms`)),
+      timeout,
+    );
+    timer.unref?.();
     child.stdout.setEncoding('utf8').on('data', (chunk) => {
       text += chunk;
-      if (text.includes('\n')) resolve({ child, line: text.split('\n')[0] });
+      if (text.includes('\n')) {
+        clearTimeout(timer);
+        resolve({ child, line: text.split('\n')[0] });
+      }
     });
-    child.on('exit', (code) =>
-      reject(new Error(`${program} exited with ${code}`)),
-    );
+    child.on('exit', (code) => {
+      clearTimeout(timer);
+      reject(new Error(`${program} exited with ${code}`));
+    });
   });
 }
 function runApp(script) {

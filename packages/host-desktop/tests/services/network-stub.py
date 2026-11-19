@@ -46,13 +46,25 @@ def connected(connection, name):
 
 
 def owned(connection, name):
-    # The function moved between versions of the bindings.
-    try:
-        from gi.repository import GLibUnix
-
-        GLibUnix.signal_add(GLib.PRIORITY_DEFAULT, signal.SIGUSR1, toggle)
-    except ImportError:
-        GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGUSR1, toggle)
+    # The function moved between versions of the bindings, and some builds
+    # have neither: a plain Python handler plus a timer that keeps the loop
+    # waking is enough for a test stand-in.
+    added = False
+    for add in (
+        lambda: __import__("gi.repository", fromlist=["GLibUnix"]).GLibUnix.signal_add(
+            GLib.PRIORITY_DEFAULT, signal.SIGUSR1, toggle
+        ),
+        lambda: GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGUSR1, toggle),
+    ):
+        try:
+            add()
+            added = True
+            break
+        except (ImportError, AttributeError):
+            continue
+    if not added:
+        signal.signal(signal.SIGUSR1, lambda *_: toggle())
+        GLib.timeout_add(50, lambda: True)
     print("READY", flush=True)
 
 
