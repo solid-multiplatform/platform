@@ -66,11 +66,14 @@ fn main() {
         ] {
             glue.define(name, None);
         }
-        // Hermes' headers use C compound literals (`(SHLegacyValue){...}`).
-        // MSVC's conformance mode, implied by /std:c++20, reports those as
-        // error C4576; non-conformant mode accepts them. The flag is passed
-        // after `/std:c++20`, so it wins.
-        glue.flag_if_supported("/permissive");
+        // Hermes' headers use C compound literals (`(SHLegacyValue){...}`),
+        // which cl.exe 19.44 rejects as error C4576 even with /permissive.
+        // clang-cl shares the MSVC ABI and accepts them as a Clang
+        // extension; use it for the glue when it is installed (the Visual
+        // Studio "C++ Clang tools" component, present on the CI runners).
+        if std::process::Command::new("clang-cl").arg("--version").output().is_ok() {
+            glue.compiler("clang-cl");
+        }
     }
     for dir in ["include", "API", "public", "external", "external/llvh/include", "external/llvh/gen/include"] {
         glue.include(src.join(dir));
