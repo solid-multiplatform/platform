@@ -1,7 +1,13 @@
 import { packageTV } from './tv-package.mjs';
 import { buildDesktopUI } from './desktop.mjs';
 import { stageSources, browserTVs } from './variants.mjs';
-import { appModule, appSettings, mountComponent } from './app-entry.mjs';
+import {
+  NATIVE_FORMS,
+  appModule,
+  appSettings,
+  mountComponent,
+  nativeComponent,
+} from './app-entry.mjs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
@@ -238,6 +244,9 @@ function buildTarget(root, target, dev, legacy) {
         ? "'./fonts'"
         : "'file:///app/fonts'";
   const app = appModule(work);
+  // Android, Android TV, iOS and tvOS run a component through `startApp` on
+  // their `HostDefinition`; Roku installs its renderer and mounts directly.
+  const nativeForm = NATIVE_FORMS[target];
   const settings = app.component
     ? appSettings(root, target, legacy ? undefined : fonts)
     : undefined;
@@ -254,19 +263,27 @@ function buildTarget(root, target, dev, legacy) {
         )
       : app.component
         ? // The app is a component: the entry wires it to the host. The same
-          // text on Roku, Android, Android TV, iOS and tvOS.
+          // text on Roku; the same shape on the four NativeScript targets.
           `${settings.imports}
 ${target === 'roku' ? "import { setRendererFactory } from '@solid-multiplatform/platform'; import { rokuHost } from '@solid-multiplatform/platform/roku';" : ''}
 import App${app.options ? ', { options }' : ''} from './src/app';
 import { appEntry } from '@solid-multiplatform/platform/app/entry';
-import { mountApp } from '@solid-multiplatform/platform/host';
+${
+  nativeForm
+    ? "import { startApp } from '@solid-multiplatform/platform/host';\nimport { nativeHost } from '@solid-multiplatform/platform/nativescript/host';"
+    : "import { mountApp } from '@solid-multiplatform/platform/host';"
+}
 import { attachPlugins } from '@solid-multiplatform/platform/plugins';
 import { plugins } from './plugins.mjs';
 export function mount(host = { target: '${target}' }) {
   const detach = attachPlugins(plugins, host);
   try {
-    ${mountComponent(settings.settings, app.options)}
-    return () => { try { dispose(); } finally { detach(); } };
+    ${
+      nativeForm
+        ? nativeComponent(settings.settings, app.options, nativeForm)
+        : mountComponent(settings.settings, app.options)
+    }
+    return () => { try { ${nativeForm ? 'stop?.()' : 'dispose()'}; } finally { detach(); } };
   } catch (error) { detach(); throw error; }
 }
 `
