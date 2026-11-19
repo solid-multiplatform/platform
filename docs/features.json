@@ -169,7 +169,7 @@
           "cells": {
             "web": {
               "status": "tested",
-              "evidence": "packages/platform/tests/webgl/flex-text.test.tsx (test.yml: browser; text is laid out and measured by the WebGL backend in Chromium)"
+              "evidence": "packages/platform/tests/webgl/flex-text.test.tsx and text-fit.test.tsx (test.yml: browser; text is laid out and measured by the WebGL backend in Chromium, and its ink stays inside the box its parent reserved)"
             },
             "roku": {
               "status": "device",

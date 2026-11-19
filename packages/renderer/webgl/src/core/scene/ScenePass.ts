@@ -40,6 +40,7 @@ import {
   ST_RENDERABLE,
   ST_RTL,
   ST_TEXT,
+  ST_TEXT_CLIP,
   ST_TEXT_READY,
   ST_VIS_MASK,
   ST_VIS_SHIFT,
@@ -517,7 +518,7 @@ export class ScenePass {
       }
     }
 
-    const clips = (state & ST_CLIPS) !== 0;
+    const clips = (state & (ST_CLIPS | ST_TEXT_CLIP)) !== 0;
     if (
       (d & DIRTY_CLIP) !== 0 ||
       (inherit & INH_CLIP) !== 0 ||

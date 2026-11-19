@@ -498,6 +498,86 @@ describe('contract: autosize', () => {
   });
 });
 
+describe('contract: text is kept inside the box its parent reserved (DOM renderer)', () => {
+  it('a text wider than its block parent is bounded by the room it has left', async () => {
+    mockTextMeasure();
+    let t!: lng.ElementNode;
+    const dispose = renderer.render(() => (
+      <view width={200} height={100}>
+        <text ref={t}>123456789012345678901234567890</text>
+      </view>
+    ));
+    // 30 characters at 10 px: 300 px in a 200 px parent.
+    await waitForUpdate();
+    expect(raw(t).maxWidth).toBe(200);
+    expect(t.width).toBe(200);
+    expect(raw(t).maxHeight).toBe(0); // one 20 px line fits 100
+    dispose();
+  });
+
+  it('a text that fits keeps no bound', async () => {
+    mockTextMeasure();
+    let t!: lng.ElementNode;
+    const dispose = renderer.render(() => (
+      <view width={200} height={100}>
+        <text ref={t}>Hello</text>
+      </view>
+    ));
+    await waitForUpdate();
+    expect(raw(t).maxWidth).toBe(0);
+    expect(raw(t).maxHeight).toBe(0);
+    expect(t.width).toBe(5 * CHAR_W);
+    dispose();
+  });
+
+  it('the room left starts after the text x and before the right padding', async () => {
+    mockTextMeasure();
+    let t!: lng.ElementNode;
+    const dispose = renderer.render(() => (
+      <view width={200} height={100} padding={[0, 20]}>
+        <text ref={t} x={10}>
+          123456789012345678901234567890
+        </text>
+      </view>
+    ));
+    await waitForUpdate();
+    // 200 - 10 (x) - 20 (right padding).
+    expect(raw(t).maxWidth).toBe(170);
+    dispose();
+  });
+
+  it('an app maxWidth is kept, not replaced by the room left', async () => {
+    mockTextMeasure();
+    let t!: lng.ElementNode;
+    const dispose = renderer.render(() => (
+      <view width={200} height={100}>
+        <text ref={t} maxWidth={150}>
+          123456789012345678901234567890
+        </text>
+      </view>
+    ));
+    await waitForUpdate();
+    expect(raw(t).maxWidth).toBe(150);
+    dispose();
+  });
+
+  it('a text taller than its parent is bounded in height too', async () => {
+    mockTextMeasure();
+    let t!: lng.ElementNode;
+    const dispose = renderer.render(() => (
+      <view width={200} height={30}>
+        <text ref={t} y={20}>
+          Hello
+        </text>
+      </view>
+    ));
+    await waitForUpdate();
+    // 20 px line in the 10 px below y=20: the height is cut to it.
+    expect(raw(t).maxHeight).toBe(10);
+    dispose();
+  });
+});
+
 describe('contract: text in a flex container (DOM renderer)', () => {
   it('unmeasured text (jsdom 0 x 0): the flex pass lays out at size 0 and places siblings, onLayout fires', async () => {
     let count = 0;

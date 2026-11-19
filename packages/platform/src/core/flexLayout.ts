@@ -2,6 +2,20 @@ import { isDev } from './config.js';
 import { type ElementNode } from './elementNode.js';
 import { isTextNode } from './utils.js';
 
+/**
+ * A node's padding as `[top, right, bottom, left]`, the CSS order flex layout
+ * and the box a parent reserves for its children use.
+ */
+export function paddingOf(node: ElementNode): [number, number, number, number] {
+  const padding = node.padding;
+  return [
+    node.paddingTop ?? getArrayValue(padding, 0),
+    node.paddingRight ?? getArrayValue(padding, 1),
+    node.paddingBottom ?? getArrayValue(padding, 2),
+    node.paddingLeft ?? getArrayValue(padding, 3),
+  ];
+}
+
 function getArrayValue(
   val: number | number[] | undefined,
   index: number,

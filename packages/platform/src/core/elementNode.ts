@@ -17,7 +17,7 @@ import {
 } from './intrinsicTypes.js';
 import type { ShaderEffectProps as IRendererShaderProps } from './shaders.js';
 import States, { type NodeStates } from './states.js';
-import calculateFlex from './flexLayout.js';
+import calculateFlex, { paddingOf } from './flexLayout.js';
 import {
   log,
   isArray,
@@ -138,6 +138,83 @@ function runPostMutation() {
 function addToLayoutQueue(node: ElementNode) {
   layoutQueue.add(node);
   schedulePostMutation();
+}
+
+/** A text may exceed the box its parent reserved by this much, in design pixels. */
+const TEXT_FIT_TOLERANCE = 1;
+
+/**
+ * Keep every text child inside the box its parent reserved for it. Text is
+ * laid out at its natural width until it has been measured; a text that turns
+ * out wider (or taller) than the room left in its parent is given that room
+ * as `maxWidth`/`maxHeight`, so the line breaker wraps and cuts it instead of
+ * the backend painting the glyphs past the parent's edge. Text already inside
+ * a bound (`contain` or an explicit `maxWidth`) is the app's box and is left
+ * alone; text that fits keeps no bound, as before.
+ *
+ * Returns true when a bound was written, so the caller relays the parent out:
+ * a clamped text in a flex row takes less room and its siblings move.
+ */
+function constrainTextChildren(node: ElementNode): boolean {
+  const children = node.children;
+  if (children.length === 0) return false;
+  const parentWidth = node.width || 0;
+  const parentHeight = node.height || 0;
+  if (!(parentWidth > 0)) return false;
+  const [, paddingRight, paddingBottom] = paddingOf(node);
+  let changed = false;
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i]!;
+    if (!isElementText(child)) continue;
+    const measured = child.lng as { w?: number; h?: number };
+    const width = measured.w;
+    const height = measured.h;
+    if (!(typeof width === 'number' && width > 0)) continue;
+    // A backend reports `contain: 'none'` when the app gave none. A bound the
+    // app set is its own box; a bound this helper wrote is its to revise.
+    const contain = child.contain;
+    const containWidth = contain === 'width' || contain === 'both';
+    const containHeight = contain === 'height' || contain === 'both';
+    const appWidth =
+      containWidth || (!!child.maxWidth && child.maxWidth !== child._fitWidth);
+    const appHeight =
+      containHeight ||
+      (!!child.maxHeight && child.maxHeight !== child._fitHeight);
+    // Alignment can place an oversized child at a negative offset (a centred
+    // item wider than its line): the whole box is then the most it may take.
+    const availableWidth =
+      parentWidth -
+      Math.max(0, child.x || 0) -
+      paddingRight -
+      (child.marginRight || 0);
+    const availableHeight =
+      parentHeight -
+      Math.max(0, child.y || 0) -
+      paddingBottom -
+      (child.marginBottom || 0);
+    if (
+      appWidth === false &&
+      availableWidth > 0 &&
+      width > availableWidth + TEXT_FIT_TOLERANCE &&
+      child.maxWidth !== availableWidth
+    ) {
+      child.maxWidth = availableWidth;
+      child._fitWidth = availableWidth;
+      changed = true;
+    }
+    if (
+      appHeight === false &&
+      availableHeight > 0 &&
+      typeof height === 'number' &&
+      height > availableHeight + TEXT_FIT_TOLERANCE &&
+      child.maxHeight !== availableHeight
+    ) {
+      child.maxHeight = availableHeight;
+      child._fitHeight = availableHeight;
+      changed = true;
+    }
+  }
+  return changed;
 }
 
 /**
@@ -435,6 +512,9 @@ export interface ElementNode
   /** Main-axis size flex grow/shrink last wrote to this child, and its own size before that. */
   _flexSized?: number;
   _flexBase?: number;
+  /** A bound constrainTextChildren wrote (not the app's), so it may be revised. */
+  _fitWidth?: number;
+  _fitHeight?: number;
   _hasRenderedChildren?: boolean;
   _effects?: Record<string, any>;
   /** The props of a shader convertToShader made, kept to swap its type. */
@@ -968,6 +1048,8 @@ export class ElementNode {
     this._states = undefined;
     this._style = undefined;
     this._theme = undefined;
+    this._fitWidth = undefined;
+    this._fitHeight = undefined;
     this._lastAnyKeyPressTime = undefined;
     this._undoStyles = undefined;
     this._display = undefined;
@@ -1638,11 +1720,14 @@ export class ElementNode {
       }
 
       const flexChanged = this.display === 'flex' && calculateFlex(this);
+      // After flex has placed the children: a text wider than the room left in
+      // its parent is cut to that room instead of painting over the edge.
+      const textConstrained = constrainTextChildren(this);
       layoutQueue.delete(this);
       const onLayoutChanged =
         isFunction(this.onLayout) && this.onLayout.call(this, this);
 
-      if ((flexChanged || onLayoutChanged) && this.parent) {
+      if ((flexChanged || textConstrained || onLayoutChanged) && this.parent) {
         addToLayoutQueue(this.parent);
       }
 
@@ -1903,6 +1988,11 @@ export class ElementNode {
         if (!textProps.maxWidth || !textProps.maxHeight) {
           node._layoutOnLoad();
         }
+      } else if (!textProps.contain && !textProps.maxWidth && parentWidth > 0) {
+        // A block parent does not lay itself out again when its text is
+        // measured. Hear the size anyway, so a text that turns out wider than
+        // the parent's box is cut to it (constrainTextChildren).
+        node._layoutOnLoad();
       }
     } else {
       // If its not an image or texture apply some defaults

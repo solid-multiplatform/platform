@@ -1074,6 +1074,32 @@ export interface TextLayout {
 export const GLYPH_WORDS = 8;
 
 /**
+ * How far a layout's painted ink leaves the box the block was placed in. The
+ * ink bounds are the glyph quads' own rectangle (advance overhang and atlas
+ * padding included); `boxX`/`boxY` are the block's offset in the box. A
+ * tolerance of a pixel keeps ordinary side bearings, which sit a fraction of
+ * a pixel past the last advance, from asking for a clip.
+ */
+export function inkExceedsBox(
+  layout: TextLayout,
+  boxX: number,
+  boxY: number,
+  boxW: number,
+  boxH: number,
+  tolerance = 1,
+): boolean {
+  if (layout.glyphCount === 0) {
+    return false;
+  }
+  return (
+    boxX + layout.inkLeft < -tolerance ||
+    boxY + layout.inkTop < -tolerance ||
+    boxX + layout.inkRight > boxW + tolerance ||
+    boxY + layout.inkBottom > boxH + tolerance
+  );
+}
+
+/**
  * Glyph runs for `props` in `font` (1.10 generateTextLayout): the lines of
  * mapTextLayout, each glyph placed at the line's offset and baseline, kerned
  * against the one before it, advanced by its width plus the letter spacing

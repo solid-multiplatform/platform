@@ -1106,8 +1106,14 @@ export class RokuNode extends Events {
       width = span + (layout.align === 'center' ? room * 2 : room);
       if (layout.align === 'center') x = (layout.alignWidth - width) * 0.5;
       else if (layout.align === 'right') x = layout.alignWidth - width;
+    } else if (this._maxWidth > 0) {
+      // A bounded single line: give the Label its box (the cut line is at
+      // most `maxWidth` wide), so a firmware that measures a glyph wider
+      // than the platform's table clips it to the box instead of drawing
+      // past it. An unbounded line keeps width 0: the Label draws the line
+      // at its own length, which is the box.
+      width = Math.ceil(layout.alignWidth);
     }
-    // A single line aligned left needs no box: at width 0 a Label draws one line whatever its length.
     this.writeIf('width', width);
     this.writeIf('height', many ? Math.ceil(layout.height + font.labelLineHeight) : 0);
     this.writeIf('wrap', many);

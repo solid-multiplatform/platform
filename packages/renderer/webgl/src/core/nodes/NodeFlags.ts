@@ -68,6 +68,10 @@ export const ST_TEXT_READY = 1 << 25; // derived: the text node has a layout wit
 export const ST_TEXT_BOX = 1 << 26; // derived: composeWorld places the text block by the text box (TextState boxW, boxH, boxX, boxY): contain, alignment, vertical align, offsetY
 export const ST_ALPHA_UNUSED = 1 << 27; // derived: the node's params block reads no world alpha (a box with no border and no visible shadow), so perOpMatch does not compare it (ShaderRegistry.pack sets it)
 export const ST_RTL = 1 << 28; // derived: the resolved layout direction, the node's own I_DIRECTION when set, else the parent's bit; only the pass sets it. The parent's bit mirrors a child's x, mount and pivot in composeWorld; the node's own swaps its text alignment and clip margins
+// Text (phase 5): TextNodes.place sets it when the layout's ink leaves its box
+// (a glyph that overhangs its advance by more than a pixel), so the scene pass
+// scissors it to the node's box. Kept apart from ST_CLIPS, the app's prop.
+export const ST_TEXT_CLIP = 1 << 29; // derived: the text's painted ink is clipped to its box
 
 export const VIS_INIT = 0;
 export const VIS_OUT = 1;
