@@ -30,5 +30,5 @@ v.test('the generated app README does not promise desktop internals', () => {
   const readme = init.slice(init.indexOf("'README.md'"));
   const text = readme.slice(0, readme.indexOf('\n    );'));
   v.expect(text).toContain('Targets:');
-  v.expect(text).not.toMatch(/SDL|Node|koffi|Python|WebGL/);
+  v.expect(text).not.toMatch(/SDL|Node|Python|WebGL/);
 });

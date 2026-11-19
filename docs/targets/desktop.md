@@ -2,29 +2,54 @@
 
 Target name: `desktop`. The feature matrix splits it into `desktop-linux`, `desktop-windows` and `desktop-macos`.
 
-## Status: being replaced
+## Status: preview
 
-There are two desktop hosts, and neither is one to build a product on today.
+The desktop target runs a Solid Multiplatform component app in a native runtime written in Rust that embeds Hermes and draws the scene with WebGL through SDL3. **No Node.js runs the app.** Node is a build tool: it bundles the entry and, by calling the runtime, compiles Hermes bytecode. The executable that opens the window contains the JavaScript engine and the scene renderer; the app's code is the bytecode.
 
-- **On `main`**: a host that runs on Node with an SDL3 window and native bindings loaded through FFI (`packages/platform/hosts/desktop`). It is being replaced. Do not write new code against it.
-- **In progress**: a desktop runtime written in Rust that embeds Hermes and uses no Node. It is in an open pull request. It renders the real scene; input and services are still being worked on. It is not on `main` and you cannot use it yet.
+Linux is the only system verified end to end today. Windows and macOS builds exist in the runtime's source but are not covered by a CI job that opens a window.
 
-This page documents the first only as far as you need to recognise it.
+## Add it to an app
 
-## What is on `main`
+```sh
+solid-platform init my-app --targets desktop
+cd my-app
+solid-platform add desktop <solid-multiplatform-host-desktop-<version>.tgz>
+corepack pnpm install
+corepack pnpm build desktop
+corepack pnpm platform run desktop
+```
 
-- `init --targets desktop` generates `targets/desktop`. `build desktop` compiles the scene into `targets/desktop/work`; `dev desktop` opens a window; `package desktop` produces an archive for the current OS and architecture.
-- `plugins run desktop` runs the plugin command fixture without a window.
-- Screen variants ending in `.linux`, `.windows`, `.macos` or `.desktop` are selected by the OS the build runs on.
+`add desktop` installs `@solid-multiplatform/host-desktop` from a release archive (a local `.tgz` or an `https://` URL) and writes a `file:` dependency into `package.json`, as `add video` does.
+
+With no archive it fetches only the runtime: `solid-platform add desktop none` downloads `solid-desktop-<platform>-<arch>.tar.gz` from the latest GitHub release and puts `solid-desktop` at `node_modules/@solid-multiplatform/host-desktop/prebuilt/<platform>-<arch>/solid-desktop`, where the host's CLI looks for it. `SOLID_DESKTOP_RUNTIME` takes precedence over everything and is used as given.
+
+The build tool for the target is the desktop host's own CLI (`@solid-multiplatform/host-desktop/cli`). It bundles `src/app.tsx` through the Solid universal renderer and the WebGL backend, then compiles the result to `targets/desktop/work/bundle/app.hbc`.
+
+## Commands
+
+- `solid-platform build desktop` writes `targets/desktop/work/bundle/app.hbc` and copies the app's fonts beside it.
+- `solid-platform run desktop` builds, then starts the app in the runtime.
+- `solid-platform dev desktop` builds and opens the app.
+- `solid-platform package desktop` makes a relocatable Linux directory and `.tar.gz`: the runtime as `bin/<name>`, the bytecode and assets under `resources/`, and a `.desktop` launcher entry.
+- `solid-platform plugins run desktop` bundles the plugin fixture and runs it **headless** in the runtime; it opens no window.
+- `solid-platform add desktop …` installs the host and its runtime (above).
+
+The runtime binary resolves as: `SOLID_DESKTOP_RUNTIME`, then the host package's `prebuilt/<platform>-<arch>/solid-desktop`, then a source build when `HERMES_SRC`, `HERMES_BUILD` and `cargo` are available.
+
+Screen variants ending in `.linux`, `.windows`, `.macos` or `.desktop` are selected by the OS the build runs on.
 
 ## How it is tested
 
-- `projects` job: `tests/cli/projects-smoke.sh` runs `plugins run desktop` on Linux and checks the plugin's output. This runs no window and draws nothing.
-- `unit` job: `tests/native/desktop-editor.test.mjs`, `tests/desktop-updater.test.mjs` and the `contract-desktop-menu`, `contract-single-instance` and `contract-pwa-desktop` tests, in Node or jsdom with fakes.
+- `packages/platform/tests/cli/desktop-smoke.sh` packs the platform and the host, generates an app, installs the host, builds bytecode, and runs it under `xvfb-run` with the runtime's `--first-frame-exit`: the runtime prints `first frame presented` and ends, so no window is left open. It skips with one line when `xvfb-run` or a built runtime is absent.
+- `packages/platform/tests/cli/projects-smoke.sh` builds the desktop target of the generated app when a runtime is available (build only, no window).
+- `packages/host-desktop/tests/run.sh` runs the runtime's Rust tests, the host adapter, the web-standard globals, the real scene against Chromium, an app through the host (input, text fields, services, idle, closing), a packaged app moved and run from its archive, accessibility over AT-SPI and the session services.
+- `.github/workflows/desktop-runtime.yml` builds Hermes, SDL3, the runtime and the static-SDL release archive, then runs those tests on a virtual display.
+- `packages/platform/tests/cli/unit/{add-desktop,desktop-target}.test.mjs` test runtime/asset resolution with a faked fetch and filesystem, and the desktop command dispatch.
 
 What this does not cover:
 
-- No CI job opens a desktop window or checks drawn pixels on any OS.
-- `desktop-artifacts.yml` packages the app on Windows and macOS and captures a frame, but only when started by hand. Windows and macOS are not verified by this project.
+- Windows and macOS merely build; no CI job opens a window there.
+- The GitHub release download path in `add desktop none` is unit-tested through a fake fetch, not against the live GitHub API.
+- No AppImage is produced.
 
-Treat every desktop feature as `preview` or `in-progress`; the [feature matrix](/features.md) has the detail.
+Treat desktop as `preview`; the feature matrix splits it by OS.

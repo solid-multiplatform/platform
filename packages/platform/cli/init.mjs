@@ -212,29 +212,12 @@ export function init(destination, selected) {
       const dest = path.join(root, 'targets', target);
       const dependencies = deps('../../vendor/');
       if (target === 'desktop') {
-        write(
-          path.join(dest, 'pnpm-workspace.yaml'),
-          "packages:\n  - '.'\nonlyBuiltDependencies:\n  - esbuild\n  - koffi\n  - sharp\n",
-        );
+        // The desktop target has no Node dependencies: its host package and
+        // runtime are installed separately with `solid-platform add desktop`.
+        write(path.join(dest, 'pnpm-workspace.yaml'), "packages:\n  - '.'\n");
         writeJson(path.join(dest, 'package.json'), {
           name: 'desktop-host',
           packageManager,
-          solidDesktopWindow: true,
-          dependencies: {
-            ...dependencies,
-            koffi: '3.3.8',
-            sharp: '0.35.5',
-          },
-          devDependencies: {
-            esbuild: '0.27.4',
-            fflate: '0.8.2',
-            '@babel/core': '7.29.7',
-            'babel-preset-solid': '1.9.15',
-            '@babel/preset-typescript': '7.29.7',
-          },
-          pnpm: {
-            onlyBuiltDependencies: ['esbuild', 'koffi', 'sharp'],
-          },
           private: true,
           type: 'module',
         });
@@ -259,7 +242,11 @@ export function init(destination, selected) {
           path.join(dest, 'pnpm-workspace.yaml'),
           'onlyBuiltDependencies:\n  - esbuild\n',
         );
-        for (const file of ['index.html', 'vite.config.mjs', 'manifest.webmanifest'])
+        for (const file of [
+          'index.html',
+          'vite.config.mjs',
+          'manifest.webmanifest',
+        ])
           write(
             path.join(dest, file),
             template(

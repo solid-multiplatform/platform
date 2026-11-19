@@ -123,6 +123,31 @@ startApp(
 }
 
 /**
+ * The desktop entry of a component app: the native window host, started the
+ * same way as every other target. The app is its default export; the runtime
+ * that runs the bundle contains no Node.
+ */
+export function desktopComponent(settings, hasOptions) {
+  return `import { onCleanup } from 'solid-js';
+import App${hasOptions ? ', { options }' : ''} from './src/app';
+import { appEntry } from '@solid-multiplatform/platform/app/entry';
+import { startApp } from '@solid-multiplatform/platform/host';
+import { attachPlugins } from '@solid-multiplatform/platform/plugins';
+import { desktopHost } from '@solid-multiplatform/host-desktop';
+import { plugins } from './plugins.mjs';
+const entry = appEntry(App, plugins, ${settings}${hasOptions ? ', options' : ''});
+startApp(
+  desktopHost(),
+  () => {
+    onCleanup(attachPlugins(plugins, { target: 'desktop' }));
+    return entry.root();
+  },
+  entry.options,
+);
+`;
+}
+
+/**
  * The body of a generated `mount(host)` for a component app on a target
  * whose host installs its renderer itself (Android, iOS, tvOS, desktop):
  * the same statement on each of them.

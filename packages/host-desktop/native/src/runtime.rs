@@ -16,9 +16,20 @@ use sdl3_sys::everything::*;
 use std::cell::RefCell;
 use std::ffi::c_void;
 use std::ptr;
-use std::sync::atomic::{AtomicPtr, Ordering};
+use std::io::Write;
+use std::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
+
+/// An automation flag, not a behaviour of an app: `--first-frame-exit` ends
+/// the process after the first frame reaches the screen, so a test can prove
+/// drawing without leaving a window open.
+static EXIT_AFTER_FIRST_FRAME: AtomicBool = AtomicBool::new(false);
+
+/// What `--first-frame-exit` asks the loop to do.
+pub fn exit_after_first_frame() {
+    EXIT_AFTER_FIRST_FRAME.store(true, Ordering::Relaxed);
+}
 
 struct Timer {
     id: u32,
@@ -388,5 +399,11 @@ pub unsafe fn run(env: napi_env) -> i32 {
                 l.pacing.last_presented = present;
             }
         });
+        if present && EXIT_AFTER_FIRST_FRAME.load(Ordering::Relaxed) {
+            // A test's evidence, on stdout: the scene reached the screen.
+            println!("first frame presented");
+            let _ = std::io::stdout().flush();
+            return 0;
+        }
     }
 }

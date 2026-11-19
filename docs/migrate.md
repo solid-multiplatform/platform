@@ -55,6 +55,8 @@ These still carry the old project's name on `main`. Use them as they are. They w
 - `HashRouter`, `KeepAlive` and `KeepAliveRoute` are exported from `@solid-multiplatform/platform/primitives/router`, not from the package root.
 - `<View>` and `<Text>` still work but are deprecated. Use the `<view>` and `<text>` intrinsic elements.
 - `LazyUp` was removed. Use `LazyRow` and `LazyColumn`.
+- The Node.js desktop host (`packages/platform/hosts/desktop`) is gone. An app's desktop build now runs in the Rust runtime that embeds Hermes, and no Node process starts the app. Install the host package into the app with `solid-platform add desktop`, then `corepack pnpm install`; the CLI builds bytecode through it. See [Desktop](/targets/desktop.md).
+- The exports `@solid-multiplatform/platform/services/desktop` and `@solid-multiplatform/platform/editor/desktop` were removed with that host. They were host internals; apps use the SDK (`menus`, `update`, text fields through `TextField`) which the desktop host now provides.
 
 ## What is new
 

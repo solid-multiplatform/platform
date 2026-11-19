@@ -32,7 +32,7 @@ corepack pnpm install
 ```
 
 - The directory must not exist. Its name becomes the app name: lowercase letters, digits and hyphens, starting with a letter, at most 50 characters.
-- `--targets` is a comma-separated list of `web`, `tizen`, `webos`, `vizio`, `roku`, `android-tv`, `android`, `apple-tv`, `ios`, `desktop`. The default is `web`.
+- `--targets` is a comma-separated list of `web`, `tizen`, `webos`, `vizio`, `roku`, `android-tv`, `android`, `apple-tv`, `ios`, `desktop`. The default is `web`. A `desktop` app additionally needs its host and runtime: run `solid-platform add desktop <release.tgz>` (or `add desktop none` for the runtime only) and then `corepack pnpm install`.
 - `init` packs the platform and renderer packages into the app's `vendor/` directory and depends on them by file path. The app builds without a registry.
 
 Inside the app, the CLI is the `platform` script. `build`, `dev` and `check` have their own scripts:
@@ -133,7 +133,7 @@ Run `corepack pnpm build <target>` from the app directory. The target must be li
 - `roku` runs the Roku SDK build and zips it. Output: `targets/roku/dist-roku/solid-multiplatform.zip`. It needs `python3`.
 - `android` and `android-tv` run `ns build android`. They need JDK 21 and the Android SDK.
 - `ios` and `apple-tv` run `ns build ios` or `ns build tvos` for the simulator. They need macOS and Xcode.
-- `desktop` builds into `targets/desktop/work`. The desktop host on `main` is being replaced; see [Desktop](/targets/desktop.md).
+- `desktop` builds `targets/desktop/work/bundle/app.hbc` with the desktop host's CLI, then runs it in the native Hermes runtime. Install the host first with `solid-platform add desktop`; see [Desktop](/targets/desktop.md).
 
 `corepack pnpm dev <target>` works for `web` and `desktop` only. For device targets, build the package and launch it with the device's own SDK.
 

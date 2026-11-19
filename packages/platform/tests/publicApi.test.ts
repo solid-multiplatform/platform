@@ -750,7 +750,6 @@ v.describe('package.json exports', () => {
       './controls/native',
       './browser-tv/input',
       './services/mobile-providers',
-      './services/desktop',
       './services/roku',
       './motion',
       './focus',
@@ -763,7 +762,6 @@ v.describe('package.json exports', () => {
       './editor/roku',
       './scroll',
       './network',
-      './editor/desktop',
       './theme',
       './capabilities',
       './keyboard',
@@ -831,11 +829,7 @@ v.describe('package.json exports', () => {
         types: stem + '.d.ts',
         default:
           stem +
-          (subpath === './controls' ||
-          subpath === './editor/desktop' ||
-          subpath === './theme'
-            ? '.jsx'
-            : '.js'),
+          (subpath === './controls' || subpath === './theme' ? '.jsx' : '.js'),
       });
     }
   });

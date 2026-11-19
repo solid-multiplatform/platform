@@ -302,13 +302,25 @@ const commands = {
     },
   },
   add: {
-    usage: 'add video <release.tgz>',
-    summary: 'Install a video release into the app.',
+    usage:
+      'add video <release.tgz> | add desktop [<release.tgz> | <url> | none]',
+    summary:
+      'Install an optional package into the app: the video adapters, or the desktop host and its runtime.',
     async run(args, _flags, ctx) {
-      if (args[0] !== 'video' || args.length !== 2)
-        throw new CliError('Usage: solid-platform ' + this.usage);
-      const { addVideo } = await import('./add-video.mjs');
-      addVideo(ctx.root, path.resolve(ctx.root, /** @type {string} */ (args[1])));
+      if (args[0] === 'video' && args.length === 2) {
+        const { addVideo } = await import('./add-video.mjs');
+        addVideo(
+          ctx.root,
+          path.resolve(ctx.root, /** @type {string} */ (args[1])),
+        );
+        return;
+      }
+      if (args[0] === 'desktop' && args.length <= 2) {
+        const { addDesktop } = await import('./add-desktop.mjs');
+        for (const line of await addDesktop(ctx.root, args[1])) ctx.out(line);
+        return;
+      }
+      throw new CliError('Usage: solid-platform ' + this.usage);
     },
   },
   certify: {

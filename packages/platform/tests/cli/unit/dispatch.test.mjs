@@ -74,7 +74,11 @@ test('a command a target does not implement exits 2 with one line naming both', 
   ];
   for (const [command, target, ...rest] of unsupported) {
     const m = machine();
-    assert.equal(await m.cli(command, target, ...rest), 2, command + ' ' + target);
+    assert.equal(
+      await m.cli(command, target, ...rest),
+      2,
+      command + ' ' + target,
+    );
     assert.equal(m.err.length, 1);
     assert.ok(
       m.err[0].startsWith(`${target} does not implement ${command}.`),
@@ -91,9 +95,13 @@ test('every target and command pair either runs or is refused, never ignored', a
     for (const verb of verbs) {
       if (typeof target[verb] === 'function') continue;
       const m = machine();
-      const args = verb === 'screenshot' ? [target.name, 'a.png'] : [target.name];
+      const args =
+        verb === 'screenshot' ? [target.name, 'a.png'] : [target.name];
       assert.equal(await m.cli(verb, ...args), 2, `${verb} ${target.name}`);
-      assert.match(m.err[0], new RegExp(`^${target.name} does not implement ${verb}`));
+      assert.match(
+        m.err[0],
+        new RegExp(`^${target.name} does not implement ${verb}`),
+      );
     }
 });
 
@@ -132,14 +140,23 @@ test('build, dev and plugins run reach the pipeline through the registry', async
 });
 
 test('package routes to the packaging build and run desktop opens the app', async () => {
-  const m = machine();
+  const m = machine({
+    files: ['/app/targets/desktop/work/bundle/app.hbc'],
+    exec: () => ({ status: 0 }),
+  });
   assert.equal(await m.cli('package', 'tizen'), 0);
   assert.equal(await m.cli('package', 'webos', '--legacy'), 0);
-  assert.equal(await m.cli('run', 'desktop'), 0);
-  assert.deepEqual(m.calls, [
+  assert.equal(await m.cli('run', 'desktop', '--no-build'), 0);
+  assert.deepEqual(m.calls.slice(0, 2), [
     ['build', 'tizen', false, false],
     ['build', 'webos', false, true],
-    ['build', 'desktop', true, false],
+  ]);
+  const [bin, ...args] = m.calls[2];
+  assert.equal(bin, process.execPath);
+  assert.match(args[0], /host-desktop\/cli\/index\.mjs$/);
+  assert.deepEqual(args.slice(1), [
+    'run',
+    '/app/targets/desktop/work/bundle/app.hbc',
   ]);
   assert.match(m.out[0], /unsigned app/);
   assert.match(m.out[1], /dist-legacy-package/);

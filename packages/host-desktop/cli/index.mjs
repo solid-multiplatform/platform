@@ -10,7 +10,14 @@
 // Node is the build tool only. What runs the app is the runtime's executable
 // (./runtime.mjs says where it is found), which contains no Node.
 import path from 'node:path';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+} from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -240,7 +247,21 @@ export async function runDesktop(options) {
   return { process: child, exit };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// pnpm installs this package through a symlink: compare where the paths
+// really are, or the command block never runs from an app's node_modules.
+const invokedDirectly = () => {
+  if (process.argv[1] === undefined) return false;
+  try {
+    return (
+      realpathSync(process.argv[1]) ===
+      realpathSync(fileURLToPath(import.meta.url))
+    );
+  } catch {
+    return false;
+  }
+};
+
+if (invokedDirectly()) {
   const [command, ...args] = process.argv.slice(2);
   const flag = (name) => {
     const at = args.indexOf(name);

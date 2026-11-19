@@ -4,6 +4,7 @@ name: Desktop runtime
 on:
   push:
     branches: [main]
+    tags: ['v*']
     paths:
       - 'packages/host-desktop/**'
       - '.github/workflows/desktop-runtime.yml'
@@ -218,8 +219,42 @@ jobs:
       # Put at packages/host-desktop/prebuilt/linux-x64/solid-desktop and
       # made executable again (an artifact does not keep that), this is the
       # prebuilt runtime that cli/runtime.mjs finds.
+      - name: Archive the runtime for the release
+        run: |
+          set -euo pipefail
+          tar -czf solid-desktop-linux-x64.tar.gz -C packages/host-desktop/prebuilt/linux-x64 solid-desktop
+          mkdir -p "$RUNNER_TEMP/unpacked"
+          tar -xzf solid-desktop-linux-x64.tar.gz -C "$RUNNER_TEMP/unpacked"
+          env -u LD_LIBRARY_PATH "$RUNNER_TEMP/unpacked/solid-desktop" --diagnostics
       - uses: actions/upload-artifact@v4
         with:
           name: solid-desktop-linux-x64
-          path: packages/host-desktop/prebuilt/linux-x64/solid-desktop
+          path: solid-desktop-linux-x64.tar.gz
           if-no-files-found: error
+
+  # The release workflow creates the release for the same tag; this job adds
+  # the runtime archive to it. Both workflows start on the tag, so the release
+  # is waited for rather than assumed to exist.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: linux
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: solid-desktop-linux-x64
+      - name: Attach the runtime to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            if gh release view "$TAG" >/dev/null 2>&1; then break; fi
+            sleep 10
+          done
+          gh release view "$TAG" >/dev/null
+          gh release upload "$TAG" solid-desktop-linux-x64.tar.gz --clobber

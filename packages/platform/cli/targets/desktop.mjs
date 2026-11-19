@@ -1,78 +1,67 @@
 // @ts-check
-// The desktop target. Doctor checks the toolchain of whichever desktop host
-// the workspace has (packages/host-desktop/native when present).
+// The desktop target: a Rust runtime embedding Hermes, bundled by the
+// desktop host's own CLI. Node builds; the runtime runs the app.
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { CliError } from '../context.mjs';
-import { packageDesktop } from '../desktop-package.mjs';
-import { framework } from '../files.mjs';
-import {
-  buildTarget,
-  commonChecks,
-  missing,
-  ok,
-} from '../target-helpers.mjs';
+import { hostDesktopPackage } from '../host-desktop.mjs';
+import { buildTarget, commonChecks, missing, ok } from '../target-helpers.mjs';
 
 /** @typedef {import('../types.d.ts').TargetContext} TargetContext */
 
-const sdlLocations = [
-  '/usr/lib/libSDL3.so.0',
-  '/usr/lib/x86_64-linux-gnu/libSDL3.so.0',
-];
+/** The host package's runtime module, when the app (or this checkout) has it.
+ * @param {string} root
+ */
+async function hostRuntime(root) {
+  const dir = hostDesktopPackage(root);
+  if (dir === undefined) return undefined;
+  return import(pathToFileURL(path.join(dir, 'cli/runtime.mjs')).href);
+}
 
 /** @type {import('../types.d.ts').TargetDefinition} */
 export default {
   name: 'desktop',
   family: 'desktop',
-  summary: 'Linux, Windows and macOS (native window, WebGL renderer)',
+  summary: 'Linux, Windows and macOS (native Hermes runtime, WebGL renderer)',
 
-  doctor(ctx) {
+  async doctor(ctx) {
     const checks = commonChecks(ctx);
-    const native = path.join(framework, '../host-desktop/native/Cargo.toml');
-    if (ctx.exists(native)) {
+    const host = await hostRuntime(ctx.root);
+    if (host === undefined) {
       checks.push(
-        ctx.which('cargo')
-          ? ok('cargo', 'found')
-          : missing('cargo', 'install Rust from https://rustup.rs'),
+        missing(
+          'host-desktop',
+          'run `solid-platform add desktop` in the app, then install its dependencies',
+        ),
       );
-      for (const variable of ['HERMES_SRC', 'HERMES_BUILD'])
-        checks.push(
-          ctx.env[variable]
-            ? ok(variable, 'set')
-            : missing(
-                variable,
-                variable === 'HERMES_SRC'
-                  ? 'set it to a Hermes source checkout'
-                  : 'set it to the Hermes CMake build directory',
-              ),
-        );
       return checks;
     }
-    const sdl = ctx.env.SOLID_SDL3_LIBRARY
-      ? ctx.exists(ctx.env.SOLID_SDL3_LIBRARY)
-      : ctx.platform === 'linux'
-        ? sdlLocations.some((file) => ctx.exists(file))
-        : // The Windows build downloads SDL3; macOS loads it by name.
-          ctx.platform === 'win32' && ctx.arch === 'x64';
-    checks.push(
-      sdl
-        ? ok('sdl3', 'SDL3 library found')
-        : missing(
-            'sdl3',
-            'install SDL3 or set SOLID_SDL3_LIBRARY to its library; run and package need it',
-            false,
-          ),
-    );
-    const compiler =
-      ctx.platform === 'win32' ? 'cl' : ctx.env.CC ? 'CC' : 'cc';
-    checks.push(
-      (compiler === 'CC' ? ctx.env.CC : ctx.which(compiler))
-        ? ok('c-compiler', compiler === 'CC' ? 'CC is set' : compiler)
-        : missing(
-            'c-compiler',
-            'install a C compiler; plugins with a worker.c need it',
-            false,
-          ),
-    );
+    const platform = host.platformName;
+    let runtime;
+    try {
+      runtime = host.locateRuntime();
+    } catch (error) {
+      checks.push(missing('runtime', /** @type {Error} */ (error).message));
+      return checks;
+    }
+    if (runtime !== undefined) {
+      checks.push(
+        ok('runtime', `${runtime.path} (${runtime.source}), for ${platform}`),
+      );
+    } else {
+      const source = host.sourceBuild();
+      checks.push(
+        source.possible
+          ? ok(
+              'runtime',
+              `will be built from source for ${platform} (cargo, HERMES_SRC and HERMES_BUILD are set)`,
+            )
+          : missing(
+              'runtime',
+              `set SOLID_DESKTOP_RUNTIME, run \`solid-platform add desktop none\` to fetch ${platform}, or build from source (HERMES_SRC and HERMES_BUILD set, cargo installed)`,
+            ),
+      );
+    }
     return checks;
   },
 
@@ -81,19 +70,18 @@ export default {
   },
 
   run(ctx, options) {
-    // A development build of the desktop target ends by opening the app.
-    if (options.build !== false) {
-      buildTarget(ctx, 'desktop', { dev: true });
-      return;
-    }
-    const dir = path.join(ctx.root, 'targets/desktop');
-    const entry = path.join(dir, 'work/run.mjs');
-    if (!ctx.exists(entry))
+    if (options.build !== false) buildTarget(ctx, 'desktop', {});
+    const out = path.join(ctx.root, 'targets/desktop/work/bundle/app.hbc');
+    if (!ctx.exists(out))
       throw new CliError(
-        'No build at targets/desktop/work. Run `solid-platform build desktop`.',
+        'No desktop build at targets/desktop/work/bundle. Run `solid-platform build desktop`.',
       );
-    const result = ctx.exec(process.execPath, [entry], {
-      cwd: dir,
+    const cli = path.join(
+      /** @type {string} */ (hostDesktopPackage(ctx.root)),
+      'cli/index.mjs',
+    );
+    const result = ctx.exec(process.execPath, [cli, 'run', out], {
+      cwd: path.join(ctx.root, 'targets/desktop/work'),
       stdio: 'inherit',
     });
     if (result.status !== 0)
@@ -101,6 +89,34 @@ export default {
   },
 
   package(ctx) {
-    packageDesktop(ctx.root);
+    buildTarget(ctx, 'desktop', {});
+    const config = ctx.config;
+    const work = path.join(ctx.root, 'targets/desktop/work');
+    const cli = path.join(
+      /** @type {string} */ (hostDesktopPackage(ctx.root)),
+      'cli/package.mjs',
+    );
+    const assets = path.join(work, 'fonts');
+    const result = ctx.exec(
+      process.execPath,
+      [
+        cli,
+        path.join(work, 'entry.tsx'),
+        '--app-id',
+        config.id ?? 'dev.solidapp.desktop',
+        '--name',
+        config.name ?? 'solid-app',
+        '--version',
+        config.version ?? '0.1.0',
+        '--out',
+        path.join(ctx.root, 'targets/desktop/dist'),
+        ...(ctx.exists(assets) ? ['--assets', assets] : []),
+      ],
+      { cwd: work, stdio: 'inherit' },
+    );
+    if (result.status !== 0)
+      throw new CliError(
+        'Packaging the desktop app failed (' + result.status + ')',
+      );
   },
 };

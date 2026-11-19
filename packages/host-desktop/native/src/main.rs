@@ -33,14 +33,15 @@ use std::path::Path;
 use std::process::exit;
 use std::ptr;
 
-const USAGE: &str = "usage: solid-desktop [--headless] <script.js | script.hbc> [argument...]
-       solid-desktop [--headless] --script <script.js | script.hbc> [argument...]
+const USAGE: &str = "usage: solid-desktop [--headless] [--first-frame-exit] <script.js | script.hbc> [argument...]
+       solid-desktop [--headless] [--first-frame-exit] --script <script.js | script.hbc> [argument...]
        solid-desktop --compile <script.js> <script.hbc>
        solid-desktop --version | --diagnostics
 
 A packaged app (../resources/app.hbc or app.js beside the executable's
 directory) runs without naming a script; everything after the options is the
-app's arguments.";
+app's arguments. --first-frame-exit prints that the first frame reached the
+screen and ends, for tests that must not leave a window open.";
 
 /// Whether SDL is part of this executable or a library the system supplies.
 const SDL_LINKAGE: &str = if cfg!(feature = "static-sdl") { "static" } else { "dynamic" };
@@ -82,15 +83,18 @@ fn packaged_script() -> Option<String> {
         .map(|path| path.to_string_lossy().into_owned())
 }
 
-/// What the command line asks for: `(headless, script, the app's arguments)`.
-/// A packaged app's script is its own, so every plain argument is the app's
-/// (a URL it was opened with); otherwise the first one names the script.
-fn command_line(args: Vec<String>) -> (bool, String, Vec<String>) {
-    let (mut headless, mut script, mut rest) = (false, None, Vec::new());
+/// What the command line asks for: `(headless, first_frame_exit, script, the
+/// app's arguments)`. A packaged app's script is its own, so every plain
+/// argument is the app's (a URL it was opened with); otherwise the first one
+/// names the script.
+fn command_line(args: Vec<String>) -> (bool, bool, String, Vec<String>) {
+    let (mut headless, mut first_frame_exit, mut script, mut rest) =
+        (false, false, None, Vec::new());
     let mut args = args.into_iter();
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--headless" => headless = true,
+            "--first-frame-exit" => first_frame_exit = true,
             "--script" => script = Some(args.next().unwrap_or_else(|| fail(USAGE))),
             "--" => rest.extend(&mut args),
             flag if flag.starts_with("--") => fail(USAGE),
@@ -103,7 +107,7 @@ fn command_line(args: Vec<String>) -> (bool, String, Vec<String>) {
         }
         rest.remove(0)
     });
-    (headless, script, rest)
+    (headless, first_frame_exit, script, rest)
 }
 
 /// The first bytes of Hermes bytecode (its magic number, little-endian).
@@ -157,7 +161,10 @@ fn main() {
         ["--diagnostics"] => unsafe { diagnostics() },
         _ => {}
     }
-    let (headless, script, app_args) = command_line(args);
+    let (headless, first_frame_exit, script, app_args) = command_line(args);
+    if first_frame_exit {
+        runtime::exit_after_first_frame();
+    }
     let script = script.as_str();
     let source = read_script(script);
     let name = CString::new(script).unwrap();
