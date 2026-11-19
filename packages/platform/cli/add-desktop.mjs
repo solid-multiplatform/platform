@@ -32,7 +32,7 @@ export const LATEST_RELEASE =
 export const PACKAGE = '@solid-multiplatform/host-desktop';
 
 const executable = (platform) =>
-  platform === 'win32-x64' ? 'solid-desktop.exe' : 'solid-desktop';
+  platform.startsWith('win32-') ? 'solid-desktop.exe' : 'solid-desktop';
 
 /** `linux-x64`, `darwin-arm64`: the release asset's platform part. */
 export function platformTag(platform = process.platform, arch = process.arch) {
@@ -92,16 +92,31 @@ export async function latestRuntimeAsset({
   return runtimeAsset(release, tag);
 }
 
-/** The default extraction: the system's tar, from a temporary file. */
+/**
+ * The default extraction: the system's tar, from a temporary file. Windows 10
+ * (1803 and later) ships `tar.exe` (bsdtar) in System32, so the same command
+ * works there; the archive is named relative to the working directory so a
+ * drive letter in its path is never read as a remote host by a GNU tar from
+ * Git Bash.
+ */
 function extractTarball(bytes, directory) {
   const scratch = mkdtempSync(path.join(tmpdir(), 'solid-runtime-'));
   try {
-    const archive = path.join(scratch, 'runtime.tar.gz');
-    writeFileSync(archive, bytes);
-    const result = spawnSync('tar', ['-xzf', archive, '-C', directory], {
-      stdio: 'inherit',
-    });
-    if (result.error) throw result.error;
+    writeFileSync(path.join(scratch, 'runtime.tar.gz'), bytes);
+    const result = spawnSync(
+      'tar',
+      ['-xzf', 'runtime.tar.gz', '-C', directory],
+      {
+        cwd: scratch,
+        stdio: 'inherit',
+      },
+    );
+    if (result.error) {
+      throw new Error(
+        `Cannot run tar (${result.error.message}). Windows 10 1803+ has one in System32; ` +
+          'on an older Windows, extract the archive by hand.',
+      );
+    }
     if (result.status !== 0)
       throw new Error(`tar failed (${result.status ?? result.signal})`);
   } finally {

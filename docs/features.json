@@ -38,7 +38,7 @@
             },
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "The Rust + Hermes runtime (`packages/host-desktop`); Linux draws the real scene in the host suite, and `packages/platform/tests/cli/desktop-smoke.sh` proves a generated app's first frame."
+              "note": "The Rust + Hermes runtime (`packages/host-desktop`). Linux draws the real scene in the host suite, and `packages/platform/tests/cli/desktop-smoke.sh` proves a generated app's first frame. macOS arm64 and Windows x64 build and run the headless runtime tests in the `desktop-runtime` workflow; no window is opened there, so drawing on those systems is unverified."
             }
           }
         },
@@ -98,7 +98,7 @@
             },
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "The generated entry calls `startApp(desktopHost())` and runs in the Rust + Hermes runtime; `packages/host-desktop/tests/host` drives it."
+              "note": "The generated entry calls `startApp(desktopHost())` and runs in the Rust + Hermes runtime; `packages/host-desktop/tests/host` drives it on Linux. macOS and Windows build the runtime and run the headless tests, not the host suite."
             }
           }
         },
@@ -183,7 +183,7 @@
             },
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "Linux: the runtime's AT-SPI adapter over AccessKit, checked in `packages/host-desktop/tests/a11y`. Windows and macOS are not implemented."
+              "note": "Linux: the runtime's AT-SPI adapter over AccessKit, checked in `packages/host-desktop/tests/a11y`. Windows and macOS are not implemented: the runtime builds there without the module and `__solid.a11y` is absent."
             }
           }
         },
@@ -1496,7 +1496,7 @@
           "cells": {
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "Copies the Rust runtime and Hermes bytecode into a relocatable directory; `packages/host-desktop/tests/package` unpacks it and runs it. Windows and macOS packaging is not implemented."
+              "note": "Copies the Rust runtime and Hermes bytecode into a relocatable directory; `packages/host-desktop/tests/package` unpacks it and runs it on Linux. Packaging an app for Windows and macOS is not implemented; the runtime itself is released for all three (`solid-desktop-linux-x64`, `solid-desktop-darwin-arm64`, `solid-desktop-win32-x64`)."
             }
           }
         }

@@ -49,7 +49,7 @@ Notes:
 
 - WebGL backend (`packages/renderer/webgl`), tizen, webos, vizio: Same backend as web. The generated Tizen build is only smoke-run in desktop Chromium; no TV hardware.
 - WebGL backend (`packages/renderer/webgl`), android, android-tv, ios, apple-tv: NativeScript canvas host. CI builds the app; no test asserts what it draws.
-- WebGL backend (`packages/renderer/webgl`), desktop-linux, desktop-windows, desktop-macos: The Rust + Hermes runtime (`packages/host-desktop`); Linux draws the real scene in the host suite, and `packages/platform/tests/cli/desktop-smoke.sh` proves a generated app's first frame.
+- WebGL backend (`packages/renderer/webgl`), desktop-linux, desktop-windows, desktop-macos: The Rust + Hermes runtime (`packages/host-desktop`). Linux draws the real scene in the host suite, and `packages/platform/tests/cli/desktop-smoke.sh` proves a generated app's first frame. macOS arm64 and Windows x64 build and run the headless runtime tests in the `desktop-runtime` workflow; no window is opened there, so drawing on those systems is unverified.
 - Canvas 2D backend (`packages/renderer/canvas`), tizen, webos, vizio: `build <target> --legacy`. The Tizen legacy build is only smoke-run in desktop Chromium.
 - Roku SceneGraph backend (`packages/renderer/roku`), roku: The shared scene conformance suite ran on the TV. The in-browser fake case remains in the `browser` job.
 
@@ -71,13 +71,13 @@ Notes:
 - Host contract (`startApp` / `HostDefinition`), tizen, webos, vizio: Built on `webHost` and `startApp`; the generated build is driven in desktop Chromium, never on a TV.
 - Host contract (`startApp` / `HostDefinition`), roku: The host test starts the app through `startApp(rokuHost())` and finds no browser globals on the device.
 - Host contract (`startApp` / `HostDefinition`), android, android-tv, ios, apple-tv: The NativeScript hosts still call a generated `mount`, not `HostDefinition`.
-- Host contract (`startApp` / `HostDefinition`), desktop-linux, desktop-windows, desktop-macos: The generated entry calls `startApp(desktopHost())` and runs in the Rust + Hermes runtime; `packages/host-desktop/tests/host` drives it.
+- Host contract (`startApp` / `HostDefinition`), desktop-linux, desktop-windows, desktop-macos: The generated entry calls `startApp(desktopHost())` and runs in the Rust + Hermes runtime; `packages/host-desktop/tests/host` drives it on Linux. macOS and Windows build the runtime and run the headless tests, not the host suite.
 - Text rendering, roku: Fonts, wrapping, flex text and the device's own metrics were measured on the TV.
 - Focus and key handling, tizen: `tests/cli/browser-smoke.mjs --tv` (test.yml: projects) presses Enter on the focused row of the generated Tizen build, but in desktop Chromium. No test runs on a Tizen TV or with its remote.
 - Focus and key handling, roku: The host test also checks that a held key is one press and that the keyEvents service raises the key.
 - Pointer and touch input (`src/sdk/input.ts`), tizen: `tests/cli/browser-smoke.mjs --tv` (test.yml: projects) maps clicks through four viewport sizes on the generated Tizen build, but in desktop Chromium. No test runs on a Tizen TV.
 - Pointer and touch input (`src/sdk/input.ts`), android, ios: Touch through `hosts/nativescript/touch.mjs`.
-- Accessibility semantics (`src/sdk/semantics.ts`), desktop-linux, desktop-windows, desktop-macos: Linux: the runtime's AT-SPI adapter over AccessKit, checked in `packages/host-desktop/tests/a11y`. Windows and macOS are not implemented.
+- Accessibility semantics (`src/sdk/semantics.ts`), desktop-linux, desktop-windows, desktop-macos: Linux: the runtime's AT-SPI adapter over AccessKit, checked in `packages/host-desktop/tests/a11y`. Windows and macOS are not implemented: the runtime builds there without the module and `__solid.a11y` is absent.
 - Shapes, borders, gradients and shadows, web: Tested through the renderer. `startApp(webHost(...))` registers the default shaders only in open pull request #19.
 - Shapes, borders, gradients and shadows, roku: Rounded corners, borders, gradients, four-corner colours and shadows; the forced image-fallback tier also passed 26/26.
 - Animation (`animateProp`, transitions), roku: Animation still runs on the JavaScript thread; frame pacing on the TV has not been measured.
@@ -242,7 +242,7 @@ Notes:
 - Web app with service worker and manifest, web: CI builds it; no test checks the service worker or the manifest.
 - Browser TV package (Tizen `.wgt`, webOS `.ipk`), tizen: The `.wgt` is made only when `TIZEN_SECURITY_PROFILE` is set; CI does not set it.
 - Browser TV package (Tizen `.wgt`, webOS `.ipk`), vizio: The build output is a hosted web app; there is no package step.
-- Desktop archive (`.tar.gz` with runtime), desktop-linux, desktop-windows, desktop-macos: Copies the Rust runtime and Hermes bytecode into a relocatable directory; `packages/host-desktop/tests/package` unpacks it and runs it. Windows and macOS packaging is not implemented.
+- Desktop archive (`.tar.gz` with runtime), desktop-linux, desktop-windows, desktop-macos: Copies the Rust runtime and Hermes bytecode into a relocatable directory; `packages/host-desktop/tests/package` unpacks it and runs it on Linux. Packaging an app for Windows and macOS is not implemented; the runtime itself is released for all three (`solid-desktop-linux-x64`, `solid-desktop-darwin-arm64`, `solid-desktop-win32-x64`).
 
 ## In open pull requests
 
