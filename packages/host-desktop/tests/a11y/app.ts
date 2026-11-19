@@ -104,13 +104,13 @@ launchDesktop({ title: 'Solid a11y test' }, (context) => {
     },
     group,
   );
-  playHandle.focus();
+  playHandle.focus?.();
 
   function pressed(): void {
     console.log('ACTION click play');
     playHandle.update({ ...play, label: 'Pause', description: undefined });
     muteHandle.update({ ...mute, checked: true });
-    muteHandle.focus();
+    muteHandle.focus?.();
     next.dispose();
     void idle();
   }

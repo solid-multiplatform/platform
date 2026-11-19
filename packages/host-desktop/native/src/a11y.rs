@@ -105,6 +105,7 @@ fn role(name: &str) -> Option<Role> {
         "separator" => Role::Splitter,
         "navigation" => Role::Navigation,
         "main" => Role::Main,
+        "tooltip" => Role::Tooltip,
         _ => return None,
     })
 }
@@ -440,7 +441,7 @@ mod tests {
         for name in [
             "button", "heading", "status", "switch", "slider", "group", "link", "checkbox", "radio", "textbox",
             "searchbox", "dialog", "alertdialog", "list", "listitem", "menu", "menuitem", "tab", "tabpanel",
-            "progressbar", "img", "separator", "navigation", "main",
+            "progressbar", "img", "separator", "navigation", "main", "tooltip",
         ] {
             assert!(role(name).is_some(), "{name}");
         }

@@ -11,16 +11,21 @@ import { desktopHost } from '@solid-multiplatform/host-desktop';
 
 startApp(
   desktopHost({ id: 'solid.test.small', title: 'Solid small test' }),
-  (host) => {
+  () => {
     onCleanup(() => console.log('DISPOSED'));
-    // A real click lands here in scene units, whatever the scale.
-    onCleanup(
-      host.pointer!.register({
-        bounds: () => ({ x: 140, y: 40, width: 20, height: 20 }),
-        activate: (point) => console.log(`CLICKED ${point?.x},${point?.y}`),
-      }),
+    return (
+      <>
+        <view x={20} y={20} width={100} height={100} color={0x4fb3ffff} />
+        {/* A real click lands here in scene units, whatever the scale. */}
+        <view
+          x={140}
+          y={40}
+          width={20}
+          height={20}
+          onMouseClick={(point) => console.log(`CLICKED ${point.x},${point.y}`)}
+        />
+      </>
     );
-    return <view x={20} y={20} width={100} height={100} color={0x4fb3ffff} />;
   },
 );
 

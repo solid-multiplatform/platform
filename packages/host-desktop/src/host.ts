@@ -14,9 +14,6 @@ import type {
   HostContext,
   HostDefinition,
 } from '@solid-multiplatform/platform/host';
-import type { ControlSurface } from '@solid-multiplatform/platform/controls';
-import type { EditorHost } from '@solid-multiplatform/platform/editor';
-import { createInputScope } from '@solid-multiplatform/platform/input';
 import type { InputKind } from '@solid-multiplatform/platform/capabilities';
 import { installServices } from '@solid-multiplatform/platform/services';
 import {
@@ -28,8 +25,8 @@ import { onNative } from './events.js';
 import type { FieldStyle } from './field.jsx';
 import { KeySource, keyboardEvent } from './keys.js';
 import { DesktopPlatform, windowMetrics } from './platform.js';
-import { feedPointers } from './pointer.js';
-import { desktopSemantics, type SemanticsSink } from './semantics.js';
+import { desktopPointers } from './pointer.js';
+import { desktopSemantics } from './semantics.js';
 import { primaryModifier } from './services/device.js';
 import { desktopServices } from './services/manifest.js';
 
@@ -86,22 +83,14 @@ function applyWindowSize(): void {
 }
 
 /**
- * What the desktop host hands an app: the platform's context, and the sink
- * for the scene's semantics where the runtime can tell assistive technology
- * (absent otherwise). The platform's own `HostContext` is to carry
- * `semantics` itself; until it does, this type adds it.
- */
-export type DesktopHostContext = HostContext<DesktopSurface> & {
-  semantics?: SemanticsSink;
-};
-
-/**
  * Runs `run` in the window and returns what ends it: the app's disposer,
  * then the host's own. Closing the window calls it and ends the process.
+ * The context has `semantics` where the runtime can tell assistive
+ * technology.
  */
 export function launchDesktop(
   options: DesktopHostOptions,
-  run: (context: DesktopHostContext) => Disposer,
+  run: (context: HostContext<DesktopSurface>) => Disposer,
 ): Disposer {
   // Before anything reads the window: a run without one stops here.
   const metrics = windowMetrics();
@@ -122,9 +111,7 @@ export function launchDesktop(
   // Before the app runs: its layout reads the viewport from its first line.
   applyWindowSize();
   const stopScheme = bindColorScheme();
-  const pointer = createInputScope();
-  const stopPointers = feedPointers(pointer);
-  const editors = desktopEditors(pointer, primaryModifier(), options.field);
+  const editors = desktopEditors(primaryModifier(), options.field);
   // Nothing native starts for it until the app registers a node.
   const semantics = desktopSemantics();
 
@@ -157,8 +144,6 @@ export function launchDesktop(
     for (const stopListening of stops) stopListening();
     semantics?.dispose();
     editors.dispose();
-    stopPointers();
-    pointer.dispose();
     stopScheme();
     removeServices();
   };
@@ -178,7 +163,8 @@ export function launchDesktop(
       surface,
       native: surface,
       keys: keys as unknown as KeyEventTarget,
-      pointer,
+      // Listens for nothing until the app is mounted with it.
+      pointer: desktopPointers(),
       text: editors,
       ...(semantics === undefined ? {} : { semantics }),
       createRenderer: (settings) =>
@@ -211,23 +197,6 @@ export function desktopHost(
     launch(run) {
       // Nothing is returned: the window ends the app, not the caller.
       launchDesktop(options, run);
-    },
-  };
-}
-
-/**
- * The surface `<Controls>` takes, for `TextField`, `SearchField` and
- * `TextArea` over the host's editors (`context.text`). The other controls
- * (`Button`, `Toggle`, `Slider`, …) are native widgets on phones; on the
- * desktop they are drawn by the app's scene, so `create` throws.
- */
-export function desktopControls(text: EditorHost): ControlSurface {
-  return {
-    createEditor: (options) => text.createEditor(options),
-    create(kind) {
-      throw new Error(
-        `Controls: "${kind}" is not implemented by the desktop host; draw it in the scene`,
-      );
     },
   };
 }

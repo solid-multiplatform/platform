@@ -52,10 +52,8 @@ import {
 import { viewport } from '@solid-multiplatform/platform/viewport';
 import type { RendererMain } from '@solid-multiplatform/renderer';
 import {
-  desktopControls,
   desktopHost,
   DesktopPlatform,
-  type DesktopDeviceInfo,
   type DesktopEditorHost,
   type DesktopFileSystemPort,
   type DesktopSurface,
@@ -245,20 +243,15 @@ const seen = {
 let context!: HostContext<DesktopSurface>;
 let first!: ElementNode;
 let second!: ElementNode;
+let pad!: ElementNode;
 const [nameValue, setNameValue] = createSignal('');
+
+/** The pointer states the scene shows on the pad: `$hover`, `$pressed`. */
+const padStates = (): string[] => [...pad.states];
 
 function App(host: HostContext<DesktopSurface>) {
   context = host;
   onCleanup(() => console.log('DISPOSED'));
-  onCleanup(
-    host.pointer!.register({
-      bounds: () => PAD,
-      hover: (active) => seen.pad.push(active ? 'hover' : 'unhover'),
-      pressed: (active) => seen.pad.push(active ? 'press' : 'release'),
-      activate: (point) => seen.pad.push(`activate ${point?.x},${point?.y}`),
-      scroll: (x, y) => seen.pad.push(`scroll ${x},${y}`),
-    }),
-  );
   return (
     <view width={1280} height={720} color={0x101010ff}>
       <view
@@ -286,13 +279,20 @@ function App(host: HostContext<DesktopSurface>) {
         }}
       />
       <view
+        ref={pad}
         x={PAD.x}
         y={PAD.y}
         width={PAD.width}
         height={PAD.height}
         color={0x303030ff}
+        onMouseClick={(point) =>
+          seen.pad.push(`activate ${point.x},${point.y}`)
+        }
+        onPointerScroll={(event) => {
+          seen.pad.push(`scroll ${event.deltaX},${event.deltaY}`);
+        }}
       />
-      <Controls surface={desktopControls(host.text!)}>
+      <Controls text={host.text}>
         <TextField
           label="Name"
           bounds={NAME}
@@ -323,10 +323,9 @@ function App(host: HostContext<DesktopSurface>) {
 
 /** The fields' own scene nodes, to see what they draw. */
 function fieldNode(index: number): ElementNode {
-  const layer = (rootNode.children as ElementNode[]).find(
+  return (rootNode.children as ElementNode[]).filter(
     (node) => node.zIndex === 10000,
-  )!;
-  return layer.children[index] as ElementNode;
+  )[index]!;
 }
 function drawn(index: number) {
   const field = fieldNode(index);
@@ -576,20 +575,22 @@ async function pointers(): Promise<void> {
   seen.pad.length = 0;
   __solid.test!.mouse('move', PAD.x + 10, PAD.y + 10);
   await turn();
-  equal('hover', seen.pad, ['hover']);
+  equal('hover', padStates(), ['$hover']);
   __solid.test!.mouse('down', PAD.x + 10, PAD.y + 10, 1);
   await turn();
+  equal('press', [padStates(), seen.pad], [['$hover', '$pressed'], []]);
   __solid.test!.mouse('up', PAD.x + 12, PAD.y + 10, 1);
   await turn();
-  equal('press and click', seen.pad, [
-    'hover',
-    'press',
-    'release',
-    `activate ${PAD.x + 12},${PAD.y + 10}`,
-  ]);
+  equal(
+    'release and click',
+    [padStates(), seen.pad],
+    [['$hover'], [`activate ${PAD.x + 12},${PAD.y + 10}`]],
+  );
   // The right button presses nothing.
   seen.pad.length = 0;
   __solid.test!.mouse('down', PAD.x + 10, PAD.y + 10, 3);
+  await turn();
+  equal('the right button does not press', padStates(), ['$hover']);
   __solid.test!.mouse('up', PAD.x + 10, PAD.y + 10, 3);
   await turn();
   equal('the right button does not click', seen.pad, []);
@@ -604,27 +605,30 @@ async function pointers(): Promise<void> {
   seen.pad.length = 0;
   __solid.test!.mouse('move', 700, 600);
   await turn();
+  equal('leaving the control', padStates(), []);
   __solid.test!.mouse('move', PAD.x + 10, PAD.y + 10);
+  await turn();
+  equal('coming back', padStates(), ['$hover']);
   __solid.test!.window('leave');
   await turn();
-  equal('leaving the control and the window', seen.pad, [
-    'unhover',
-    'hover',
-    'unhover',
-  ]);
+  equal('leaving the window', padStates(), []);
   // A touch presses without hovering.
   seen.pad.length = 0;
   __solid.test!.finger('down', 7, PAD.x + 20, PAD.y + 20);
   await turn();
+  equal('touch: press', [padStates(), seen.pad], [['$pressed'], []]);
   __solid.test!.finger('up', 7, PAD.x + 20, PAD.y + 20);
   await turn();
   // A touch's position is a fraction of the window in single precision.
   equal(
-    'touch',
-    seen.pad.map((entry) =>
-      entry.replace(/\d+\.\d+/g, (n) => String(Math.round(Number(n)))),
-    ),
-    ['press', 'release', `activate ${PAD.x + 20},${PAD.y + 20}`],
+    'touch: release and click',
+    [
+      padStates(),
+      seen.pad.map((entry) =>
+        entry.replace(/\d+\.\d+/g, (n) => String(Math.round(Number(n)))),
+      ),
+    ],
+    [[], [`activate ${PAD.x + 20},${PAD.y + 20}`]],
   );
   // A press that loses the window's focus is cancelled, not clicked.
   seen.pad.length = 0;
@@ -632,6 +636,7 @@ async function pointers(): Promise<void> {
   await turn();
   __solid.test!.window('blur');
   await turn();
+  check('blur releases a press', !padStates().includes('$pressed'));
   __solid.test!.mouse('up', PAD.x + 10, PAD.y + 10, 1);
   await turn();
   equal(
@@ -673,9 +678,6 @@ async function real(setup: Setup): Promise<void> {
   );
   check('real mouse: move, click and wheel', clicked, seen.pad.join(' | '));
   equal('real mouse: what the control saw', seen.pad, [
-    'hover',
-    'press',
-    'release',
     `activate ${PAD.x + 50},${PAD.y + 40}`,
     'scroll 0,48',
   ]);
@@ -724,7 +726,7 @@ async function services(setup: Setup): Promise<void> {
     () => loadService('connectivity'),
   );
 
-  const info = (await deviceInfo()) as DesktopDeviceInfo;
+  const info = await deviceInfo();
   equal(
     'deviceInfo',
     [info.platform, info.os, info.appVersion, typeof info.arch],

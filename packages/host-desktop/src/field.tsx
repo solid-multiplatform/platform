@@ -2,13 +2,12 @@
 // under what an input method is composing, and the caret. `editor.ts` owns
 // what is shown; this file only draws it and answers where a point falls.
 //
-// Fields live in one layer above the app's scene, as a page's `<input>`s
-// live above a canvas. The caret does not blink: a blink is a timer, and an
-// idle scene runs none.
+// Fields are drawn above the app's scene, as a page's `<input>`s are above
+// a canvas, and take the pointer there. The caret does not blink: a blink is
+// a timer, and an idle scene runs none.
 import { createRoot, createSignal, For } from 'solid-js';
 import {
   Config,
-  createElement,
   getRenderer,
   insertNode,
   rootNode,
@@ -30,7 +29,7 @@ export interface FieldStyle {
   caretColor?: number;
   /** Space left and right of the text. Default 6. */
   padding?: number;
-  /** Where the fields' layer sorts among the scene's top nodes. */
+  /** Where a field sorts among the scene's top nodes. Default 10000. */
   zIndex?: number;
 }
 
@@ -50,6 +49,10 @@ interface Mount {
   toText(offset: number): number;
   /** The caret is `x` units from the field's left edge. */
   caretMoved(x: number): void;
+  /** The field was clicked at a point of the scene. */
+  click(point: Point): void;
+  /** A press on the field is being dragged from `origin` to `point`. */
+  drag(point: Point, origin: Point): void;
 }
 
 interface Measurer {
@@ -60,20 +63,6 @@ interface Measurer {
   }): { w: number } | null;
   on(event: 'idle', listener: () => void): void;
   off(event: 'idle', listener: () => void): void;
-}
-
-let layer: ElementNode | undefined;
-let mounted = 0;
-
-/** The layer all fields are drawn in, made with the first of them. */
-function fieldLayer(zIndex: number): ElementNode {
-  if (layer === undefined) {
-    const node = createElement('node') as ElementNode;
-    node.zIndex = zIndex;
-    insertNode(rootNode, node);
-    layer = node;
-  }
-  return layer;
 }
 
 export function mountField(mount: Mount): FieldView {
@@ -178,12 +167,18 @@ export function mountField(mount: Mount): FieldView {
         y={rect().y}
         width={rect().width}
         height={rect().height}
+        zIndex={style.zIndex ?? 10000}
         clipping
         color={
           state().focused
             ? (style.focusedBackground ?? 0x293c52ff)
             : (style.background ?? 0x1b2736ff)
         }
+        // What makes the field a pointer target of the scene.
+        onMouseClick={(point) => mount.click(point)}
+        onPointerDrag={(phase, point, origin) => {
+          if (phase !== 'cancel') mount.drag(point, origin);
+        }}
       >
         <For each={lines()}>
           {(line, row) => (
@@ -243,9 +238,9 @@ export function mountField(mount: Mount): FieldView {
     return disposeRoot;
   });
   // Fields are not part of the app's focus tree: the keyboard reaches them
-  // through the editor host.
-  insertNode(fieldLayer(style.zIndex ?? 10000), node);
-  mounted++;
+  // through the editor host. They are the root's own children, where the
+  // scene's pointer finds them whatever the app's nodes cover.
+  insertNode(rootNode, node);
 
   // The caret's place in the field, for the input method's window.
   const reportCaret = (): void =>
@@ -289,13 +284,6 @@ export function mountField(mount: Mount): FieldView {
       dispose();
       node.parent?.removeChild(node);
       node.destroy();
-      mounted--;
-      // The layer goes with the last field.
-      if (mounted === 0 && layer !== undefined) {
-        rootNode.removeChild(layer);
-        layer.destroy();
-        layer = undefined;
-      }
     },
   };
 }

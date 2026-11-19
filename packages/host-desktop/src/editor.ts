@@ -14,7 +14,7 @@ import type {
   EditorHost,
   EditorOptions,
 } from '@solid-multiplatform/platform/editor';
-import type { InputScope, Rect } from '@solid-multiplatform/platform/input';
+import type { Point, Rect } from '@solid-multiplatform/platform/input';
 import { onNative } from './events.js';
 import { mountField, type FieldStyle } from './field.jsx';
 import type { DesktopKeyboardEvent } from './keys.js';
@@ -60,12 +60,11 @@ interface Field extends DesktopEditor {
 }
 
 /**
- * The editor host of a window. `pointer` is where fields register so that a
- * click focuses one and places its caret; `primary` is the modifier of the
- * clipboard shortcuts.
+ * The editor host of a window. A field's own scene node takes the pointer
+ * (`field.tsx`): a click focuses it and places its caret. `primary` is the
+ * modifier of the clipboard shortcuts.
  */
 export function desktopEditors(
-  pointer: InputScope,
   primary: 'ctrl' | 'meta',
   style: FieldStyle = {},
 ): DesktopEditorHost {
@@ -146,6 +145,17 @@ export function desktopEditors(
         caretX = x;
         if (keyboard) place();
       },
+      /** A click gives the field the keyboard and places its caret. */
+      click(point: Point): void {
+        field.focus();
+        if (preedit === '') field.select(view.offsetAt(point, rect));
+      },
+      /** A drag selects from where it began to where it is. */
+      drag(point: Point, origin: Point): void {
+        if (preedit !== '') return;
+        field.focus();
+        field.select(view.offsetAt(origin, rect), view.offsetAt(point, rect));
+      },
     });
     const notify = (): void => view.update(state());
     const place = (): void =>
@@ -211,20 +221,6 @@ export function desktopEditors(
       if (!extend) anchor = to;
       notify();
     }
-
-    const unregister = pointer.register({
-      bounds: () => rect,
-      focus: () => field.focus(),
-      activate(point) {
-        field.focus();
-        if (point && preedit === '') field.select(view.offsetAt(point, rect));
-      },
-      drag(phase, point, origin) {
-        if (phase === 'cancel' || preedit !== '') return;
-        field.focus();
-        field.select(view.offsetAt(origin, rect), view.offsetAt(point, rect));
-      },
-    });
 
     const field: Field = {
       value: () => value,
@@ -372,7 +368,6 @@ export function desktopEditors(
         if (closed) return;
         field.blur();
         closed = true;
-        unregister();
         fields.delete(field);
         view.dispose();
         // A password does not stay in memory with its field.

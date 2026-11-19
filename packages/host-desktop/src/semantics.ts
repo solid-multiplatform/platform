@@ -11,22 +11,17 @@
 // A node's `bounds()` is read when the node is registered or updated. A node
 // that moves without either (a scroll, an animation) keeps its old place
 // until its owner calls `update`.
-import type { Semantics } from '@solid-multiplatform/platform/semantics';
+//
+// Not told to the runtime yet: `live` regions.
+import type {
+  Semantics,
+  SemanticsHandle,
+  SemanticsSink,
+} from '@solid-multiplatform/platform/semantics';
 import { windowMetrics } from './platform.js';
 
-/** What `register` returns: the node's own handle. */
-export interface SemanticsHandle {
-  /** Replace the node's description. */
-  update(next: Semantics): void;
-  /** Say that this node has the keyboard now. */
-  focus(): void;
-  dispose(): void;
-}
-
-export interface SemanticsSink {
-  /** Describe a node, under `parent` or under the window. */
-  register(node: Semantics, parent?: SemanticsHandle): SemanticsHandle;
-  /** Remove every node. */
+/** The platform's sink, and how the host removes every node as it ends. */
+export interface DesktopSemanticsSink extends SemanticsSink {
   dispose(): void;
 }
 
@@ -66,7 +61,7 @@ interface Entry {
  * The desktop's semantics sink, or `undefined` where the runtime has no
  * accessibility support (a run without a window, a build without it).
  */
-export function desktopSemantics(): SemanticsSink | undefined {
+export function desktopSemantics(): DesktopSemanticsSink | undefined {
   const native = __solid.a11y;
   if (native === undefined) return undefined;
 

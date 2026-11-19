@@ -18,14 +18,6 @@ import type { KeyEventsPort } from '@solid-multiplatform/platform/shortcuts';
 import type { ColorSchemePort } from '@solid-multiplatform/platform/theme';
 import { onNative } from '../events.js';
 
-/** What `deviceInfo()` adds on the desktop to the platform's fields. */
-export interface DesktopDeviceInfo extends DeviceInfo {
-  platform: 'desktop';
-  os: 'linux' | 'windows' | 'macos';
-  /** The processor architecture: `x86_64`, `aarch64`. */
-  arch: string;
-}
-
 export function clipboard(): ClipboardPort {
   const native = __solid.clipboard!;
   // Async, so that the system's refusal is a rejection.
@@ -41,11 +33,12 @@ export function openExternal(): OpenExternalPort {
 
 export function deviceInfo(appVersion: string | undefined): DeviceInfoPort {
   return {
-    async get(): Promise<DesktopDeviceInfo> {
+    async get(): Promise<DeviceInfo> {
       const info = __solid.system.info();
       return {
         platform: 'desktop',
         os: info.os,
+        // As the runtime names it: `x86_64`, `aarch64`.
         arch: info.arch,
         model: info.model,
         osVersion: info.osVersion,

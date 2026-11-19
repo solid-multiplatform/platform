@@ -12,22 +12,15 @@ import './standard.js';
 import { launchDesktop } from './host.js';
 
 export {
-  desktopControls,
   desktopHost,
   launchDesktop,
-  type DesktopHostContext,
   type DesktopHostOptions,
   type DesktopSurface,
 } from './host.js';
-export {
-  desktopSemantics,
-  type SemanticsHandle,
-  type SemanticsSink,
-} from './semantics.js';
+export { desktopSemantics, type DesktopSemanticsSink } from './semantics.js';
 export { DesktopPlatform } from './platform.js';
 export type { FieldStyle } from './field.jsx';
 export type { DesktopEditor, DesktopEditorHost } from './editor.js';
-export type { DesktopDeviceInfo } from './services/device.js';
 export type { DesktopFileSystemPort } from './services/files.js';
 
 /**
