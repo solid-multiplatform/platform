@@ -226,6 +226,38 @@ export async function runChecks({ emulator, probe: app, form, shared }) {
       expect(typeof info.lowMemory === 'boolean', 'lowMemory is not a boolean');
       return `${info.deviceMemoryGb} GiB, MemTotal ${total.toFixed(2)} GiB`;
     },
+    async display() {
+      const info = await app.step('display');
+      expect(
+        typeof info?.refreshRate === 'number' && info.refreshRate > 0,
+        'refresh rate is ' + info?.refreshRate,
+      );
+      expect(
+        info.current === info.refreshRate,
+        `displayRefreshRate ${info.current} against displayInfo ${info.refreshRate}`,
+      );
+      expect(
+        Array.isArray(info.supportedRefreshRates) &&
+          info.supportedRefreshRates.length > 0,
+        'no supported refresh rates',
+      );
+      expect(
+        info.supportedRefreshRates.includes(info.refreshRate),
+        `${info.refreshRate} Hz is not one of ${info.supportedRefreshRates}`,
+      );
+      // The display service reads Display.getMode(); dumpsys reads the same
+      // mode through the display manager.
+      const mode =
+        /fps=([0-9.]+)/.exec(tryShell('dumpsys display')) ??
+        /renderFrameRate ([0-9.]+)/.exec(tryShell('dumpsys display'));
+      if (mode) {
+        expect(
+          near(info.refreshRate, Number(mode[1]), 0.5),
+          `service ${info.refreshRate} Hz against dumpsys ${mode[1]}`,
+        );
+      }
+      return `${info.refreshRate} Hz; supported ${info.supportedRefreshRates.join(', ')}`;
+    },
     async keepAwake() {
       await app.step('keepAwake', { on: '1' });
       await until('KEEP_SCREEN_ON set', () =>
