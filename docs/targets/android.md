@@ -31,8 +31,8 @@ Measured on an API 36 phone emulator (`viptv-design-phone`, headless, SwiftShade
 
 | Guest vsync | Frames in 5 s | p50 delta | min / max        | Idle frames |
 | ----------- | ------------- | --------- | ---------------- | ----------- |
-| 60 Hz       | 301           | 16.67 ms  | 16.67 / 16.67 ms | 0           |
-| 120 Hz      | 571           | 8.33 ms   | 8.33 / 16.67 ms  | 0           |
+| 60 Hz       | 294           | 16.67 ms  | 16.67 / 33.33 ms | 0           |
+| 120 Hz      | 575           | 8.33 ms   | 8.33 / 16.67 ms  | 0           |
 
 The 120 Hz row used the emulator's `-vsync-rate 120`, which makes the guest display report and run at 120 Hz (`presDeadline 8333333`). The emulator exposes a single display mode, so a real 60 → 120 mode switch on a multi-mode panel was not reproduced here; the request path is covered by the service and loop unit tests.
 
