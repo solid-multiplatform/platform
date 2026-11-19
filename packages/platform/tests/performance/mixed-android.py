@@ -135,19 +135,25 @@ def main():
             time.sleep(0.2)
         raise RuntimeError("The test display did not wake")
 
+    def input_focused():
+        dump = shell("dumpsys", "input")
+        windows = re.search(
+            r"(?m)^\s*FocusedWindows:\s*\n((?:[ \t]+displayId=[^\n]+\n?)+)", dump
+        )
+        return bool(
+            windows
+            and any(
+                line.strip().startswith("displayId=0,") and (" " + app + "/") in line
+                for line in windows.group(1).splitlines()
+            )
+        )
+
     def wait_input_window():
         # Activity resume and InputDispatcher's focused window are distinct events.
         # A remote press belongs to this test only after the app owns the display input.
         start = time.monotonic()
         while time.monotonic() - start < 8:
-            dump = shell("dumpsys", "input")
-            windows = re.search(
-                r"(?m)^\s*FocusedWindows:\s*\n((?:[ \t]+displayId=[^\n]+\n?)+)", dump
-            )
-            if windows and any(
-                line.strip().startswith("displayId=0,") and (" " + app + "/") in line
-                for line in windows.group(1).splitlines()
-            ):
+            if input_focused():
                 return round((time.monotonic() - start) * 1000)
             time.sleep(0.08)
         raise RuntimeError("The probe did not regain input focus on the test display")
@@ -175,8 +181,21 @@ def main():
             time.sleep(0.10)
         raise RuntimeError(f"Missing {name}: {entries[-4:]}")
 
-    def key(code, event):
+    def press(code):
+        # A press goes to whatever window has focus. A system dialog that opens
+        # over the app (a Bluetooth pairing prompt did, on the test TV) would
+        # take a Select meant for the app as its own confirmation. Stop the
+        # pass instead of pressing; the check narrows that window to the time
+        # between it and the press, it cannot close it.
+        if not input_focused():
+            raise RuntimeError(
+                "Another window has input focus; no key was sent. "
+                "Dismiss it on the device and run the pass again."
+            )
         shell("input", "keyevent", str(code))
+
+    def key(code, event):
+        press(code)
         return wait_event(event)
 
     def visual(name, marker=None, video=False, position=None):
@@ -390,7 +409,7 @@ file_write_period_ms: 2000
             )
             key(23, "play")
             time.sleep(0.8)
-            shell("input", "keyevent", "4")
+            press(4)
             exited = wait_event("player-exit")
             wait_event("modal-return")
             visual("returned-modal", "modal")

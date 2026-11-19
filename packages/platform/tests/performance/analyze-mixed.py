@@ -13,7 +13,13 @@ import pathlib
 import re
 import subprocess
 
-from frame_timeline import as_csv, is_flagged, layer_query, split_layers
+from frame_timeline import (
+    as_csv,
+    is_flagged,
+    layer_query,
+    present_unknown,
+    split_layers,
+)
 
 
 def analyze(directory, processor):
@@ -167,6 +173,14 @@ def analyze(directory, processor):
             ],
         },
         "windowFramesWithoutDisplayMatch": missing_display,
+        # Frames Android could not time on the display. They are not in
+        # windowLateOrDropped, and they are not known to be on time either.
+        "windowFramesWithUnknownPresent": sum(map(present_unknown, frames)),
+        "windowPresentation": dict(
+            collections.Counter(
+                r["present_type"] + " / " + r["jank_type"] for r in frames
+            )
+        ),
         "windowFramesByPhase": per_phase,
         "galleryIntervals25To100ms": gallery_gaps,
         "videoRendered": sum(x["rendered"] for x in counts),
@@ -217,6 +231,10 @@ def main():
             "cycles,",
             r["windowLateOrDropped"],
             "late/dropped window frames,",
+            r["windowFramesWithUnknownPresent"],
+            "of",
+            r["windowFrames"],
+            "with no display present time,",
             r["videoDropped"],
             "dropped video buffers",
         )
