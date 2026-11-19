@@ -89,11 +89,58 @@ const sameInsets = (a: Insets, b: Insets) =>
   a.bottom === b.bottom &&
   a.left === b.left;
 
+/**
+ * The title bar the scene draws, in scene units, above the host's own
+ * insets. A mounted `<TitleBar>` publishes its height here, and removing it
+ * (or entering fullscreen) sets it back to 0.
+ */
+let chromeTop = 0;
+/** The host's last input, so a chrome change republishes with it. */
+let hostInput: ViewportInput | undefined;
+
+/**
+ * Sets how much room the scene's title bar takes at the top, in scene units:
+ * `insets.systemBars.top` and `insets.safeArea.top`. Called by the title bar
+ * after layout and when fullscreen hides it; a target with native chrome
+ * keeps 0.
+ */
+export function setChromeInset(top: number): void {
+  const clean = Number.isFinite(top) && top > 0 ? top : 0;
+  if (clean === chromeTop) return;
+  chromeTop = clean;
+  if (hostInput !== undefined) applyViewport(hostInput, getRenderer());
+}
+
 /** Called by host layout events, never from the frame loop. Sizes use logical units. */
 export function updateViewport(
   next: ViewportInput,
   scene: ReturnType<typeof getRenderer> | null = getRenderer(),
 ) {
+  hostInput = {
+    ...next,
+    safeArea: { ...next.safeArea },
+    ...(next.systemBars === undefined
+      ? {}
+      : { systemBars: { ...next.systemBars } }),
+  };
+  applyViewport(next, scene);
+}
+
+function applyViewport(
+  base: ViewportInput,
+  scene: ReturnType<typeof getRenderer> | null,
+) {
+  const next: ViewportInput =
+    chromeTop === 0
+      ? base
+      : {
+          ...base,
+          safeArea: { ...base.safeArea, top: base.safeArea.top + chromeTop },
+          systemBars: {
+            ...(base.systemBars ?? zeroInsets),
+            top: (base.systemBars?.top ?? 0) + chromeTop,
+          },
+        };
   if (
     ![next.width, next.height, next.scale].every(
       (n) => Number.isFinite(n) && n > 0,

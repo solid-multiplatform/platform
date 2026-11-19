@@ -195,6 +195,9 @@ pub unsafe fn install(env: napi_env, host: napi_value, window: *mut SDL_Window) 
     define_function(env, object, c"theme", theme);
     define_function(env, object, c"allowScreenSaver", allow_screen_saver);
     define_function(env, object, c"screenSaverAllowed", screen_saver_allowed);
+    // The chrome object exists in every mode; in native mode it reports the
+    // mode and the state and its controls are never drawn by the scene.
+    crate::chrome::install(env, object);
     let clipboard = define_object(env, host, c"clipboard");
     define_function(env, clipboard, c"read", clipboard_read);
     define_function(env, clipboard, c"write", clipboard_write);

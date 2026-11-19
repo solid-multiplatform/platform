@@ -16,7 +16,12 @@ import type {
   Disposer,
   HostContext,
   HostDefinition,
+  WindowChrome,
 } from '@solid-multiplatform/platform/host';
+import {
+  notifyChromeStateChange,
+  setChromeRegionSink,
+} from '@solid-multiplatform/platform/chrome';
 import type { InputKind } from '@solid-multiplatform/platform/capabilities';
 import { installServices } from '@solid-multiplatform/platform/services';
 import {
@@ -71,6 +76,33 @@ const surface: DesktopSurface = {
   setTitle: (title) => __solid.window!.setTitle(title),
 };
 
+/**
+ * The window's title bar, over the runtime's `__solid.window.chrome`. Its
+ * mode is what the runtime started with; if a borderless window or its hit
+ * test could not be made, the runtime says `native`.
+ */
+function windowChrome(): WindowChrome | undefined {
+  const native = __solid.window?.chrome;
+  if (native === undefined) return undefined;
+  return {
+    get os() {
+      return native.os;
+    },
+    get mode() {
+      return native.mode;
+    },
+    get hitTestInstalled() {
+      return native.hitTestInstalled;
+    },
+    state: () => native.state(),
+    minimize: () => native.minimize(),
+    toggleMaximized: () => native.toggleMaximized(),
+    setFullscreen: (fullscreen) => native.setFullscreen(fullscreen),
+    requestClose: () => native.requestClose(),
+    showSystemMenu: (x, y) => native.showSystemMenu(x, y),
+  };
+}
+
 function applyWindowSize(): void {
   const { width, height, scale } = windowMetrics();
   updateViewport({
@@ -101,6 +133,13 @@ export function launchDesktop(
   setDefaultPlatform(DesktopPlatform);
   if (options.title !== undefined) surface.setTitle(options.title);
 
+  const chrome = windowChrome();
+  // Where the scene's title bar publishes what it measured. A host without a
+  // window (or one whose runtime has no chrome) leaves it unset.
+  const nativeChrome = __solid.window?.chrome;
+  if (nativeChrome !== undefined) {
+    setChromeRegionSink((regions) => nativeChrome.regions(regions));
+  }
   const keys = new KeySource();
   // First: the colour scheme binding below reads its service.
   const removeServices = installServices(
@@ -129,6 +168,12 @@ export function launchDesktop(
     onNative('keydown', key),
     onNative('keyup', key),
     onNative('resize', applyWindowSize),
+    // Focus, minimise, maximise, fullscreen: the scene reads the snapshot
+    // the runtime updated from the same event; no polling. Focus arrives as
+    // its own pair of events, the rest as `windowstate`.
+    onNative('focus', notifyChromeStateChange),
+    onNative('blur', notifyChromeStateChange),
+    onNative('windowstate', notifyChromeStateChange),
     // The window system dropped the window's contents: draw them again.
     onNative('expose', () =>
       (getRenderer() as SceneRenderer | undefined)?.requestRender(),
@@ -145,6 +190,7 @@ export function launchDesktop(
   ];
   const release = (): void => {
     for (const stopListening of stops) stopListening();
+    setChromeRegionSink(undefined);
     semantics?.dispose();
     editors.dispose();
     stopScheme();
@@ -170,6 +216,7 @@ export function launchDesktop(
       pointer: desktopPointers(),
       text: editors,
       ...(semantics === undefined ? {} : { semantics }),
+      ...(chrome === undefined ? {} : { chrome }),
       createRenderer: (settings) => {
         // The second argument names a page element on the web; the adapter
         // draws in the window whatever it is.

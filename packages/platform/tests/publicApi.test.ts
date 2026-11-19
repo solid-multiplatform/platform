@@ -322,7 +322,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   });
 
   v.test(
-    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 93 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 96 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
@@ -364,12 +364,15 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'Suspense',
         'Svg',
         'TelemetryCounter',
+        'TitleBar',
         'Toast',
         'Tooltip',
         'VirtualColumn',
         'VirtualGrid',
         'VirtualRow',
         'Visible',
+        'WindowDragRegion',
+        'WindowNoDrag',
         'activeElement',
         'addCustomStateToElement',
         'borderBox',
@@ -748,6 +751,7 @@ v.describe('package.json exports', () => {
       './cli/variants',
       './android',
       './viewport',
+      './chrome',
       './viewport/web',
       './input',
       './editor',

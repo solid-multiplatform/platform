@@ -43,8 +43,29 @@ const throwsMessage = (fn, pattern) =>
 test('a complete config is returned as written, with its source', () => {
   assert.deepEqual(validateConfig(good, 'solid-platform.config.json'), {
     ...good,
+    desktop: { titleBar: undefined },
     source: 'solid-platform.config.json',
   });
+});
+
+test('the desktop title bar mode is validated', () => {
+  for (const titleBar of ['native', 'custom', 'hidden'])
+    assert.deepEqual(
+      validateConfig({ ...good, desktop: { titleBar } }).desktop,
+      { titleBar },
+    );
+  assert.throws(
+    () => validateConfig({ ...good, desktop: 'custom' }),
+    /desktop: expected \{ titleBar \}/,
+  );
+  assert.throws(
+    () => validateConfig({ ...good, desktop: { titlebar: 'custom' } }),
+    /desktop\.titlebar: unknown key \(known: titleBar\)/,
+  );
+  assert.throws(
+    () => validateConfig({ ...good, desktop: { titleBar: 'frameless' } }),
+    /desktop\.titleBar: expected one of native, custom, hidden/,
+  );
 });
 
 test('optional sections get empty defaults', () => {
@@ -52,6 +73,8 @@ test('optional sections get empty defaults', () => {
   assert.deepEqual(config.deepLinks, { schemes: [], hosts: [] });
   assert.deepEqual(config.services, []);
   assert.deepEqual(config.signing, {});
+  // No desktop section: the native title bar, the runtime's default.
+  assert.deepEqual(config.desktop, { titleBar: undefined });
   // No `app` section: fonts by convention, no design size, the system theme.
   assert.deepEqual(config.app, {
     fonts: undefined,

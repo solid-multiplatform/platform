@@ -303,6 +303,27 @@
           }
         },
         {
+          "id": "window-chrome",
+          "feature": "Desktop window chrome (`<TitleBar>`, `desktop.titleBar`)",
+          "default": {
+            "status": "unavailable"
+          },
+          "cells": {
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/chrome/run.mjs (desktop-runtime.yml: linux; a borderless window under Openbox in Xvfb: the scene's bar drags the window, every edge and corner resizes, controls keep their own presses, close disposes the app, the insets publish, and a refused borderless window or hit test falls back to native before the first frame; an idle run proves no timers, frames or presents once the regions settle)"
+            },
+            "desktop-windows": {
+              "status": "preview",
+              "note": "The hit test maps to `HTCAPTION`/`HT*`, so the OS owns move, resize, snap and the title-bar double-click. Built in CI; no CI job opens a window there, and DWM snap/multi-monitor DPI/RDP are unverified."
+            },
+            "desktop-macos": {
+              "status": "preview",
+              "note": "SDL on Cocoa ignores the `RESIZE_*` hit-test results and a borderless window has no traffic lights: a borderless custom mode runs but is untested, and real macOS chrome waits for an AppKit phase (see handoff/title-bar-design.md)."
+            }
+          }
+        },
+        {
           "id": "accessibility",
           "feature": "Accessibility semantics (`src/sdk/semantics.ts`)",
           "default": {

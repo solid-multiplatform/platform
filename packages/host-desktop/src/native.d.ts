@@ -157,6 +157,34 @@ interface SolidNative {
     /** Returns whether the system took the request. */
     allowScreenSaver(allow: boolean): boolean;
     screenSaverAllowed(): boolean;
+    /** The window's title bar: mode, event-driven state, controls. */
+    readonly chrome: {
+      readonly mode: 'native' | 'custom' | 'hidden';
+      readonly os: 'windows' | 'linux' | 'macos';
+      readonly hitTestInstalled: boolean;
+      state(): {
+        focused: boolean;
+        minimized: boolean;
+        maximized: boolean;
+        fullscreen: boolean;
+        resizable: boolean;
+      };
+      minimize(): boolean;
+      toggleMaximized(): boolean;
+      setFullscreen(fullscreen: boolean): boolean;
+      requestClose(): void;
+      showSystemMenu(x: number, y: number): boolean;
+      /** One batch of measured regions, in layout units. */
+      regions(
+        regions: {
+          x: number;
+          y: number;
+          width: number;
+          height: number;
+          drag: boolean;
+        }[],
+      ): void;
+    };
   };
   /** Present with a window. */
   readonly input?: {
@@ -350,6 +378,19 @@ interface SolidNative {
     window(kind: string): void;
     drop(kind: 'file' | 'text', data: string, x: number, y: number): void;
     setScale(scale: number): void;
+    /**
+     * What the hit-test resolver answers at a point in layout units, as SDL's
+     * own names: `draggable`, `resize-top`, `resize-topleft`, `normal`, ...
+     */
+    hitTest(x: number, y: number): string;
+    /** The scene's published hit-test regions, in layout units. */
+    regions(): {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      drag: boolean;
+    }[];
   };
   readFile(
     path: string,

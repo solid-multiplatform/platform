@@ -31,6 +31,9 @@ virtual() {
 }
 virtual node "$here/scene/run.mjs"
 virtual node "$here/host/run.mjs"
+# The scene's title bar: borderless creation, hit-test regions, real drags
+# and resizes under a window manager, insets, and the fallbacks.
+virtual node "$here/chrome/run.mjs"
 virtual node "$here/package/run.mjs"
 virtual node "$here/a11y/run.mjs"
 node "$here/services/run.mjs"

@@ -6,6 +6,7 @@
 
 #[cfg(all(feature = "accessibility", target_os = "linux"))]
 mod a11y;
+mod chrome;
 mod console;
 mod dialog;
 mod files;
@@ -36,15 +37,20 @@ use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::ptr;
 
-const USAGE: &str = "usage: solid-desktop [--headless] [--first-frame-exit] <script.js | script.hbc> [argument...]
-       solid-desktop [--headless] [--first-frame-exit] --script <script.js | script.hbc> [argument...]
+const USAGE: &str = "usage: solid-desktop [--headless] [--first-frame-exit] [--title-bar=native|custom|hidden] <script.js | script.hbc> [argument...]
+       solid-desktop [--headless] [--first-frame-exit] [--title-bar=...] --script <script.js | script.hbc> [argument...]
        solid-desktop --compile <script.js> <script.hbc>
-       solid-desktop --version | --diagnostics
+       solid-desktop --version | --diagnostics [--title-bar=...]
 
 A packaged app (../resources/app.hbc or app.js beside the executable's
 directory) runs without naming a script; everything after the options is the
 app's arguments. --first-frame-exit prints that the first frame reached the
-screen and ends, for tests that must not leave a window open.";
+screen and ends, for tests that must not leave a window open.
+
+--title-bar chooses the window's chrome at startup: native (the default) keeps
+the window system's decorations, custom and hidden create a borderless window
+whose scene draws its own. The packaging step writes the same setting to
+resources/app.json, which is read before SDL starts; an explicit flag wins.";
 
 /// Whether SDL is part of this executable or a library the system supplies.
 const SDL_LINKAGE: &str = if cfg!(feature = "static-sdl") { "static" } else { "dynamic" };
@@ -57,6 +63,20 @@ unsafe fn diagnostics() -> ! {
     println!("target {}-{}", std::env::consts::OS, std::env::consts::ARCH);
     let version = SDL_GetVersion();
     println!("sdl {}.{}.{} {SDL_LINKAGE}", version / 1_000_000, version / 1000 % 1000, version % 1000);
+    // The mode the next run would ask for: the flag, else app.json beside a
+    // packaged app, else native. Nothing is decided from SDL here.
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let requested = title_bar_argument(&args).unwrap_or(chrome::Mode::Native);
+    println!("title-bar {}", requested.as_str());
+    // The active driver, if video can start at all. No window is opened.
+    let driver = if SDL_Init(SDL_INIT_VIDEO) {
+        let name = SDL_GetCurrentVideoDriver();
+        if name.is_null() { "none".to_string() } else { CStr::from_ptr(name).to_string_lossy().into_owned() }
+    } else {
+        "none".to_string()
+    };
+    println!("video-driver {driver}");
+    println!("hit-testing not-installed (no window; the running app reports it)");
     let drivers: Vec<String> = (0..SDL_GetNumVideoDrivers())
         .map(|index| SDL_GetVideoDriver(index))
         .filter(|name| !name.is_null())
@@ -102,18 +122,54 @@ fn packaged_script() -> Option<String> {
         .map(|path| path.to_string_lossy().into_owned())
 }
 
+/// `--title-bar=native|custom|hidden` (or the value as the next argument),
+/// wherever it stands in the command line.
+fn title_bar_argument(args: &[String]) -> Option<chrome::Mode> {
+    let mut found = None;
+    let mut index = 0;
+    while index < args.len() {
+        let arg = args[index].as_str();
+        if arg == "--" {
+            break;
+        }
+        let value = match arg.strip_prefix("--title-bar=") {
+            Some(value) => value,
+            None if arg == "--title-bar" => {
+                index += 1;
+                args.get(index).map(String::as_str).unwrap_or_else(|| fail("--title-bar needs native, custom or hidden"))
+            }
+            None => {
+                index += 1;
+                continue;
+            }
+        };
+        let Some(mode) = chrome::Mode::parse(value) else {
+            fail(&format!("--title-bar: \"{value}\" is not native, custom or hidden"));
+        };
+        found = Some(mode);
+        index += 1;
+    }
+    found
+}
+
 /// What the command line asks for: `(headless, first_frame_exit, script, the
-/// app's arguments)`. A packaged app's script is its own, so every plain
-/// argument is the app's (a URL it was opened with); otherwise the first one
-/// names the script.
-fn command_line(args: Vec<String>) -> (bool, bool, String, Vec<String>) {
+/// app's arguments, the title bar mode)`. A packaged app's script is its own,
+/// so every plain argument is the app's (a URL it was opened with); otherwise
+/// the first one names the script.
+fn command_line(args: Vec<String>) -> (bool, bool, String, Vec<String>, Option<chrome::Mode>) {
+    let title_bar = title_bar_argument(&args);
     let (mut headless, mut first_frame_exit, mut script, mut rest) =
         (false, false, None, Vec::new());
-    let mut args = args.into_iter();
+    let mut args = args.into_iter().peekable();
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--headless" => headless = true,
             "--first-frame-exit" => first_frame_exit = true,
+            "--title-bar" => {
+                // The value was read (and checked) by title_bar_argument.
+                args.next();
+            }
+            _ if arg.starts_with("--title-bar=") => {}
             "--script" => script = Some(args.next().unwrap_or_else(|| fail(USAGE))),
             "--" => rest.extend(&mut args),
             flag if flag.starts_with("--") => fail(USAGE),
@@ -126,7 +182,7 @@ fn command_line(args: Vec<String>) -> (bool, bool, String, Vec<String>) {
         }
         rest.remove(0)
     });
-    (headless, first_frame_exit, script, rest)
+    (headless, first_frame_exit, script, rest, title_bar)
 }
 
 /// The first bytes of Hermes bytecode (its magic number, little-endian).
@@ -177,10 +233,12 @@ fn main() {
             println!("solid-desktop {}", env!("CARGO_PKG_VERSION"));
             exit(0);
         }
-        ["--diagnostics"] => unsafe { diagnostics() },
+        // `--diagnostics` may be told the title bar mode the next run would
+        // ask for, as its own output says. Everything else is a usage error.
+        [flag, ..] if flag == "--diagnostics" => unsafe { diagnostics() },
         _ => {}
     }
-    let (headless, first_frame_exit, script, app_args) = command_line(args);
+    let (headless, first_frame_exit, script, app_args, title_bar) = command_line(args);
     if first_frame_exit {
         runtime::exit_after_first_frame();
     }
@@ -195,6 +253,12 @@ fn main() {
         .map(plain)
         .and_then(|path| path.parent().map(|parent| parent.to_string_lossy().into_owned()))
         .unwrap_or_else(|| fail(&format!("Cannot resolve the directory of {script}")));
+    // The flag wins; a packaged app's resources/app.json is next; native is
+    // the default. This is read before SDL starts, because the window's flags
+    // are fixed at creation.
+    let requested = title_bar
+        .or_else(|| chrome::mode_from_app_json(Path::new(&directory)))
+        .unwrap_or(chrome::Mode::Native);
     unsafe {
         let mut window = ptr::null_mut();
         if !headless {
@@ -214,11 +278,10 @@ fn main() {
             SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
             SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
             // The drawing buffer has the display's pixels, not one per point.
-            let flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
-            window = SDL_CreateWindow(c"Solid".as_ptr(), 1280, 720, flags);
-            if window.is_null() {
-                fail(&format!("SDL could not create a window: {}", CStr::from_ptr(SDL_GetError()).to_string_lossy()));
-            }
+            // A custom or hidden title bar makes the window borderless and
+            // installs the hit test; a refusal falls back to a native
+            // window here, before the first frame.
+            window = chrome::create_window(c"Solid", 1280, 720, requested).unwrap_or_else(|reason| fail(&reason));
             worker::wake_through_sdl();
         }
 

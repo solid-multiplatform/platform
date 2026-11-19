@@ -56,6 +56,31 @@ The runtime binary resolves as: `SOLID_DESKTOP_RUNTIME`, then the host package's
 
 Screen variants ending in `.linux`, `.windows`, `.macos` or `.desktop` are selected by the OS the build runs on.
 
+## Window chrome
+
+The window's title bar is chosen once, at startup, and cannot change while the app runs (the runtime creates the window before the app's code runs, so it cannot be a `desktopHost()` option):
+
+```json
+{
+  "desktop": { "titleBar": "custom" }
+}
+```
+
+- `native` (the default) keeps the window system's decorations. The scene renders no controls and no drag regions.
+- `custom` creates a borderless window whose scene draws its own chrome: `<TitleBar>` (with platform minimize/maximize/close), `<WindowDragRegion>` and `<WindowNoDrag>` from `@solid-multiplatform/platform/primitives`.
+- `hidden` creates the same borderless window without any automatic chrome; an app that mounts its own `<TitleBar>` gets drag regions and insets all the same.
+
+An explicit flag wins over the packaged setting: `solid-desktop --title-bar=native|custom|hidden app.hbc`, which is what `solid-platform run desktop --title-bar=…` passes; packaging writes the same setting to `resources/app.json`, which the runtime reads before SDL starts; `--diagnostics` prints the mode the next run would ask for, the video driver, and that a running app reports the hit test. In the app, `useHost().chrome` is the `WindowChrome` the design defines (`mode`, `hitTestInstalled`, event-driven `state()`, `minimize`, `toggleMaximized`, `setFullscreen`, `requestClose`, `showSystemMenu`); a mounted `<TitleBar>` publishes its height as `insets.systemBars.top` and `insets.safeArea.top`, so `<Screen>` content moves below it. Render the bar beside `<Screen>`, not inside it, or the inset is counted twice.
+
+How dragging works: the primitives measure their laid-out rectangles and publish them in one batch per layout turn; the runtime converts them to window coordinates with the inverse of the window's scale factor, keeps them in an immutable snapshot, and the SDL hit-test callback only reads that snapshot (no JavaScript, no allocation, no polling). Resize edges (~7 scene units, larger corners) win over the bar's drag rectangle; the deepest region wins after that, with interactive nodes (buttons, fields, links — anything with `onEnter` or `onMouseClick`) claiming their press over a drag region that encloses them. If the borderless window or its hit test is refused before the first frame, the runtime recreates a native window and reports `native`; it never leaves a borderless window without the scene's chrome.
+
+What stays preview or later:
+
+- **Windows**: the hit test maps to `HTCAPTION`/`HT*`, so move, resize, snap and the title-bar double-click stay OS-owned; a snap-layout flyout on a custom maximize button is not provided. Built in CI; no window is opened there, and DWM snap, multi-monitor DPI and RDP are unverified.
+- **macOS**: SDL on Cocoa ignores the `RESIZE_*` hit-test results and a borderless window has no traffic lights; real macOS chrome waits for an AppKit phase (`handoff/title-bar-design.md`).
+- **Wayland**: `xdg-decoration` lets the compositor decorate a borderless window, so double chrome is possible; the runtime keeps the scene bar and reports the requested mode.
+- Tiling window managers may ignore maximize; the controls follow events, never a local guess. Double-click on a drag area to maximize works only where the OS owns it (Windows); elsewhere it is not implemented, and the framework reports nothing it does not do.
+
 ## Internationalization
 
 Hermes on Linux has no `Intl`. The runtime supplies it from ICU4X (`packages/host-desktop/native/src/intl.rs`), with the data compiled into the executable, and a thin spec-shaped layer (`packages/host-desktop/src/web/intl.ts`) installs it beside the other web globals. It is defined only when the engine has none, builds no formatter until an app asks for one, and caches instances by their serialized locale and options.
@@ -72,7 +97,7 @@ Hermes on Linux has no `Intl`. The runtime supplies it from ICU4X (`packages/hos
 ## How it is tested
 
 - `packages/host-desktop/native/tests/run.sh` runs the runtime's own scripts (timers, decodes, errors, fatal start, bytecode) headless, then the two tests that need a window. `SOLID_DESKTOP_HEADLESS_ONLY=1` skips the window tests, which is what the macOS and Windows CI jobs do.
-- `packages/host-desktop/tests/run.sh` is the full host suite on Linux: Rust tests, the platform adapter, the web-standard globals, the real scene against Chromium, an app through the host (input, text fields, services, idle, closing), a packaged app moved and run from its archive, accessibility over AT-SPI and the session services.
+- `packages/host-desktop/tests/run.sh` is the full host suite on Linux: Rust tests, the platform adapter, the web-standard globals, the real scene against Chromium, an app through the host (input, text fields, services, idle, closing), the scene's window chrome (`tests/chrome`: a borderless window whose bar drags and whose edges resize under a real window manager, the fallbacks, the insets, and an idle run), a packaged app moved and run from its archive, accessibility over AT-SPI and the session services.
 - `packages/platform/tests/cli/desktop-smoke.sh` packs the platform and the host, generates an app, installs the host, builds bytecode, and runs it under `xvfb-run` with the runtime's `--first-frame-exit`: the runtime prints `first frame presented` and ends, so no window is left open. It skips with one line when `xvfb-run` or a built runtime is absent.
 - `packages/platform/tests/cli/projects-smoke.sh` builds the desktop target of the generated app when a runtime is available (build only, no window).
 - `.github/workflows/desktop-runtime.yml` builds Hermes, the runtime and the static-SDL release archives on Linux, macOS arm64 and Windows x64. Linux runs the full host suite on a virtual display; macOS and Windows run the headless subset. The tag-triggered `release` job attaches `solid-desktop-linux-x64.tar.gz`, `solid-desktop-darwin-arm64.tar.gz` and `solid-desktop-win32-x64.tar.gz` to the GitHub release.

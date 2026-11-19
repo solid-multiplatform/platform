@@ -80,10 +80,15 @@ export default {
       /** @type {string} */ (hostDesktopPackage(ctx.root)),
       'cli/index.mjs',
     );
-    const result = ctx.exec(process.execPath, [cli, 'run', out], {
-      cwd: path.join(ctx.root, 'targets/desktop/work'),
-      stdio: 'inherit',
-    });
+    const titleBar = ctx.config.desktop?.titleBar;
+    const result = ctx.exec(
+      process.execPath,
+      [cli, 'run', out, ...(titleBar ? [`--title-bar=${titleBar}`] : [])],
+      {
+        cwd: path.join(ctx.root, 'targets/desktop/work'),
+        stdio: 'inherit',
+      },
+    );
     if (result.status !== 0)
       throw new CliError('The desktop app exited with ' + result.status);
   },
@@ -111,6 +116,9 @@ export default {
         '--out',
         path.join(ctx.root, 'targets/desktop/dist'),
         ...(ctx.exists(assets) ? ['--assets', assets] : []),
+        ...(config.desktop?.titleBar
+          ? [`--title-bar=${config.desktop.titleBar}`]
+          : []),
       ],
       { cwd: work, stdio: 'inherit' },
     );
