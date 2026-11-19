@@ -36,9 +36,28 @@
               "status": "preview",
               "note": "NativeScript canvas host. CI builds the app; no test asserts what it draws."
             },
-            "desktop-linux,desktop-windows,desktop-macos": {
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/scene/run.mjs (desktop-runtime.yml: linux; the shared fixture is rendered in the Rust + Hermes runtime and its pixels compared with Chromium)"
+            },
+            "desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "The Rust + Hermes runtime (`packages/host-desktop`); Linux draws the real scene in the host suite, and `packages/platform/tests/cli/desktop-smoke.sh` proves a generated app's first frame."
+              "note": "The Rust + Hermes runtime (`packages/host-desktop`) builds for both, but no CI job opens a window there."
+            }
+          }
+        },
+        {
+          "id": "runtime-desktop",
+          "feature": "Desktop runtime in Rust embedding Hermes, without Node",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/run.sh (desktop-runtime.yml: linux; the runtime opens a window and the host suite runs the scene, input, text fields, services, accessibility, idle and packaging checks)"
+            },
+            "desktop-windows,desktop-macos": {
+              "status": "preview",
+              "note": "The runtime builds for both, but no CI job opens a window there; Windows and macOS packaging is not implemented."
             }
           }
         },
@@ -92,13 +111,27 @@
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435, Roku OS 16.0.4; HOST RESULT passed=48 failed=0)",
               "note": "The host test starts the app through `startApp(rokuHost())` and finds no browser globals on the device."
             },
-            "android,android-tv,ios,apple-tv": {
-              "status": "preview",
-              "note": "The NativeScript hosts still call a generated `mount`, not `HostDefinition`."
+            "android": {
+              "status": "device",
+              "evidence": "handoff/android-device/starter-phone-firstrun.png (API 36 phone emulator; a generated starter whose entry calls `startApp(nativeHost({ form: 'phone' }), ...)` ran and rendered)",
+              "note": "`nativeHost` supplies `keys` and `text`; accessibility semantics are absent, not stubbed."
             },
-            "desktop-linux,desktop-windows,desktop-macos": {
+            "android-tv": {
+              "status": "device",
+              "evidence": "handoff/android-device/starter-tv-firstrun.png (API 36 TV emulator; a generated starter whose entry calls `startApp(nativeHost({ form: 'tv' }), ...)` ran and rendered)",
+              "note": "`nativeHost` supplies `keys` and `text`; accessibility semantics are absent, not stubbed."
+            },
+            "ios,apple-tv": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple; the generated app starts through `startApp(nativeHost(...))` in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; the generated entry calls `startApp(desktopHost())` and the host suite drives it)"
+            },
+            "desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "The generated entry calls `startApp(desktopHost())` and runs in the Rust + Hermes runtime; `packages/host-desktop/tests/host` drives it."
+              "note": "The runtime builds for both, but no CI job opens a window there."
             }
           }
         },
@@ -126,6 +159,10 @@
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-text-after.txt (TCL 50S435, Roku OS 16.0.4; TEXT RESULT passed=23 failed=0)",
               "note": "Fonts, wrapping, flex text and the device's own metrics were measured on the TV."
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/scene/run.mjs (desktop-runtime.yml: linux; the fixture's glyph pixels and per-cell text map are compared with Chromium's)"
             }
           }
         },
@@ -146,6 +183,10 @@
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435; focus moves, Select activates, Back is consumed, Play maps through `rokuKeyMap`; HOST RESULT passed=48 failed=0)",
               "note": "The host test also checks that a held key is one press and that the keyEvents service raises the key."
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; keys go through SDL's queue and, with xdotool, are real X events; focus moves with Right and Left)"
             }
           }
         },
@@ -167,7 +208,11 @@
               "status": "preview",
               "note": "Touch through `hosts/nativescript/touch.mjs`."
             },
-            "desktop-linux,desktop-windows,desktop-macos": {
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; a real mouse moves, clicks and scrolls, with xdotool when it is installed)"
+            },
+            "desktop-windows,desktop-macos": {
               "status": "preview"
             }
           }
@@ -181,9 +226,13 @@
               "status": "tested",
               "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; a real keyboard walk checks the ARIA mirror at every step in Chromium)"
             },
-            "desktop-linux,desktop-windows,desktop-macos": {
-              "status": "preview",
-              "note": "Linux: the runtime's AT-SPI adapter over AccessKit, checked in `packages/host-desktop/tests/a11y`. Windows and macOS are not implemented."
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/a11y/run.mjs (desktop-runtime.yml: linux; the runtime's AT-SPI adapter over AccessKit is read from a test accessibility bus and its actions are invoked)"
+            },
+            "desktop-windows,desktop-macos": {
+              "status": "unavailable",
+              "note": "No accessibility adapter is implemented for these systems."
             }
           }
         },
@@ -195,7 +244,7 @@
             "web": {
               "status": "tested",
               "evidence": "packages/platform/tests/webgl/conformance-webgl.test.tsx (test.yml: browser; shader cases, then `tests/visual/run.mjs` compares Canvas and WebGL pixels)",
-              "note": "Tested through the renderer. `startApp(webHost(...))` registers the default shaders only in open pull request #19."
+              "note": "Tested through the renderer. `startApp(webHost(...))` registers the default shaders."
             },
             "roku": {
               "status": "device",
@@ -217,8 +266,9 @@
               "evidence": "packages/platform/tests/webgl/conformance-webgl.test.tsx (test.yml: browser; the shared conformance suite runs `animate` and `animateProp` to their targets)"
             },
             "roku": {
-              "status": "preview",
-              "note": "Animation still runs on the JavaScript thread; frame pacing on the TV has not been measured."
+              "status": "device",
+              "evidence": "handoff/roku-device/motion-verify-result.txt (TCL 50S435, Roku OS 16.0.4; x/y/alpha run on the SceneGraph render thread; PASS paused, move land, interrupt land, paused alpha, restored, chain, no timers while animating or after settling, native run ended after 5036 ms)",
+              "note": "x, y and alpha use SceneGraph `Animation` + `FloatFieldInterpolator`; colour, `scale`, delay, loop and unknown easing fall back to the JavaScript clock. Frame pacing during animation has not been measured."
             }
           }
         }
@@ -294,6 +344,10 @@
             "android-tv": {
               "status": "device",
               "evidence": "handoff/android-device/starter-tv-firstrun.png (a freshly generated starter on an API 36 TV emulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/cli/desktop-smoke.sh (init --targets desktop, add desktop <tgz>, build desktop, then the bytecode runs under xvfb and prints \"first frame presented\")"
             }
           }
         }
@@ -331,6 +385,10 @@
             "apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe writes and reads back in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; set, get and remove, and the settings file's contents are checked)"
             }
           }
         },
@@ -394,6 +452,10 @@
             "apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe waits for active and subscribes in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; the window is unmapped and mapped and subscribers see inactive then active)"
             }
           }
         },
@@ -426,6 +488,10 @@
             "apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe reads online() and receives a path update in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/services/run.mjs (desktop-runtime.yml: linux; a NetworkManager stand-in reports online, then offline and online again from its signal)"
             }
           }
         },
@@ -460,6 +526,10 @@
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe receives the URL the app opens in a simulator)",
               "note": "The in-app open arrives. `simctl openurl` delivery was not delivered in the simulator and stays unverified."
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; the launch URL arrives as the app's first link)"
             }
           }
         },
@@ -481,6 +551,10 @@
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (ios); the service probe reads the permission state in a simulator)",
               "note": "The probe reads the permission state; displaying a notification is not verified in the simulator."
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/services/run.mjs (desktop-runtime.yml: linux; three notifications through a stand-in on a test session bus, one replacing another by id)"
             }
           }
         },
@@ -536,7 +610,11 @@
               "status": "device",
               "evidence": "handoff/roku-device/2026-11-18-host-result.txt (TCL 50S435; a public HTTPS page returns 200 and a missing host fails; HOST RESULT passed=48 failed=0)"
             },
-            "desktop-linux,desktop-windows,desktop-macos": {
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; a fetch over the host's request service)"
+            },
+            "desktop-windows,desktop-macos": {
               "status": "preview"
             }
           }
@@ -562,6 +640,10 @@
             "ios": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (ios); the service probe writes and reads back in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; the clipboard round-trips)"
             }
           }
         },
@@ -638,6 +720,10 @@
             "apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe reads platform tv, model and OS version in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; platform desktop, OS linux, app version and the system version)"
             }
           }
         },
@@ -658,6 +744,10 @@
             "ios": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (ios); the service probe reads the battery state in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; the service agrees with the machine's power state, with or without a battery)"
             }
           }
         },
@@ -690,6 +780,10 @@
             "apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe reads deviceMemoryGb in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; deviceMemoryGb from the system and an app threshold)"
             }
           }
         },
@@ -718,6 +812,10 @@
             "apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe sets and clears the idle timer in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; the screen saver is inhibited and allowed again)"
             }
           }
         },
@@ -746,6 +844,10 @@
             "apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe opens the app's own URL scheme in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; an https URL reaches xdg-open, while file and program schemes are refused)"
             }
           }
         },
@@ -829,6 +931,10 @@
             "apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe reads a BCP 47 tag in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; the system language fr-FR reaches the service and i18n)"
             }
           }
         },
@@ -858,6 +964,10 @@
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe reads and subscribes in a simulator)",
               "note": "The service answers. A simulator appearance change was not reported, so live updates stay unverified on tvOS."
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; a theme change reaches subscribers until they stop)"
             }
           }
         },
@@ -890,6 +1000,10 @@
             "apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe checks the key target and the primary modifier in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; a shortcut with the system modifier is raised)"
             }
           }
         },
@@ -1038,6 +1152,10 @@
             "android-tv": {
               "status": "device",
               "evidence": "handoff/android-device/verify-tv-run1.json (API 36 TV emulator; save() to Downloads and saveUrl() over adb reverse; 35 rows, 0 failed)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; text is written where the save dialog said)"
             }
           }
         },
@@ -1054,6 +1172,10 @@
             "android": {
               "status": "preview",
               "note": "Written but not device-verified."
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; text and bytes are picked, and cancel returns nothing)"
             }
           }
         },
@@ -1077,6 +1199,10 @@
             "apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple (apple-tv); the service probe reads, writes, lists, removes and refuses escapes in a simulator)"
+            },
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; read, write, list, stat and remove, and escaped paths are refused)"
             }
           }
         },
@@ -1224,8 +1350,9 @@
               "note": "CI checks that the APK contains the Media3 player; nothing plays in CI."
             },
             "roku": {
-              "status": "tested",
-              "evidence": "packages/platform/tests/roku-device/run-video.mjs (TCL 50S435, Roku OS 16.0.4; opens paused at 3 s, plays, pauses/resumes, Fwd seeks, reaches the end, maps a 404 to an error with the firmware code and message, teardown pending=0; VIDEO RESULT passed=16 failed=0, public HTTPS source)"
+              "status": "device",
+              "evidence": "handoff/roku-video/2026-11-19-video-result.txt (TCL 50S435, Roku OS 16.0.4; VIDEO RESULT passed=16 failed=0 -- opens paused at 3 s, plays, pauses/resumes, Fwd seeks, reaches the end, maps a 404 to prepare-failed with the firmware code and message, teardown pending=0; runner packages/platform/tests/roku-device/run-video.mjs, public HTTPS source)",
+              "note": "The adapter owns a SceneGraph Video node beneath the app surface; the player is never stacked above the UI. DRM was not exercised (no licence server); per-player volume is not available (mute only)."
             }
           }
         }
@@ -1285,7 +1412,7 @@
             },
             "desktop-linux": {
               "status": "preview",
-              "note": "CI runs `plugins run desktop` only, not `build desktop`."
+              "note": "`tests/cli/projects-smoke.sh` builds it only when a runtime is present, and no CI job provides one; `tests/cli/desktop-smoke.sh` builds bytecode and proves a first frame on a machine with a runtime."
             }
           }
         },
@@ -1395,7 +1522,7 @@
           "cells": {
             "desktop-linux,desktop-windows,desktop-macos": {
               "status": "preview",
-              "note": "The `Desktop packages` workflow runs only when started by hand."
+              "note": "The `solid-platform` command is not run in CI; the host's `packageDesktop` is exercised by `packages/host-desktop/tests/package/run.mjs`, and the `Desktop packages` workflow runs only when started by hand."
             }
           }
         },
@@ -1417,6 +1544,17 @@
             "ios,apple-tv": {
               "status": "tested",
               "evidence": "packages/platform/tests/cli/apple-smoke.sh (test.yml: apple; the added adapter plays a clip in a simulator)"
+            }
+          }
+        },
+        {
+          "id": "cli-add-desktop",
+          "feature": "`solid-platform add desktop [<tarball> | <url> | none]`",
+          "default": { "status": "unavailable" },
+          "cells": {
+            "desktop-linux,desktop-windows,desktop-macos": {
+              "status": "preview",
+              "note": "Installs the host package or downloads a prebuilt runtime. Resolution is unit-tested (`tests/cli/unit/add-desktop.test.mjs`); `tests/cli/projects-smoke.sh` installs it only when a built runtime is present, and no CI job provides one."
             }
           }
         }
@@ -1494,26 +1632,13 @@
           "feature": "Desktop archive (`.tar.gz` with runtime)",
           "default": { "status": "unavailable" },
           "cells": {
-            "desktop-linux,desktop-windows,desktop-macos": {
-              "status": "preview",
-              "note": "Copies the Rust runtime and Hermes bytecode into a relocatable directory; `packages/host-desktop/tests/package` unpacks it and runs it. Windows and macOS packaging is not implemented."
-            }
-          }
-        }
-      ]
-    },
-    {
-      "title": "In open pull requests",
-      "note": "Work that is not on main. Nothing in this group is available yet.",
-      "rows": [
-        {
-          "id": "wip-desktop-runtime",
-          "feature": "Desktop runtime in Rust embedding Hermes, without Node",
-          "default": { "status": "unavailable" },
-          "cells": {
-            "desktop-linux,desktop-windows,desktop-macos": {
-              "status": "in-progress",
-              "note": "Renders the scene; input and services are in progress."
+            "desktop-linux": {
+              "status": "tested",
+              "evidence": "packages/host-desktop/tests/package/run.mjs (desktop-runtime.yml: linux; the archive is unpacked, moved, run and checked for its first frame, idle counters and resources)"
+            },
+            "desktop-windows,desktop-macos": {
+              "status": "unavailable",
+              "note": "Windows and macOS packaging is not implemented."
             }
           }
         }
