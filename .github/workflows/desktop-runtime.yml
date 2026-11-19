@@ -308,6 +308,9 @@ jobs:
           # `sdl3-sys` compiles and rustc itself must agree on it, or the
           # link mixes objects for two macOS versions.
           export MACOSX_DEPLOYMENT_TARGET=11.0
+          echo "SDK $(xcrun --show-sdk-version) at $(xcrun --show-sdk-path)"
+          cc --version | head -1
+          cc --print-libgcc-file-name
           # SDL is compiled into the executable: the runner has none.
           cargo build --release --locked --features static-sdl
           ./target/release/solid-desktop --diagnostics

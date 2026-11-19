@@ -45,6 +45,13 @@ fn main() {
     if target_env != "msvc" {
         glue.define("HERMESVM_INDIRECT_THREADING", None);
     }
+    // Hermes' own CMake does `add_definitions(-D_WINDOWS)` for a Windows
+    // build. Its headers test `_WINDOWS` rather than `_WIN32` (MSVC does not
+    // predefine the former), and without it `hermes/Support/OSCompat.h`
+    // includes `<unistd.h>`, which Windows does not have.
+    if target_os == "windows" {
+        glue.define("_WINDOWS", None);
+    }
     for dir in ["include", "API", "public", "external", "external/llvh/include", "external/llvh/gen/include"] {
         glue.include(src.join(dir));
     }
@@ -84,6 +91,19 @@ fn main() {
             }
             for framework in ["CoreFoundation", "Foundation"] {
                 println!("cargo:rustc-link-lib=framework={framework}");
+            }
+            // Rust links with `-nodefaultlibs`, so clang does not add
+            // compiler-rt. SDL's Cocoa code uses `@available`, whose runtime
+            // helper `___isPlatformVersionAtLeast` lives in clang's builtins
+            // archive. Ask that same compiler where its archive is and add
+            // it last, after the objects that refer to the symbol.
+            let compiler = env::var("CC").unwrap_or_else(|_| "cc".to_owned());
+            if let Ok(output) = std::process::Command::new(compiler).arg("--print-libgcc-file-name").output() {
+                let archive = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+                if let Some(directory) = std::path::Path::new(&archive).parent() {
+                    println!("cargo:rustc-link-arg=-L{}", directory.display());
+                    println!("cargo:rustc-link-arg=-lclang_rt.osx");
+                }
             }
         }
         "windows" => {
