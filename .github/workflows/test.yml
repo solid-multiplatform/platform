@@ -85,10 +85,8 @@ jobs:
       # llvmpipe/swrast: headless Firefox has no GPU and needs a software
       # rasteriser for the WebGL suite.
       - run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dri libegl-mesa0
-      # Headless Firefox on Linux refuses WebGL; a headed Firefox on Xvfb
-      # draws on Mesa/llvmpipe. Chromium and WebKit ignore the variable.
       - name: WebGL and Canvas in Chromium, Firefox and WebKit
-        run: xvfb-run -a env SOLIDTV_FIREFOX_HEADED=1 pnpm test:webgl
+        run: pnpm test:webgl
       - name: Compare actual Canvas and WebGL pixels
         run: node tests/visual/run.mjs "$RUNNER_TEMP/visual"
       - uses: actions/upload-artifact@v4
@@ -120,7 +118,7 @@ jobs:
       # Headless Firefox has no GPU and needs a software rasteriser.
       - if: matrix.engine == 'firefox'
         run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dri libegl-mesa0
-      - run: xvfb-run -a env SOLIDTV_FIREFOX_HEADED=1 pnpm --dir apps/showcase run test:${{ matrix.engine }}
+      - run: pnpm --dir apps/showcase run test:${{ matrix.engine }}
   projects:
     runs-on: ubuntu-24.04
     defaults:

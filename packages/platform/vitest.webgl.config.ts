@@ -9,43 +9,21 @@
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import solid from 'vite-plugin-solid';
+import { firefoxLaunch } from './tests/webgl/firefox-launch.mjs';
 
 // Every engine runs the same suite. Chromium's headless build has no GPU, so
 // it alone is launched on SwiftShader; Firefox and WebKit provide software
-// WebGL themselves and reject Chromium's switches.
+// WebGL themselves and reject Chromium's switches. Firefox's launch is shared
+// with the showcase e2e (tests/webgl/firefox-launch.mjs), so the two cannot
+// drift apart.
 function launch(name: 'chromium' | 'firefox' | 'webkit') {
   if (name === 'chromium')
     return {
       args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
     };
-  if (name === 'firefox')
-    // A GitHub runner has no GPU. Firefox normally refuses WebGL there, so
-    // allow it explicitly and keep it out of process; Mesa/llvmpipe draws.
-    return {
-      firefoxUserPrefs: {
-        'webgl.disabled': false,
-        'webgl.force-enabled': true,
-        'webgl.out-of-process': false,
-        'gfx.webrender.software': true,
-      },
-      // X11 on the Xvfb display: a Wayland session on the host fails to
-      // start Firefox under xvfb-run.
-      env: {
-        ...process.env,
-        LIBGL_ALWAYS_SOFTWARE: '1',
-        MOZ_ENABLE_WAYLAND: '0',
-        GDK_BACKEND: 'x11',
-      },
-    };
+  if (name === 'firefox') return firefoxLaunch();
   return {};
 }
-
-// Headless Firefox on Linux has no WebGL even with the software prefs. Under
-// an X server (xvfb-run) a headed Firefox draws on Mesa/llvmpipe, so CI sets
-// SOLIDTV_FIREFOX_HEADED and runs this config inside xvfb-run. Locally the
-// variable is unset and every engine stays headless.
-const headedFirefox = (name: 'chromium' | 'firefox' | 'webkit') =>
-  name === 'firefox' && process.env.SOLIDTV_FIREFOX_HEADED === '1';
 
 function engine(name: 'chromium' | 'firefox' | 'webkit') {
   return {
@@ -54,7 +32,7 @@ function engine(name: 'chromium' | 'firefox' | 'webkit') {
       name,
       browser: {
         enabled: true,
-        headless: !headedFirefox(name),
+        headless: true,
         // A failure's screenshot of the canvas says nothing the assertion
         // does not, and would litter the tree with __screenshots__.
         screenshotFailures: false,

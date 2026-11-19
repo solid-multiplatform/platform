@@ -21,6 +21,7 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { chromium, firefox, webkit } from 'playwright';
+import { firefoxLaunch } from '../../../packages/platform/tests/webgl/firefox-launch.mjs';
 
 const root = path.resolve(process.argv[2] ?? 'dist/web');
 const target = process.argv[3] ?? 'web';
@@ -697,32 +698,15 @@ async function probe(browser) {
 
 let browser;
 try {
-  // Headless Chromium has no GPU: run WebGL on SwiftShader. Firefox and
-  // WebKit draw in software themselves and reject Chromium's switches. A CI
-  // runner has no GPU either; headless Firefox on Linux still refuses WebGL,
-  // so there CI runs it headed under xvfb-run (SOLIDTV_FIREFOX_HEADED=1) on
-  // Mesa/llvmpipe, with the software prefs as well.
-  const headedFirefox =
-    engine === 'firefox' && process.env.SOLIDTV_FIREFOX_HEADED === '1';
+  // Chromium's headless build has no GPU: run WebGL on SwiftShader. Firefox's
+  // software launch is shared with vitest.webgl.config.ts; headed Firefox
+  // under Xvfb has no GL driver (FEATURE_FAILURE_WEBGL_EXHAUSTED_DRIVERS),
+  // headless does. WebKit draws in software itself.
   browser = await engines[engine].launch(
     engine === 'chromium'
       ? { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] }
       : engine === 'firefox'
-        ? {
-            headless: !headedFirefox,
-            firefoxUserPrefs: {
-              'webgl.disabled': false,
-              'webgl.force-enabled': true,
-              'webgl.out-of-process': false,
-              'gfx.webrender.software': true,
-            },
-            env: {
-              ...process.env,
-              LIBGL_ALWAYS_SOFTWARE: '1',
-              MOZ_ENABLE_WAYLAND: '0',
-              GDK_BACKEND: 'x11',
-            },
-          }
+        ? firefoxLaunch()
         : {},
   );
   // The mouse path is laid out for the web host, where scene units are CSS
