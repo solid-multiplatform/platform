@@ -5,7 +5,11 @@ SPDX-License-Identifier: MIT
 -->
 
 
-<component name="BaseAppScene" extends="Scene" backExitsScene="true">
+<component name="BaseAppScene" extends="Scene" backExitsScene="false">
+    <interface>
+        <!-- Set when Back was pressed and the app did not handle it. -->
+        <field id="exitApp" type="boolean" value="false" />
+    </interface>
     <children>
         <SolidApp id="solidApp" />
     </children>

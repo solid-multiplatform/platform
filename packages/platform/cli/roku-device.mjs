@@ -111,6 +111,22 @@ export async function keypress(device, keys, gapMs = 150) {
   }
 }
 
+/** Holds one remote key down for `ms`, then lets it go. */
+export async function keyhold(device, key, ms) {
+  for (const [route, wait] of [
+    ['keydown', ms],
+    ['keyup', 0],
+  ]) {
+    const response = await ecp(
+      device,
+      `${route}/${encodeURIComponent(key)}`,
+      'POST',
+    );
+    if (!response.ok) throw new Error(`Key ${key} failed: ${response.status}`);
+    await new Promise((resolve) => setTimeout(resolve, wait));
+  }
+}
+
 /**
  * Installs a ZIP in the developer slot, replacing what is there, and the
  * device then launches it. Throws with the device's message on failure.

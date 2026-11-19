@@ -26,6 +26,9 @@ export function rokuEditorHost(
             initial: value,
             numeric: options.purpose === 'one-time-code',
             secret: options.purpose?.endsWith('password') ?? false,
+            // The keyboard layout and what voice entry listens for. A
+            // password gets its own domain from `secret`.
+            domain: options.purpose === 'email' ? 'email' : undefined,
             maximumLength: 1024,
             confirm: 'Done',
             change(next) {

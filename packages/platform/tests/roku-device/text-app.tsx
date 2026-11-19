@@ -15,8 +15,10 @@ import { type JSXElement } from 'solid-js';
 import {
   createRenderer,
   loadFonts,
+  setRendererFactory,
   type ElementNode,
 } from '@solid-multiplatform/platform';
+import { rokuHost } from '@solid-multiplatform/platform/roku';
 import robotoRegular from './fonts/Roboto-Regular.ttf';
 import robotoBold from './fonts/Roboto-Bold.ttf';
 import ralewayExtraBold from './fonts/Raleway-ExtraBold.ttf';
@@ -166,7 +168,17 @@ async function run(root: object, loads: Promise<void>[]) {
   log('DONE');
 }
 
-export function mount(host: { root: object }): () => void {
+// The test renders each text on its own, so it takes the host's surface and
+// renderer and calls createRenderer itself.
+rokuHost().launch((context) => {
+  setRendererFactory(
+    (settings) => context.createRenderer(settings),
+    context.loadFonts,
+  );
+  return mount({ root: context.surface });
+});
+
+function mount(host: { root: object }): () => void {
   log('START');
   const started = Date.now();
   // One call per font, to see how each load ends and when.
