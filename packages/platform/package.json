@@ -401,6 +401,20 @@
         "default": "./dist/src/sdk/certification.js"
       }
     },
+    "./app": {
+      "@solidtv/source": "./src/app/index.ts",
+      "import": {
+        "types": "./dist/src/app/index.d.ts",
+        "default": "./dist/src/app/index.js"
+      }
+    },
+    "./app/entry": {
+      "@solidtv/source": "./src/app/entry.ts",
+      "import": {
+        "types": "./dist/src/app/entry.d.ts",
+        "default": "./dist/src/app/entry.js"
+      }
+    },
     "./host": {
       "@solidtv/source": "./src/host.ts",
       "import": {
@@ -436,7 +450,8 @@
     "prepack": "npm run build && node cli/renderer-archive.mjs",
     "test:browser": "vitest --config=vitest.browser.config.ts",
     "test:webgl": "vitest run --config=vitest.webgl.config.ts",
-    "typecheck:native": "tsc -p hosts/nativescript/tsconfig.android.json"
+    "typecheck:native": "tsc -p hosts/nativescript/tsconfig.android.json",
+    "typecheck:apple": "tsc -p hosts/nativescript/tsconfig.apple.json"
   },
   "keywords": [
     "lightning",
@@ -467,7 +482,8 @@
     "vite-plugin-solid": "^2.11.12",
     "vitest": "^4.1.6",
     "@solid-multiplatform/renderer": "workspace:*",
-    "solid-js": "1.9.17"
+    "solid-js": "1.9.17",
+    "@nativescript/types-ios": "9.1.1"
   },
   "peerDependencies": {
     "@solidjs/router": "^0.16.1",

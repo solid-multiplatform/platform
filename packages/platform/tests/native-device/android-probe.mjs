@@ -6,6 +6,13 @@
 //   node tests/native-device/android-probe.mjs install <directory> <phone|tv> <emulator-serial>
 //   node tests/native-device/android-probe.mjs step <directory> <emulator-serial> <step> [key=value ...]
 //   node tests/native-device/android-probe.mjs remove <directory> <emulator-serial>
+//   node tests/native-device/android-probe.mjs verify --serial <emulator-serial> --form <phone|tv> [--dir <directory>] [--out <file>] [--shared]
+//
+// `verify` does all of it: builds or reuses the probe (in .tmp/probe-<form>
+// of the checkout unless `--dir` says otherwise), installs it, runs the
+// checks of ./android-verify.mjs, restores the device settings it changed,
+// removes the probe and writes a table and a JSON result. `--shared` leaves
+// device-wide settings alone, for an emulator someone else is using.
 //
 // `build` creates the app with the CLI, as a user would, then adds the probe
 // screen and the manifest entries the services need (the step the CLI does
@@ -18,8 +25,10 @@ import {
   cpSync,
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
@@ -67,6 +76,8 @@ export function device(serial) {
       encoding: 'utf8',
       maxBuffer: 64 * 1024 * 1024,
       stdio: ['ignore', 'pipe', 'pipe'],
+      // No command here takes this long: a stalled emulator fails the step.
+      timeout: 180000,
     });
   const shell = (command) => adb('shell', command);
   /** The command's output, or '' when it fails. */
@@ -190,17 +201,23 @@ function patchTarget(directory, form) {
   return requirements;
 }
 
-/** Replaces the installed package's hosts with this checkout's. */
+/** What `--sync` copies from this checkout: the hosts and the built SDK. */
+const SYNCED = ['hosts', 'dist'];
+
+/** Replaces the installed package's hosts and build with this checkout's. */
 function syncHosts(directory, form) {
-  const installed = path.join(
-    directory,
-    'targets',
-    TARGETS[form],
-    'node_modules/@solid-multiplatform/platform/hosts',
-  );
-  // Fresh files, never writes through a package-store hard link.
-  rmSync(installed, { recursive: true, force: true });
-  cpSync(path.join(framework, 'hosts'), installed, { recursive: true });
+  for (const name of SYNCED) {
+    const installed = path.join(
+      directory,
+      'targets',
+      TARGETS[form],
+      'node_modules/@solid-multiplatform/platform',
+      name,
+    );
+    // Fresh files, never writes through a package-store hard link.
+    rmSync(installed, { recursive: true, force: true });
+    cpSync(path.join(framework, name), installed, { recursive: true });
+  }
 }
 
 function build(directory, forms, sync) {
@@ -248,13 +265,82 @@ export const apkOf = (directory, form) =>
     'platforms/android/app/build/outputs/apk/debug/app-debug.apk',
   );
 
+/** The newest modification time under a directory. */
+function newest(directory) {
+  let time = 0;
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const file = path.join(directory, entry.name);
+    time = Math.max(
+      time,
+      entry.isDirectory() ? newest(file) : statSync(file).mtimeMs,
+    );
+  }
+  return time;
+}
+
+/**
+ * Builds or reuses the probe, installs it, runs every check, puts the device
+ * back and removes the probe. Exits non-zero when a check fails.
+ */
+async function verify(args) {
+  const option = (name) => {
+    const at = args.indexOf('--' + name);
+    return at < 0 ? undefined : args[at + 1];
+  };
+  const form = option('form');
+  const serial = option('serial');
+  if (!(form in TARGETS) || !serial)
+    throw new Error(
+      'verify --serial emulator-<port> --form phone|tv [--dir <directory>] [--out <file>] [--shared]',
+    );
+  const emulator = device(serial);
+  const directory = path.resolve(
+    option('dir') ?? path.join(framework, '../../.tmp', 'probe-' + form),
+  );
+  const out = path.resolve(
+    option('out') ?? path.join(directory, `verify-${form}.json`),
+  );
+  const apk = apkOf(directory, form);
+  // Rebuilt when this checkout's hosts, build or probe are newer than the APK.
+  if (!existsSync(apk)) build(directory, [form], false);
+  else if (
+    Math.max(
+      newest(sources),
+      ...SYNCED.map((name) => newest(path.join(framework, name))),
+    ) > statSync(apk).mtimeMs
+  )
+    build(directory, [form], true);
+  const id = packageOf(directory);
+  emulator.adb('install', '-r', apk);
+  const { runChecks, table } = await import('./android-verify.mjs');
+  let result;
+  try {
+    result = await runChecks({
+      emulator,
+      probe: probe(emulator, id),
+      form,
+      shared: args.includes('--shared'),
+    });
+  } finally {
+    emulator.adb('uninstall', id);
+  }
+  result.removed = true;
+  mkdirSync(path.dirname(out), { recursive: true });
+  writeFileSync(out, JSON.stringify(result, null, 2) + '\n');
+  writeFileSync(out.replace(/\.json$/, '') + '.txt', table(result) + '\n');
+  console.log(table(result));
+  console.log('Result: ' + out);
+  if (result.failed) process.exitCode = 1;
+}
+
 async function main() {
   const [command, directoryArgument, ...rest] = process.argv.slice(2);
+  if (command === 'verify') return verify(process.argv.slice(3));
   if (!command || !directoryArgument)
     throw new Error(
       readFileSync(fileURLToPath(import.meta.url), 'utf8')
         .split('\n')
-        .slice(1, 8)
+        .slice(1, 9)
         .join('\n'),
     );
   const directory = path.resolve(directoryArgument);

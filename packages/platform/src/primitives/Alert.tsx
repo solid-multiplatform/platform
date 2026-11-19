@@ -1,7 +1,19 @@
 import type { JSX } from 'solid-js';
 import type { ElementNode } from '../core/elementNode.js';
 import { viewport } from '../sdk/viewport.js';
+import type { NodeStyles } from '../core/intrinsicTypes.js';
 import { Modal } from './Modal.jsx';
+import { Row } from './Row.jsx';
+
+// The focused action is the lighter one.
+const CANCEL_STYLE: NodeStyles = {
+  color: 0x2f3d4eff,
+  $focus: { color: 0x5b7088ff },
+};
+const CONFIRM_STYLE: NodeStyles = {
+  color: 0x1d4fbfff,
+  $focus: { color: 0x4f8dffff },
+};
 
 export interface AlertProps {
   visible: boolean | (() => boolean);
@@ -23,6 +35,7 @@ export interface AlertProps {
  */
 export function Alert(props: AlertProps): JSX.Element {
   const width = () => Math.min(640, viewport().width - 64);
+  let actions: ElementNode | undefined;
   const confirm = () => {
     props.onConfirm?.();
     props.onRequestClose?.();
@@ -37,7 +50,7 @@ export function Alert(props: AlertProps): JSX.Element {
       onRequestClose={cancel}
       label={props.title}
       role="alertdialog"
-      initialFocus={props.initialFocus}
+      initialFocus={props.initialFocus ?? (() => actions)}
     >
       <view
         x={(viewport().width - width()) / 2}
@@ -59,32 +72,47 @@ export function Alert(props: AlertProps): JSX.Element {
           </text>
         ) : null}
         {props.children}
-        <view
+        {/* The two actions are a Row: Left and Right move between them and
+            Enter activates. Focus opens on the confirm action. */}
+        <Row
+          ref={(node) => {
+            actions = node;
+          }}
           x={width() - 300}
           y={280}
-          width={130}
+          width={272}
           height={52}
-          color={0x2f3d4eff}
-          onEnter={cancel}
-          onMouseClick={cancel}
+          gap={12}
+          selected={1}
+          scroll="none"
         >
-          <text x={16} y={14} fontSize={20} color={0xf2f6faff}>
-            {props.cancelLabel ?? 'Cancel'}
-          </text>
-        </view>
-        <view
-          x={width() - 158}
-          y={280}
-          width={130}
-          height={52}
-          color={0x2563ebff}
-          onEnter={confirm}
-          onMouseClick={confirm}
-        >
-          <text x={16} y={14} fontSize={20} color={0xffffffff}>
-            {props.confirmLabel ?? 'OK'}
-          </text>
-        </view>
+          <view
+            width={130}
+            height={52}
+            style={CANCEL_STYLE}
+            role="button"
+            ariaLabel={props.cancelLabel ?? 'Cancel'}
+            onEnter={cancel}
+            onMouseClick={cancel}
+          >
+            <text x={16} y={14} fontSize={20} color={0xf2f6faff}>
+              {props.cancelLabel ?? 'Cancel'}
+            </text>
+          </view>
+          <view
+            width={130}
+            height={52}
+            style={CONFIRM_STYLE}
+            role="button"
+            ariaLabel={props.confirmLabel ?? 'OK'}
+            onEnter={confirm}
+            onMouseClick={confirm}
+          >
+            <text x={16} y={14} fontSize={20} color={0xffffffff}>
+              {props.confirmLabel ?? 'OK'}
+            </text>
+          </view>
+        </Row>
       </view>
     </Modal>
   );

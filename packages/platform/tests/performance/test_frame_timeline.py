@@ -1,6 +1,6 @@
 import unittest
 
-from frame_timeline import split_layers
+from frame_timeline import is_flagged, present_unknown, split_layers
 
 
 class ActivityBufferTests(unittest.TestCase):
@@ -46,6 +46,24 @@ class ActivityBufferTests(unittest.TestCase):
                 "displayFramesWithFlaggedAppLayers": 1,
             },
         )
+
+    def test_a_frame_without_a_display_present_time_is_not_flagged_but_is_unknown(
+        self,
+    ):
+        # What a device whose display HAL returns no usable present fence
+        # records: the app frame looks early and unflagged.
+        row = {
+            "present_type": "Early Present",
+            "jank_type": "SurfaceFlinger Scheduling",
+            "display_present_type": "Unspecified Present",
+        }
+        self.assertFalse(is_flagged(row))
+        self.assertTrue(present_unknown(row))
+        self.assertFalse(
+            present_unknown({**row, "display_present_type": "On-time Present"})
+        )
+        # Rows from before the column existed are not called unknown.
+        self.assertFalse(present_unknown({"present_type": "On-time Present"}))
 
     def test_missing_buffer_metadata_cannot_verify_window_frames(self):
         with self.assertRaisesRegex(ValueError, "buffer classification"):

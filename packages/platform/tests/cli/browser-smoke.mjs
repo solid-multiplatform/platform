@@ -37,9 +37,52 @@ try {
     args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
   });
   const page = await browser.newPage();
-  page.on('pageerror', (error) => console.error(error));
+  // The starter must run clean: an uncaught error or a console error fails.
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(String(error)));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  const press = async (key) => {
+    await page.keyboard.press(key);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  };
+  const result = () => page.locator('html').getAttribute('data-plugin-result');
   await page.goto('http://127.0.0.1:' + server.address().port);
   await page.waitForSelector('canvas');
+  // The starter's layout: a title, a counter button, then one button per
+  // plugin. The plugin's button is the second, at this point of the scene.
+  const pluginButton = { x: 80, y: 200 };
+  if (!process.argv.includes('--tv')) {
+    // The web host mirrors the scene for screen readers: each Button is a
+    // button named by its label, with no accessibility code in the app.
+    await page
+      .getByRole('button', { name: 'greeting', exact: true })
+      .waitFor({ state: 'attached', timeout: 4000 });
+    // Keyboard first, before a pointer has touched anything. Focus starts on
+    // the counter (it is assigned after the renderer's first update): Enter
+    // presses it, and its label follows the count.
+    for (let attempt = 0; attempt < 30; attempt++) {
+      await press('Enter');
+      if (await page.getByRole('button', { name: /^Pressed [1-9]/ }).count())
+        break;
+    }
+    await page
+      .getByRole('button', { name: /^Pressed [1-9]/ })
+      .waitFor({ state: 'attached', timeout: 3000 });
+    assert.equal(await result(), null);
+    // Down moves focus to the plugin's button; Enter activates it.
+    await press('ArrowDown');
+    await press('Enter');
+    await page.waitForFunction(
+      () => document.documentElement.dataset.pluginResult === 'greeting',
+      undefined,
+      { timeout: 3000 },
+    );
+    await page.evaluate(
+      () => delete document.documentElement.dataset.pluginResult,
+    );
+  }
   if (process.argv.includes('--tv')) {
     const cdp = await page.context().newCDPSession(page);
     for (const [width, height, dpr] of [
@@ -79,13 +122,13 @@ try {
         () => delete document.documentElement.dataset.pluginResult,
       );
       if (top) {
-        await page.mouse.click(160 * scale + left, top / 2);
-        assert.equal(
-          await page.locator('html').getAttribute('data-plugin-result'),
-          null,
-        );
+        await page.mouse.click(pluginButton.x * scale + left, top / 2);
+        assert.equal(await result(), null);
       }
-      await page.mouse.click(160 * scale + left, 270 * scale + top);
+      await page.mouse.click(
+        pluginButton.x * scale + left,
+        pluginButton.y * scale + top,
+      );
       await page.waitForFunction(
         () => document.documentElement.dataset.pluginResult === 'greeting',
         undefined,
@@ -94,13 +137,8 @@ try {
     }
   }
   if (!process.argv.includes('--tv')) {
-    // The web host mirrors the scene for screen readers: the starter's row is
-    // a button named by its text, with no accessibility code in the app.
-    await page
-      .getByRole('button', { name: 'greeting', exact: true })
-      .waitFor({ state: 'attached', timeout: 4000 });
-    // A real pointer click on the row, which the app did not register.
-    await page.mouse.click(100, 120);
+    // A real pointer click on the button, which the app did not register.
+    await page.mouse.click(pluginButton.x, pluginButton.y);
     await page.waitForFunction(
       () => document.documentElement.dataset.pluginResult === 'greeting',
       undefined,
@@ -112,29 +150,25 @@ try {
     );
     await page.mouse.click(700, 500);
     await new Promise((resolve) => setTimeout(resolve, 200));
-    assert.equal(
-      await page.locator('html').getAttribute('data-plugin-result'),
-      null,
-    );
+    assert.equal(await result(), null);
   }
   await page.evaluate(
     () => delete document.documentElement.dataset.pluginResult,
   );
-  // Focus is assigned after the renderer's first update.
+  // The remote, or the keyboard again after the pointer: Down reaches the
+  // plugin's button from wherever focus is, and Enter activates it. Focus is
+  // assigned after the renderer's first update.
   for (let attempt = 0; attempt < 30; attempt++) {
-    await page.keyboard.press('Enter');
-    if (
-      (await page.locator('html').getAttribute('data-plugin-result')) ===
-      'greeting'
-    )
-      break;
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await press('ArrowDown');
+    await press('Enter');
+    if ((await result()) === 'greeting') break;
   }
   await page.waitForFunction(
     () => document.documentElement.dataset.pluginResult === 'greeting',
     undefined,
     { timeout: 3000 },
   );
+  assert.deepEqual(errors, [], 'the page reported errors');
   console.log(
     'Chromium invoked the generated web plugin through the shared UI',
   );

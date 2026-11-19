@@ -4,6 +4,7 @@ import {
   CanvasTextRenderer,
   type RendererMainSettings,
 } from '@solid-multiplatform/renderer/canvas';
+import * as shaders from '@solid-multiplatform/renderer/canvas/shaders';
 import { setRendererFactory } from '../core/lightningInit.js';
 import { Config, defaultFontSettings } from '../core/config.js';
 import type { FontLoadOptions } from '../core/intrinsicTypes.js';
@@ -78,8 +79,29 @@ export function canvasHost(
   let scene: RendererMain;
   return createWebHost(
     options,
-    (settings, surface) =>
-      (scene = createCanvasRenderer(settings, canvas, surface)),
+    (settings, surface) => {
+      scene = createCanvasRenderer(settings, canvas, surface);
+      registerCanvasShaders(scene);
+      return scene;
+    },
     (fonts) => loadCanvasFonts(scene, fonts),
   );
+}
+
+// Rounded corners, borders, shadows and gradients are shader types of the
+// Canvas engine too, under the names `convertToShader` and the gradient
+// props ask for: an app started on this host draws them without asking.
+function registerCanvasShaders(scene: RendererMain) {
+  const manager = scene.stage.shManager;
+  manager.registerShaderType('rounded', shaders.Rounded);
+  manager.registerShaderType('shadow', shaders.Shadow);
+  manager.registerShaderType('roundedWithBorder', shaders.RoundedWithBorder);
+  manager.registerShaderType('roundedWithShadow', shaders.RoundedWithShadow);
+  manager.registerShaderType(
+    'roundedWithBorderWithShadow',
+    shaders.RoundedWithBorderAndShadow,
+  );
+  manager.registerShaderType('holePunch', shaders.HolePunch);
+  manager.registerShaderType('radialGradient', shaders.RadialGradient);
+  manager.registerShaderType('linearGradient', shaders.LinearGradient);
 }

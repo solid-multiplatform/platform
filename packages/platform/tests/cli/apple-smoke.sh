@@ -8,6 +8,7 @@ case "$target" in
   *) exit 2 ;;
 esac
 phase="${2:-all}"
+probe="$(pwd)/tests/native-device/apple-probe"
 if [[ "$phase" == all ]]; then scratch=$(mktemp -d)
 else scratch="${RUNNER_TEMP:?}/solid-swift-$target"; mkdir -p "$scratch"; fi
 if [[ "$phase" != launch ]]; then
@@ -18,7 +19,19 @@ corepack pnpm install
 corepack pnpm platform plugin new greeting
 archive=$(cd "$framework/../video" && npm pack --silent --pack-destination "$scratch")
 corepack pnpm platform add video "$scratch/$archive"
-cp "$framework/tests/cli/apple-media-fixture.ts" src/app.tsx
+# One build, two launches: the Swift and playback check, then the services probe.
+cp "$framework/tests/cli/apple-media-fixture.ts" src/media-fixture.ts
+cp "$probe/app.ts" src/app.tsx
+cp "$probe/services-probe.ts" src/services-probe.ts
+# The URL scheme the probe's deep link arrives on.
+for plist in "targets/$target"/App_Resources/*/Info.plist; do
+  /usr/libexec/PlistBuddy \
+    -c 'Add :CFBundleURLTypes array' \
+    -c 'Add :CFBundleURLTypes:0 dict' \
+    -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes array' \
+    -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string solidprobe' \
+    -c 'Add :NSLocationWhenInUseUsageDescription string Services probe' "$plist"
+done
 cp "$framework/tests/cli/media/clip.mp4" "targets/$target/clip.mp4"
 node --input-type=module - "$target" <<'JS'
 import fs from 'node:fs';
@@ -54,7 +67,37 @@ for attempt in {1..90}; do
     result=$(cat "$container/Documents/plugin-result.txt")
     echo "Swift bridge returned: $result"
     test "$result" = "greeting Swift"
-    exit
+    # Second launch of the same build: every device service, through the registry.
+    xcrun simctl terminate "$udid" "$bundle" || true
+    report="$container/Documents/services-probe.json"
+    rm -f "$report"
+    if [[ "$target" == ios ]]; then
+      # The location prompt cannot be answered here: grant it, and choose the place.
+      xcrun simctl privacy "$udid" grant location "$bundle"
+      xcrun simctl location "$udid" set 48.8584,2.2945
+    fi
+    SIMCTL_CHILD_SOLID_SERVICES_PROBE=1 xcrun simctl launch "$udid" "$bundle"
+    linked=
+    themed=
+    for tick in {1..180}; do
+      if [[ -z "$themed" ]] && grep -q '"awaitingAppearance":true' "$report" 2>/dev/null; then
+        themed=1
+        if [[ "$(xcrun simctl ui "$udid" appearance 2>/dev/null)" == dark ]]; then next=light; else next=dark; fi
+        xcrun simctl ui "$udid" appearance "$next" || true
+      fi
+      if [[ -z "$linked" ]] && grep -q '"awaitingLink":true' "$report" 2>/dev/null; then
+        linked=1
+        xcrun simctl openurl "$udid" 'solidprobe://services/probe?from=simctl' || true
+      fi
+      if grep -q '"done":true' "$report" 2>/dev/null; then
+        node "$probe/check.mjs" "$target" "$report"
+        exit
+      fi
+      sleep 1
+    done
+    echo "Services probe did not finish. Results so far:"
+    cat "$report" || true
+    break
   fi
   sleep 1
 done

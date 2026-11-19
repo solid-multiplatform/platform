@@ -53,6 +53,8 @@ import {
   type ServiceName,
 } from '@solid-multiplatform/platform/services';
 import {
+  ANDROID_PREVIEW_SERVICES,
+  ANDROID_TV_PREVIEW_SERVICES,
   androidPermissions,
   androidServices,
   detectAndroidFeatures,
@@ -196,6 +198,11 @@ export function mount(
       form,
       hostServices,
       services: installedServices(),
+      // Everything else is offered by default, and `verify` must pass it.
+      preview: [
+        ...ANDROID_PREVIEW_SERVICES,
+        ...(form === 'tv' ? ANDROID_TV_PREVIEW_SERVICES : []),
+      ],
       features,
       detectMs,
       keyboardEvent: typeof (globalThis as any).KeyboardEvent,
@@ -386,6 +393,23 @@ export function mount(
         refused,
       };
     },
+    'fs-read': (args) => files.readFileText(args.path!),
+    // Not a service: what the runtime's own `fetch` does, for the `request`
+    // provider Android does not have yet.
+    fetch: async (args) => {
+      const started = Date.now();
+      const response = await Promise.race([
+        globalThis.fetch(args.url!),
+        new Promise<never>((_resolve, reject) =>
+          setTimeout(() => reject(new Error('no answer in 8 s')), 8000),
+        ),
+      ]);
+      return {
+        status: response.status,
+        text: (await response.text()).slice(0, 80),
+        ms: Date.now() - started,
+      };
+    },
     pick: async (args) => {
       const picked = await files.pickFiles({
         accept: args.accept,
@@ -487,8 +511,9 @@ export function mount(
       const resolver = app.context.getContentResolver();
       const Contract = android.provider.ContactsContract;
       const Operation = android.content.ContentProviderOperation;
-      const total = Number(args.count ?? 300);
-      for (let from = 0; from < total; from += 50) {
+      const start = Number(args.from ?? 0);
+      const total = start + Number(args.count ?? 300);
+      for (let from = start; from < total; from += 50) {
         const batch = new java.util.ArrayList();
         for (let i = from; i < Math.min(total, from + 50); i++) {
           const raw = batch.size();
