@@ -12,31 +12,31 @@ A cell says `tested` only when an automated test in this repository runs that fe
 
 ## Counts
 
-1027 cells: 79 features on 13 targets.
+1040 cells: 80 features on 13 targets.
 
 | Status      | Cells |
 | ----------- | ----- |
-| tested      | 146   |
+| tested      | 147   |
 | device      | 74    |
-| preview     | 377   |
+| preview     | 388   |
 | in progress | 0     |
-| no          | 430   |
+| no          | 431   |
 
 | Target            | tested | device | preview | in progress | no  |
 | ----------------- | ------ | ------ | ------- | ----------- | --- |
-| `web`             | 32     | 0      | 30      | 0           | 17  |
-| `tizen`           | 5      | 0      | 53      | 0           | 21  |
-| `webos`           | 6      | 0      | 52      | 0           | 21  |
-| `vizio`           | 5      | 0      | 52      | 0           | 22  |
-| `ps4`             | 6      | 0      | 18      | 0           | 55  |
-| `roku`            | 5      | 19     | 9       | 0           | 46  |
-| `android`         | 0      | 33     | 26      | 0           | 20  |
-| `android-tv`      | 5      | 22     | 18      | 0           | 34  |
-| `ios`             | 29     | 0      | 20      | 0           | 30  |
-| `apple-tv`        | 21     | 0      | 16      | 0           | 42  |
-| `desktop-linux`   | 32     | 0      | 19      | 0           | 28  |
-| `desktop-windows` | 0      | 0      | 32      | 0           | 47  |
-| `desktop-macos`   | 0      | 0      | 32      | 0           | 47  |
+| `web`             | 33     | 0      | 30      | 0           | 17  |
+| `tizen`           | 5      | 0      | 54      | 0           | 21  |
+| `webos`           | 6      | 0      | 53      | 0           | 21  |
+| `vizio`           | 5      | 0      | 53      | 0           | 22  |
+| `ps4`             | 6      | 0      | 19      | 0           | 55  |
+| `roku`            | 5      | 19     | 9       | 0           | 47  |
+| `android`         | 0      | 33     | 27      | 0           | 20  |
+| `android-tv`      | 5      | 22     | 19      | 0           | 34  |
+| `ios`             | 29     | 0      | 21      | 0           | 30  |
+| `apple-tv`        | 21     | 0      | 17      | 0           | 42  |
+| `desktop-linux`   | 32     | 0      | 20      | 0           | 28  |
+| `desktop-windows` | 0      | 0      | 33      | 0           | 47  |
+| `desktop-macos`   | 0      | 0      | 33      | 0           | 47  |
 
 ## Rendering backends
 
@@ -64,6 +64,7 @@ Notes:
 | Host contract (`startApp` / `HostDefinition`)    | tested | preview | preview | preview | tested  | device  | device  | device     | tested  | tested   | tested        | preview         | preview       |
 | Flex layout (`src/core/flexLayout.ts`)           | tested | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | preview       | preview         | preview       |
 | Text rendering                                   | tested | preview | preview | preview | preview | device  | preview | preview    | preview | preview  | tested        | preview         | preview       |
+| Text selection and copy (`<Text selectable>`)    | tested | preview | preview | preview | preview | no      | preview | preview    | preview | preview  | preview       | preview         | preview       |
 | Focus and key handling                           | tested | preview | preview | preview | tested  | device  | preview | preview    | preview | preview  | tested        | preview         | preview       |
 | Pointer and touch input (`src/sdk/input.ts`)     | tested | preview | preview | preview | tested  | no      | preview | no         | preview | no       | tested        | preview         | preview       |
 | Accessibility semantics (`src/sdk/semantics.ts`) | tested | no      | no      | no      | no      | no      | no      | no         | no      | no       | tested        | no              | no            |
@@ -77,6 +78,9 @@ Notes:
 - Host contract (`startApp` / `HostDefinition`), android, android-tv: `nativeHost` supplies `keys` and `text`; accessibility semantics are absent, not stubbed.
 - Host contract (`startApp` / `HostDefinition`), desktop-windows, desktop-macos: The generated entry calls `startApp(desktopHost())` and runs in the Rust + Hermes runtime; `packages/host-desktop/tests/host` drives it on Linux. macOS and Windows build the runtime and run the headless tests, not the host suite.
 - Text rendering, roku: Fonts, wrapping, flex text and the device's own metrics were measured on the TV.
+- Text selection and copy (`<Text selectable>`), ps4: Pointer-only host: a drag selects with the PS4 browser's mouse; no test drives it on the host.
+- Text selection and copy (`<Text selectable>`), roku: No pointer, and the Roku backend draws no selection highlight yet; `selectable` is a no-op.
+- Text selection and copy (`<Text selectable>`), desktop-linux: The same WebGL backend and pointer sink as web, but no desktop-runtime test drives a selection.
 - Focus and key handling, tizen: `tests/cli/browser-smoke.mjs --tv` (test.yml: projects) presses Enter on the focused row of the generated Tizen build, but in desktop Chromium. No test runs on a Tizen TV or with its remote.
 - Focus and key handling, roku: The host test also checks that a held key is one press and that the keyEvents service raises the key.
 - Pointer and touch input (`src/sdk/input.ts`), tizen: `tests/cli/browser-smoke.mjs --tv` (test.yml: projects) maps clicks through four viewport sizes on the generated Tizen build, but in desktop Chromium. No test runs on a Tizen TV.
@@ -281,6 +285,7 @@ A `tested` cell names the test file that covers it, the workflow and job that ru
 - Flex layout (`src/core/flexLayout.ts`), web: packages/platform/tests/webgl/flex-text.test.tsx (test.yml: browser; flex rows and columns with measured text in Chromium)
 - Text rendering, web: packages/platform/tests/webgl/flex-text.test.tsx and text-fit.test.tsx (test.yml: browser; text is laid out and measured by the WebGL backend in Chromium, and its ink stays inside the box its parent reserved)
 - Text rendering, desktop-linux: packages/host-desktop/tests/scene/run.mjs (desktop-runtime.yml: linux; the fixture's glyph pixels and per-cell text map are compared with Chromium's)
+- Text selection and copy (`<Text selectable>`), web: packages/platform/tests/webgl/text-selection.test.tsx and tests/contract-selection.test.tsx (test.yml: browser and unit; a drag highlights characters 5–15 at their glyph advances in real WebGL, a click clears it, and keyboard copy reaches the clipboard service)
 - Focus and key handling, web: packages/platform/tests/cli/browser-smoke.mjs (test.yml: projects, called by tests/cli/projects-smoke.sh; Enter on the focused row of the generated web app in Chromium)
 - Focus and key handling, ps4: packages/platform/tests/webgl/ps4-host.test.tsx (test.yml: browser; pointer movement focuses and a click selects by pressing Enter on the focused node, in Chromium, Firefox and WebKit)
 - Focus and key handling, desktop-linux: packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; keys go through SDL's queue and, with xdotool, are real X events; focus moves with Right and Left)

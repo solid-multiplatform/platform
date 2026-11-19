@@ -22,6 +22,10 @@ export {
 // Components that need no coordinates.
 export { Screen, type ScreenProps } from '../primitives/Screen.jsx';
 export { Text, type TextProps } from '../primitives/Text.jsx';
+export {
+  SelectableText,
+  type SelectableTextProps,
+} from '../primitives/SelectableText.jsx';
 export { Button, type ButtonProps } from '../primitives/Button.jsx';
 export { List, type ListProps } from '../primitives/List.jsx';
 export {

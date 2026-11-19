@@ -16,12 +16,18 @@ import {
   visibilityOf,
 } from '../nodes/NodeFlags.js';
 import type { FontRecord, FontRegistry } from './FontRegistry.js';
-import type { SdfFont } from './sdfFont.js';
+import {
+  measureRange,
+  measureText,
+  metricsAt,
+  type SdfFont,
+} from './sdfFont.js';
 import {
   LayoutCache,
   effectiveAlign,
   inkExceedsBox,
   layoutText,
+  mapTextLayout,
   type TextBaselineMode,
   type TextLayout,
 } from './TextLayout.js';
@@ -37,6 +43,28 @@ import {
   I_STATE,
   I_STRIDE,
 } from '../nodes/NodeLayout.js';
+
+/** One line of {@link TextNodes.selectionGeometry}. */
+export interface SelectionGeometryLine {
+  text: string;
+  /** Index of `text[0]` in the geometry's `text`. */
+  start: number;
+  /** Line box, local to the text block. */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  baseline: number;
+  /** x of each character boundary relative to `x`; length `text.length + 1`. */
+  charX: number[];
+}
+
+/** A text node's lines, for selection hit-testing and highlights. */
+export interface SelectionGeometry {
+  /** The lines joined by `\n`: what a selection copies. */
+  text: string;
+  lines: SelectionGeometryLine[];
+}
 
 /**
  * The node side of text (spec 10): the scene pass's `layoutText`, the
@@ -242,6 +270,78 @@ export class TextNodes {
       return null;
     }
     return this.cached(font, font.font, t);
+  }
+
+  /**
+   * Read-only glyph geometry for text node `id`, for selection: the lines
+   * the text draws (as the layout made them, with wrapping and the
+   * overflow suffix), each line's box in the text block, and the x of every
+   * character boundary, measured with the same `measureRange` the layout
+   * advances glyphs with — kerning and letter spacing included, so a
+   * highlight matches the glyph run to the pixel. Null before the text has
+   * laid out or while its font is missing.
+   *
+   * Everything is derived on request and allocated with the result; nothing
+   * is kept per node and no frame is asked for.
+   */
+  selectionGeometry(id: number): SelectionGeometry | null {
+    const t = this.nodes.texts[id] as TextState | null;
+    if (t === null || t.layout === null) {
+      return null;
+    }
+    const font = this.fonts.get(t.fontFamily);
+    if (font === undefined || font.font === null) {
+      return null;
+    }
+    const sdf = font.font;
+    const fontScale = t.fontSize / sdf.data.info.size;
+    const letterSpacing = t.letterSpacing / fontScale;
+    const layout = mapTextLayout(
+      measureText,
+      metricsAt(sdf, t.fontSize),
+      t.text,
+      effectiveAlign(t.textAlign, t.rtl),
+      sdf,
+      t.lineHeight,
+      t.overflowSuffix,
+      t.wordBreak,
+      letterSpacing,
+      t.maxLines,
+      t.maxWidth / fontScale,
+      t.maxHeight,
+      this.baselineMode,
+    );
+    const rawLines = layout[0];
+    const lineHeight = layout[4];
+    const lines: SelectionGeometryLine[] = [];
+    let joined = '';
+    let start = 0;
+    for (let i = 0; i < rawLines.length; i++) {
+      const raw = rawLines[i]!;
+      const lineText = raw[0];
+      if (i > 0) {
+        joined += '\n';
+        start += 1;
+      }
+      const charX: number[] = new Array(lineText.length + 1);
+      for (let k = 0; k <= lineText.length; k++) {
+        charX[k] =
+          measureRange(lineText, 0, k, sdf, letterSpacing) * fontScale;
+      }
+      lines.push({
+        text: lineText,
+        start,
+        x: raw[3] * fontScale + t.boxX,
+        y: i * lineHeight + t.boxY,
+        width: raw[1] * fontScale,
+        height: lineHeight,
+        baseline: raw[4] + t.boxY,
+        charX,
+      });
+      joined += lineText;
+      start += lineText.length;
+    }
+    return { text: joined, lines };
   }
 
   /**
