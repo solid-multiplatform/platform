@@ -3,7 +3,11 @@
   "version": "0.3.0-beta.2",
   "type": "module",
   "description": "WebGL, Canvas 2D, Roku SceneGraph and DOM test backends behind one scene contract",
-  "repository": "github:solid-multiplatform/renderer",
+  "repository": {
+    "type": "git",
+    "url": "github:solid-multiplatform/platform",
+    "directory": "packages/renderer"
+  },
   "license": "Apache-2.0",
   "files": [
     "dist",

@@ -38,5 +38,10 @@
   "devDependencies": {
     "@solid-multiplatform/platform": "workspace:*",
     "@solid-multiplatform/renderer": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "github:solid-multiplatform/platform",
+    "directory": "packages/host-desktop"
   }
 }
