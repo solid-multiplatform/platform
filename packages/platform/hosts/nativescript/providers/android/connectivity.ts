@@ -6,7 +6,7 @@ let Callback:
   | undefined;
 // The one live port's change handler. A Java subclass made by `extend` keeps
 // the functions it was first given, so they reach the port through here.
-let changed: (() => void) | undefined;
+let changed: ((online: boolean) => void) | undefined;
 
 /**
  * `ConnectivityManager`. `online` reads the active network when asked;
@@ -35,15 +35,18 @@ export function connectivity(app: AndroidApp): ConnectivityPort {
     subscribe(listener) {
       if (!callback) {
         last = online();
-        changed = () => {
-          const next = online();
+        changed = (next) => {
           if (next === last) return;
           last = next;
           for (const each of Array.from(listeners)) each(next);
         };
+        // The default network's callback says it all: `onLost` arrives only
+        // when no network replaces the lost one, and the active network read
+        // at that moment can still be the one going away. Before Android 7
+        // the callback covers every network, so the state is read.
         Callback ??= android.net.ConnectivityManager.NetworkCallback.extend({
-          onAvailable: () => changed?.(),
-          onLost: () => changed?.(),
+          onAvailable: () => changed?.(true),
+          onLost: () => changed?.(sdk() >= 24 ? false : online()),
         });
         callback = new Callback();
         if (sdk() >= 26)

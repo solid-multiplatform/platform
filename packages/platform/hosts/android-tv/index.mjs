@@ -20,6 +20,8 @@ export function runAndroidTV(loadApp, { surface, services } = {}) {
       // The device's services, installed once. Nothing in them runs until
       // the app first uses one. The key bridge raises its events on
       // `document`: where `keyEvents`, a preview service, points shortcuts.
+      // Still a preview: the key bridge's events carry no modifier flags, so
+      // no shortcut matches them yet.
       const removeServices = installServices(
         androidServices({
           ...services,
