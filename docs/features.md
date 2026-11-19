@@ -255,10 +255,10 @@ A `tested` cell names the test file that covers it, the workflow and job that ru
 
 ### Tested
 
-- WebGL backend (`packages/renderer/webgl`), web: packages/platform/tests/webgl/conformance-webgl.test.tsx (test.yml: browser; scene conformance cases in Chromium on real WebGL)
+- WebGL backend (`packages/renderer/webgl`), web: packages/platform/tests/webgl/conformance-webgl.test.tsx (test.yml: browser; scene conformance cases on real WebGL in Chromium, Firefox and WebKit)
 - WebGL backend (`packages/renderer/webgl`), desktop-linux: packages/host-desktop/tests/scene/run.mjs (desktop-runtime.yml: linux; the shared fixture is rendered in the Rust + Hermes runtime and its pixels compared with Chromium)
 - Desktop runtime in Rust embedding Hermes, without Node, desktop-linux: packages/host-desktop/tests/run.sh (desktop-runtime.yml: linux; the runtime opens a window and the host suite runs the scene, input, text fields, services, accessibility, idle and packaging checks)
-- Canvas 2D backend (`packages/renderer/canvas`), web: packages/platform/tests/webgl/conformance-canvas.test.tsx (test.yml: browser; scene conformance cases in Chromium on Canvas 2D)
+- Canvas 2D backend (`packages/renderer/canvas`), web: packages/platform/tests/webgl/conformance-canvas.test.tsx (test.yml: browser; scene conformance cases on Canvas 2D in Chromium, Firefox and WebKit)
 - Host contract (`startApp` / `HostDefinition`), web: packages/platform/tests/cli/browser-smoke.mjs (test.yml: projects; the generated app starts through `startApp(webHost(...))` in Chromium)
 - Host contract (`startApp` / `HostDefinition`), ios, apple-tv: packages/platform/tests/cli/apple-smoke.sh (test.yml: apple; the generated app starts through `startApp(nativeHost(...))` in a simulator)
 - Host contract (`startApp` / `HostDefinition`), desktop-linux: packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; the generated entry calls `startApp(desktopHost())` and the host suite drives it)
@@ -269,7 +269,7 @@ A `tested` cell names the test file that covers it, the workflow and job that ru
 - Focus and key handling, desktop-linux: packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; keys go through SDL's queue and, with xdotool, are real X events; focus moves with Right and Left)
 - Pointer and touch input (`src/sdk/input.ts`), web: packages/platform/tests/cli/browser-smoke.mjs (test.yml: projects; a real pointer clicks the generated app and the focused control is asserted in Chromium)
 - Pointer and touch input (`src/sdk/input.ts`), desktop-linux: packages/host-desktop/tests/host/run.mjs (desktop-runtime.yml: linux; a real mouse moves, clicks and scrolls, with xdotool when it is installed)
-- Accessibility semantics (`src/sdk/semantics.ts`), web: apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; a real keyboard walk checks the ARIA mirror at every step in Chromium)
+- Accessibility semantics (`src/sdk/semantics.ts`), web: apps/showcase/tests/showcase.e2e.mjs (test.yml: showcase (chromium, firefox, webkit); a real keyboard walk checks the ARIA mirror at every step in each engine)
 - Accessibility semantics (`src/sdk/semantics.ts`), desktop-linux: packages/host-desktop/tests/a11y/run.mjs (desktop-runtime.yml: linux; the runtime's AT-SPI adapter over AccessKit is read from a test accessibility bus and its actions are invoked)
 - Shapes, borders, gradients and shadows, web: packages/platform/tests/webgl/conformance-webgl.test.tsx (test.yml: browser; shader cases, then `tests/visual/run.mjs` compares Canvas and WebGL pixels)
 - Animation (`animateProp`, transitions), web: packages/platform/tests/webgl/conformance-webgl.test.tsx (test.yml: browser; the shared conformance suite runs `animate` and `animateProp` to their targets)

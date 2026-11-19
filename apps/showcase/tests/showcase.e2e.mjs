@@ -1,25 +1,34 @@
-// The showcase in headless Chromium, on real WebGL (SwiftShader), built as
-// `vite build` leaves it:
+// The showcase in headless Chromium, Firefox and WebKit, on real WebGL,
+// built as `vite build` leaves it:
 //
 //   (a) a real keyboard and a real mouse go home -> gallery -> services, and
 //       the ARIA mirror names the focused control at every step;
 //   (b) `?probe=1` reports every service and every UI assertion;
 //   (c) once settled, no frame is requested for two seconds.
 //
-//   node tests/showcase.e2e.mjs dist/web          (SHOWCASE_SCREENSHOTS=<dir> keeps pictures)
-//   node tests/showcase.e2e.mjs dist/tizen tizen  a browser-TV bundle: (b) and (c) only.
+//   node tests/showcase.e2e.mjs dist/web [web] [chromium|firefox|webkit]
+//   node tests/showcase.e2e.mjs dist/tizen tizen [engine]
+//                                              (SHOWCASE_SCREENSHOTS=<dir> keeps pictures)
 //
-// A browser-TV bundle runs here in desktop Chromium, which says its bundle
+// A browser-TV bundle runs here in a desktop browser, which says its bundle
 // starts and probes on the TV host; it is not evidence from a television.
+// Chromium is the default engine. The fourth argument (or SHOWCASE_BROWSER)
+// picks the engine, so CI can run the same walk on all three.
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import path from 'node:path';
-import { chromium } from 'playwright';
+import { chromium, firefox, webkit } from 'playwright';
 
 const root = path.resolve(process.argv[2] ?? 'dist/web');
 const target = process.argv[3] ?? 'web';
+const engine = process.argv[4] ?? process.env.SHOWCASE_BROWSER ?? 'chromium';
+const engines = { chromium, firefox, webkit };
+if (!engines[engine])
+  throw new Error(
+    `unknown engine ${engine}; expected chromium, firefox or webkit`,
+  );
 const shots = process.env.SHOWCASE_SCREENSHOTS;
 if (shots) mkdirSync(shots, { recursive: true });
 
@@ -63,12 +72,34 @@ const WEB_SERVICES = [
   'settings',
 ].sort();
 
+// Browser policy, not the service: Chromium is granted the clipboard through
+// the context above; an unattended Firefox needs user activation to write it,
+// and an unattended WebKit needs a permission nobody can click. Both refuse.
+const EXPECTED_BY_ENGINE = {
+  chromium: {
+    // Headless Chromium refuses the screen wake lock ("Wake Lock
+    // permission request denied"): there is no screen to keep awake.
+    keepAwake: ['denied', 'headless Chromium denies the screen wake lock'],
+  },
+  firefox: {
+    clipboard: [
+      'denied',
+      'Firefox needs user activation to write the clipboard',
+    ],
+  },
+  webkit: {
+    keepAwake: ['denied', 'headless WebKit denies the screen wake lock'],
+    clipboard: [
+      'denied',
+      'WebKit needs the clipboard permission, which nobody can grant here',
+    ],
+  },
+};
+
 // Installed on the web and not `ok` in an unattended run, each with the
 // reason. Anything else that is installed must report `ok`.
 const EXPECTED = {
-  // Headless Chromium refuses the screen wake lock ("Wake Lock permission
-  // request denied"): there is no screen to keep awake.
-  keepAwake: ['denied', 'headless Chromium denies the screen wake lock'],
+  ...EXPECTED_BY_ENGINE[engine],
   share: ['unverified', 'opens the system share sheet'],
   openExternal: ['unverified', 'opens another application'],
   orientation: ['unverified', 'rotates the screen'],
@@ -143,8 +174,12 @@ async function newPage(browser) {
     viewport: { width: 1280, height: 720 },
     // What a person grants with one click: without it the clipboard probe
     // reports `denied`, which is true of an unattended browser but says
-    // nothing about the service.
-    permissions: ['clipboard-read', 'clipboard-write'],
+    // nothing about the service. Playwright grants these two in Chromium
+    // only; Firefox and WebKit ignore the grant and probe the clipboard on
+    // their own terms.
+    ...(engine === 'chromium'
+      ? { permissions: ['clipboard-read', 'clipboard-write'] }
+      : {}),
   });
   // Before the app starts: count every animation frame the page runs.
   await context.addInitScript(() => {
@@ -570,9 +605,13 @@ async function probe(browser) {
 
 let browser;
 try {
-  browser = await chromium.launch({
-    args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
-  });
+  // Headless Chromium has no GPU: run WebGL on SwiftShader. Firefox and
+  // WebKit draw in software themselves and reject Chromium's switches.
+  browser = await engines[engine].launch(
+    engine === 'chromium'
+      ? { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] }
+      : {},
+  );
   // The mouse path is laid out for the web host, where scene units are CSS
   // pixels; a TV host scales a fixed stage, and mirrors no ARIA by default.
   if (target === 'web') await interactive(browser);

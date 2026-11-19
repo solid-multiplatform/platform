@@ -25,7 +25,7 @@
           "cells": {
             "web": {
               "status": "tested",
-              "evidence": "packages/platform/tests/webgl/conformance-webgl.test.tsx (test.yml: browser; scene conformance cases in Chromium on real WebGL)"
+              "evidence": "packages/platform/tests/webgl/conformance-webgl.test.tsx (test.yml: browser; scene conformance cases on real WebGL in Chromium, Firefox and WebKit)"
             },
             "tizen,webos,vizio": {
               "status": "preview",
@@ -68,7 +68,7 @@
           "cells": {
             "web": {
               "status": "tested",
-              "evidence": "packages/platform/tests/webgl/conformance-canvas.test.tsx (test.yml: browser; scene conformance cases in Chromium on Canvas 2D)"
+              "evidence": "packages/platform/tests/webgl/conformance-canvas.test.tsx (test.yml: browser; scene conformance cases on Canvas 2D in Chromium, Firefox and WebKit)"
             },
             "tizen,webos,vizio": {
               "status": "preview",
@@ -224,7 +224,7 @@
           "cells": {
             "web": {
               "status": "tested",
-              "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: browser; a real keyboard walk checks the ARIA mirror at every step in Chromium)"
+              "evidence": "apps/showcase/tests/showcase.e2e.mjs (test.yml: showcase (chromium, firefox, webkit); a real keyboard walk checks the ARIA mirror at every step in each engine)"
             },
             "desktop-linux": {
               "status": "tested",

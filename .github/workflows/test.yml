@@ -81,10 +81,9 @@ jobs:
       - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
       - run: pnpm -w run build
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:webgl
-      - name: Showcase app in Chromium (keyboard, mouse, probe mode, idle frames)
-        run: pnpm -w run test:showcase
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - name: WebGL and Canvas in Chromium, Firefox and WebKit
+        run: pnpm test:webgl
       - name: Compare actual Canvas and WebGL pixels
         run: node tests/visual/run.mjs "$RUNNER_TEMP/visual"
       - uses: actions/upload-artifact@v4
@@ -93,6 +92,27 @@ jobs:
           name: renderer-visual-samples
           path: ${{ runner.temp }}/visual/*.png
           if-no-files-found: ignore
+  # The browser-TV targets only ever run in Chromium today. The showcase is
+  # the app-level walk (keyboard, mouse, ARIA, every service probe, and the
+  # two-second idle rule), so it runs in each engine; WebKit also covers
+  # Safari, which an iPad or a TV browser embeds.
+  showcase:
+    name: showcase (${{ matrix.engine }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -w run build
+      - run: pnpm --dir apps/showcase exec playwright install --with-deps ${{ matrix.engine }}
+      - run: pnpm --dir apps/showcase run test:${{ matrix.engine }}
   projects:
     runs-on: ubuntu-24.04
     defaults:
