@@ -81,7 +81,16 @@ jobs:
       - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
       - run: pnpm -w run build
-      - run: pnpm exec playwright install --with-deps chromium webkit
+      # The runner's Ubuntu mirror stalls often enough to fail a release:
+      # retry apt, then retry the whole install once.
+      - run: |
+          set -euo pipefail
+          install() {
+            sudo apt-get update -o Acquire::Retries=5 ||
+              sleep 15 && sudo apt-get update -o Acquire::Retries=5
+            pnpm exec playwright install --with-deps chromium webkit
+          }
+          install || { sleep 20; install; }
       - name: WebGL and Canvas in Chromium and WebKit
         run: |
           pnpm test:webgl:chromium
@@ -143,7 +152,14 @@ jobs:
       - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
       - run: pnpm -w run build
-      - run: pnpm --dir apps/showcase exec playwright install --with-deps ${{ matrix.engine }}
+      - run: |
+          set -euo pipefail
+          install() {
+            sudo apt-get update -o Acquire::Retries=5 ||
+              sleep 15 && sudo apt-get update -o Acquire::Retries=5
+            pnpm --dir apps/showcase exec playwright install --with-deps ${{ matrix.engine }}
+          }
+          install || { sleep 20; install; }
       # Headless Firefox has no GPU and needs a software rasteriser.
       - if: matrix.engine == 'firefox'
         run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dri libegl-mesa0 libglx-mesa0
@@ -163,7 +179,16 @@ jobs:
       - run: pnpm -w run build
       - working-directory: packages/platform/examples/roku
         run: pnpm install --frozen-lockfile && pnpm build
-      - run: pnpm exec playwright install --with-deps chromium
+      # The runner's Ubuntu mirror stalls often enough to fail a release:
+      # retry apt, then retry the whole install once.
+      - run: |
+          set -euo pipefail
+          install() {
+            sudo apt-get update -o Acquire::Retries=5 ||
+              sleep 15 && sudo apt-get update -o Acquire::Retries=5
+            pnpm exec playwright install --with-deps chromium
+          }
+          install || { sleep 20; install; }
       - run: bash tests/cli/projects-smoke.sh
   apple:
     strategy:
