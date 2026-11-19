@@ -2,9 +2,9 @@
 
 Target name: `desktop`. The feature matrix splits it into `desktop-linux`, `desktop-windows` and `desktop-macos`.
 
-## Status: preview
+## Status: tested on Linux; preview on Windows and macOS
 
-The desktop target runs a Solid Multiplatform component app in a native runtime written in Rust that embeds Hermes and draws the scene with WebGL through SDL3. **No Node.js runs the app.** Node is a build tool: it bundles the entry and, by calling the runtime, compiles Hermes bytecode. The executable that opens the window contains the JavaScript engine and the scene renderer; the app's code is the bytecode.
+The desktop target runs a Solid Multiplatform component app in a native runtime written in Rust that embeds Hermes and draws the scene with WebGL through SDL3. **No Node.js runs the app.** Node is a build tool: it bundles the entry and, by calling the runtime, compiles Hermes bytecode. The executable that opens the window contains the JavaScript engine and the scene renderer; the app's code is the bytecode. The generated entry is `startApp(desktopHost(), App, options)`, and the host supplies router history.
 
 Linux is the only system verified end to end, with a window and the real scene. macOS arm64 and Windows x64 (MSVC) build and run the runtime's headless tests in CI (`.github/workflows/desktop-runtime.yml`, jobs `macos` and `windows`). No CI job opens a window on those systems, so drawing there is `preview`.
 
@@ -65,6 +65,8 @@ Screen variants ending in `.linux`, `.windows`, `.macos` or `.desktop` are selec
 - `.github/workflows/desktop-runtime.yml` builds Hermes, the runtime and the static-SDL release archives on Linux, macOS arm64 and Windows x64. Linux runs the full host suite on a virtual display; macOS and Windows run the headless subset. The tag-triggered `release` job attaches `solid-desktop-linux-x64.tar.gz`, `solid-desktop-darwin-arm64.tar.gz` and `solid-desktop-win32-x64.tar.gz` to the GitHub release.
 - `packages/platform/tests/cli/unit/{add-desktop,desktop-target}.test.mjs` test runtime/asset resolution with a faked fetch and filesystem, and the desktop command dispatch.
 
+On Linux the host suite covers the generated entry through `startApp(desktopHost())`: keys and focus (including real X events through xdotool), pointers and the wheel, text fields, the services (`settings`, `lifecycle`, `links`, `request`, `clipboard`, `share`/`haptics` only as absent, `deviceInfo`, `battery`, `memory`, `keepAwake`, `openExternal`, `locale`, `colorScheme`, `keyEvents`, `download`, `filePicker`, `fileSystem`), notifications and connectivity on a test bus, the idle rule, packaging, and the AccessKit tree over AT-SPI. `connectivity` and `notifications` need a stand-in on the test bus; `secureStorage` is not tested because the app must pass a keyring module.
+
 What this does not cover:
 
 - macOS and Windows open no window in CI; drawing, input and the package of an app on those systems are unverified.
@@ -74,4 +76,4 @@ What this does not cover:
 - The GitHub release download path in `add desktop none` is unit-tested through a fake fetch, not against the live GitHub API.
 - No AppImage is produced.
 
-Treat desktop as `preview`; the feature matrix splits it by OS.
+The feature matrix marks the Linux cells `tested`; the Windows and macOS cells remain `preview`.
