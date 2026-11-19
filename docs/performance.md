@@ -74,7 +74,7 @@ There is no Roku frame-timing procedure on `main`. What exists:
 - `node packages/platform/tests/cli/roku-device-check.mjs` reads a device's state over ECP when `ROKU_DEV_IP` is set. It is read-only.
 - `solid-platform certify roku <metrics.json>` checks a metrics file against the budgets in `packages/platform/src/sdk/certification.ts` and exits non-zero if one is exceeded.
 
-Verification on a physical Roku TV is in progress in an open pull request.
+The Roku host, shapes, text and conformance runs were recorded on a physical TV on 2026-11-18; the evidence is under `handoff/roku-device/`. Animation still runs on the JavaScript thread, and frame pacing during animation has not been measured.
 
 ## Device data and secrets
 

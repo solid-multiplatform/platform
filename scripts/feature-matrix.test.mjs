@@ -63,10 +63,41 @@ test('an unknown status is rejected', () => {
   );
 });
 
-test('evidence on a cell that is not tested is rejected', () => {
+test('evidence on a cell that is not tested or a device run is rejected', () => {
   assert.match(
     validate(matrix({ status: 'preview', evidence: 'README.md' })).join('\n'),
-    /only a tested cell has evidence/,
+    /only a tested or device cell has evidence/,
+  );
+});
+
+test('a device cell without evidence is rejected', () => {
+  assert.match(
+    validate(matrix({ status: 'device' }), present).join('\n'),
+    /row \/ web: device without evidence/,
+  );
+});
+
+test('device evidence outside handoff/ is rejected', () => {
+  for (const evidence of [
+    'packages/platform/tests/a.test.ts (job)',
+    '/handoff/a.txt',
+    'handoff/../outside.txt',
+  ])
+    assert.match(
+      validate(matrix({ status: 'device', evidence }), present).join('\n'),
+      /device evidence must be under handoff\//,
+    );
+});
+
+test('device evidence is accepted when handoff/ is absent and checked when present', () => {
+  const data = matrix({
+    status: 'device',
+    evidence: 'handoff/run/result.txt (device run)',
+  });
+  assert.deepEqual(validate(data, present, () => true), []);
+  assert.match(
+    validate(data, present, () => false).join('\n'),
+    /device evidence file does not exist: handoff\/run\/result\.txt/,
   );
 });
 
@@ -99,9 +130,26 @@ test('the render states the counts per status and lists the evidence', () => {
   const markdown = render(data, present);
   assert.match(markdown, /2 cells: 1 features on 2 targets\./);
   assert.match(markdown, /\| tested \| 1 \|/);
+  assert.match(markdown, /\| device \| 0 \|/);
   assert.match(markdown, /\| no \| 1 \|/);
-  assert.match(markdown, /\| `roku` \| 0 \| 0 \| 0 \| 1 \|/);
-  assert.match(markdown, /- Feature, web: tests\/a\.test\.ts/);
+  assert.match(markdown, /\| `roku` \| 0 \| 0 \| 0 \| 0 \| 1 \|/);
+  assert.match(markdown, /### Tested\n\n- Feature, web: tests\/a\.test\.ts/);
+});
+
+test('a device cell is counted and listed as a device run', () => {
+  const data = matrix({
+    status: 'device',
+    evidence: 'handoff/run/result.txt (device run)',
+  });
+  const { total } = count(expand(data, present, () => true));
+  assert.equal(total.device, 1);
+  const markdown = render(data, present, () => true);
+  assert.match(markdown, /\| device \| 1 \|/);
+  assert.match(markdown, /\| `web` \| 0 \| 1 \| 0 \| 0 \| 0 \|/);
+  assert.match(
+    markdown,
+    /### Device runs\n\n- Feature, web: handoff\/run\/result\.txt/,
+  );
 });
 
 test('docs/features.json is valid and every cell is counted', () => {

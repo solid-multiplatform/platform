@@ -25,10 +25,10 @@ corepack pnpm build tizen --legacy   # targets/tizen/dist-legacy
 
 ## How it is tested
 
-- `projects` job: `tests/cli/projects-smoke.sh` builds `tizen` and `tizen --legacy` from a generated app and drives each build in desktop Chromium with `tests/cli/browser-smoke.mjs --tv`. That script checks the stage scaling at several display sizes and pixel ratios, and a plugin command through keyboard input.
+- `projects` job: `tests/cli/projects-smoke.sh` builds `tizen`, `tizen --legacy`, `webos` and `vizio` from a generated app and drives each build in desktop Chromium with `tests/cli/browser-smoke.mjs --tv`. That script checks the stage scaling at several display sizes and pixel ratios, a plugin command through keyboard input, and pointer clicks through four viewport sizes.
 - `browser` job: the WebGL and Canvas backends themselves (see [Web](/targets/web.md)).
+- Device procedure: `node apps/showcase/tests/showcase.e2e.mjs dist/tizen tizen` runs a browser-TV bundle's probe mode and the two-second idle check in desktop Chromium. It is not part of CI for the TV targets.
 
 What this does not cover:
 
-- No test builds `webos` or `vizio`. Their code paths are the same Vite build with a different packaging step; they are `preview`.
-- No test runs on Tizen, webOS or Vizio hardware, or in a vendor emulator. Remote key codes, the vendor packaging tools and old-engine behaviour on a real TV are unverified by this project.
+- No test runs on Tizen, webOS or Vizio hardware, or in a vendor emulator. Remote key codes, the vendor packaging tools and old-engine behaviour on a real TV are unverified by this project. The generated builds run in desktop Chromium, which is why the feature matrix keeps their scene, input and service cells `preview`.
