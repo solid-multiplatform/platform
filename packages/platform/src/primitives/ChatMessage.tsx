@@ -58,6 +58,8 @@ export interface ChatMessageProps {
   codeFontFamily?: string;
   /** Shared with Markdown: the app's bold face, if it registered one. */
   strongFontFamily?: string;
+  /** Shared with Markdown: the link colour; the theme's primary when omitted. */
+  linkColor?: number;
 }
 
 /** A code block's source, as Markdown sees it. */
@@ -91,8 +93,8 @@ export function ChatMessage(props: ChatMessageProps): JSX.Element {
     onLink: props.onLink,
     codeFontFamily: props.codeFontFamily,
     strongFontFamily: props.strongFontFamily,
+    linkColor: mine() ? props.bubbleTextColor : props.linkColor,
     codeBackground: mine() ? 0x00000026 : undefined,
-    linkColor: mine() ? props.bubbleTextColor : undefined,
   });
 
   return (
