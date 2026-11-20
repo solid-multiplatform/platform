@@ -14,7 +14,7 @@ import {
   defaultTransitionForward,
 } from './utils/handleNavigation.js';
 import type { RowProps, OnSelectedChanged } from './types.js';
-import { scrollRow } from './utils/withScrolling.js';
+import { scrollRow, scrollRowIntoView } from './utils/withScrolling.js';
 import {
   bindTouchScroll,
   supportsTouchScroll,
@@ -70,18 +70,13 @@ export const Row: Component<RowProps> = (props) => {
     index: number,
     options?: { noFocus?: boolean },
   ) {
-    const lastSelected = this.selected;
     this.selected = index;
     if (touchBinding !== undefined) {
       const child = this.children[index];
       touchBinding.reveal(isElementNode(child) ? child : undefined, 0);
     } else {
-      scrollRow(
-        index,
-        this,
-        undefined,
-        lastSelected === index ? undefined : lastSelected,
-      );
+      // A jump, not a step: tvOS scrolls the focused item fully into view.
+      scrollRowIntoView(this, this.children[index]);
     }
     if (!options?.noFocus) {
       this.children[index]?.setFocus();

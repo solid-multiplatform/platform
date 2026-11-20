@@ -12,3 +12,19 @@ export const BUTTONS = [
 ];
 /** Shown while the modal is open. */
 export const MODAL = { x: 1500, y: 400, w: 200, h: 150, color: 0x2040ffff };
+/**
+ * The scrolling rail: ten 400x200 cards with a 30 gap at y = 300. Select on
+ * the first card calls `scrollToIndex(8)`, which tvOS must show whole; at that
+ * scroll card 8 occupies 1520..1920.
+ */
+export const RAIL = {
+  x: 0,
+  y: 300,
+  w: 400,
+  h: 200,
+  gap: 30,
+  count: 10,
+  jumpTo: 8,
+  /** Inside the jumped-to card, in screenshot pixels. */
+  probe: { x: 1700, y: 400, w: 40, h: 40 },
+};

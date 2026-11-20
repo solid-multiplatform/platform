@@ -326,7 +326,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   });
 
   v.test(
-    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 96 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 99 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
@@ -392,6 +392,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'defaultTransitionDown',
         'defaultTransitionForward',
         'defaultTransitionUp',
+        'ensureSelectionVisible',
         'fadeIn',
         'fadeOut',
         'focusPath',
@@ -412,7 +413,9 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'removeCustomStateFromElement',
         'resetCounter',
         'scrollColumn',
+        'scrollColumnIntoView',
         'scrollRow',
+        'scrollRowIntoView',
         'selectedText',
         'setActiveElement',
         'setActiveElementCore',
@@ -522,10 +525,11 @@ v.describe('Exports: runtime export names of every entry point', () => {
   );
 
   v.test(
-    '@solid-multiplatform/platform/focusManager (src/core/focusManager.ts): 13 names',
+    '@solid-multiplatform/platform/focusManager (src/core/focusManager.ts): 15 names',
     () => {
       v.expect(names(focusManager)).toEqual([
         'currentFocusTrap',
+        'focusNearestLiveAncestor',
         'focusPath',
         'focusVisible',
         'getFocusHistory',
@@ -534,6 +538,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'printFocusHistory',
         'pushFocusTrap',
         'releaseKeySuppression',
+        'restoreFocusAfterRemoval',
         'setActiveElementCore',
         'setFocusPath',
         'suppressKeyUntilRelease',
