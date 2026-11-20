@@ -829,8 +829,13 @@ async function interactive(browser) {
   await page.mouse.move(600, 690, { steps: 10 });
   await page.mouse.up();
   await page.keyboard.press('Control+c');
-  const copied = await page.evaluate(() => navigator.clipboard.readText());
-  assert.match(copied, /Selectable paragraph/, 'the paragraph was copied');
+  // WebKit grants the clipboard permission to nobody in an unattended run
+  // (see EXPECTED_BY_ENGINE), so the copy is verified where the read is
+  // allowed; the selection itself is verified above.
+  if (engine !== 'webkit') {
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    assert.match(copied, /Selectable paragraph/, 'the paragraph was copied');
+  }
   await shot(page, '5b-selection');
   await expectIdle(page, 'text screen after copying');
   await page.keyboard.press('Backspace');
