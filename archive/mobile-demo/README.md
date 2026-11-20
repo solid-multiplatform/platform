@@ -22,13 +22,13 @@ node packages/platform/cli/renderer-archive.mjs
 corepack pnpm install
 
 # x86_64 release APK for the emulator, signed with a throwaway keystore
-node apps/mobile-demo/build.mjs
+node archive/mobile-demo/build.mjs
 
 # arm64 release APK for a Pixel 7 Pro
-node apps/mobile-demo/build.mjs --arm64
+node archive/mobile-demo/build.mjs --arm64
 ```
 
-`build.mjs` scaffolds an `init --targets android` project in `/var/tmp/smp-mobile-demo-<arch>`, copies `src/` and `solid-platform.config.json` over it, injects `TMDB_API_KEY` if set, restricts `app.gradle` to one ABI (and keeps `useLegacyPackaging = true`), runs `solid-platform build android`, then `ns build android --release` with a generated keystore. The APK lands in `apps/mobile-demo/build/mobile-demo-<arch>.apk`.
+`build.mjs` scaffolds an `init --targets android` project in `/var/tmp/smp-mobile-demo-<arch>`, copies `src/` and `solid-platform.config.json` over it, injects `TMDB_API_KEY` if set, restricts `app.gradle` to one ABI (and keeps `useLegacyPackaging = true`), runs `solid-platform build android`, then `ns build android --release` with a generated keystore. The APK lands in `archive/mobile-demo/build/mobile-demo-<arch>.apk`.
 
 The source in this directory is the app. `src/` replaces the generated project's `src/`; nothing in it depends on Vite or NativeScript APIs.
 

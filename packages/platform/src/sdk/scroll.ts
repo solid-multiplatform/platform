@@ -167,7 +167,7 @@ export function wheelToScroll(
 /**
  * `UIScrollViewDecelerationRateNormal`: velocity keeps this fraction per
  * millisecond. The same constant is the mobile demo's researched reference
- * (`apps/mobile-demo/src/scroller.ts`); see `docs/app-api.md#scrolling`.
+ * (`archive/mobile-demo/src/scroller.ts`); see `docs/app-api.md#scrolling`.
  */
 export const TOUCH_DECELERATION_RATE = 0.998;
 
@@ -342,7 +342,7 @@ type Mode = 'idle' | 'dragging' | 'decel' | 'bounce' | 'glide';
 
 /**
  * The framework's touch scroller. One module and no new dependency; the
- * physics follow the researched reference in `apps/mobile-demo/src/scroller.ts`.
+ * physics follow the researched reference in `archive/mobile-demo/src/scroller.ts`.
  */
 export function createScrollEngine(options: ScrollEngineOptions): ScrollEngine {
   const axis = options.axis;
