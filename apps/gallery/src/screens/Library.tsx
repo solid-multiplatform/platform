@@ -252,6 +252,7 @@ export function Library(props: {
             <text fontSize={tv() ? T.body : T.caption} color={C.muted}>
               {`${ALBUMS.length} albums · ${RAILS.length} rails · one accent`}
             </text>
+
           </view>
           <Show when={!mobile()}>
             <Row gap={S(3)} scroll="none" width={tv() ? 420 : 360}>

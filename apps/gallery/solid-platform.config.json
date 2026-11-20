@@ -1,0 +1,24 @@
+{
+  "id": "dev.solidapp.sona",
+  "name": "sona",
+  "version": "0.1.0",
+  "targets": ["android"],
+  "app": {
+    "theme": "dark",
+    "fonts": [
+      {
+        "family": "Roboto",
+        "atlas": "Roboto-Regular.msdf",
+        "file": "Roboto-Regular.ttf"
+      },
+      {
+        "family": "Roboto700",
+        "atlas": "Roboto-Bold.msdf",
+        "file": "Roboto-Bold.ttf"
+      }
+    ]
+  },
+  "deepLinks": { "schemes": [], "hosts": [] },
+  "services": [],
+  "signing": {}
+}

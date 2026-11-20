@@ -18,6 +18,10 @@ python3 -m http.server 4173 --directory apps/gallery/dist/web
 # browser TV (Tizen/webOS host: the TV family)
 pnpm --dir apps/gallery build:tizen
 
+# Android APK (x86_64 for an emulator, --arm64 for a phone)
+pnpm --dir apps/gallery build:android
+pnpm --dir apps/gallery build:android:arm64
+
 # native desktop (Rust runtime)
 pnpm --dir apps/gallery build:desktop
 packages/host-desktop/native/target/release/solid-desktop \
