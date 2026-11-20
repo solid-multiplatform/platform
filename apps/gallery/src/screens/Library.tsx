@@ -121,7 +121,7 @@ function AlbumCard(props: {
   size: number;
   width: number;
   family: UiFamily;
-  onOpen?(): void;
+  onOpen?: (album: Album) => void;
 }): JSX.Element {
   return (
     <view
@@ -129,8 +129,8 @@ function AlbumCard(props: {
       display="flex"
       flexDirection="column"
       gap={S(2)}
-      onEnter={props.onOpen}
-      onMouseClick={props.onOpen}
+      onEnter={() => props.onOpen?.(props.album)}
+      onMouseClick={() => props.onOpen?.(props.album)}
       cursorStyle="pointer"
       style={{ $focus: { color: 0x00000000 } }}
     >
@@ -165,6 +165,7 @@ function Rail(props: {
   family: UiFamily;
   width: number;
   cardSize: number;
+  onOpenAlbum?: (album: Album) => void;
 }): JSX.Element {
   return (
     <view
@@ -197,6 +198,7 @@ function Rail(props: {
                 size={props.cardSize}
                 width={props.cardSize}
                 family={props.family}
+                onOpen={props.onOpenAlbum}
               />
             )}
           </For>
@@ -211,6 +213,7 @@ export function Library(props: {
   width: number;
   height: number;
   onOpenCreate?(): void;
+  onOpenAlbum?(album: Album): void;
 }): JSX.Element {
   const tv = () => props.family === 'tv';
   const mobile = () => props.family === 'mobile';
@@ -318,6 +321,7 @@ export function Library(props: {
               family={props.family}
               width={width()}
               cardSize={card()}
+              onOpenAlbum={props.onOpenAlbum}
             />
           )}
         </For>

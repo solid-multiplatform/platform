@@ -18,7 +18,7 @@ startApp(
   target === 'web'
     ? webHost({ target, namespace: 'gallery' })
     : tvHost(webHost, { target, namespace: 'gallery' }),
-  () => <App />,
+  (context) => <App back={context.back} />,
   {
     fonts: [
       {

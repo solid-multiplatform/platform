@@ -4,16 +4,26 @@
  * navigation, the sizes and the interaction; the screens themselves are the
  * same.
  */
-import { createSignal, For, Show, type JSX } from 'solid-js';
+import {
+  createEffect,
+  createSignal,
+  For,
+  onCleanup,
+  Show,
+  type JSX,
+} from 'solid-js';
 import {
   defineTheme,
   ThemeProvider,
   useViewport,
 } from '@solid-multiplatform/platform/app';
+import type { BackDispatcher } from '@solid-multiplatform/platform';
 import { Glyph, type GlyphName } from './components/Glyph';
 import { C, R, S, T } from './theme';
 import { uiFamily } from './family';
 import { Library } from './screens/Library';
+import { AlbumScreen } from './screens/Album';
+import type { Album } from './data';
 import { Create } from './screens/Create';
 import { Performance } from './screens/Performance';
 
@@ -42,7 +52,7 @@ export const galleryTheme = defineTheme({
   radius: { small: R.small, medium: R.medium, large: R.large },
 });
 
-export type Route = 'library' | 'create' | 'performance';
+export type Route = 'library' | 'create' | 'performance' | 'album';
 
 const NAV: { route: Route; label: string; glyph: GlyphName }[] = [
   { route: 'library', label: 'Library', glyph: 'library' },
@@ -50,10 +60,26 @@ const NAV: { route: Route; label: string; glyph: GlyphName }[] = [
   { route: 'performance', label: 'Performance', glyph: 'activity' },
 ];
 
-export function App(): JSX.Element {
+export function App(props: { back?: BackDispatcher }): JSX.Element {
   const viewport = useViewport;
   const family = () => uiFamily();
   const [route, setRoute] = createSignal<Route>('library');
+  const [album, setAlbum] = createSignal<Album>();
+  const openAlbum = (next: Album) => {
+    setAlbum(next);
+    setRoute('album');
+  };
+  // Back leaves a detail screen first; on the shell's root the host owns it.
+  createEffect(() => {
+    if (route() === 'library' || props.back === undefined) return;
+    onCleanup(
+      props.back.push(() => {
+        setRoute('library');
+        setAlbum(undefined);
+        return true;
+      }),
+    );
+  });
 
   // The sidebar is a phone's tab bar, a TV's focus rail, or a desktop's
   // sidebar — the same three destinations, sized for the room.
@@ -168,6 +194,7 @@ export function App(): JSX.Element {
                 viewport().height - (family() === 'mobile' ? tabHeight() : 0)
               }
               onOpenCreate={() => setRoute('create')}
+              onOpenAlbum={openAlbum}
             />
           </Show>
           <Show when={route() === 'create'}>
@@ -178,6 +205,21 @@ export function App(): JSX.Element {
                 viewport().height - (family() === 'mobile' ? tabHeight() : 0)
               }
               onDone={() => setRoute('library')}
+            />
+          </Show>
+          <Show when={route() === 'album' && album() !== undefined}>
+            <AlbumScreen
+              album={album()!}
+              family={family()}
+              x={contentX()}
+              width={viewport().width - contentX()}
+              height={
+                viewport().height - (family() === 'mobile' ? tabHeight() : 0)
+              }
+              onBack={() => {
+                setRoute('library');
+                setAlbum(undefined);
+              }}
             />
           </Show>
           <Show when={route() === 'performance'}>
