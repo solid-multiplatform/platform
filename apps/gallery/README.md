@@ -42,6 +42,9 @@ name (`src/family.ts`).
 - **Album** — cover, actions (gradient play, shuffle, a more menu, a tooltip),
   a track list, generated release notes in Markdown, a selectable credits
   line, a context menu on the cover, and Back to the library.
+- **Settings** — appearance and playback choices, a modal (About, rendered
+  from Markdown), an end drawer (Advanced), an anchored popover (what the lab
+  measures) and a destructive alert.
 - **Performance** — the in-app lab: display rate, FPS, the frame's own cost,
   p50/p99 against the panel's budget, a live frame-time graph drawn from scene
   views, and Capture. It runs a measured loop only while the screen is open;
@@ -53,7 +56,7 @@ draws the same thing.
 
 ## Status
 
-Library, Create, Album and Performance are built and screenshot-checked in the
+Library, Create, Album, Settings and Performance are built and screenshot-checked in the
 desktop, mobile and TV shells. Next: Search (`TextField`, `Select`, empty
 states), Settings (modals, drawers, popovers, window chrome), the Components
 index that links each primitive to where it is used for real, and the native
