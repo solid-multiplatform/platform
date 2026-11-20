@@ -29,8 +29,8 @@ import { Library } from './screens/Library';
 import { AlbumScreen } from './screens/Album';
 import type { Album } from './data';
 import { Create } from './screens/Create';
-import { Performance } from './screens/Performance';
 import { Settings as SettingsScreen } from './screens/Settings';
+import { PerfOverlay } from './components/PerfOverlay';
 
 export const galleryTheme = defineTheme({
   colors: {
@@ -57,12 +57,11 @@ export const galleryTheme = defineTheme({
   radius: { small: R.small, medium: R.medium, large: R.large },
 });
 
-export type Route = 'library' | 'create' | 'performance' | 'settings' | 'album';
+export type Route = 'library' | 'create' | 'settings' | 'album';
 
 const NAV: { route: Route; label: string; glyph: GlyphName }[] = [
   { route: 'library', label: 'Library', glyph: 'library' },
   { route: 'create', label: 'Create', glyph: 'plus' },
-  { route: 'performance', label: 'Performance', glyph: 'activity' },
   { route: 'settings', label: 'Settings', glyph: 'filter' },
 ];
 
@@ -327,14 +326,6 @@ export function App(): JSX.Element {
               height={viewport().height - bottomReserved()}
             />
           </Show>
-          <Show when={route() === 'performance'}>
-            <Performance
-              family={family()}
-              topNav={tv() ? topNav() : undefined}
-              width={viewport().width - contentX()}
-              height={viewport().height - bottomReserved()}
-            />
-          </Show>
         </view>
 
         <Show when={family() !== 'tv'}>
@@ -412,12 +403,21 @@ export function App(): JSX.Element {
           </view>
         </Show>
 
+        <PerfOverlay
+          family={family()}
+          contentX={contentX()}
+          width={viewport().width}
+          height={viewport().height}
+          bottomInset={playerBottom() + (family() === 'tv' ? 0 : 62)}
+        />
+
         <Show when={flying()}>
           {(value) => (
             <HeroFlight
               album={value().album}
               from={value().from}
               to={value().to}
+              radius={tv() ? R.large : R.medium}
               onDone={() => setFlight(undefined)}
             />
           )}

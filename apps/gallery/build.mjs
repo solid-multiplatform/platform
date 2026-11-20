@@ -146,7 +146,18 @@ if (!roku) {
   );
   if (!gradle.includes('useLegacyPackaging'))
     gradle += '\nandroid.packaging.jniLibs.useLegacyPackaging = true\n';
+  // Every build is an upgrade: a versionCode that never changes makes the
+  // package installer treat a tap-to-install as a reinstall, and some
+  // launchers keep showing the old build's label.
+  const built = new Date();
+  const versionCode = Math.floor(built.getTime() / 60000);
+  const stamp = built.toISOString().slice(0, 16).replace(/[-:T]/g, '');
+  const versionName = `${projectConfig.version}+${stamp}`;
+  gradle = gradle
+    .replace(/versionCode\s+\d+/, `versionCode ${versionCode}`)
+    .replace(/versionName\s+'[^']*'/, `versionName '${versionName}'`);
   writeFileSync(gradleFile, gradle);
+  console.log(`Version: ${versionName} (${versionCode})`);
 }
 
 step('Installing the app and its target');

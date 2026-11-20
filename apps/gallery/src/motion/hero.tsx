@@ -37,6 +37,13 @@ export function rectOf(node: ElementNode | undefined): HeroRect | undefined {
  * rather than the source node: the generated `Cover` draws identically at any
  * size.
  *
+ * The content is laid out once, at the source's size, and the flight only
+ * moves and scales that box: resizing the cover every frame would re-lay-out
+ * and re-rasterise its lettering and rules 60 times a second, which is what
+ * made the first version of this stutter. Scaling keeps every glyph and
+ * texture exactly as it was drawn (SDF text scales cleanly, which is the
+ * same reason SwiftUI can snapshot a view and interpolate its frame).
+ *
  * One rAF loop, only while the flight runs; it stops on cleanup.
  */
 export function HeroFlight(props: {
@@ -44,6 +51,8 @@ export function HeroFlight(props: {
   from: HeroRect;
   to: HeroRect;
   duration?: number;
+  /** The corner radius the cover lands with, in screen units. */
+  radius?: number;
   onDone?(): void;
 }): JSX.Element {
   const [t, setT] = createSignal(0);
@@ -60,21 +69,26 @@ export function HeroFlight(props: {
     frame = requestAnimationFrame(step);
     onCleanup(() => cancelAnimationFrame(frame));
   });
-  const rect = () => ({
-    x: lerp(props.from.x, props.to.x, t()),
-    y: lerp(props.from.y, props.to.y, t()),
-    size: lerp(props.from.size, props.to.size, t()),
+  // Fixed layout box, in source units; only the transform changes. The
+  // corner radius is divided by the same scale so it stays the size it lands
+  // with instead of growing with the box.
+  const base = () => props.from.size;
+  const grew = () => lerp(1, props.to.size / base(), t());
+  const radius = () => (props.radius ?? 14) / grew();
+  const centre = () => ({
+    x: lerp(props.from.x + base() / 2, props.to.x + props.to.size / 2, t()),
+    y: lerp(props.from.y + base() / 2, props.to.y + props.to.size / 2, t()),
   });
   return (
     <view
-      x={rect().x}
-      y={rect().y}
-      width={rect().size}
-      height={rect().size}
+      x={centre().x - base() / 2}
+      y={centre().y - base() / 2}
+      width={base()}
+      height={base()}
+      scale={grew()}
       zIndex={600}
-      clipping
     >
-      <Cover album={props.album} size={rect().size} radius={12} />
+      <Cover album={props.album} size={base()} radius={radius()} />
     </view>
   );
 }
