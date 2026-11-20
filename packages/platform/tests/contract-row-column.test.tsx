@@ -1178,3 +1178,37 @@ v.describe('wheel and page keys', () => {
     },
   );
 });
+
+v.describe('Row and Column: a wrapper that forwards focus', () => {
+  v.test(
+    'forwardFocus on a view with no `selected` focuses its first child',
+    async () => {
+      // Regression: `Math.max(undefined, 0)` is NaN, the child search never
+      // found its index, and the loop spun forever (a hung page on the web,
+      // an ANR on a TV).
+      let wrapper!: lng.ElementNode;
+      let target!: lng.ElementNode;
+      const dispose = await mount(() => (
+        <view
+          ref={(node) => (wrapper = node)}
+          forwardFocus={navigableForwardFocus}
+          width={320}
+          height={200}
+        >
+          <view
+            ref={(node) => (target = node)}
+            width={120}
+            height={44}
+            onEnter={() => undefined}
+          />
+        </view>
+      ));
+      // Calling the handler directly pins the regression (it used to spin);
+      // where the focus lands is ElementNode.setFocus's choice.
+      v.expect(navigableForwardFocus.call(wrapper, wrapper)).toBe(true);
+      v.expect(target).toBeDefined();
+      v.expect(lng.activeElement()).toBeDefined();
+      dispose();
+    },
+  );
+});

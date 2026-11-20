@@ -118,7 +118,12 @@ export function onGridFocus(
 export const navigableForwardFocus: lng.ForwardFocusHandler = function () {
   const navigable = this as lngp.NavigableElement;
 
-  let selected = Math.max(navigable.selected, 0);
+  // A wrapper with forwardFocus but no `selected` prop has none: `Math.max`
+  // on undefined is NaN, and the search below then never finds its index —
+  // it spun forever (a hung page, an ANR on a TV).
+  let selected = Number.isFinite(navigable.selected)
+    ? Math.max(navigable.selected!, 0)
+    : 0;
 
   if (this.children.length === 0) {
     return false;
