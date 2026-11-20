@@ -8,6 +8,8 @@ import {
 import {
   navigableForwardFocus,
   handleNavigation,
+  pageNavigation,
+  wheelNavigation,
   defaultTransitionDown,
   defaultTransitionUp,
 } from './utils/handleNavigation.js';
@@ -32,6 +34,8 @@ const ColumnStyles: NodeStyles = {
 
 const onUp = handleNavigation('up');
 const onDown = handleNavigation('down');
+const onPage = pageNavigation('y');
+const onWheel = wheelNavigation('y');
 
 export const Column: Component<ColumnProps> = (props) => {
   let columnNode: ElementNode | undefined;
@@ -101,6 +105,10 @@ export const Column: Component<ColumnProps> = (props) => {
         /* @once */ touch
           ? chainFunctions(props.onPointerDrag, drag)
           : props.onPointerDrag
+      }
+      onKeyPress={/* @once */ chainFunctions(props.onKeyPress, onPage)}
+      onPointerScroll={
+        /* @once */ chainFunctions(props.onPointerScroll, onWheel)
       }
       selected={props.selected || 0}
       scrollToIndex={scrollToIndex}

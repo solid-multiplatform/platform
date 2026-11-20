@@ -14,6 +14,33 @@ import {
 } from '../src/sdk/registry.js';
 import { webServices } from '../src/hosts/web-services/index.js';
 
+// jsdom's default `about:blank` is an opaque origin, where `localStorage`
+// throws; the browser settings service needs a real store. An in-memory
+// Storage stands in when the environment has none.
+let existingStorage: Storage | undefined;
+try {
+  existingStorage = globalThis.localStorage;
+} catch {
+  // An opaque origin: jsdom refuses the store, so the shim below stands in.
+}
+if (existingStorage === undefined) {
+  const values = new Map<string, string>();
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      get length() {
+        return values.size;
+      },
+      clear: () => values.clear(),
+      getItem: (key: string) => values.get(key) ?? null,
+      key: (index: number) => [...values.keys()][index] ?? null,
+      removeItem: (key: string) => void values.delete(key),
+      setItem: (key: string, value: string) =>
+        void values.set(key, String(value)),
+    } satisfies Storage,
+  });
+}
+
 /** The browser's services, for every test of the calling file. */
 export function useWebServices(): void {
   let remove: (() => void) | undefined;

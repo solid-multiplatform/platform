@@ -46,7 +46,10 @@ export type VirtualProps<T> = lng.NewOmit<lngp.RowProps, 'children'> & {
 function createVirtual<T>(
   component: typeof lngp.Row | typeof lngp.Column,
   props: VirtualProps<T>,
-  keyHandlers: Record<string, lng.KeyHandler>,
+  keyHandlers: Record<
+    string,
+    lng.KeyHandler | lng.ElementNode['onPointerScroll'] | undefined
+  >,
 ) {
   const isRow = component === lngp.Row;
   const axis = isRow ? 'x' : 'y';
@@ -714,6 +717,14 @@ export function VirtualRow<T>(props: VirtualProps<T>) {
       props.onRight,
       lngp.handleNavigation('right'),
     ) as lng.KeyHandler,
+    onKeyPress: lngp.chainFunctions(
+      props.onKeyPress,
+      lngp.pageNavigation('x'),
+    ) as unknown as lng.KeyHandler,
+    onPointerScroll: lngp.chainFunctions(
+      props.onPointerScroll,
+      lngp.wheelNavigation('x'),
+    ) as lng.ElementNode['onPointerScroll'],
   });
 }
 
@@ -727,5 +738,13 @@ export function VirtualColumn<T>(props: VirtualProps<T>) {
       props.onDown,
       lngp.handleNavigation('down'),
     ) as lng.KeyHandler,
+    onKeyPress: lngp.chainFunctions(
+      props.onKeyPress,
+      lngp.pageNavigation('y'),
+    ) as unknown as lng.KeyHandler,
+    onPointerScroll: lngp.chainFunctions(
+      props.onPointerScroll,
+      lngp.wheelNavigation('y'),
+    ) as lng.ElementNode['onPointerScroll'],
   });
 }

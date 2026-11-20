@@ -20,7 +20,13 @@ export function ListScreen() {
   });
   return (
     <Screen title="Virtual list">
-      <text skipFocus fontSize={20} color={MUTED}>
+      <text
+        skipFocus
+        role="status"
+        ariaLabel={`Row ${index() + 1} of ${LIST_SIZE}. Up and Down scroll; only a window of rows exists.`}
+        fontSize={20}
+        color={MUTED}
+      >
         {`Row ${index() + 1} of ${LIST_SIZE}. Up and Down scroll; only a window of rows exists.`}
       </text>
       <view

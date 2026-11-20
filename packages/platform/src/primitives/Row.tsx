@@ -10,6 +10,8 @@ import { registerFocusKey, unregisterFocusKey } from './screenHistory.js';
 import {
   handleNavigation,
   navigableForwardFocus,
+  pageNavigation,
+  wheelNavigation,
   defaultTransitionBack,
   defaultTransitionForward,
 } from './utils/handleNavigation.js';
@@ -28,6 +30,8 @@ const RowStyles: NodeStyles = {
 
 const onLeft = handleNavigation('left');
 const onRight = handleNavigation('right');
+const onPage = pageNavigation('x');
+const onWheel = wheelNavigation('x');
 
 export const Row: Component<RowProps> = (props) => {
   let rowNode: ElementNode | undefined;
@@ -111,6 +115,10 @@ export const Row: Component<RowProps> = (props) => {
         /* @once */ touch
           ? chainFunctions(props.onPointerDrag, drag)
           : props.onPointerDrag
+      }
+      onKeyPress={/* @once */ chainFunctions(props.onKeyPress, onPage)}
+      onPointerScroll={
+        /* @once */ chainFunctions(props.onPointerScroll, onWheel)
       }
       forwardFocus={navigableForwardFocus}
       scrollToIndex={scrollToIndex}

@@ -17,6 +17,7 @@ import {
   navigableHandleNavigation,
   type KeyEventTarget,
 } from '@solid-multiplatform/platform/primitives';
+import { createScenePointer } from '../src/sdk/input.js';
 import { renderer } from './setup.js';
 
 // The focus manager listens for `keydown` on the target given to
@@ -1128,6 +1129,52 @@ v.describe('Row and Column: transitions and throttleInput', () => {
       await press('ArrowLeft');
       v.expect(focusedId()).toBe('c1');
       v.expect(row.selected).toBe(1);
+    },
+  );
+});
+
+v.describe('wheel and page keys', () => {
+  v.it(
+    'a wheel moves a Column by whole rows and PageDown by a page',
+    async () => {
+      let column!: lng.ElementNode;
+      dispose = await mount(() => (
+        <view width={1920} height={1080}>
+          <Column
+            ref={column}
+            autofocus
+            width={400}
+            height={400}
+            gap={0}
+            scroll="auto"
+          >
+            {items(20)}
+          </Column>
+        </view>
+      ));
+      v.expect(focusedId()).toBe('c0');
+      const pointer = createScenePointer(lng.rootNode);
+      // One wheel notch of one item (200 units) moves one row; 400 moves two.
+      v.expect(pointer.wheel({ x: 50, y: 50 }, 0, 400)).toBe(true);
+      await flush();
+      v.expect(column.selected).toBe(2);
+      v.expect(focusedId()).toBe('c2');
+      v.expect(pointer.wheel({ x: 50, y: 50 }, 0, -200)).toBe(true);
+      await flush();
+      v.expect(focusedId()).toBe('c1');
+      // PageDown moves by the rows the list shows (its measured height over
+      // one item's slot), PageUp by the same amount back.
+      const focusedIndex = () => Number(focusedId()?.slice(1));
+      const slot =
+        Number((column.children[0] as lng.ElementNode).height) +
+        Number(column.gap || 0);
+      const page = Math.max(1, Math.floor(Number(column.height) / slot));
+      await press('PageDown');
+      const down = Math.min(1 + page, 19);
+      v.expect(focusedIndex()).toBe(down);
+      await press('PageUp');
+      v.expect(focusedIndex()).toBe(Math.max(0, down - page));
+      pointer.dispose();
     },
   );
 });

@@ -299,6 +299,7 @@ export function SelectableText(props: SelectableTextProps): JSX.Element {
       width={wrapperWidth()}
       height={wrapperHeight()}
       autofocus={local.autofocus}
+      cursorStyle="text"
       onMouseClick={onMouseClick}
       onPointerDrag={onPointerDrag}
       onKeyPress={onKeyPress}

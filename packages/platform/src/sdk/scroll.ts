@@ -43,6 +43,10 @@ export function scrollAxis(initial = 0) {
     by(delta: number) {
       to(offset() + delta);
     },
+    /** Scroll one page: the visible size along the axis, or `visible`. */
+    page(visible: number, direction: 1 | -1 = 1) {
+      to(offset() + direction * Math.max(0, visible));
+    },
     reveal(start: number, end: number, visible: number, duration = 0) {
       if (start < offset()) to(start, duration);
       else if (end > offset() + visible) to(end - visible, duration);
@@ -110,6 +114,30 @@ export function dragToScroll(
     last = value;
     if (delta) scroll.by(delta * direction);
   };
+}
+
+/**
+ * A wheel event's deltas in scene units. `deltaMode` 0 is pixels, 1 is lines
+ * (16 units each, the CSS/W3C suggested line height) and 2 is pages (the
+ * visible size the host passes). Hosts that already report layout pixels can
+ * pass the event as it is. Native wheel momentum is carried by the platform's
+ * events: this only converts units, it never adds an animation of its own.
+ */
+export function normalizeWheelDelta(
+  event: {
+    deltaX: number;
+    deltaY: number;
+    deltaMode?: number;
+  },
+  pageSize = 800,
+): { x: number; y: number } {
+  if (event.deltaMode === 1) {
+    return { x: event.deltaX * 16, y: event.deltaY * 16 };
+  }
+  if (event.deltaMode === 2) {
+    return { x: event.deltaX * pageSize, y: event.deltaY * pageSize };
+  }
+  return { x: event.deltaX, y: event.deltaY };
 }
 
 export interface WheelScrollOptions {

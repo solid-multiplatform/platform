@@ -1,6 +1,8 @@
 // startApp on the DOM host: one call declares capabilities, builds the
 // renderer, wires keys to focus, renders, and tears all of it down.
 import { expect, test, vi } from 'vitest';
+// A browser's settings service needs a store; jsdom's opaque origin has none.
+import '../services-helpers.js';
 import { useContext } from 'solid-js';
 import {
   activeElement,

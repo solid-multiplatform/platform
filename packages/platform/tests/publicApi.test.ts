@@ -326,7 +326,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   });
 
   v.test(
-    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 99 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 104 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
@@ -337,6 +337,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'BorderBoxStyle',
         'Checkbox',
         'Column',
+        'ContextMenu',
         'DatePicker',
         'Drawer',
         'FPSCounter',
@@ -388,6 +389,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'createInfiniteItems',
         'createScreenHistory',
         'createSpriteMap',
+        'createTooltip',
         'defaultTransitionBack',
         'defaultTransitionDown',
         'defaultTransitionForward',
@@ -406,6 +408,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'navigableHandleNavigation',
         'nextWordBoundary',
         'onGridFocus',
+        'pageNavigation',
         'printFocusHistory',
         'rangeBounds',
         'rangeSegments',
@@ -428,6 +431,8 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'useFocusStack',
         'useHold',
         'useMouse',
+        'wheelMoveSelection',
+        'wheelNavigation',
         'withScrolling',
         'wordRangeAt',
       ]);

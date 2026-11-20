@@ -4,14 +4,22 @@ import type { ElementNode } from '@solid-multiplatform/platform';
 import { Controls, TextField } from '@solid-multiplatform/platform/controls';
 import {
   Checkbox,
+  ContextMenu,
   Menu,
   Radio,
   Select,
   Toast,
   Tooltip,
+  createTooltip,
 } from '@solid-multiplatform/platform/primitives';
 import { useShowcase } from '../env';
-import { Button, MUTED, Screen, sceneRect } from '../ui';
+import { Button, interactive, MUTED, Screen, sceneRect, TEXT } from '../ui';
+
+/**
+ * The pointer's own control, outside the screen's focus column: a fixed
+ * place for the browser walk's right click.
+ */
+const CONTEXT_TARGET = { x: 760, y: 620, width: 280, height: 48 };
 
 const QUALITIES = ['SD', 'HD', '4K'] as const;
 const LANGUAGES = [
@@ -28,7 +36,10 @@ export function ControlsScreen() {
   const [language, setLanguage] = createSignal('en');
   const [menu, setMenu] = createSignal(false);
   const [toast, setToast] = createSignal(false);
-  const [tip, setTip] = createSignal(false);
+  const tip = createTooltip();
+  const [menuAt, setMenuAt] = createSignal<
+    { x: number; y: number; width: number; height: number } | undefined
+  >(undefined);
   const [editing, setEditing] = createSignal(false);
   const [name, setName] = createSignal('');
   const [last, setLast] = createSignal('nothing yet');
@@ -66,11 +77,49 @@ export function ControlsScreen() {
             onDismiss={() => setToast(false)}
           />
           <Tooltip
-            visible={tip}
+            visible={tip.visible}
             anchor={() => rectOf(tipButton)}
             placement="bottom"
             label="A tooltip never takes focus"
           />
+          <ContextMenu
+            visible={() => menuAt() !== undefined}
+            point={() => menuAt() ?? NOWHERE}
+            label="Item actions"
+            items={[
+              { label: 'Copy name', onSelect: () => setLast('context: Copy') },
+              { label: 'Rename', onSelect: () => setLast('context: Rename') },
+              {
+                label: 'Delete',
+                destructive: true,
+                onSelect: () => setLast('context: Delete'),
+              },
+            ]}
+            onRequestClose={() => setMenuAt(undefined)}
+          />
+          {/* Outside the focus column so the browser walk has a stable
+              right-click point; Enter opens the same menu for a keyboard. */}
+          <view
+            {...CONTEXT_TARGET}
+            style={interactive}
+            role="button"
+            ariaLabel="Right-click for actions"
+            onEnter={() => {
+              setMenuAt({
+                x: CONTEXT_TARGET.x,
+                y: CONTEXT_TARGET.y,
+                width: 0,
+                height: 0,
+              });
+            }}
+            onPointerContext={(point) =>
+              setMenuAt({ ...point, width: 0, height: 0 })
+            }
+          >
+            <text x={16} y={12} fontSize={22} color={TEXT}>
+              Right-click for actions
+            </text>
+          </view>
           <Show when={editing() && env.controls}>
             {(surface) => (
               <Controls surface={surface()}>
@@ -118,8 +167,7 @@ export function ControlsScreen() {
           tipButton = node;
         }}
         label="Tooltip while focused"
-        onFocus={() => setTip(true)}
-        onBlur={() => setTip(false)}
+        {...tip.trigger}
       />
       <Button
         ref={(node) => {

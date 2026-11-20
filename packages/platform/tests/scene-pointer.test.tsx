@@ -709,6 +709,118 @@ v.describe('hold, drag and scroll', () => {
   );
 });
 
+v.describe('pointer enter, leave and context menus', () => {
+  v.test(
+    'enter and leave follow the target and the cursor follows cursorStyle',
+    async () => {
+      const enter = v.vi.fn();
+      const leave = v.vi.fn();
+      const m = await mount(() => (
+        <view
+          x={100}
+          y={100}
+          width={200}
+          height={100}
+          cursorStyle="text"
+          onPointerEnter={enter}
+          onPointerLeave={leave}
+        />
+      ));
+      m.host.move(150, 150);
+      v.expect(enter).toHaveBeenCalledTimes(1);
+      v.expect(leave).not.toHaveBeenCalled();
+      v.expect(m.host.cursor).toHaveBeenLastCalledWith('text');
+      // A move within the same target is not a second enter.
+      m.host.move(160, 160);
+      v.expect(enter).toHaveBeenCalledTimes(1);
+      m.host.move(600, 600);
+      v.expect(leave).toHaveBeenCalledTimes(1);
+      v.expect(m.host.cursor).toHaveBeenLastCalledWith(undefined);
+      // Leaving the surface also leaves the target.
+      m.host.move(150, 150);
+      m.host.sink!.leave();
+      v.expect(leave).toHaveBeenCalledTimes(2);
+      m.dispose();
+    },
+  );
+
+  v.test(
+    'a secondary click reaches the nearest handler and is not a click',
+    async () => {
+      const click = v.vi.fn();
+      const inner = v.vi.fn();
+      const outer = v.vi.fn();
+      const m = await mount(() => (
+        <view x={0} y={0} width={500} height={400} onPointerContext={outer}>
+          <view
+            x={100}
+            y={100}
+            width={200}
+            height={100}
+            onEnter={click}
+            onPointerContext={inner}
+          />
+        </view>
+      ));
+      v.expect(m.host.sink!.context!({ x: 150, y: 150 })).toBe(true);
+      v.expect(inner).toHaveBeenCalledTimes(1);
+      v.expect(inner.mock.calls[0]![0]).toEqual({ x: 150, y: 150 });
+      v.expect(outer).not.toHaveBeenCalled();
+      v.expect(click).not.toHaveBeenCalled();
+      // Outside the inner control the outer handler takes it.
+      v.expect(m.host.sink!.context!({ x: 450, y: 350 })).toBe(true);
+      v.expect(outer).toHaveBeenCalledTimes(1);
+      // Empty space handles nothing.
+      v.expect(m.host.sink!.context!({ x: 700, y: 700 })).toBe(false);
+      m.dispose();
+    },
+  );
+
+  v.test('a disabled control stops the context search', async () => {
+    const outer = v.vi.fn();
+    const m = await mount(() => (
+      <view x={0} y={0} width={500} height={400} onPointerContext={outer}>
+        <view
+          x={100}
+          y={100}
+          width={200}
+          height={100}
+          ariaDisabled
+          onPointerContext={() => {}}
+        />
+      </view>
+    ));
+    v.expect(m.host.sink!.context!({ x: 150, y: 150 })).toBe(false);
+    v.expect(outer).not.toHaveBeenCalled();
+    m.dispose();
+  });
+
+  v.test('Escape cancels an active drag', async () => {
+    const phases: string[] = [];
+    const m = await mount(() => (
+      <view
+        x={0}
+        y={0}
+        width={400}
+        height={400}
+        onPointerDrag={(phase) => phases.push(phase)}
+      />
+    ));
+    m.host.down(50, 50);
+    m.host.move(50, 120);
+    // The move that crossed the slop starts the drag and reports the move.
+    v.expect(phases).toEqual(['start', 'move']);
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }),
+    );
+    v.expect(phases).toEqual(['start', 'move', 'cancel']);
+    m.host.up(50, 120);
+    // Cancelled is not also an end.
+    v.expect(phases).toEqual(['start', 'move', 'cancel']);
+    m.dispose();
+  });
+});
+
 v.describe('cost', () => {
   v.test(
     'moving the pointer sets no timer, schedules no frame and adds no listener',
