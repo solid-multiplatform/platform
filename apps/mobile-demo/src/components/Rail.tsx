@@ -8,14 +8,10 @@ import { SkeletonRail } from './Skeleton';
 
 /**
  * Apple's pan hysteresis: 10 pt of movement before a direction is chosen.
- * The lock angles are UIKit's own (decoded from the iOS 26.2 binary): a
- * pan within 20 degrees of an axis locks to it; between the two, a nested
- * scroll view lets both axes scroll at once, so a diagonal drag moves the
- * rail horizontally and the page vertically.
+ * From there the gesture keeps the dominant axis for its whole life: a
+ * nested rail and page never move together.
  */
 const AXIS_SLOP = 10;
-const LOCK_HORIZONTAL = Math.tan((20 * Math.PI) / 180);
-const LOCK_VERTICAL = Math.tan((70 * Math.PI) / 180);
 
 export function Rail(props: {
   x: number;
@@ -45,9 +41,13 @@ export function Rail(props: {
   });
 
   // A drag that starts on a card picks its axes after 10 units of movement:
-  // horizontal moves the rail, vertical moves the page underneath, and a
-  // diagonal moves both, the way nested scroll views do on iOS.
-  let mode: 'h' | 'v' | 'both' | null = null;
+  // A drag picks one axis after 10 units of movement and keeps it: the
+  // dominant direction wins, exactly one scroller moves, and a diagonal never
+  // nudges both. UIKit's nested scroll views behave the same way — two
+  // recognisers with perpendicular axes do not recognise simultaneously, so
+  // one wins; a rail that also moved the page on a 30° drag felt like the
+  // wrong screen was scrolling.
+  let mode: 'h' | 'v' | null = null;
   let originX = 0;
   let originY = 0;
   const onDrag = (
@@ -65,18 +65,14 @@ export function Rail(props: {
       const dx = point.x - originX;
       const dy = point.y - originY;
       if (dx * dx + dy * dy < AXIS_SLOP * AXIS_SLOP) return;
-      const ratio = Math.abs(dy) / Math.max(1e-6, Math.abs(dx));
-      mode =
-        ratio <= LOCK_HORIZONTAL ? 'h' : ratio >= LOCK_VERTICAL ? 'v' : 'both';
+      // Ties go horizontal, the rail's own axis.
+      mode = Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v';
       // The drag began at the finger's origin, not where the slop ended.
-      if (mode === 'h' || mode === 'both')
-        props.scroller.dragAxis('start', originX);
-      if (mode === 'v' || mode === 'both')
-        props.page.dragAxis('start', originY);
+      if (mode === 'h') props.scroller.dragAxis('start', originX);
+      else props.page.dragAxis('start', originY);
     }
-    if (mode === 'h' || mode === 'both')
-      props.scroller.dragAxis(phase, point.x);
-    if (mode === 'v' || mode === 'both') props.page.dragAxis(phase, point.y);
+    if (mode === 'h') props.scroller.dragAxis(phase, point.x);
+    if (mode === 'v') props.page.dragAxis(phase, point.y);
   };
 
   return (
