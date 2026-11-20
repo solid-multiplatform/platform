@@ -19,6 +19,7 @@ import {
   useViewport,
 } from '@solid-multiplatform/platform/app';
 import { HostScope } from '@solid-multiplatform/platform/app';
+import { Column } from '@solid-multiplatform/platform/primitives';
 import { Glyph, type GlyphName } from './components/Glyph';
 import { C, R, S, T } from './theme';
 import { uiFamily } from './family';
@@ -166,15 +167,15 @@ export function App(): JSX.Element {
             >
               a design gallery
             </text>
-            <view
+            <Column
               x={S(2)}
               y={S(22)}
-              display="flex"
-              flexDirection="column"
+              width={sidebar() - S(4)}
+              scroll="none"
               gap={S(1)}
             >
               <For each={NAV}>{(item) => navRow(item, true)}</For>
-            </view>
+            </Column>
             <text
               x={S(6)}
               y={viewport().height - S(8)}

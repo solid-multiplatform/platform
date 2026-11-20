@@ -1,5 +1,9 @@
 import { For, Show, type JSX } from 'solid-js';
-import { Column, Row } from '@solid-multiplatform/platform/primitives';
+import {
+  Column,
+  navigableForwardFocus,
+  Row,
+} from '@solid-multiplatform/platform/primitives';
 import { Cover } from '../components/Cover';
 import { Glyph, type GlyphName } from '../components/Glyph';
 import { ALBUMS, RAILS, albumSeconds, type Album } from '../data';
@@ -13,6 +17,7 @@ export function GradientButton(props: {
   y?: number;
   width?: number;
   height?: number;
+  autofocus?: boolean;
   onPress?(): void;
 }): JSX.Element {
   return (
@@ -174,6 +179,7 @@ function Rail(props: {
       gap={S(3)}
       width={props.width}
       height={props.cardSize + 52 + (props.family === 'tv' ? 44 : 26)}
+      forwardFocus={navigableForwardFocus}
     >
       <text
         x={S(6)}
@@ -244,6 +250,7 @@ export function Library(props: {
           alignItems="flexEnd"
           justifyContent="spaceBetween"
           padding={[0, pad()]}
+          forwardFocus={navigableForwardFocus}
         >
           <view display="flex" flexDirection="column" gap={S(1)}>
             <text fontSize={tv() ? T.display : T.title} color={C.text}>
@@ -252,7 +259,6 @@ export function Library(props: {
             <text fontSize={tv() ? T.body : T.caption} color={C.muted}>
               {`${ALBUMS.length} albums · ${RAILS.length} rails · one accent`}
             </text>
-
           </view>
           <Show when={!mobile()}>
             <Row gap={S(3)} scroll="none" width={tv() ? 420 : 360}>
@@ -267,6 +273,7 @@ export function Library(props: {
         <view
           width={width()}
           height={mobile() ? cover() + 210 : cover() + 48}
+          forwardFocus={navigableForwardFocus}
           display="flex"
           flexDirection={mobile() ? 'column' : 'row'}
           gap={tv() ? S(10) : S(6)}
@@ -303,6 +310,7 @@ export function Library(props: {
                 label="Play"
                 width={tv() ? 168 : 128}
                 height={tv() ? 60 : 44}
+                autofocus={tv()}
               />
               <GhostButton
                 label="Shuffle"
