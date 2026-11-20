@@ -84,6 +84,13 @@ async function mount(): Promise<Mounted> {
 }
 
 v.describe('touch scrolling on Row and Column', () => {
+  // The drag tests mount on a pointer-touch host. Capabilities are global and
+  // other suites leave their own behind (a television disables touch
+  // scrolling), so each test states the host it needs; the television test
+  // overrides this itself.
+  v.beforeEach(() => lng.setCapabilities('android'));
+  v.afterEach(() => lng.resetCapabilities());
+
   v.test('a horizontal drag moves a rail and snaps to its slot', async () => {
     const m = await mount();
     try {
