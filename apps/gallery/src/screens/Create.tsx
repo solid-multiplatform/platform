@@ -399,7 +399,7 @@ export function Create(props: {
                 </text>
                 <AnimatedNumber
                   value={chosen().size}
-                  width={Math.round((tv() ? T.headline : T.label) * 0.7)}
+                  width={Math.round((tv() ? T.headline : T.label) * 0.62)}
                   height={Math.round((tv() ? T.headline : T.label) * 1.4)}
                   fontSize={tv() ? T.headline : T.label}
                   color={C.text}
