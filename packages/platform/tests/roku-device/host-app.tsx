@@ -43,7 +43,7 @@ import {
 } from '@solid-multiplatform/platform/services';
 import { getRegistry } from '@roku-sdk/rsg-ts/runtime';
 import robotoRegular from './fonts/Roboto-Regular.ttf';
-import { BG, BUTTONS, FOCUSED, IDLE, MODAL, SCREEN } from './host-cases.mjs';
+import { BG, BUTTONS, FOCUSED, IDLE, MODAL, RAIL, SCREEN } from './host-cases.mjs';
 
 // Every timer armed from here on, for the idle count. `timeout` is the
 // test's own clock and is not counted.
@@ -271,6 +271,57 @@ function ScreenHistoryApp(props: {
   );
 }
 
+/**
+ * The tvOS scroll-into-view case: a rail longer than the screen. Select on the
+ * focused first card jumps to the eighth with `scrollToIndex`, which must
+ * bring it wholly on screen.
+ */
+function RailApp(): JSXElement {
+  const [focused, setFocused] = createSignal(0);
+  let row!: ElementNode;
+  onMount(() => log('RAIL READY'));
+  return (
+    <view
+      width={SCREEN.w}
+      height={SCREEN.h}
+      color={BG}
+      onBack={() => {
+        log('RAIL BACK');
+        return true;
+      }}
+    >
+      <Row
+        ref={row}
+        autofocus
+        x={RAIL.x}
+        y={RAIL.y}
+        width={SCREEN.w}
+        height={RAIL.h}
+        gap={RAIL.gap}
+      >
+        {Array.from({ length: RAIL.count }, (_, i) => (
+          <view
+            id={`rail${i}`}
+            width={RAIL.w}
+            height={RAIL.h}
+            color={focused() === i ? FOCUSED : IDLE}
+            onFocusChanged={(has: boolean) => {
+              if (!has) return;
+              setFocused(i);
+              log('RAIL FOCUS ' + i);
+            }}
+            onEnter={() => {
+              log('RAIL JUMP');
+              row.scrollToIndex(RAIL.jumpTo);
+              return true;
+            }}
+          />
+        ))}
+      </Row>
+    </view>
+  );
+}
+
 function App(context: HostContext<RokuSurface>): JSXElement {
   log('START');
   /** The device keyboard, for an e-mail address. */
@@ -295,6 +346,7 @@ function App(context: HostContext<RokuSurface>): JSXElement {
     throw new Error('HOST deliberate boot error');
   if (initial?.includes('contentId=screen-history'))
     return <ScreenHistoryApp links={links} />;
+  if (initial?.includes('contentId=rail')) return <RailApp />;
   links.subscribe((link) => {
     log('LINK event ' + link);
     if (link.includes('contentId=idle-check')) {

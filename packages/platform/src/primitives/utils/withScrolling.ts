@@ -35,6 +35,157 @@ export interface ScrollableElement extends ElementNode {
 const isNotShown = (node: ElementNode | ElementText): boolean => {
   return (node.lng.renderState as number) !== RenderState.InViewport;
 };
+
+// The geometry one scroll step needs, read once. `start` is the container
+// position that shows the first item (the user's `offset` when given) and
+// `maxOffset` the furthest it may travel; both come from the same arithmetic
+// `withScrolling` clamps with, so ensuring visibility below cannot overscroll.
+interface ScrollBounds {
+  axis: 'x' | 'y';
+  dimension: 'width' | 'height';
+  screenSize: number;
+  position: number;
+  initialPosition: number;
+  start: number;
+  maxOffset: number;
+}
+
+function scrollBounds(
+  component: ScrollableElement,
+  isRow: boolean,
+): ScrollBounds {
+  const axis = isRow ? 'x' : 'y';
+  const dimension = isRow ? 'width' : 'height';
+  const lng = component.lng as unknown as INode;
+  const root = lng.stage.root;
+  const screenSize = isRow ? root.w : root.h;
+  const position = component[axis] ?? 0;
+  const initialPosition = component._initialPosition ?? position;
+  const gap = component.gap || 0;
+
+  let screenOffset = component._screenOffset;
+  if (screenOffset === undefined) {
+    screenOffset = component.offset ?? (isRow ? lng.absX : lng.absY) - position;
+    component._screenOffset = screenOffset;
+  }
+  let endOffset = component.endOffset;
+  if (endOffset === undefined) {
+    const p = component.parent;
+    if (p && p.clipping) {
+      endOffset = screenSize - ((isRow ? p.absX : p.absY) || 0) - p[dimension];
+      component.endOffset = endOffset;
+    }
+  }
+
+  const start = component.offset ?? initialPosition;
+  const maxOffset = Math.min(
+    screenSize -
+      (component[dimension] ?? 0) -
+      screenOffset -
+      (endOffset ?? 2 * gap),
+    start,
+  );
+  return {
+    axis,
+    dimension,
+    screenSize,
+    position,
+    initialPosition,
+    start,
+    maxOffset,
+  };
+}
+
+/**
+ * Moves `candidate` the least distance that shows `selectedEl` completely,
+ * clamped to the container's own travel. tvOS scrolls content so a focused
+ * item is never half visible; this is the guarantee the scroll modes cannot
+ * make on their own when items differ in size or focus jumps.
+ */
+function keepVisible(
+  selectedEl: ElementNode | ElementText,
+  bounds: ScrollBounds,
+  candidate: number,
+): number {
+  const size = (selectedEl[bounds.dimension] as number | undefined) ?? 0;
+  const scale =
+    (selectedEl.scale as number | undefined) ??
+    (selectedEl.$focus as Styles | undefined)?.scale ??
+    1;
+  const scaled = size * scale;
+  // A focused item scales about its centre.
+  const centreInset = (scaled - size) / 2;
+  const lng = selectedEl.lng as unknown as { absX: number; absY: number };
+  const abs = bounds.axis === 'x' ? lng.absX : lng.absY;
+  // The candidate position translates the selection by (candidate - position).
+  const start = abs + (candidate - bounds.position) - centreInset;
+  let next = candidate;
+  if (start < 0) next -= start;
+  else if (start + scaled > bounds.screenSize)
+    next -= start + scaled - bounds.screenSize;
+  if (next < bounds.maxOffset) next = bounds.maxOffset;
+  else if (next > bounds.start) next = bounds.start;
+  return next;
+}
+
+function applyScrollPosition(
+  component: ScrollableElement,
+  bounds: ScrollBounds,
+  next: number,
+): void {
+  const position = component[bounds.axis];
+  if (position === next) return;
+  const onScrolled = component.onScrolled;
+  if (onScrolled) {
+    onScrolled.call(
+      component,
+      component,
+      next,
+      next === bounds.initialPosition,
+    );
+  }
+  component[bounds.axis] = next;
+  component._targetPosition = next;
+}
+
+/**
+ * Scrolls `component` so the selected child is fully inside the viewport.
+ * This is the tvOS rule: content scrolls to keep the focused item visible.
+ * `scroll: "none"` still opts out. Used by `scrollToIndex` and when focus
+ * re-enters a container on an already selected item.
+ */
+export function ensureSelectionVisible(
+  component: ScrollableElement,
+  isRow: boolean,
+  selectedElement?: ElementNode | ElementText,
+): void {
+  const children = component.children;
+  if (component.scroll === 'none' || children.length === 0) return;
+  const selected = component.selected || 0;
+  const selectedEl = selectedElement ?? children[selected];
+  if (selectedEl === undefined) return;
+  const bounds = scrollBounds(component, isRow);
+  applyScrollPosition(
+    component,
+    bounds,
+    keepVisible(selectedEl, bounds, bounds.position),
+  );
+}
+
+export const scrollRowIntoView = /* @__PURE__ */ (
+  component: ElementNode,
+  selectedElement?: ElementNode | ElementText,
+): void =>
+  ensureSelectionVisible(component as ScrollableElement, true, selectedElement);
+export const scrollColumnIntoView = /* @__PURE__ */ (
+  component: ElementNode,
+  selectedElement?: ElementNode | ElementText,
+): void =>
+  ensureSelectionVisible(
+    component as ScrollableElement,
+    false,
+    selectedElement,
+  );
 /*
   Auto Scrolling starts scrolling right away until the last item is shown. Keeping a full view of the list.
   Edge starts scrolling when it reaches the edge of the viewport.
@@ -71,8 +222,18 @@ export function withScrolling(isRow: boolean): Scroller {
     const scrollProp = componentRef.scroll;
     const children = componentRef.children;
     const childCount = children.length;
-    if (scrollProp === 'none' || selected === lastSelected || !childCount)
+    if (scrollProp === 'none' || !childCount) return;
+    // Focus can land on an already selected item: a later key after a
+    // programmatic `selected`, or focus re-entering the container. The scroll
+    // modes would step again, so only the visibility guarantee runs here.
+    if (selected === lastSelected) {
+      ensureSelectionVisible(
+        componentRef,
+        isRow,
+        selectedElement || children[selected],
+      );
       return;
+    }
 
     const position = componentRef[axis];
     let initialPosition = componentRef._initialPosition;
@@ -226,6 +387,26 @@ export function withScrolling(isRow: boolean): Scroller {
       !isScrollStopLastCase
         ? Math.max(nextPosition, maxOffset)
         : Math.min(nextPosition, offset);
+
+    // The modes above compute a step from item sizes, which assumes items are
+    // uniform. tvOS guarantees the focused item is fully visible, so the
+    // stepping modes finish by correcting the position when it is not. The
+    // other modes (always, center, bounded) place the item deliberately.
+    if ((scroll === 'auto' || scroll === 'edge') && !selectedEl.centerScroll) {
+      nextPosition = keepVisible(
+        selectedEl,
+        {
+          axis,
+          dimension,
+          screenSize,
+          position,
+          initialPosition,
+          start: offset,
+          maxOffset,
+        },
+        nextPosition,
+      );
+    }
 
     // Update position if it has changed
     if (position !== nextPosition) {

@@ -644,15 +644,15 @@ v.describe('Row and Column: selected', () => {
       await press('ArrowRight');
       v.expect([row.selected, focusedId(), row.x]).toEqual([7, 'c7', -1720]);
 
-      // Current behaviour (odd): after selected goes back to 0, Left focuses c0
-      // in place (moveSelection falls back to `selected` when there is nothing
-      // to the left) and scrollRow sees idx === lastIdx and does not scroll, so
-      // c0 stays off screen at x = -1720.
+      // `selected` moved without taking focus. Left then focuses c0 in place
+      // (moveSelection falls back to `selected` when there is nothing to the
+      // left) and the row scrolls it fully into view: a focused item is never
+      // left off screen.
       setSel(0);
       await flush();
       v.expect([row.selected, focusedId()]).toEqual([0, 'c7']);
       await press('ArrowLeft');
-      v.expect([row.selected, focusedId(), row.x]).toEqual([0, 'c0', -1720]);
+      v.expect([row.selected, focusedId(), row.x]).toEqual([0, 'c0', 0]);
     },
   );
 
@@ -706,7 +706,7 @@ v.describe('Row and Column: selected', () => {
   );
 
   v.it(
-    'scrollToIndex(i) selects and focuses child i; the scroll is one auto step, not an alignment',
+    'scrollToIndex(i) selects and focuses child i and brings it fully into view',
     async () => {
       let row!: lng.ElementNode;
       dispose = await mount(() => (
@@ -722,13 +722,13 @@ v.describe('Row and Column: selected', () => {
         ).scrollToIndex(i);
       scrollToIndex(5);
       await flush();
-      // Current behaviour: the scroll moves one step (400 + gap 30) whatever the
-      // distance jumped.
-      v.expect([row.selected, focusedId(), row.x]).toEqual([5, 'c5', -430]);
+      // c5 spans 2150..2550; the row moves the least distance that shows it
+      // whole: 1920 - 2550 = -630.
+      v.expect([row.selected, focusedId(), row.x]).toEqual([5, 'c5', -630]);
       scrollToIndex(2);
       await flush();
-      // ... and a jump back by more than one still counts as "incrementing".
-      v.expect([row.selected, focusedId(), row.x]).toEqual([2, 'c2', -860]);
+      // c2 is already on screen at -630 (230..630): no jump back.
+      v.expect([row.selected, focusedId(), row.x]).toEqual([2, 'c2', -630]);
     },
   );
 });

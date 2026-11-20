@@ -12,7 +12,10 @@ import {
   defaultTransitionDown,
   defaultTransitionUp,
 } from './utils/handleNavigation.js';
-import { scrollColumn } from './utils/withScrolling.js';
+import {
+  scrollColumn,
+  scrollColumnIntoView,
+} from './utils/withScrolling.js';
 import { chainFunctions, chainRefs } from './utils/chainFunctions.js';
 import { registerFocusKey, unregisterFocusKey } from './screenHistory.js';
 import type { ColumnProps } from './types.js';
@@ -28,14 +31,9 @@ function scrollToIndex(
   index: number,
   options?: { noFocus?: boolean },
 ): void {
-  const lastSelected = this.selected;
   this.selected = index;
-  scrollColumn(
-    index,
-    this,
-    undefined,
-    lastSelected === index ? undefined : lastSelected,
-  );
+  // A jump, not a step: tvOS scrolls the focused item fully into view.
+  scrollColumnIntoView(this, this.children[index]);
   if (!options?.noFocus) {
     this.children[index]?.setFocus();
   }
