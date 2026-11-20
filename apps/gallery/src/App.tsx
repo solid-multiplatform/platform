@@ -10,6 +10,7 @@ import {
   For,
   onCleanup,
   Show,
+  useContext,
   type JSX,
 } from 'solid-js';
 import {
@@ -17,7 +18,7 @@ import {
   ThemeProvider,
   useViewport,
 } from '@solid-multiplatform/platform/app';
-import type { BackDispatcher } from '@solid-multiplatform/platform';
+import { HostScope } from '@solid-multiplatform/platform/app';
 import { Glyph, type GlyphName } from './components/Glyph';
 import { C, R, S, T } from './theme';
 import { uiFamily } from './family';
@@ -62,8 +63,11 @@ const NAV: { route: Route; label: string; glyph: GlyphName }[] = [
   { route: 'settings', label: 'Settings', glyph: 'filter' },
 ];
 
-export function App(props: { back?: BackDispatcher }): JSX.Element {
+export function App(): JSX.Element {
   const viewport = useViewport;
+  // The host's one Back dispatcher, carried by the scope: the app needs no
+  // props, so the same component is the CLI's `app.tsx` on native targets.
+  const back = useContext(HostScope)?.back;
   const family = () => uiFamily();
   const [route, setRoute] = createSignal<Route>('library');
   const [album, setAlbum] = createSignal<Album>();
@@ -73,9 +77,9 @@ export function App(props: { back?: BackDispatcher }): JSX.Element {
   };
   // Back leaves a detail screen first; on the shell's root the host owns it.
   createEffect(() => {
-    if (route() === 'library' || props.back === undefined) return;
+    if (route() === 'library' || back === undefined) return;
     onCleanup(
-      props.back.push(() => {
+      back.push(() => {
         setRoute('library');
         setAlbum(undefined);
         return true;
