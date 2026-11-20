@@ -5,6 +5,17 @@ import { mainHandler, type AndroidApp } from './runtime.js';
 const rate = (hz: number): number => Math.round(hz * 100) / 100;
 
 /**
+ * The frame-rate compatibility Android's docs name for a rendering UI.
+ * `AT_LEAST` (API 36) is the documented value for "UIs, animations, scrolling
+ * and fling"; `DEFAULT` is the one for everything that is not video before it.
+ */
+function compatibility(): number {
+  return android.os.Build.VERSION.SDK_INT >= 36
+    ? android.view.Surface.FRAME_RATE_COMPATIBILITY_AT_LEAST
+    : android.view.Surface.FRAME_RATE_COMPATIBILITY_DEFAULT;
+}
+
+/**
  * The display's current mode and the modes it can switch to.
  *
  * `Display.getMode()` is API 23 (NativeScript's minimum is above it), and
@@ -46,12 +57,44 @@ export function display(app: AndroidApp): DisplayPort {
     const activity = app.foregroundActivity ?? app.startActivity;
     const window = activity?.getWindow();
     if (!window) return;
-    // The pre-11 hint, honoured by Pixel and most OEMs.
+    // A mode id is resolution *and* rate, so the best mode is the fastest one
+    // at the size the display is showing: switching to a faster mode at a
+    // different resolution would resize the window under the scene.
+    let modeId = -1;
+    try {
+      const display = manager.getDisplay(android.view.Display.DEFAULT_DISPLAY);
+      const current = display.getMode();
+      const modes = display.getSupportedModes();
+      let best = current;
+      for (let i = 0; i < modes.length; i++) {
+        const mode = modes[i]!;
+        if (
+          mode.getPhysicalWidth() !== current.getPhysicalWidth() ||
+          mode.getPhysicalHeight() !== current.getPhysicalHeight()
+        )
+          continue;
+        if (mode.getRefreshRate() > best.getRefreshRate()) best = mode;
+      }
+      modeId = best.getModeId();
+    } catch {
+      // A display that reports no modes: the rate hint below still applies.
+    }
     const attributes = window.getAttributes();
+    let changed = false;
+    // The pre-11 hint, honoured by Pixel and most OEMs.
     if (attributes.preferredRefreshRate !== target) {
       attributes.preferredRefreshRate = target;
-      window.setAttributes(attributes);
+      changed = true;
     }
+    // The exact mode. This is the request Android enforces: unlike the two
+    // frame-rate hints it is not subject to the display's adaptive policy,
+    // which is what leaves an app at the default 60 Hz mode on a Pixel while
+    // the panel still boosts to 120 for touches.
+    if (modeId >= 0 && attributes.preferredDisplayModeId !== modeId) {
+      attributes.preferredDisplayModeId = modeId;
+      changed = true;
+    }
+    if (changed) window.setAttributes(attributes);
     // API 30's frame-rate request: the system's own signal for choosing the
     // display mode, and the one SurfaceFlinger reads as the app request. The
     // NativeScript typing may predate it, so it is read off the window.
@@ -62,10 +105,7 @@ export function display(app: AndroidApp): DisplayPort {
       android.os.Build.VERSION.SDK_INT >= 30 &&
       typeof modernWindow.setFrameRate === 'function'
     ) {
-      modernWindow.setFrameRate(
-        target,
-        android.view.Surface.FRAME_RATE_COMPATIBILITY_DEFAULT,
-      );
+      modernWindow.setFrameRate(target, compatibility());
     }
   };
 

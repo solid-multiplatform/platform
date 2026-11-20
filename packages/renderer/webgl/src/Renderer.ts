@@ -65,8 +65,9 @@ function reportListenerError(
 /**
  * The renderer (spec 12.2), also exported as `RendererMain`: RendererCore
  * plus the canvas, the GL backend, the frame loop and the settings table.
- * Events: `idle` (the loop went idle), `frameTick` ({ time, delta } at the
- * start of every frame the loop runs, drawn or not), `contextLost`, the
+ * Events: `idle` (the loop went idle), `frameTick` ({ time, delta, cost } at
+ * the start of every frame the loop runs, drawn or not; `cost` is the
+ * previous frame's own work in milliseconds), `contextLost`, the
  * telemetry's `fpsUpdate` and `renderUpdate` (while `fpsUpdateInterval` is
  * above 0), and the memory events `criticalCleanup`,
  * `criticalCleanupFailed` and `outOfMemory`.
@@ -109,6 +110,8 @@ export class Renderer extends RendererCore {
   private uploadRequested = false;
   /** platform.now() at construction: elapsedTime counts from it (1.10). */
   private readonly startTime: number;
+  /** Milliseconds the previous frame's own work took (the meter's "cpu"). */
+  private lastFrameCost = 0;
   /** Frame telemetry, while fpsUpdateInterval is above 0; null otherwise. */
   private telemetry: Telemetry | null = null;
   /** The telemetry label (setTelemetrySegment), kept while it is off. */
@@ -405,6 +408,15 @@ export class Renderer extends RendererCore {
 
   /** One frame (the loop calls it): animations, the scene walk, the draw. */
   private frame(time: number, dt: number, nominal: number): void {
+    const started = this.platform.now();
+    this.frameBody(time, dt, nominal);
+    // What the frame itself cost, not the interval between frames: a frame
+    // that misses every other vsync has a 16.7 ms interval and may still cost
+    // 4 ms, which is what decides whether a 120 Hz panel can be fed.
+    this.lastFrameCost = Math.max(0, this.platform.now() - started);
+  }
+
+  private frameBody(time: number, dt: number, nominal: number): void {
     this.animationManager.now = time;
     this.animationManager.maxFirstStep = nominal;
     // The clock shader time functions read (1.10's Stage timing values).
@@ -413,7 +425,11 @@ export class Renderer extends RendererCore {
     this.deltaTime = dt;
     this.elapsedTime = time - this.startTime;
     if (this.hasListener('frameTick') === true) {
-      this.emit('frameTick', { time, delta: dt });
+      this.emit('frameTick', {
+        time,
+        delta: dt,
+        cost: this.lastFrameCost,
+      });
     }
     // A frameTick listener may have called destroy(): the loop is stopped
     // and the context released, so nothing below may run (animations would
