@@ -12,31 +12,31 @@ A cell says `tested` only when an automated test in this repository runs that fe
 
 ## Counts
 
-1118 cells: 86 features on 13 targets.
+1131 cells: 87 features on 13 targets.
 
 | Status      | Cells |
 | ----------- | ----- |
 | tested      | 153   |
 | device      | 74    |
-| preview     | 424   |
+| preview     | 437   |
 | in progress | 0     |
 | no          | 467   |
 
 | Target            | tested | device | preview | in progress | no  |
 | ----------------- | ------ | ------ | ------- | ----------- | --- |
-| `web`             | 37     | 0      | 30      | 0           | 19  |
-| `tizen`           | 5      | 0      | 56      | 0           | 25  |
-| `webos`           | 6      | 0      | 55      | 0           | 25  |
-| `vizio`           | 5      | 0      | 55      | 0           | 26  |
-| `ps4`             | 6      | 0      | 23      | 0           | 57  |
-| `roku`            | 5      | 19     | 11      | 0           | 51  |
-| `android`         | 0      | 33     | 32      | 0           | 21  |
-| `android-tv`      | 5      | 22     | 22      | 0           | 37  |
-| `ios`             | 29     | 0      | 25      | 0           | 32  |
-| `apple-tv`        | 21     | 0      | 19      | 0           | 46  |
-| `desktop-linux`   | 34     | 0      | 22      | 0           | 30  |
-| `desktop-windows` | 0      | 0      | 37      | 0           | 49  |
-| `desktop-macos`   | 0      | 0      | 37      | 0           | 49  |
+| `web`             | 37     | 0      | 31      | 0           | 19  |
+| `tizen`           | 5      | 0      | 57      | 0           | 25  |
+| `webos`           | 6      | 0      | 56      | 0           | 25  |
+| `vizio`           | 5      | 0      | 56      | 0           | 26  |
+| `ps4`             | 6      | 0      | 24      | 0           | 57  |
+| `roku`            | 5      | 19     | 12      | 0           | 51  |
+| `android`         | 0      | 33     | 33      | 0           | 21  |
+| `android-tv`      | 5      | 22     | 23      | 0           | 37  |
+| `ios`             | 29     | 0      | 26      | 0           | 32  |
+| `apple-tv`        | 21     | 0      | 20      | 0           | 46  |
+| `desktop-linux`   | 34     | 0      | 23      | 0           | 30  |
+| `desktop-windows` | 0      | 0      | 38      | 0           | 49  |
+| `desktop-macos`   | 0      | 0      | 38      | 0           | 49  |
 
 ## Rendering backends
 
@@ -59,22 +59,23 @@ Notes:
 
 ## Scene features
 
-| Feature                                                                   | web    | tizen   | webos   | vizio   | ps4     | roku    | android | android-tv | ios     | apple-tv | desktop-linux | desktop-windows | desktop-macos |
-| ------------------------------------------------------------------------- | ------ | ------- | ------- | ------- | ------- | ------- | ------- | ---------- | ------- | -------- | ------------- | --------------- | ------------- |
-| Host contract (`startApp` / `HostDefinition`)                             | tested | preview | preview | preview | tested  | device  | device  | device     | tested  | tested   | tested        | preview         | preview       |
-| Flex layout (`src/core/flexLayout.ts`)                                    | tested | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | preview       | preview         | preview       |
-| Text rendering                                                            | tested | preview | preview | preview | preview | device  | preview | preview    | preview | preview  | tested        | preview         | preview       |
-| Text selection and copy (`<Text selectable>`)                             | tested | preview | preview | preview | preview | no      | preview | preview    | preview | preview  | preview       | preview         | preview       |
-| Focus and key handling                                                    | tested | preview | preview | preview | tested  | device  | preview | preview    | preview | preview  | tested        | preview         | preview       |
-| Focus visibility policy (`focusVisibility`)                               | tested | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | tested        | preview         | preview       |
-| Pointer and touch input (`src/sdk/input.ts`)                              | tested | preview | preview | preview | tested  | no      | preview | no         | preview | no       | tested        | preview         | preview       |
-| Touch scrolling (`scroll="touch"` on Row and Column)                      | tested | no      | no      | no      | preview | no      | preview | no         | preview | no       | preview       | preview         | preview       |
-| Desktop pointer behaviour (hover, cursor, context menus, wheel, tooltips) | tested | no      | no      | no      | preview | no      | preview | no         | preview | no       | preview       | preview         | preview       |
-| Screen history with keyed focus restore (`createScreenHistory`)           | tested | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | no            | no              | no            |
-| Desktop window chrome (`<TitleBar>`, `desktop.titleBar`)                  | no     | no      | no      | no      | no      | no      | no      | no         | no      | no       | tested        | preview         | preview       |
-| Accessibility semantics (`src/sdk/semantics.ts`)                          | tested | no      | no      | no      | no      | no      | no      | no         | no      | no       | tested        | no              | no            |
-| Shapes, borders, gradients and shadows                                    | tested | preview | preview | preview | preview | device  | preview | preview    | preview | preview  | preview       | preview         | preview       |
-| Animation (`animateProp`, transitions)                                    | tested | preview | preview | preview | preview | device  | preview | preview    | preview | preview  | preview       | preview         | preview       |
+| Feature                                                                                       | web     | tizen   | webos   | vizio   | ps4     | roku    | android | android-tv | ios     | apple-tv | desktop-linux | desktop-windows | desktop-macos |
+| --------------------------------------------------------------------------------------------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ---------- | ------- | -------- | ------------- | --------------- | ------------- |
+| Host contract (`startApp` / `HostDefinition`)                                                 | tested  | preview | preview | preview | tested  | device  | device  | device     | tested  | tested   | tested        | preview         | preview       |
+| Flex layout (`src/core/flexLayout.ts`)                                                        | tested  | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | preview       | preview         | preview       |
+| Text rendering                                                                                | tested  | preview | preview | preview | preview | device  | preview | preview    | preview | preview  | tested        | preview         | preview       |
+| Text selection and copy (`<Text selectable>`)                                                 | tested  | preview | preview | preview | preview | no      | preview | preview    | preview | preview  | preview       | preview         | preview       |
+| Focus and key handling                                                                        | tested  | preview | preview | preview | tested  | device  | preview | preview    | preview | preview  | tested        | preview         | preview       |
+| Focus visibility policy (`focusVisibility`)                                                   | tested  | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | tested        | preview         | preview       |
+| Pointer and touch input (`src/sdk/input.ts`)                                                  | tested  | preview | preview | preview | tested  | no      | preview | no         | preview | no       | tested        | preview         | preview       |
+| Touch scrolling (`scroll="touch"` on Row and Column)                                          | tested  | no      | no      | no      | preview | no      | preview | no         | preview | no       | preview       | preview         | preview       |
+| Desktop pointer behaviour (hover, cursor, context menus, wheel, tooltips)                     | tested  | no      | no      | no      | preview | no      | preview | no         | preview | no       | preview       | preview         | preview       |
+| Markdown and agent chat (`Markdown`, `ChatMessage`, `@solid-multiplatform/platform/markdown`) | preview | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | preview       | preview         | preview       |
+| Screen history with keyed focus restore (`createScreenHistory`)                               | tested  | preview | preview | preview | preview | preview | preview | preview    | preview | preview  | no            | no              | no            |
+| Desktop window chrome (`<TitleBar>`, `desktop.titleBar`)                                      | no      | no      | no      | no      | no      | no      | no      | no         | no      | no       | tested        | preview         | preview       |
+| Accessibility semantics (`src/sdk/semantics.ts`)                                              | tested  | no      | no      | no      | no      | no      | no      | no         | no      | no       | tested        | no              | no            |
+| Shapes, borders, gradients and shadows                                                        | tested  | preview | preview | preview | preview | device  | preview | preview    | preview | preview  | preview       | preview         | preview       |
+| Animation (`animateProp`, transitions)                                                        | tested  | preview | preview | preview | preview | device  | preview | preview    | preview | preview  | preview       | preview         | preview       |
 
 Notes:
 
@@ -97,6 +98,9 @@ Notes:
 - Touch scrolling (`scroll="touch"` on Row and Column), desktop-linux, desktop-windows, desktop-macos: Mouse and touch drag work through `webHost`; desktop wheel and keyboard scrolling keep their native semantics.
 - Desktop pointer behaviour (hover, cursor, context menus, wheel, tooltips), tizen, webos, vizio, roku, android-tv, apple-tv: No hover or secondary click on these hosts (a TV pointer remote clicks, it does not hover); the added handlers are opt-in and change none of their focus behaviour.
 - Desktop pointer behaviour (hover, cursor, context menus, wheel, tooltips), desktop-linux: The desktop host feeds the same sink; secondary clicks arrive as button 2 and the wheel in layout pixels. The runtime exposes no cursor-shape API, so `setCursor` is not implemented, and no desktop-runtime test drives a context menu.
+- Markdown and agent chat (`Markdown`, `ChatMessage`, `@solid-multiplatform/platform/markdown`), web: Rendering is asserted by packages/platform/tests/markdown-render.test.tsx (unit job: a heading, strong and inline code, a list, a fenced block, a tool card and a file reference reach the scene) and parsing by tests/markdown-parse.test.ts. No real-browser run yet.
+- Markdown and agent chat (`Markdown`, `ChatMessage`, `@solid-multiplatform/platform/markdown`), tizen, webos, vizio, roku, android-tv, apple-tv: Plain scene nodes; not yet exercised on these targets.
+- Markdown and agent chat (`Markdown`, `ChatMessage`, `@solid-multiplatform/platform/markdown`), android, ios: Plain scene nodes; the mobile demo is the first app to use them. No device run recorded yet.
 - Screen history with keyed focus restore (`createScreenHistory`), tizen, webos, vizio: The browser-TV host delivers its Back key through the same dispatcher and uses the platform exit where it exists; no TV hardware run.
 - Screen history with keyed focus restore (`createScreenHistory`), ps4: The console's Back is delivered through the dispatcher; exit reports unavailable.
 - Screen history with keyed focus restore (`createScreenHistory`), roku: Back goes through the dispatcher and the host's exitApp; no device run of keyed restore yet.

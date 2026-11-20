@@ -353,6 +353,27 @@
           }
         },
         {
+          "id": "markdown",
+          "feature": "Markdown and agent chat (`Markdown`, `ChatMessage`, `@solid-multiplatform/platform/markdown`)",
+          "default": {
+            "status": "preview"
+          },
+          "cells": {
+            "web": {
+              "status": "preview",
+              "note": "Rendering is asserted by packages/platform/tests/markdown-render.test.tsx (unit job: a heading, strong and inline code, a list, a fenced block, a tool card and a file reference reach the scene) and parsing by tests/markdown-parse.test.ts. No real-browser run yet."
+            },
+            "android,ios": {
+              "status": "preview",
+              "note": "Plain scene nodes; the mobile demo is the first app to use them. No device run recorded yet."
+            },
+            "roku,android-tv,apple-tv,tizen,webos,vizio": {
+              "status": "preview",
+              "note": "Plain scene nodes; not yet exercised on these targets."
+            }
+          }
+        },
+        {
           "id": "screen-history",
           "feature": "Screen history with keyed focus restore (`createScreenHistory`)",
           "default": {

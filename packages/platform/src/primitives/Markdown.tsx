@@ -147,6 +147,29 @@ function spansOf(
   return out;
 }
 
+
+/**
+ * The props a nested block row inherits. Spreading the component's own props
+ * would carry `block`/`blocks` down and make a list render itself; only the
+ * presentation props cross a nesting boundary.
+ */
+function optionsOf(props: MarkdownProps): MarkdownProps {
+  return {
+    source: props.source,
+    width: props.width,
+    fontSize: props.fontSize,
+    color: props.color,
+    lineHeight: props.lineHeight,
+    linkColor: props.linkColor,
+    codeColor: props.codeColor,
+    codeBackground: props.codeBackground,
+    codeFontFamily: props.codeFontFamily,
+    quoteBackground: props.quoteBackground,
+    ruleColor: props.ruleColor,
+    onLink: props.onLink,
+  };
+}
+
 /** Lines a code block occupies once wrapped at `width`, at least one. */
 function codeLines(text: string, size: number, width: number): number {
   const perChar = size * 0.62;
@@ -163,7 +186,7 @@ function Blocks(props: MarkdownProps & { blocks: Block[] }): JSX.Element {
   return (
     <view display="flex" flexDirection="column" gap={10} width={props.width}>
       <For each={props.blocks}>
-        {(block) => <BlockView block={block} {...props} />}
+        {(block) => <BlockView block={block} {...optionsOf(props)} />}
       </For>
     </view>
   );
@@ -263,7 +286,7 @@ function BlockView(props: MarkdownProps & { block: Block }): JSX.Element {
           flexDirection="column"
         >
           <Blocks
-            {...props}
+            {...optionsOf(props)}
             width={props.width - 20}
             blocks={props.block.children}
           />
@@ -300,7 +323,7 @@ function BlockView(props: MarkdownProps & { block: Block }): JSX.Element {
                     flexDirection="column"
                   >
                     <Blocks
-                      {...props}
+                      {...optionsOf(props)}
                       width={props.width - 30}
                       blocks={item.children}
                     />
@@ -334,7 +357,7 @@ export function Markdown(props: MarkdownProps): JSX.Element {
       flexDirection="column"
       gap={10}
     >
-      <Blocks {...props} blocks={markdown(props.source).blocks} />
+      <Blocks {...optionsOf(props)} blocks={markdown(props.source).blocks} />
     </view>
   );
 }
