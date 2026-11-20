@@ -19,7 +19,7 @@ import {
   RendererMain,
 } from '@solid-multiplatform/platform';
 import { createSignal, onCleanup, onMount } from 'solid-js';
-import { displayRefreshRate } from '../sdk/display.js';
+import { displayRefreshRate, onDisplayChange } from '../sdk/display.js';
 import { viewport } from '../sdk/viewport.js';
 
 // ---- The meter
@@ -93,12 +93,23 @@ const percentile = (sorted: number[], fraction: number): number =>
 
 export const FPSCounter = (props: NodeProps) => {
   const [readout, setReadout] = createSignal<FPSReadout>(EMPTY);
+  // The panel's rate, kept by the display service's change listener: read
+  // once, then event-driven. Asking the display synchronously from the
+  // readout would cross into native code on every repaint, three frames
+  // apart — the very cost the meter exists to expose.
+  const [hz, setHz] = createSignal(0);
+  const rate = (value: number) => setHz(value > 0 ? Math.round(value) : 0);
 
   onMount(() => {
+    rate(displayRefreshRate());
+    const stopDisplay = onDisplayChange((info) => rate(info.refreshRate));
     const renderer = getRenderer() as unknown as
       | (FrameSource & RenderCounters)
       | undefined;
-    if (typeof renderer?.on !== 'function') return;
+    if (typeof renderer?.on !== 'function') {
+      onCleanup(stopDisplay);
+      return;
+    }
 
     // Frame times inside the window, with the running clock they end at.
     const window: { delta: number; at: number }[] = [];
@@ -145,7 +156,10 @@ export const FPSCounter = (props: NodeProps) => {
     };
 
     renderer.on('frameTick', listener);
-    onCleanup(() => renderer.off?.('frameTick', listener));
+    onCleanup(() => {
+      renderer.off?.('frameTick', listener);
+      stopDisplay();
+    });
   });
 
   // A phone-sized panel leaves a margin; on a television the same panel sits
@@ -155,12 +169,6 @@ export const FPSCounter = (props: NodeProps) => {
   const ms = (value: number) =>
     value < 10 ? value.toFixed(1) : String(Math.round(value));
   const fps = (value: number) => (value > 0 ? String(Math.round(value)) : '–');
-  // Read at each publish, not once: a mode switch reaches the meter with the
-  // next readout, which is what makes a display request verifiable on screen.
-  const hz = () => {
-    const rate = displayRefreshRate();
-    return rate > 0 ? Math.round(rate) : 0;
-  };
   const label = () => {
     const r = readout();
     if (!r.sampled) return 'Frames per second: measuring';
