@@ -276,13 +276,14 @@ export function App(): JSX.Element {
           </view>
         </Show>
 
+        {/* Screens are stacked, not flowed: each positions itself, and the
+            library can stay mounted under an album at the same origin. A flex
+            column here put the second screen below the first, off-screen. */}
         <view
           x={contentX()}
           y={0}
           width={viewport().width - contentX()}
           height={viewport().height - bottomReserved()}
-          display="flex"
-          flexDirection="column"
         >
           {/* The library stays mounted under an album: its scroll position is
               where the return flight lands, and a push should not throw away
