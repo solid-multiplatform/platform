@@ -170,6 +170,11 @@ const demoTheme = defineTheme({
     border: C.line,
     focus: C.accent,
     selection: C.accentSoft,
+    // Tool status is monochrome too: the accent is the only hue. The mock
+    // tools are all done, so this is the dot that actually shows.
+    success: C.muted,
+    warning: C.dim,
+    danger: C.accent,
   },
   typography: { body: 15, label: 12, title: 34, headline: 40 },
   radius: { small: 8, medium: 12, large: 18 },

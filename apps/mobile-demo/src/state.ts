@@ -127,13 +127,17 @@ export type DiscoverState = ReturnType<typeof createDiscoverState>;
 import { dateLabel, generateChat, type ChatItem } from './chat';
 
 const REPLIES = [
-  'Looks good from here.',
-  'I can take that one.',
-  'Give me a minute and I will check.',
-  'The rail snaps cleanly now.',
-  'Agreed. Let us keep it simple.',
-  'I pushed the change.',
+  'Done. The anchor holds and the index entry is corrected once.',
+  'I pushed it. The scroll physics are unchanged.',
+  'That works from here. I left the composer where it was.',
+  'Fixed. A re-mounted message parses from the cache.',
+  'I kept the estimates conservative and measured the mounted row.',
+  'All twelve scroller tests still pass.',
 ];
+
+/** The expansion key for one tool card: message id and part index. */
+export const toolKey = (messageId: number, part: number) =>
+  `${messageId}:${part}`;
 
 export function createChatState() {
   const scroller = createScroller({ axis: 'y', debug: scrollDebug });
@@ -141,6 +145,9 @@ export function createChatState() {
   const [typing, setTyping] = createSignal(false);
   const [draft, setDraft] = createSignal('');
   const [jump, setJump] = createSignal(0);
+  const [expandedTools, setExpandedTools] = createSignal<ReadonlySet<string>>(
+    new Set(),
+  );
   let nextId = 2_000_000;
   let replyIndex = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -148,16 +155,30 @@ export function createChatState() {
   const append = (entry: ChatItem) =>
     setMessages((previous) => [...previous, entry]);
 
+  function toggleTool(messageId: number, part: number) {
+    const key = toolKey(messageId, part);
+    setExpandedTools((previous) => {
+      const next = new Set(previous);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   function reply() {
     const at = Date.now();
     append({
       kind: 'message',
       id: nextId++,
-      mine: false,
-      author: 'Maya Chen',
+      role: 'assistant',
+      author: 'Claude',
       at,
-      text: REPLIES[replyIndex++ % REPLIES.length]!,
-      layout: 'text',
+      parts: [
+        {
+          type: 'markdown',
+          text: REPLIES[replyIndex++ % REPLIES.length]!,
+        },
+      ],
     });
     setTyping(false);
   }
@@ -173,11 +194,10 @@ export function createChatState() {
     append({
       kind: 'message',
       id: nextId++,
-      mine: true,
+      role: 'user',
       author: 'You',
       at,
-      text,
-      layout: 'text',
+      parts: [{ type: 'markdown', text }],
     });
     setDraft('');
     setTyping(true);
@@ -186,7 +206,17 @@ export function createChatState() {
     timer = setTimeout(reply, 1100);
   }
 
-  return { scroller, messages, typing, draft, setDraft, send, jump };
+  return {
+    scroller,
+    messages,
+    typing,
+    draft,
+    setDraft,
+    send,
+    jump,
+    expandedTools,
+    toggleTool,
+  };
 }
 
 function sameDayAt(entry: ChatItem, at: number) {

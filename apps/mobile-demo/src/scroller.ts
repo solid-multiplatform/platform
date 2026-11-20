@@ -62,6 +62,12 @@ export interface Scroller {
   settled: Accessor<boolean>;
   layout(content: number, visible: number, keep?: 'bottom' | 'top'): void;
   to(value: number, duration?: number): void;
+  /**
+   * Moves the content by `delta` without changing the motion's state. A list
+   * that corrects a measured item's height uses it to keep its anchor fixed.
+   * The caller updates `max` with `layout` first.
+   */
+  shift(delta: number): void;
   stop(): void;
   drag(phase: DragPhase, point: Point, origin: Point): void;
   /** Drag along a chosen axis, for a handler that decides the axis first. */
@@ -499,6 +505,21 @@ export function createScroller(options: ScrollerOptions): Scroller {
       // An exponential approach that covers 99.9% of the distance in
       // `duration` ms: an iOS-shaped ease for programmatic scrolls.
       glideTo(value, Math.exp(Math.log(0.001) / duration));
+    },
+    shift(delta) {
+      if (!Number.isFinite(delta) || delta === 0) return;
+      const current = offset();
+      const next = clamp(current + delta);
+      const applied = next - current;
+      if (applied === 0) return;
+      setOffset(next);
+      // Keep every anchor the active motion owns aligned with the shifted
+      // content; the physics themselves are unchanged.
+      startOffset += applied;
+      if (flightTarget !== null) flightTarget += applied;
+      glideTarget += applied;
+      bounceEdge += applied;
+      releaseOffset += applied;
     },
     stop: stopFrames,
     drag(phase, point, _origin) {

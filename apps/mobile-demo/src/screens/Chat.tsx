@@ -1,34 +1,67 @@
-/** The 10,000-message chat: a virtual window, momentum, composer, meter. */
-import { createEffect, createMemo, For, Show, untrack } from 'solid-js';
-import { TextField, useViewport } from '@solid-multiplatform/platform/app';
+/**
+ * The 10,000-message coding-agent chat.
+ *
+ * The transcript is a list of keyed items (messages and date rows). Heights
+ * are estimated once per item, then corrected as messages mount and report
+ * their laid-out height through `onLayout`. `ChatHeights` owns a Fenwick tree
+ * of slot heights, so the total, an item's offset and the item at an offset
+ * cost O(log n). A correction above the first visible item shifts the offset
+ * by the same delta; the anchor keeps its screen position and nothing scans
+ * the transcript while the list moves.
+ *
+ * Tool cards are expanded by the app: the expanded part indices live in the
+ * chat state, and `ChatMessage` stays a pure function of its props. The list
+ * measures the card again after the toggle.
+ */
 import {
-  firstVisible,
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  Show,
+  untrack,
+  type Accessor,
+} from 'solid-js';
+import { TextField, useViewport } from '@solid-multiplatform/platform/app';
+import { ChatMessage } from '@solid-multiplatform/platform/primitives';
+import {
+  ChatHeights,
   formatTime,
-  layoutChat,
-  type ChatLayoutItem,
+  maxBubbleWidth,
+  userBubbleWidth,
+  type Message,
 } from '../chat';
-import type { createChatState } from '../state';
-import { C, initials, type Metrics } from '../theme';
+import { toolKey, type createChatState } from '../state';
+import { C, type Metrics } from '../theme';
 
 type ChatState = ReturnType<typeof createChatState>;
 
+/** The typing row plus the space above it, in content coordinates. */
 const TYPING_H = 72;
+/** How far above and below the viewport rows stay mounted. */
+const OVERSCAN = 320;
+/** Within this distance the list still counts as pinned to the bottom. */
+const BOTTOM_SLACK = 30;
 
 function DateRow(props: {
-  entry: ChatLayoutItem;
+  index: number;
+  book: ChatHeights;
   width: number;
   margin: number;
-  offset: number;
+  offset: Accessor<number>;
+  geometry: Accessor<number>;
 }) {
-  const label = () =>
-    props.entry.item.kind === 'date' ? props.entry.item.label : '';
+  const label = () => {
+    const item = props.book.item(props.index);
+    return item?.kind === 'date' ? item.label : '';
+  };
+  const y = () => {
+    props.geometry();
+    return props.book.offsetOf(props.index) - props.offset();
+  };
   const center = () => props.width / 2;
   return (
-    <view
-      y={props.entry.y - props.offset}
-      width={props.width}
-      height={props.entry.h}
-    >
+    <view y={y()} width={props.width} height={44}>
       <view
         x={props.margin}
         y={21}
@@ -60,115 +93,82 @@ function DateRow(props: {
 }
 
 function MessageRow(props: {
-  entry: ChatLayoutItem;
+  index: number;
+  book: ChatHeights;
   width: number;
   margin: number;
-  offset: number;
+  offset: Accessor<number>;
+  geometry: Accessor<number>;
+  expanded: Accessor<ReadonlySet<string>>;
+  onMeasure(index: number, height: number): void;
+  onToggleTool(messageId: number, part: number): void;
 }) {
-  const item = () =>
-    props.entry.item.kind === 'message' ? props.entry.item : undefined;
-  const mine = () => item()?.mine === true;
-  const y = () => props.entry.y - props.offset;
-  const bubbleX = () =>
-    mine() ? props.width - props.margin - props.entry.w : props.margin + 44;
-  const code = () => item()?.layout === 'code';
-  const textColor = () => (mine() ? C.onAccent : C.text);
+  const item = () => props.book.item(props.index) as Message;
+  const mine = () => item().role === 'user';
+  const contentWidth = () => props.width - 2 * props.margin;
+  const messageWidth = () =>
+    mine()
+      ? userBubbleWidth(item(), maxBubbleWidth(props.width, props.margin))
+      : contentWidth();
+  const x = () =>
+    mine() ? props.width - props.margin - messageWidth() : props.margin;
+  const y = () => {
+    props.geometry();
+    return props.book.offsetOf(props.index) - props.offset();
+  };
+  const parts = createMemo(() =>
+    item().parts.map((part, index) => {
+      if (part.type !== 'tool') return part;
+      // Keep the original object when the flag did not change, so a toggle
+      // only re-renders the card that moved.
+      const expanded = props.expanded().has(toolKey(item().id, index));
+      return expanded === (part.expanded === true)
+        ? part
+        : { ...part, expanded };
+    }),
+  );
 
   return (
-    <view y={y()} width={props.width} height={props.entry.h}>
-      <Show when={!mine() && props.entry.group && item()}>
-        <view
-          x={props.margin}
-          y={2}
-          width={34}
-          height={34}
-          color={C.surfaceHigh}
-          borderRadius={17}
-          border={{ width: 1, color: C.line }}
-        >
-          <text
-            y={8}
-            width={34}
-            contain="width"
-            textAlign="center"
-            fontSize={12}
-            color={C.muted}
-          >
-            {initials(item()!.author)}
-          </text>
-        </view>
-      </Show>
-      <view
-        x={bubbleX()}
-        y={0}
-        width={props.entry.w}
-        height={props.entry.h}
-        color={
-          code()
-            ? mine()
-              ? 0x8a3b2eff
-              : C.surfaceHigh
-            : mine()
-              ? C.bubbleMe
-              : C.bubbleThem
-        }
-        borderRadius={18}
-        border={
-          code() ? { width: 1, color: mine() ? 0xffffff22 : C.line } : undefined
-        }
-      >
-        <text
-          x={13}
-          y={code() ? 12 : 10}
-          width={props.entry.w - 26}
-          contain="width"
-          fontSize={code() ? 13 : 15}
-          lineHeight={code() ? 19 : 21}
-          color={textColor()}
-        >
-          {item()?.text ?? ''}
-        </text>
-        <text
-          x={props.entry.w - 50}
-          y={props.entry.h - 17}
-          width={38}
-          contain="width"
-          textAlign="right"
-          fontSize={10}
-          color={mine() ? 0xfff4f0aa : C.dim}
-        >
-          {item() ? formatTime(item()!.at) : ''}
-        </text>
-      </view>
+    <view
+      x={x()}
+      y={y()}
+      width={messageWidth()}
+      display="flex"
+      flexDirection="column"
+      onLayout={(node) => props.onMeasure(props.index, node.height)}
+    >
+      <ChatMessage
+        role={item().role}
+        author={mine() ? undefined : item().author}
+        time={mine() ? undefined : formatTime(item().at)}
+        parts={parts()}
+        width={messageWidth()}
+        fontSize={15}
+        lineHeight={21}
+        color={C.text}
+        mutedColor={C.muted}
+        bubbleColor={C.bubbleMe}
+        bubbleTextColor={C.onAccent}
+        cardColor={C.surface}
+        borderColor={C.line}
+        linkColor={C.accent}
+        onToolPress={(index) => props.onToggleTool(item().id, index)}
+      />
     </view>
   );
 }
 
-function TypingRow(props: { y: number; width: number; margin: number }) {
+function TypingRow(props: {
+  y: number;
+  width: number;
+  margin: number;
+  offset: Accessor<number>;
+}) {
+  const top = () => props.y - props.offset();
   return (
-    <view y={props.y} width={props.width} height={44}>
+    <view y={top()} width={props.width} height={44}>
       <view
         x={props.margin}
-        y={2}
-        width={34}
-        height={34}
-        color={C.surfaceHigh}
-        borderRadius={17}
-        border={{ width: 1, color: C.line }}
-      >
-        <text
-          y={8}
-          width={34}
-          contain="width"
-          textAlign="center"
-          fontSize={12}
-          color={C.muted}
-        >
-          MC
-        </text>
-      </view>
-      <view
-        x={props.margin + 44}
         y={0}
         width={66}
         height={38}
@@ -212,39 +212,100 @@ export function Chat(props: { chat: ChatState; metrics: Metrics }) {
   const listTop = () => m().contentY + 46;
   const listBottom = () => inputY() - 8;
   const viewH = () => Math.max(120, listBottom() - listTop());
-  const layout = createMemo(() => layoutChat(props.chat.messages(), m().width));
-  const total = () => layout().total + (props.chat.typing() ? TYPING_H : 0);
+
+  const book = new ChatHeights(props.chat.messages(), m().width, m().margin);
+  const [geometry, setGeometry] = createSignal(0);
+  // Layout reports arrive one per message inside the renderer's post-mutation
+  // microtask. Publish them in one microtask of our own so a batch of
+  // measurements is a single window recomputation, not one per message.
+  let geometryQueued = false;
+  const notifyGeometry = () => {
+    if (geometryQueued) return;
+    geometryQueued = true;
+    queueMicrotask(() => {
+      geometryQueued = false;
+      setGeometry((value) => value + 1);
+    });
+  };
+
+  // Appends extend the index in O(1) per row; a width change rebuilds it.
+  // Nothing here runs on a scroll.
+  createEffect(() => {
+    const items = props.chat.messages();
+    const width = m().width;
+    const margin = m().margin;
+    untrack(() => {
+      if (book.sync(items, width, margin)) notifyGeometry();
+    });
+  });
+
+  const contentHeight = () => {
+    geometry();
+    return book.total();
+  };
+  const total = () => contentHeight() + (props.chat.typing() ? TYPING_H : 0);
 
   let firstRun = true;
   let lastJump = 0;
+  // A send or a "Latest" press glides to the bottom. Keep re-targeting while
+  // the geometry settles so a measurement cannot leave the glide aiming at
+  // an old maximum; a drag cancels it.
+  let followBottom = false;
   createEffect(() => {
     const height = viewH();
     const content = total();
     const jump = props.chat.jump();
-    void props.chat.messages();
     untrack(() => {
       const scroller = props.chat.scroller;
-      const wasBottom = firstRun || scroller.offset() >= scroller.max() - 30;
-      scroller.layout(content, height);
-      if (firstRun || wasBottom || jump !== lastJump) {
-        scroller.to(scroller.max(), firstRun ? 0 : 240);
+      const wasBottom =
+        firstRun || scroller.offset() >= scroller.max() - BOTTOM_SLACK;
+      const keepBottom = wasBottom || followBottom;
+      scroller.layout(content, height, keepBottom ? 'bottom' : undefined);
+      if (firstRun) {
+        scroller.to(scroller.max(), 0);
+        followBottom = false;
+      } else if (jump !== lastJump) {
+        followBottom = true;
+        scroller.to(scroller.max(), 240);
+      } else if (followBottom) {
+        scroller.to(scroller.max(), 240);
       }
       firstRun = false;
       lastJump = jump;
     });
   });
 
+  /**
+   * A mounted message reported its real height. Keep the first visible item
+   * where it is: a change above it moves every later offset by the same
+   * delta, so shifting the scroll offset by that delta is exact. At the
+   * bottom the list stays pinned instead.
+   */
+  const measure = (index: number, height: number) => {
+    const scroller = props.chat.scroller;
+    const offset = scroller.offset();
+    const anchor = book.indexAt(offset);
+    const anchorOffset = book.offsetOf(anchor);
+    const wasBottom = scroller.max() - offset <= BOTTOM_SLACK;
+    if (!book.measure(index, height)) return;
+    const content = book.total() + (props.chat.typing() ? TYPING_H : 0);
+    const keepBottom = wasBottom || followBottom;
+    scroller.layout(content, viewH(), keepBottom ? 'bottom' : undefined);
+    if (!keepBottom && index < anchor) {
+      const delta = book.offsetOf(anchor) - anchorOffset;
+      if (delta !== 0) scroller.shift(delta);
+    }
+    notifyGeometry();
+  };
+
   const visible = createMemo(() => {
+    geometry();
     const offset = props.chat.scroller.offset();
-    const end = offset + viewH() + 260;
-    const items = layout().items;
-    const start = firstVisible(items, offset);
-    const out: ChatLayoutItem[] = [];
-    for (let index = start; index < items.length; index++) {
-      const entry = items[index]!;
-      if (entry.y > end) break;
-      out.push(entry);
-      if (out.length > 40) break;
+    const start = book.indexAt(Math.max(0, offset - OVERSCAN));
+    const end = book.indexAt(offset + viewH() + OVERSCAN);
+    const out: number[] = [];
+    for (let index = start; index <= end && index < book.count; index++) {
+      out.push(index);
     }
     return out;
   });
@@ -277,32 +338,43 @@ export function Chat(props: { chat: ChatState; metrics: Metrics }) {
         width={m().width}
         height={viewH()}
         clipping
-        onPointerDrag={(phase, point, origin) =>
-          props.chat.scroller.drag(phase, point, origin)
-        }
+        onPointerDrag={(phase, point, origin) => {
+          if (phase === 'start') followBottom = false;
+          props.chat.scroller.drag(phase, point, origin);
+        }}
       >
         <For each={visible()}>
-          {(entry) =>
-            entry.item.kind === 'date' ? (
+          {(index) => {
+            const item = book.item(index);
+            if (item === undefined) return null;
+            return item.kind === 'date' ? (
               <DateRow
-                entry={entry}
+                index={index}
+                book={book}
                 width={m().width}
                 margin={m().margin}
-                offset={props.chat.scroller.offset()}
+                offset={props.chat.scroller.offset}
+                geometry={geometry}
               />
             ) : (
               <MessageRow
-                entry={entry}
+                index={index}
+                book={book}
                 width={m().width}
                 margin={m().margin}
-                offset={props.chat.scroller.offset()}
+                offset={props.chat.scroller.offset}
+                geometry={geometry}
+                expanded={props.chat.expandedTools}
+                onMeasure={measure}
+                onToggleTool={props.chat.toggleTool}
               />
-            )
-          }
+            );
+          }}
         </For>
         <Show when={props.chat.typing()}>
           <TypingRow
-            y={layout().total + 4 - props.chat.scroller.offset()}
+            y={contentHeight() + 4}
+            offset={props.chat.scroller.offset}
             width={m().width}
             margin={m().margin}
           />
@@ -340,9 +412,10 @@ export function Chat(props: { chat: ChatState; metrics: Metrics }) {
           color={0x141416f2}
           borderRadius={22}
           border={{ width: 1, color: C.line }}
-          onMouseClick={() =>
-            props.chat.scroller.to(props.chat.scroller.max(), 420)
-          }
+          onMouseClick={() => {
+            followBottom = true;
+            props.chat.scroller.to(props.chat.scroller.max(), 420);
+          }}
         >
           <text
             y={13}
@@ -364,10 +437,10 @@ export function Chat(props: { chat: ChatState; metrics: Metrics }) {
         height={44}
       >
         <text fontSize={20} color={C.textPrimary}>
-          Design crew
+          Claude
         </text>
         <text y={23} fontSize={11} color={C.dim}>
-          10,000 messages · only the visible window is mounted
+          10,000 messages · measured heights, visible window only
         </text>
       </view>
 
