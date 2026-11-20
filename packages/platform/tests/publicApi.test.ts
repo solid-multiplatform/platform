@@ -28,7 +28,7 @@ import * as appEntryModule from '@solid-multiplatform/platform/app/entry';
 const names = (mod: object) => Object.keys(mod).sort();
 
 v.describe('Exports: runtime export names of every entry point', () => {
-  v.test('@solid-multiplatform/platform (src/index.ts): 292 names', () => {
+  v.test('@solid-multiplatform/platform (src/index.ts): 295 names', () => {
     v.expect(names(main)).toEqual([
       'Config',
       'DOMNode',
@@ -170,7 +170,9 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'hexColor',
       'highContrastDarkTheme',
       'highContrastLightTheme',
+      'iconBase',
       'iconDataUrl',
+      'iconSource',
       'iconSvg',
       'impact',
       'insert',
@@ -276,6 +278,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'setCursor',
       'setEnvironment',
       'setHighContrast',
+      'setIconBase',
       'setProp',
       'setQueryData',
       'setRendererFactory',

@@ -106,10 +106,15 @@ export default rokuConfig({ title: ${JSON.stringify(project(root).name)}, entry:
         )
       : config;
   write(path.join(dest, 'nativescript.config.ts'), appleConfig);
-  const webpack = readFileSync(
-    path.join(origin, 'webpack.config.js'),
-    'utf8',
-  ).replace('../../tests/webgl/fonts', 'work/fonts');
+  // The framework's rasterised icons travel with the fonts: the build stages
+  // them in `work/icons`, the native package carries them at `assets/app/icons`
+  // and `setIconBase` in the generated entry points at them.
+  const webpack = readFileSync(path.join(origin, 'webpack.config.js'), 'utf8')
+    .replace('../../tests/webgl/fonts', 'work/fonts')
+    .replace(
+      'args[0].patterns.push({',
+      "args[0].patterns.push({\n        from: path.resolve(__dirname, 'work/icons'),\n        to: 'icons',\n      });\n      args[0].patterns.push({",
+    );
   write(path.join(dest, 'webpack.config.js'), webpack);
   const fn =
     target === 'android-tv'
