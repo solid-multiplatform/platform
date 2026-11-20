@@ -16,7 +16,7 @@ export type Scroller = (
 // Adds properties expected by withScrolling
 export interface ScrollableElement extends ElementNode {
   scrollIndex?: number;
-  scroll?: 'always' | 'none' | 'edge' | 'auto' | 'center' | 'bounded';
+  scroll?: 'always' | 'none' | 'edge' | 'auto' | 'center' | 'bounded' | 'touch';
   selected: number;
   offset?: number;
   endOffset?: number;
@@ -218,8 +218,10 @@ export function withScrolling(isRow: boolean): Scroller {
     }
     if (!componentRef) return;
     // Each input is read once into a local: on renderer v2 every node prop
-    // read goes through an accessor.
-    const scrollProp = componentRef.scroll;
+    // read goes through an accessor. A host without a pointer ignores
+    // `touch`: focus scrolling behaves as the default `auto`.
+    const scrollProp =
+      componentRef.scroll === 'touch' ? 'auto' : componentRef.scroll;
     const children = componentRef.children;
     const childCount = children.length;
     if (scrollProp === 'none' || !childCount) return;

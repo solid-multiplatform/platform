@@ -303,6 +303,35 @@
           }
         },
         {
+          "id": "touch-scrolling",
+          "feature": "Touch scrolling (`scroll=\"touch\"` on Row and Column)",
+          "default": {
+            "status": "unavailable"
+          },
+          "cells": {
+            "web": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/webgl/touch-scroll.test.tsx (test.yml: browser; pointer events drag a Row, it flings, snaps and stops; the suite runs in the Chromium, Firefox and WebKit browser projects)"
+            },
+            "ps4": {
+              "status": "preview",
+              "note": "The PS4 host feeds the same scene pointer and mouse events; no test drives the rail through `ps4Host`."
+            },
+            "android,ios": {
+              "status": "preview",
+              "note": "Same engine through `hosts/nativescript/touch.mjs`; not yet driven on an emulator."
+            },
+            "desktop-linux,desktop-windows,desktop-macos": {
+              "status": "preview",
+              "note": "Mouse and touch drag work through `webHost`; desktop wheel and keyboard scrolling keep their native semantics."
+            },
+            "tizen,webos,vizio,roku,android-tv,apple-tv": {
+              "status": "unavailable",
+              "note": "Touch scrolling is opt-in for pointer-touch hosts; televisions keep the focus-driven scroll modes, even when the browser reports a mouse (webOS)."
+            }
+          }
+        },
+        {
           "id": "desktop-pointer",
           "feature": "Desktop pointer behaviour (hover, cursor, context menus, wheel, tooltips)",
           "default": {

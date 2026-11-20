@@ -170,6 +170,7 @@ const SECTIONS = [
   'Transitions',
   'Row, Column, Grid',
   'Virtual list',
+  'Touch scrolling',
   'Dialogs',
   'Controls',
   'Services',
@@ -462,7 +463,8 @@ async function interactive(browser) {
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowRight');
-  await expectFocus(page, 'button:Controls', 'Down, Down, Right');
+  await page.keyboard.press('ArrowRight');
+  await expectFocus(page, 'button:Controls', 'Down, Down, Right, Right');
 
   // Gallery: the controls screen, by keyboard.
   await page.keyboard.press('Enter');

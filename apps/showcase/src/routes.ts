@@ -15,6 +15,7 @@ import {
 import { ListScreen } from './screens/List';
 import { ScreenHistoryScreen } from './screens/ScreenHistory';
 import { ServicesScreen } from './screens/Services';
+import { TouchScrollScreen } from './screens/TouchScroll';
 
 export interface Section {
   path: string;
@@ -31,6 +32,11 @@ export const sections: readonly Section[] = [
   { path: '/motion', title: 'Transitions', screen: MotionScreen },
   { path: '/containers', title: 'Row, Column, Grid', screen: ContainersScreen },
   { path: '/list', title: 'Virtual list', screen: ListScreen },
+  {
+    path: '/touch-scroll',
+    title: 'Touch scrolling',
+    screen: TouchScrollScreen,
+  },
   { path: '/dialogs', title: 'Dialogs', screen: DialogsScreen },
   { path: '/controls', title: 'Controls', screen: ControlsScreen },
   { path: '/services', title: 'Services', screen: ServicesScreen },

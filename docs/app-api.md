@@ -195,6 +195,72 @@ On a host without an editor the field still draws its label, placeholder and val
   Forward. Add `focusKey` to containers and `itemKey` to lists; focus follows
   the card, never its index. See [Screen history and keyed focus](/essentials/screen-history.md).
 
+## Scrolling
+
+`Row` and `Column` scroll with the focus keys by default: `scroll="auto"`,
+`"edge"`, `"always"`, `"center"`, `"bounded"` or `"none"`. On a pointer-touch
+host — mobile, web touch, or the PS4's pointer remote — pass `scroll="touch"`
+to add direct manipulation: drag, fling, rubber band and, on a horizontal
+rail, snapping to one item plus the gap:
+
+```tsx
+// Before: a rail moved only with Left/Right, and hand-written pointer code.
+<view width={640} height={200} clipping>
+  <Row gap={16}>
+    <For each={cards}>{(card) => <Card card={card} />}</For>
+  </Row>
+</view>
+
+// After: the same rail also drags, flings and snaps; keys still work.
+<view width={640} height={200} clipping>
+  <Row gap={16} scroll="touch">
+    <For each={cards}>{(card) => <Card card={card} />}</For>
+  </Row>
+</view>
+```
+
+A vertical `Column` scrolls continuously; a horizontal `Row` snaps to
+`item + gap`. A nested horizontal `Row` inside a vertical `Column` works
+without per-screen code: after a 10-unit slop the gesture locks to its
+dominant axis and stays locked, so the rail takes horizontal drags and the
+page takes vertical ones. Two nested scrollers with the same orientation are
+ambiguous and discouraged, as Apple's guidance says; the innermost one wins.
+
+Focus navigation keeps working on the same view. Moving focus reveals the
+item only as far as needed, without jumping it to the start. A television — a
+remote or browser TV, where focus movement is the model — ignores
+`scroll="touch"` and keeps its focus-driven scrolling; the same is true of
+`VirtualRow`, `VirtualColumn` and `VirtualGrid`, which need offset-driven
+windowing before touch scrolling can be added. Desktop wheel and keyboard
+scrolling are unchanged: wheel events still step focus or reach an app
+handler, and the arrow keys keep their page/line semantics.
+
+The engine is `createScrollEngine` in `@solid-multiplatform/platform/scroll`.
+Its model and constants, kept in one module with no new dependency:
+
+| Part             | Value / rule                                                                                                                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --- | --------- | --------- | --- |
+| Release velocity | UIPanGestureRecognizer's chain: per-event finite differences, blended `0.2·current + 0.8·previous`, then `0.75·previous + 0.25·latest` at release. A drag that stops flings nowhere. |
+| Deceleration     | `UIScrollViewDecelerationRateNormal`: velocity keeps `0.998` per millisecond. UIKit projects down to the 0.01 units/ms floor: `(                                                     | v   | - 0.01) / | ln(0.998) | `.  |
+| Minimum fling    | Below `0.25` units/ms a release does not decelerate, as on iOS.                                                                                                                      |
+| Rubber band      | `f(x, d, c) = (x · d · c) / (d + c · x)` with `c = 0.55` and `d` the viewport length; content never goes more than one viewport past an edge.                                        |
+| Bounce           | The overshoot contracts at `0.99` per millisecond with the carried velocity (`_getBouncingDecelerationOffset`), settling within 0.5 units of the bound.                              |
+| Snap             | A fling decays at the rate that lands exactly on the nearest slot (the content end is a slot too); a slow release glides into it at `0.98` per millisecond.                          |
+| Axis lock        | Horizontal or vertical, decided once the gesture passes 10 scene units; ties go horizontal.                                                                                          |
+| Idle             | `requestAnimationFrame` only during a fling, bounce or settle; a drag follows pointer events. A resting scroller schedules nothing.                                                  |
+
+Sources: Apple's [Scroll views](https://developer.apple.com/design/human-interface-guidelines/scroll-views)
+(page-by-page only where it fits; show partial content at the edge; no
+same-orientation nesting; scroll automatically only as far as needed),
+[Gestures](https://developer.apple.com/design/human-interface-guidelines/gestures),
+[Motion](https://developer.apple.com/design/human-interface-guidelines/motion)
+(short, purposeful motion that can be cancelled) and the
+[UIScrollView](https://developer.apple.com/documentation/uikit/uiscrollview)
+reference (`decelerationRate`, bouncing). The instruction-level constants
+come from the mobile demo's researched scroller
+(`apps/mobile-demo/src/scroller.ts`, whose README records its sources);
+`src/sdk/scroll.ts` keeps the same constants.
+
 ## Hooks
 
 - `useHost()`: `{ target, capabilities, native }`, the target's name, what the host can do, and its native root.
