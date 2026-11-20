@@ -27,6 +27,7 @@
   - [Task scheduler](/essentials/taskscheduler.md)
 - Primitives
   - [Row and Column](/primitives/row_column.md)
+  - [Markdown and agent chat](/primitives/markdown.md)
   - [Grid](/primitives/grid.md)
   - [VirtualRow and VirtualColumn](/primitives/virtual.md)
   - [VirtualGrid](/primitives/virtualgrid.md)

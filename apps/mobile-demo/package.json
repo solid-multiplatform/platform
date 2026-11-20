@@ -6,7 +6,7 @@
   "description": "The mobile demo: Discover (TMDB) and a 10,000-message Chat on one scene",
   "scripts": {
     "check": "tsc --noEmit",
-    "test": "node --test src/scroller.test.ts",
+    "test": "node --test src/scroller.test.ts src/heightIndex.test.ts",
     "build:apk": "node build.mjs",
     "build:x86": "node build.mjs",
     "build:arm64": "node build.mjs --arm64"

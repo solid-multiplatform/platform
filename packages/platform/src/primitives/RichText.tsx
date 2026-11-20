@@ -14,6 +14,7 @@ import {
   layoutRichText,
   type MeasureRichText,
   type RichTextLayout,
+  type RichTextRun,
   type RichTextSpan,
 } from '../sdk/richText.js';
 
@@ -37,6 +38,11 @@ export interface RichTextProps {
   measure?: MeasureRichText;
   /** Called whenever the wrapped layout changes. */
   onLayout?(layout: RichTextLayout): void;
+  /**
+   * Called when a laid-out run is pressed. Markdown uses it for links: the
+   * run's `span` index maps back to the span the caller built.
+   */
+  onRunPress?(run: RichTextRun): void;
   ref?: (node: ElementNode) => void;
 }
 
@@ -103,6 +109,26 @@ export function RichText(props: RichTextProps): JSX.Element {
 
   createEffect(() => props.onLayout?.(layout()));
 
+  // One click target for the block, not one per run: the point is mapped onto
+  // the laid-out line and run, so a paragraph of many styles still costs a
+  // single pointer target.
+  const press = (event: { x: number; y: number }): void => {
+    if (props.onRunPress === undefined) return;
+    const laid = layout();
+    const localX = event.x - (props.x ?? 0);
+    const localY = event.y - (props.y ?? 0);
+    for (const line of laid.lines) {
+      if (localY < line.y || localY >= line.y + laid.lineHeight) continue;
+      for (const run of line.runs) {
+        const start = line.x + run.x;
+        if (localX >= start && localX < start + run.width) {
+          props.onRunPress(run);
+          return;
+        }
+      }
+    }
+  };
+
   return (
     <view
       ref={props.ref}
@@ -110,6 +136,7 @@ export function RichText(props: RichTextProps): JSX.Element {
       y={props.y}
       width={props.width}
       height={props.height ?? layout().height}
+      onMouseClick={props.onRunPress === undefined ? undefined : press}
     >
       <For each={layout().lines}>
         {(line) => (
@@ -122,6 +149,7 @@ export function RichText(props: RichTextProps): JSX.Element {
                   fontSize={run.fontSize}
                   color={run.color}
                   fontWeight={run.fontWeight}
+                  fontStyle={run.fontStyle}
                   fontFamily={run.fontFamily}
                   letterSpacing={run.letterSpacing}
                 >

@@ -61,6 +61,8 @@ export * from './Choice.jsx';
 export * from './Select.jsx';
 export * from './DatePicker.jsx';
 export * from './FocusGroup.jsx';
+export * from './ChatMessage.jsx';
+export * from './Markdown.jsx';
 export * from './RichText.jsx';
 export * from './SelectableText.jsx';
 export * from './selectionModel.js';
