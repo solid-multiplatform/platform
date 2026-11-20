@@ -47,12 +47,13 @@ name (`src/family.ts`).
   a track list, generated release notes in Markdown, a selectable credits
   line, a context menu on the cover, and Back to the library.
 - **Settings** — appearance and playback choices, a modal (About, rendered
-  from Markdown), an end drawer (Advanced), an anchored popover (what the lab
-  measures) and a destructive alert.
-- **Performance** — the in-app lab: display rate, FPS, the frame's own cost,
-  p50/p99 against the panel's budget, a live frame-time graph drawn from scene
-  views, and Capture. It runs a measured loop only while the screen is open;
-  leaving it removes the listener and the scene goes idle.
+  from Markdown), an end drawer (Advanced), an anchored popover (what the
+  overlay measures) and a destructive alert.
+- **Performance overlay** — not a screen: a pill in the page's bottom-right
+  corner shows the current frame rate and the frame's own work; a tap expands
+  it to p50/p99/cpu/draws and the last ~60 frames as bars (Hide collapses it
+  to a dot). It listens to the renderer's frames and never asks for one, so an
+  idle scene schedules nothing.
 
 Covers are generated from each album's two palette colours, and icons are
 drawn as scene bars (`Glyph`), so the app ships no images and every platform
@@ -77,8 +78,8 @@ registers them as family `Roboto`, weights 400 and 700.
 
 ## Status
 
-Library, Create, Album, Settings and Performance are built and screenshot-checked in the
-desktop, mobile and TV shells. Next: Search (`TextField`, `Select`, empty
+Library, Create, Album and Settings plus the performance overlay are built and
+screenshot-checked in the desktop, mobile and TV shells. Next: Search (`TextField`, `Select`, empty
 states), Settings (modals, drawers, popovers, window chrome), the Components
 index that links each primitive to where it is used for real, and the native
 Android/TV builds.
