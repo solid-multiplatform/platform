@@ -55,6 +55,7 @@ export function Create(props: {
   width: number;
   height: number;
   onDone?(): void;
+  topNav?: JSX.Element;
 }): JSX.Element {
   const tv = () => props.family === 'tv';
   const mobile = () => props.family === 'mobile';
@@ -213,6 +214,7 @@ export function Create(props: {
         scroll={tv() ? 'auto' : 'touch'}
         selected={0}
       >
+        {props.topNav}
         <view
           width={width()}
           display="flex"

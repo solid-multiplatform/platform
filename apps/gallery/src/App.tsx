@@ -19,7 +19,7 @@ import {
   useViewport,
 } from '@solid-multiplatform/platform/app';
 import { HostScope } from '@solid-multiplatform/platform/app';
-import { Column } from '@solid-multiplatform/platform/primitives';
+import { Column, Row } from '@solid-multiplatform/platform/primitives';
 import { Glyph, type GlyphName } from './components/Glyph';
 import { C, R, S, T } from './theme';
 import { uiFamily } from './family';
@@ -90,8 +90,9 @@ export function App(): JSX.Element {
 
   // The sidebar is a phone's tab bar, a TV's focus rail, or a desktop's
   // sidebar — the same three destinations, sized for the room.
-  const sidebar = () => (family() === 'tv' ? 300 : 248);
-  const hasSidebar = () => family() !== 'mobile';
+  const sidebar = () => 248;
+  const hasSidebar = () => family() === 'desktop';
+  const tv = () => family() === 'tv';
   const contentX = () => (hasSidebar() ? sidebar() : 0);
   const tabHeight = () => 76 + viewport().safeArea.bottom;
   const playerBottom = () => (family() === 'mobile' ? tabHeight() : 0);
@@ -99,7 +100,6 @@ export function App(): JSX.Element {
 
   const navRow = (item: (typeof NAV)[number], side: boolean) => {
     const active = () => route() === item.route;
-    const tv = () => family() === 'tv';
     const height = side ? (tv() ? 64 : 44) : 56;
     return (
       <view
@@ -111,6 +111,8 @@ export function App(): JSX.Element {
         flexDirection={side ? 'row' : 'column'}
         alignItems="center"
         gap={side ? S(3) : S(1)}
+        role="button"
+        ariaLabel={item.label}
         onEnter={() => {
           setRoute(item.route);
         }}
@@ -135,6 +137,48 @@ export function App(): JSX.Element {
       </view>
     );
   };
+
+  const topNav = () => (
+    <Row gap={S(2)} scroll="none" width={viewport().width} padding={[0, S(5)]}>
+      <For each={NAV}>
+        {(item) => (
+          <view
+            width={220}
+            height={72}
+            borderRadius={R.medium}
+            color={route() === item.route ? C.raised : 0x00000000}
+            display="flex"
+            flexDirection="row"
+            alignItems="center"
+            gap={S(3)}
+            role="button"
+            ariaLabel={item.label}
+            autofocus={item.route === 'library' && tv()}
+            onEnter={() => {
+              setRoute(item.route);
+            }}
+            onMouseClick={() => {
+              setRoute(item.route);
+            }}
+            cursorStyle="pointer"
+            style={{ $focus: { color: C.accentSoft } }}
+          >
+            <Glyph
+              name={item.glyph}
+              size={24}
+              color={route() === item.route ? C.accent : C.muted}
+            />
+            <text
+              fontSize={22}
+              color={route() === item.route ? C.text : C.muted}
+            >
+              {item.label}
+            </text>
+          </view>
+        )}
+      </For>
+    </Row>
+  );
 
   return (
     <ThemeProvider theme={galleryTheme}>
@@ -202,6 +246,7 @@ export function App(): JSX.Element {
               height={viewport().height - bottomReserved()}
               onOpenCreate={() => setRoute('create')}
               onOpenAlbum={openAlbum}
+              topNav={tv() ? topNav() : undefined}
             />
           </Show>
           <Show when={route() === 'create'}>
@@ -228,6 +273,7 @@ export function App(): JSX.Element {
           <Show when={route() === 'settings'}>
             <SettingsScreen
               family={family()}
+              topNav={tv() ? topNav() : undefined}
               x={contentX()}
               width={viewport().width - contentX()}
               height={viewport().height - bottomReserved()}
@@ -236,6 +282,7 @@ export function App(): JSX.Element {
           <Show when={route() === 'performance'}>
             <Performance
               family={family()}
+              topNav={tv() ? topNav() : undefined}
               width={viewport().width - contentX()}
               height={viewport().height - bottomReserved()}
             />

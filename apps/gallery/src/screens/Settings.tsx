@@ -21,6 +21,7 @@ export function Settings(props: {
   width: number;
   height: number;
   x?: number;
+  topNav?: JSX.Element;
 }): JSX.Element {
   const tv = () => props.family === 'tv';
   const mobile = () => props.family === 'mobile';
@@ -64,6 +65,7 @@ export function Settings(props: {
         selected={0}
         padding={[0, pad()]}
       >
+        {props.topNav}
         <view
           width={content()}
           height={tv() ? 120 : 84}

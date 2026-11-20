@@ -24,6 +24,7 @@ export function AlbumScreen(props: {
   /** The screen's x in the scene, for overlays anchored by hand. */
   x?: number;
   onBack?(): void;
+  topNav?: JSX.Element;
 }): JSX.Element {
   const tv = () => props.family === 'tv';
   const mobile = () => props.family === 'mobile';
@@ -72,6 +73,7 @@ export function AlbumScreen(props: {
         scroll={tv() ? 'auto' : 'touch'}
         selected={0}
       >
+        {props.topNav}
         <view
           width={width()}
           height={tv() ? 110 : 76}

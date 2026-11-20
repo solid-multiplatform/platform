@@ -14,8 +14,13 @@ export function bindAndroidInput(
   view.setFocusable(true);
   view.setFocusableInTouchMode(true);
   const keyListener = new android.view.View.OnKeyListener({
-    onKey: (_view, code, event) =>
-      input.key(event.getAction(), code, event.getRepeatCount()),
+    onKey: (_view, code, event) => {
+      android.util.Log.d(
+        'SolidTV',
+        'key ' + code + ' action ' + event.getAction(),
+      );
+      return input.key(event.getAction(), code, event.getRepeatCount());
+    },
   });
   view.setOnKeyListener(keyListener);
   // The view is created before it is attached, so the first requestFocus() is

@@ -1,9 +1,5 @@
 import { For, Show, type JSX } from 'solid-js';
-import {
-  Column,
-  navigableForwardFocus,
-  Row,
-} from '@solid-multiplatform/platform/primitives';
+import { Column, Row } from '@solid-multiplatform/platform/primitives';
 import { Cover } from '../components/Cover';
 import { Glyph, type GlyphName } from '../components/Glyph';
 import { ALBUMS, RAILS, albumSeconds, type Album } from '../data';
@@ -179,7 +175,6 @@ function Rail(props: {
       gap={S(3)}
       width={props.width}
       height={props.cardSize + 52 + (props.family === 'tv' ? 44 : 26)}
-      forwardFocus={navigableForwardFocus}
     >
       <text
         x={S(6)}
@@ -219,6 +214,7 @@ export function Library(props: {
   width: number;
   height: number;
   onOpenCreate?(): void;
+  topNav?: JSX.Element;
   onOpenAlbum?(album: Album): void;
 }): JSX.Element {
   const tv = () => props.family === 'tv';
@@ -241,6 +237,7 @@ export function Library(props: {
         scroll={tv() ? 'auto' : 'touch'}
         selected={0}
       >
+        {props.topNav}
         {/* Header */}
         <view
           width={width()}
@@ -250,7 +247,6 @@ export function Library(props: {
           alignItems="flexEnd"
           justifyContent="spaceBetween"
           padding={[0, pad()]}
-          forwardFocus={navigableForwardFocus}
         >
           <view display="flex" flexDirection="column" gap={S(1)}>
             <text fontSize={tv() ? T.display : T.title} color={C.text}>
@@ -273,7 +269,6 @@ export function Library(props: {
         <view
           width={width()}
           height={mobile() ? cover() + 210 : cover() + 48}
-          forwardFocus={navigableForwardFocus}
           display="flex"
           flexDirection={mobile() ? 'column' : 'row'}
           gap={tv() ? S(10) : S(6)}

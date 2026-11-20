@@ -33,6 +33,7 @@ export function Performance(props: {
   family: UiFamily;
   width: number;
   height: number;
+  topNav?: JSX.Element;
 }): JSX.Element {
   const tv = () => props.family === 'tv';
   const mobile = () => props.family === 'mobile';
@@ -165,6 +166,7 @@ export function Performance(props: {
         gap={S(6)}
         padding={[0, pad()]}
       >
+        {props.topNav}
         <view
           width={width() - 2 * pad()}
           height={tv() ? 130 : 90}
