@@ -47,7 +47,9 @@ style is `display: 'flex'` with `gap: 30`; `Column` also sets
 - `none`: never scroll.
 
 With `auto` and `edge` the container stops scrolling once the last child is on
-screen.
+screen. Both modes also finish each step by bringing the focused child wholly
+into view, so items of different sizes are not left half visible (the tvOS
+rule for focus). `scroll: "none"` still opts out of all scrolling.
 
 ## Skipping a child
 
@@ -56,8 +58,8 @@ Set `skipFocus` on a child and navigation steps over it.
 ## scrollToIndex
 
 A ref to a `Row` or `Column` has `scrollToIndex(index, options)`. It selects
-the child, scrolls to it and focuses it. Pass `{ noFocus: true }` to scroll
-without moving focus.
+the child, scrolls the least distance that shows it whole, and focuses it.
+Pass `{ noFocus: true }` to scroll without moving focus.
 
 ```tsx
 import {

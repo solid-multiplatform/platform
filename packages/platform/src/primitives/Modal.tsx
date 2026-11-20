@@ -2,7 +2,10 @@ import { Show, createEffect, onCleanup, type JSX } from 'solid-js';
 import type { ElementNode } from '../core/elementNode.js';
 import { activeElement } from '../core/activeElement.js';
 import type { ForwardFocusHandler } from '../core/focusKeyTypes.js';
-import { pushFocusTrap } from '../core/focusManager.js';
+import {
+  focusNearestLiveAncestor,
+  pushFocusTrap,
+} from '../core/focusManager.js';
 import { isElementNode } from '../core/utils.js';
 import { viewport } from '../sdk/viewport.js';
 import { Portal } from './portal.jsx';
@@ -88,7 +91,13 @@ export function Modal(props: ModalProps): JSX.Element {
       open = false;
       releaseTrap?.();
       releaseTrap = undefined;
-      previous?.setFocus();
+      // The invoking control may have been removed while the dialog was open.
+      // Restore to it, or to the nearest surviving item of its container,
+      // rather than leaving focus on a node that no longer exists.
+      if (previous !== undefined) {
+        if (previous.destroyed) focusNearestLiveAncestor(previous);
+        else previous.setFocus();
+      }
       previous = undefined;
     }
   });
@@ -96,7 +105,10 @@ export function Modal(props: ModalProps): JSX.Element {
   onCleanup(() => {
     releaseTrap?.();
     releaseTrap = undefined;
-    if (open) previous?.setFocus();
+    if (open && previous !== undefined) {
+      if (previous.destroyed) focusNearestLiveAncestor(previous);
+      else previous.setFocus();
+    }
   });
 
   const close = () => props.onRequestClose?.();
