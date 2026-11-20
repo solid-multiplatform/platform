@@ -5,6 +5,7 @@ import type { ForwardFocusHandler } from '../core/focusKeyTypes.js';
 import {
   focusNearestLiveAncestor,
   pushFocusTrap,
+  syncSelectedAncestors,
 } from '../core/focusManager.js';
 import { isElementNode } from '../core/utils.js';
 import { viewport } from '../sdk/viewport.js';
@@ -96,7 +97,10 @@ export function Modal(props: ModalProps): JSX.Element {
       // rather than leaving focus on a node that no longer exists.
       if (previous !== undefined) {
         if (previous.destroyed) focusNearestLiveAncestor(previous);
-        else previous.setFocus();
+        else {
+          previous.setFocus();
+          syncSelectedAncestors(previous);
+        }
       }
       previous = undefined;
     }
@@ -107,16 +111,24 @@ export function Modal(props: ModalProps): JSX.Element {
     releaseTrap = undefined;
     if (open && previous !== undefined) {
       if (previous.destroyed) focusNearestLiveAncestor(previous);
-      else previous.setFocus();
+      else {
+        previous.setFocus();
+        syncSelectedAncestors(previous);
+      }
     }
   });
 
   const close = () => props.onRequestClose?.();
   const key = (event: KeyboardEvent) => {
+    // Escape is the keyboard's dismiss; GoBack is a remote's Back. A real
+    // Backspace is a text-editing key and must not close a dialog, but the
+    // dispatcher's synthetic Back arrives as a marked Backspace so hardware
+    // Back still dismisses.
     if (
       event.key === 'Escape' ||
-      event.key === 'Backspace' ||
-      event.key === 'GoBack'
+      event.key === 'GoBack' ||
+      (event.key === 'Backspace' &&
+        (event as unknown as { synthetic?: boolean }).synthetic === true)
     ) {
       close();
       return true;
@@ -137,7 +149,11 @@ export function Modal(props: ModalProps): JSX.Element {
           ariaLabel={props.label}
           width={viewport().width}
           height={viewport().height}
-          color={props.transparent ? (props.barrierColor ?? 0x00000000) : (props.barrierColor ?? 0x000000cc)}
+          color={
+            props.transparent
+              ? (props.barrierColor ?? 0x00000000)
+              : (props.barrierColor ?? 0x000000cc)
+          }
           onKeyPress={key}
           onMouseClick={
             props.dismissOnBackdrop === false
@@ -150,7 +166,9 @@ export function Modal(props: ModalProps): JSX.Element {
           }
         >
           <view
-            x={props.useSafeArea === false ? 0 : viewport().insets.safeArea.left}
+            x={
+              props.useSafeArea === false ? 0 : viewport().insets.safeArea.left
+            }
             y={props.useSafeArea === false ? 0 : viewport().insets.safeArea.top}
             width={
               viewport().width -

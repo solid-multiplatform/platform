@@ -6,11 +6,7 @@ import * as lng from '@solid-multiplatform/platform';
 import { SearchField, TextField } from '@solid-multiplatform/platform/app';
 import { appEntry } from '@solid-multiplatform/platform/app/entry';
 import { useFocusManager } from '@solid-multiplatform/platform/focusManager';
-import type {
-  Editor,
-  EditorHost,
-  EditorOptions,
-} from '../src/sdk/editor.js';
+import type { Editor, EditorHost, EditorOptions } from '../src/sdk/editor.js';
 import { HostScope } from '../src/app/context.js';
 import { KeyTarget } from './contract-focus-helpers.js';
 import { renderer } from './setup.js';
@@ -96,9 +92,7 @@ v.test('a TextField opens the host editor and reports changes', async () => {
     ),
     host,
   );
-  // Drawing the field creates no editor; focusing and Enter do.
-  v.expect(calls).toHaveLength(0);
-  await press('Enter');
+  // Focus starts editing: the autofocused field opens its editor at mount.
   v.expect(calls).toHaveLength(1);
   v.expect(calls[0]).toMatchObject({
     label: 'Name',
@@ -106,36 +100,43 @@ v.test('a TextField opens the host editor and reports changes', async () => {
     purpose: 'text',
   });
   v.expect(focus).toHaveBeenCalledTimes(1);
+  // Enter focuses the same editor again; it does not create another.
+  await press('Enter');
+  v.expect(calls).toHaveLength(1);
+  v.expect(focus).toHaveBeenCalledTimes(2);
 
   calls[0]!.onChange('Ada');
   v.expect(value()).toBe('Ada');
   v.expect(dispose).not.toHaveBeenCalled();
 });
 
-v.test('password, numeric and search fields ask for the right keyboard', async () => {
-  const cases: Array<{
-    app: () => lng.JSX.Element;
-    purpose: string;
-  }> = [
-    {
-      app: () => <TextField label="Secret" password autofocus />,
-      purpose: 'new-password',
-    },
-    {
-      app: () => <TextField label="Code" numeric autofocus />,
-      purpose: 'one-time-code',
-    },
-    { app: () => <SearchField label="Find" autofocus />, purpose: 'search' },
-  ];
-  for (const { app, purpose } of cases) {
-    const { host, calls } = fakeEditorHost();
-    await mount(app, host);
-    await press('Enter');
-    v.expect(calls[0]?.purpose).toBe(purpose);
-    stop?.();
-    stop = undefined;
-  }
-});
+v.test(
+  'password, numeric and search fields ask for the right keyboard',
+  async () => {
+    const cases: Array<{
+      app: () => lng.JSX.Element;
+      purpose: string;
+    }> = [
+      {
+        app: () => <TextField label="Secret" password autofocus />,
+        purpose: 'new-password',
+      },
+      {
+        app: () => <TextField label="Code" numeric autofocus />,
+        purpose: 'number',
+      },
+      { app: () => <SearchField label="Find" autofocus />, purpose: 'search' },
+    ];
+    for (const { app, purpose } of cases) {
+      const { host, calls } = fakeEditorHost();
+      await mount(app, host);
+      await press('Enter');
+      v.expect(calls[0]?.purpose).toBe(purpose);
+      stop?.();
+      stop = undefined;
+    }
+  },
+);
 
 v.test('the field is inert on a host without an editor', async () => {
   await mount(

@@ -31,6 +31,7 @@ import {
   type PlatformTarget,
 } from './sdk/capabilities.js';
 import type { EditorHost } from './sdk/editor.js';
+import type { KeyEventLike } from './core/focusManager.js';
 import type { BackDispatcher } from './sdk/shortcuts.js';
 import {
   createScenePointer,
@@ -190,6 +191,20 @@ export function mountApp(
           cursor: source.setCursor && ((style) => source.setCursor!(style)),
         });
         release.push(() => pointer.dispose(), source.connect(pointer));
+        // Tab moves focus among the scene's stops (Shift+Tab backwards).
+        // The focus manager's key map has no Tab: it is a keyboard concept,
+        // not a remote one, and `focusNext` already walks the tree and the
+        // active focus trap.
+        const keys = host.keys;
+        if (keys !== undefined) {
+          const onTab = (event: KeyEventLike) => {
+            if (event.key !== 'Tab') return;
+            if (pointer.focusNext(event.shiftKey === true))
+              event.preventDefault?.();
+          };
+          keys.addEventListener('keydown', onTab);
+          release.push(() => keys.removeEventListener('keydown', onTab));
+        }
       }
       if (host.semantics !== undefined) {
         release.push(attachSemantics(rootNode, host.semantics));

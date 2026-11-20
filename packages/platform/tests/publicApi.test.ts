@@ -532,7 +532,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   );
 
   v.test(
-    '@solid-multiplatform/platform/focusManager (src/core/focusManager.ts): 15 names',
+    '@solid-multiplatform/platform/focusManager (src/core/focusManager.ts): 16 names',
     () => {
       v.expect(names(focusManager)).toEqual([
         'currentFocusTrap',
@@ -549,6 +549,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'setActiveElementCore',
         'setFocusPath',
         'suppressKeyUntilRelease',
+        'syncSelectedAncestors',
         'useFocusManager',
       ]);
     },

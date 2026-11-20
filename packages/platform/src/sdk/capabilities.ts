@@ -81,7 +81,7 @@ const defaults: Record<PlatformTarget, PlatformCapabilities> = {
     colorScheme: true,
     insets: false,
     haptics: false,
-    focusVisibility: 'auto',
+    focusVisibility: 'always',
   },
   roku: {
     target: 'roku',

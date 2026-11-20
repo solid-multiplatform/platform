@@ -199,6 +199,9 @@ const SYNTHETIC_BACK = Object.freeze({
   key: 'Backspace',
   keyCode: 8,
   repeat: false,
+  // Hardware Back, not someone pressing Backspace in a text field: a dialog
+  // distinguishes the two.
+  synthetic: true,
   preventDefault() {},
 });
 

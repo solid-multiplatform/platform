@@ -1,6 +1,7 @@
 import { For, type JSX } from 'solid-js';
 import type { ElementNode } from '../core/elementNode.js';
 import type { NodeStyles } from '../core/intrinsicTypes.js';
+import { supports } from '../sdk/capabilities.js';
 import type { Rect } from '../sdk/input.js';
 import { Column } from './Column.jsx';
 import { Popover, type PopoverPlacement } from './Popover.jsx';
@@ -11,6 +12,8 @@ export interface MenuItem {
   disabled?: boolean;
   /** Drawn in the destructive colour; a context menu puts these last. */
   destructive?: boolean;
+  /** The current choice of a select: marked with an accent bar. */
+  checked?: boolean;
 }
 
 export interface MenuProps {
@@ -41,7 +44,21 @@ const DISABLED_STYLE: NodeStyles = { color: 0x1d2937ff };
  * A disabled row is passed over.
  */
 export function Menu(props: MenuProps): JSX.Element {
-  const rowHeight = 56;
+  // A ten-foot menu is larger than a pointer menu; the box, rows and type
+  // scale together so the same items stay readable across the room.
+  const tv = supports('remote');
+  const rowHeight = tv ? 72 : 56;
+  const width = tv ? 420 : 280;
+  const fontSize = tv ? 30 : 22;
+  const maxPanel = tv ? 640 : 480;
+  // The panel never grows past its cap: the list scrolls (focus keeps the
+  // selected row visible) instead of painting rows over the panel edge.
+  const rows = () =>
+    Math.max(
+      1,
+      Math.min(props.items.length, Math.floor((maxPanel - 16) / rowHeight)),
+    );
+  const panelHeight = () => rows() * rowHeight + 16;
   let list: ElementNode | undefined;
   return (
     <Popover
@@ -50,7 +67,7 @@ export function Menu(props: MenuProps): JSX.Element {
       placement={props.placement}
       label={props.label ?? 'Menu'}
       role="menu"
-      height={Math.min(480, props.items.length * rowHeight + 16)}
+      height={panelHeight()}
       initialFocus={() => list}
       onRequestClose={props.onRequestClose}
     >
@@ -60,10 +77,10 @@ export function Menu(props: MenuProps): JSX.Element {
         }}
         x={0}
         y={8}
-        width={280}
-        height={props.items.length * rowHeight}
+        width={width}
+        height={rows() * rowHeight}
         gap={0}
-        scroll="none"
+        scroll="edge"
         selected={props.selected ?? 0}
         role="none"
       >
@@ -76,19 +93,34 @@ export function Menu(props: MenuProps): JSX.Element {
             };
             return (
               <view
-                width={280}
+                width={width}
                 height={rowHeight}
                 style={item.disabled ? DISABLED_STYLE : ITEM_STYLE}
                 skipFocus={item.disabled}
                 role="menuitem"
+                ariaLabel={item.label}
                 ariaDisabled={item.disabled}
                 onEnter={select}
                 onMouseClick={select}
               >
+                {/* Always present: a conditional child leaves an empty text
+                    placeholder in the scene, and the bar costs nothing. */}
+                <view
+                  skipFocus
+                  x={7}
+                  y={rowHeight / 2 - 9}
+                  width={4}
+                  height={18}
+                  borderRadius={2}
+                  color={0x2563ebff}
+                  alpha={item.checked ? 1 : 0}
+                />
                 <text
-                  x={18}
-                  y={16}
-                  fontSize={22}
+                  x={22}
+                  y={tv ? 22 : 16}
+                  width={width - 40}
+                  contain="width"
+                  fontSize={fontSize}
                   color={
                     item.disabled
                       ? 0x5b6b7cff

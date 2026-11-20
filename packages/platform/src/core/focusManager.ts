@@ -366,6 +366,28 @@ export function focusNearestLiveAncestor(
 }
 
 /**
+ * Bring every navigable ancestor's `selected` in line with a node that just
+ * gained focus by restoration rather than by an arrow key. Screen history and
+ * a dialog's focus restore call this after `setFocus()`: the next arrow then
+ * moves from the restored item, not from index 0. Arrow navigation needs no
+ * call — `selectChild` already keeps `selected` current.
+ */
+export function syncSelectedAncestors(node: ElementNode): void {
+  let child: ElementNode | undefined = node;
+  for (
+    let current = node.parent;
+    current !== undefined;
+    current = current.parent
+  ) {
+    if (child !== undefined && current.selected !== undefined) {
+      const index = current.children.indexOf(child);
+      if (index !== -1 && current.selected !== index) current.selected = index;
+    }
+    child = current;
+  }
+}
+
+/**
  * tvOS moves focus to one of the remaining items when the focused item
  * disappears during D-pad navigation, so the indicator stays somewhere the
  * viewer can find it. On pointer-first hosts the indicator is simply hidden,
@@ -388,6 +410,9 @@ const updateFocusPath = (
   const prevFp = focusPath();
   const visible = isFocusVisible();
   let current: ElementNode | undefined = currentFocusedElm;
+  // The child we just came up from: a navigable ancestor follows focus, so a
+  // focus restored by screen history or a dialog leaves its Row/Column on the
+  // right `selected` and the next arrow moves from there, not from index 0.
   // fp escapes through the focusPath signal, so it must be a fresh array; the
   // membership test below runs on paths of a handful of elements every single
   // keypress, where a linear scan beats allocating and hashing a Set.
@@ -792,6 +817,10 @@ export interface KeyEventLike {
   readonly key: string;
   readonly keyCode: number;
   readonly repeat: boolean;
+  /** Held with the key; optional, as a host's own event objects vary. */
+  readonly shiftKey?: boolean;
+  /** The app's own hardware-Back event, not a real key press. */
+  readonly synthetic?: boolean;
   /**
    * Called on an event the app consumed when
    * `Config.preventDefaultOnHandledKeys` is set; optional, since a host's

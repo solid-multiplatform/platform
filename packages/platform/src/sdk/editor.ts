@@ -10,8 +10,11 @@ export interface EditorOptions {
     | 'new-password'
     | 'email'
     | 'one-time-code'
+    | 'number'
     | 'search';
   multiline?: boolean;
+  /** End editing when Return submits (single-line fields). */
+  blurOnSubmit?: boolean;
   onChange(value: string): void;
   onSubmit?(value: string): void;
   onBlur?(): void;
@@ -45,7 +48,11 @@ export function browserEditorHost(parent: HTMLElement): EditorHost {
             ? 'email'
             : purpose === 'search'
               ? 'search'
-              : 'text';
+              : purpose === 'number'
+                ? 'number'
+                : 'text';
+      if (purpose === 'number') input.setAttribute('inputmode', 'numeric');
+      if (purpose === 'search') input.setAttribute('enterkeyhint', 'search');
       input.name = purpose;
       input.setAttribute('aria-label', options.label);
       input.setAttribute(
@@ -68,6 +75,7 @@ export function browserEditorHost(parent: HTMLElement): EditorHost {
         ) {
           key.preventDefault();
           options.onSubmit(input.value);
+          if (options.blurOnSubmit === true) input.blur();
         }
       });
       input.addEventListener('keyup', (e) => e.stopPropagation());

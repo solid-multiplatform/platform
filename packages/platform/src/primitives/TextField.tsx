@@ -1,4 +1,10 @@
-import { createEffect, createSignal, onCleanup, useContext, type JSX } from 'solid-js';
+import {
+  createEffect,
+  createSignal,
+  onCleanup,
+  useContext,
+  type JSX,
+} from 'solid-js';
 import type { ElementNode } from '@solid-multiplatform/platform';
 import { AppScope } from '../app/context.js';
 import type { Editor, EditorHost, EditorOptions } from '../sdk/editor.js';
@@ -19,6 +25,8 @@ export interface TextFieldProps {
   /** Ask the host for a numeric keyboard (one-time code layout). */
   numeric?: boolean;
   multiline?: boolean;
+  /** End editing when Return submits a single-line field. */
+  blurOnSubmit?: boolean;
   autofocus?: boolean;
   disabled?: boolean;
   width?: number;
@@ -31,7 +39,7 @@ export interface TextFieldProps {
 function purposeOf(props: TextFieldProps): EditorOptions['purpose'] {
   if (props.purpose) return props.purpose;
   if (props.password) return 'new-password';
-  if (props.numeric) return 'one-time-code';
+  if (props.numeric) return 'number';
   return 'text';
 }
 
@@ -78,7 +86,7 @@ export function TextField(props: TextFieldProps): JSX.Element {
     props.password ? '•'.repeat([...text].length) : text;
   const shown = () => {
     const text = value();
-    return text === '' ? props.placeholder ?? '' : masked(text);
+    return text === '' ? (props.placeholder ?? '') : masked(text);
   };
 
   const bounds = () => {
@@ -89,8 +97,7 @@ export function TextField(props: TextFieldProps): JSX.Element {
       height:
         rect.height ||
         props.height ||
-        Math.round(theme.typography.body * 1.35) +
-          2 * theme.spacing(2),
+        Math.round(theme.typography.body * 1.35) + 2 * theme.spacing(2),
     };
   };
 
@@ -102,6 +109,7 @@ export function TextField(props: TextFieldProps): JSX.Element {
         value: value(),
         purpose: purposeOf(props),
         multiline: props.multiline,
+        blurOnSubmit: props.blurOnSubmit,
         onChange(next) {
           setInner(next);
           props.onChange?.(next);
@@ -144,22 +152,16 @@ export function TextField(props: TextFieldProps): JSX.Element {
         $focus: { color: theme.colors.focus },
         $hover: { color: theme.colors.border },
       }}
+      onFocus={open}
       onEnter={open}
       onMouseClick={open}
     >
-      <text
-        fontSize={theme.typography.label}
-        color={theme.colors.textMuted}
-      >
+      <text fontSize={theme.typography.label} color={theme.colors.textMuted}>
         {props.label}
       </text>
       <text
         fontSize={theme.typography.body}
-        color={
-          value() === ''
-            ? theme.colors.textMuted
-            : theme.colors.text
-        }
+        color={value() === '' ? theme.colors.textMuted : theme.colors.text}
       >
         {shown()}
       </text>

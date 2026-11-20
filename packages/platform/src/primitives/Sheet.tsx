@@ -41,8 +41,7 @@ export interface SheetProps {
  */
 export function Sheet(props: SheetProps): JSX.Element {
   const theme = () => useTheme();
-  const height = () =>
-    props.height ?? Math.min(640, viewport().height * 0.6);
+  const height = () => props.height ?? Math.min(640, viewport().height * 0.6);
   const bottom = () =>
     viewport().insets.safeArea.bottom +
     (props.avoidKeyboard === false ? 0 : viewport().insets.ime.bottom);
@@ -52,6 +51,10 @@ export function Sheet(props: SheetProps): JSX.Element {
       onRequestClose={props.onRequestClose}
       label={props.label}
       transparent
+      // A sheet dims its parent and its own surface takes the tap: a tap
+      // inside must not fall through to the barrier and dismiss it.
+      barrierColor={0x00000080}
+      useSafeArea={false}
       initialFocus={props.initialFocus}
     >
       <view
@@ -62,6 +65,7 @@ export function Sheet(props: SheetProps): JSX.Element {
         color={0x1d2937ff}
         borderRadius={[theme().radius.medium, theme().radius.medium, 0, 0]}
         forwardFocus={1}
+        onMouseClick={() => true}
       >
         <text skipFocus x={28} y={24} fontSize={30} color={0xf2f6faff}>
           {props.title ?? props.label}
