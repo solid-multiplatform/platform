@@ -2,6 +2,7 @@ import * as lng from '@solid-multiplatform/platform';
 import * as v from 'vitest';
 import { installServices } from '../src/sdk/registry.ts';
 import { webServices } from '../src/hosts/web-services/index.ts';
+import { setCapabilities } from '../src/sdk/capabilities.ts';
 
 lng.Config.domRendererEnabled = true;
 
@@ -23,6 +24,11 @@ globalThis.MutationObserver = class MockMutationObserver {
   observe() {}
   disconnect() {}
 } as any;
+
+// Every test file starts as the web target. Capabilities are module state:
+// a file that set a television and reset it left the next file without a
+// target, and focus behaviour followed the leftovers.
+setCapabilities('web');
 
 export const root = document.createElement('div');
 document.body.appendChild(root);
