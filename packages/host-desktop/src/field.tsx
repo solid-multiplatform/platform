@@ -175,6 +175,7 @@ export function mountField(mount: Mount): FieldView {
             : (style.background ?? 0x1b2736ff)
         }
         // What makes the field a pointer target of the scene.
+        cursorStyle="text"
         onMouseClick={(point) => mount.click(point)}
         onPointerDrag={(phase, point, origin) => {
           if (phase !== 'cancel') mount.drag(point, origin);

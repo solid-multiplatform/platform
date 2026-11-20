@@ -2,6 +2,7 @@ import type { ElementText, TextNode } from '../core/index.js';
 import { Config, ElementNode, rootNode } from '../index.js';
 import { resetCursor, setCursor } from '../sdk/cursor.js';
 import { createScenePointer, hasScenePointer } from '../sdk/input.js';
+import { normalizeWheelDelta } from '../sdk/scroll.js';
 import { createSignal, onCleanup } from 'solid-js';
 
 type CustomState = `$${string}`;
@@ -117,17 +118,25 @@ export function useMouse<TApp extends ElementNode = ElementNode>(
     if (e.button === 0) pointer.up(1, at(e));
   };
   const wheel = (e: WheelEvent) => {
-    pointer.wheel(at(e), e.deltaX, e.deltaY);
+    const delta = normalizeWheelDelta(e, window.innerHeight || 800);
+    pointer.wheel(at(e), delta.x, delta.y);
+  };
+  const context = (e: MouseEvent) => {
+    // The scene's menu replaces the page's; a canvas has no document menu.
+    e.preventDefault();
+    pointer.context?.(at(e));
   };
   window.addEventListener('mousedown', down);
   window.addEventListener('mousemove', move);
   window.addEventListener('mouseup', up);
   window.addEventListener('wheel', wheel);
+  window.addEventListener('contextmenu', context);
   onCleanup(() => {
     window.removeEventListener('mousedown', down);
     window.removeEventListener('mousemove', move);
     window.removeEventListener('mouseup', up);
     window.removeEventListener('wheel', wheel);
+    window.removeEventListener('contextmenu', context);
     pointer.dispose();
   });
 }

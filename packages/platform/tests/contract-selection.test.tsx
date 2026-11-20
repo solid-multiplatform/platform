@@ -103,6 +103,8 @@ v.describe('contract: selectable text', () => {
     v.expect(quads[0]!.x).toBeCloseTo(5 * CHAR_W, 3);
     v.expect(quads[0]!.width).toBeCloseTo(10 * CHAR_W, 3);
     v.expect(quads[0]!.height).toBeCloseTo(LINE_H, 3);
+    // The pointer over text is an I-beam, not the click hand.
+    v.expect(wrapper.cursorStyle).toBe('text');
     pointer.dispose();
     dispose();
   });

@@ -36,6 +36,9 @@ export function Button(props: {
   onEnter?: () => void;
   onFocus?: () => void;
   onBlur?: () => void;
+  onPointerEnter?: () => void;
+  onPointerLeave?: () => void;
+  onKeyPress?: (event: KeyboardEvent) => boolean | void;
   ref?: (node: ElementNode) => void;
 }) {
   // On a phone a button fills the column unless it asked for less.
@@ -54,6 +57,9 @@ export function Button(props: {
       onEnter={() => props.onEnter?.()}
       onFocus={() => props.onFocus?.()}
       onBlur={() => props.onBlur?.()}
+      onPointerEnter={() => props.onPointerEnter?.()}
+      onPointerLeave={() => props.onPointerLeave?.()}
+      onKeyPress={props.onKeyPress}
     >
       <text x={16} y={10} fontSize={22} color={TEXT}>
         {props.label}

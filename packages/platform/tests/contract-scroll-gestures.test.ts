@@ -1,5 +1,10 @@
 import * as v from 'vitest';
-import { scrollAxis, dragToScroll, wheelToScroll } from '../src/sdk/scroll.js';
+import {
+  scrollAxis,
+  dragToScroll,
+  normalizeWheelDelta,
+  wheelToScroll,
+} from '../src/sdk/scroll.js';
 
 v.describe('dragToScroll', () => {
   v.it('follows a pointer drag on the vertical axis', () => {
@@ -46,5 +51,31 @@ v.describe('wheelToScroll', () => {
     const horizontal = wheelToScroll(horizontalScroll, { axis: 'x' });
     horizontal({ deltaX: 80, deltaY: 999 });
     v.expect(horizontalScroll.offset()).toBe(80);
+  });
+});
+
+v.describe('normalizeWheelDelta', () => {
+  v.it('keeps pixels, converts lines to 16 and pages to the view size', () => {
+    v.expect(normalizeWheelDelta({ deltaX: 3, deltaY: 120 }, 800)).toEqual({
+      x: 3,
+      y: 120,
+    });
+    v.expect(
+      normalizeWheelDelta({ deltaX: 0, deltaY: 3, deltaMode: 1 }, 800),
+    ).toEqual({ x: 0, y: 48 });
+    v.expect(
+      normalizeWheelDelta({ deltaX: 0, deltaY: -1, deltaMode: 2 }, 800),
+    ).toEqual({ x: 0, y: -800 });
+  });
+
+  v.it('scrollAxis.page moves by the visible size and clamps', () => {
+    const scroll = scrollAxis();
+    scroll.layout(1000, 200);
+    scroll.page(200);
+    v.expect(scroll.offset()).toBe(200);
+    scroll.page(200, -1);
+    v.expect(scroll.offset()).toBe(0);
+    scroll.page(500, -1);
+    v.expect(scroll.offset()).toBe(0);
   });
 });

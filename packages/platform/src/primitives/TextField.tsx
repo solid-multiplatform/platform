@@ -137,6 +137,7 @@ export function TextField(props: TextFieldProps): JSX.Element {
       ariaDisabled={props.disabled}
       role="textbox"
       ariaLabel={props.label}
+      cursorStyle={props.disabled ? 'not-allowed' : 'text'}
       forwardStates
       style={{
         color: theme.colors.surface,

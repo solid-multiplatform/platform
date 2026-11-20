@@ -303,6 +303,27 @@
           }
         },
         {
+          "id": "desktop-pointer",
+          "feature": "Desktop pointer behaviour (hover, cursor, context menus, wheel, tooltips)",
+          "default": {
+            "status": "preview"
+          },
+          "cells": {
+            "web": {
+              "status": "tested",
+              "evidence": "packages/platform/tests/scene-pointer.test.tsx (test.yml: unit; enter/leave fire once per crossing, the cursor follows `cursorStyle`, a secondary click reaches the nearest `onPointerContext` and is not a click, a disabled control stops it, and Escape cancels a drag; with contract-row-column.test.tsx, contract-tooltip.test.ts and contract-scroll-gestures.test.ts for wheel/page steps, tooltip delay and delta normalisation) and apps/showcase/tests/showcase.e2e.mjs (test.yml: projects; a real mouse hovers a control, right-clicks a menu and drives it with ArrowDown and Enter, Escape closes it, the wheel scrolls the virtual list, a drag selects and copies a paragraph, and the scene stays idle for 2 s afterwards)"
+            },
+            "desktop-linux": {
+              "status": "preview",
+              "note": "The desktop host feeds the same sink; secondary clicks arrive as button 2 and the wheel in layout pixels. The runtime exposes no cursor-shape API, so `setCursor` is not implemented, and no desktop-runtime test drives a context menu."
+            },
+            "tizen,webos,vizio,roku,android-tv,apple-tv": {
+              "status": "unavailable",
+              "note": "No hover or secondary click on these hosts (a TV pointer remote clicks, it does not hover); the added handlers are opt-in and change none of their focus behaviour."
+            }
+          }
+        },
+        {
           "id": "screen-history",
           "feature": "Screen history with keyed focus restore (`createScreenHistory`)",
           "default": {

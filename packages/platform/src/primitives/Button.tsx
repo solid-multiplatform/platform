@@ -31,6 +31,7 @@ export function Button(props: ButtonProps): JSX.Element {
       alpha={local.disabled ? 0.4 : 1}
       skipFocus={local.disabled}
       ariaDisabled={local.disabled}
+      cursorStyle={local.disabled ? 'not-allowed' : 'pointer'}
       forwardStates
       style={{
         color: theme.colors.surfaceRaised,

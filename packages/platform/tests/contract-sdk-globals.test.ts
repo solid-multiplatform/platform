@@ -27,7 +27,10 @@ const WEB_ONLY = [
  */
 const PINNED: Record<string, { count: number; where: string }> = {
   'editor.ts': { count: 2, where: 'browserEditorHost' },
-  'input.ts': { count: 1, where: 'bindPointerEvents' },
+  'input.ts': {
+    count: 5,
+    where: 'bindPointerEvents and the drag-time Escape listener',
+  },
   'navigation.ts': {
     count: 2,
     where: 'bindBrowserHistory, createBrowserNavigation',

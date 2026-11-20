@@ -46,6 +46,7 @@
   - [Focus stack](/primitives/createFocusStack.md)
   - [useHold](/primitives/useHold.md)
   - [useMouse](/primitives/useMouse.md)
+  - [Pointer and desktop behaviour](/primitives/pointer.md)
   - [Announcer](/primitives/a11y.md)
 - Services
   - [Services (SDK)](/services.md)

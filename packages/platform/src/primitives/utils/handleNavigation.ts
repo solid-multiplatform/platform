@@ -204,6 +204,114 @@ export const navigableHandleNavigation: lng.KeyHandler = function (e) {
   );
 };
 
+/** How many items fit in the list's clipping ancestor, at least one. */
+function visibleItems(
+  el: lngp.NavigableElement,
+  slot: number,
+  dimension: 'width' | 'height',
+): number {
+  let view: lng.ElementNode | undefined = el;
+  for (let at: lng.ElementNode | undefined = el; at; at = at.parent) {
+    if (at.clipping) {
+      view = at;
+      break;
+    }
+  }
+  const visible = view[dimension] || el[dimension] || 0;
+  if (!(slot > 0)) return 1;
+  return Math.max(1, Math.floor(visible / slot));
+}
+
+/** The size one item takes along the list's axis, including the gap. */
+function itemSlot(
+  el: lngp.NavigableElement,
+  dimension: 'width' | 'height',
+): number {
+  const children = el.children;
+  const selected =
+    children[Math.max(0, Math.min(el.selected, children.length - 1))];
+  const size =
+    (selected as lng.ElementNode | undefined)?.[dimension] ||
+    (children[0] as lng.ElementNode | undefined)?.[dimension] ||
+    0;
+  return (size || 0) + (el.gap || 0);
+}
+
+/** Wheel accumulations per list, kept out of the node. */
+const wheelPending = new WeakMap<lngp.NavigableElement, number>();
+
+/**
+ * Scrolls a focus-driven list by whole items for a wheel delta. The framework
+ * lists move by selecting a row (their scroll follows the selection), so a
+ * wheel step is one row, as Up/Down would be; the accumulator keeps a
+ * trackpad's small deltas from losing the fraction between events.
+ */
+export function wheelMoveSelection(
+  el: lngp.NavigableElement,
+  delta: number,
+  axis: 'x' | 'y' = 'y',
+): boolean {
+  const slot = itemSlot(el, axis === 'x' ? 'width' : 'height');
+  if (!(slot > 0)) return true;
+  const pending = (wheelPending.get(el) ?? 0) + delta;
+  const steps = Math.trunc(pending / slot);
+  if (steps === 0) {
+    wheelPending.set(el, pending);
+    return true;
+  }
+  wheelPending.set(el, 0);
+  // At either end the wheel belongs to whatever contains the list.
+  return moveSteps(el, steps);
+}
+
+/**
+ * Moves the selection `count` items, one at a time: a windowed list shifts
+ * its window by one slot per selection change, so a multi-row jump is a run
+ * of single moves rather than one large delta.
+ */
+function moveSteps(el: lngp.NavigableElement, count: number): boolean {
+  const direction = count < 0 ? -1 : 1;
+  const steps = Math.min(Math.abs(count), 50);
+  let moved = false;
+  for (let i = 0; i < steps; i++) {
+    if (!moveSelection(el, direction)) break;
+    moved = true;
+  }
+  return moved;
+}
+
+/**
+ * The wheel handler a `Column` or `Row` installs: vertical lists take
+ * `deltaY`, horizontal ones `deltaX`. A list with `scroll="none"` leaves the
+ * wheel to its ancestors.
+ */
+export function wheelNavigation(axis: 'x' | 'y') {
+  return function (
+    this: lng.ElementNode,
+    event: { deltaX: number; deltaY: number },
+  ): boolean {
+    const el = this as lngp.NavigableElement;
+    if (el.scroll === 'none') return false;
+    const delta = axis === 'x' ? event.deltaX : event.deltaY;
+    if (!delta) return false;
+    return wheelMoveSelection(el, delta, axis);
+  };
+}
+
+/**
+ * PageUp/PageDown move by the number of rows the list shows, not one row:
+ * the keyboard's counterpart of a page scroll (Apple HIG, Scroll views).
+ */
+export function pageNavigation(axis: 'x' | 'y') {
+  const dimension = axis === 'x' ? 'width' : 'height';
+  return function (this: lng.ElementNode, e: KeyboardEvent): boolean {
+    if (e.key !== 'PageUp' && e.key !== 'PageDown') return false;
+    const el = this as lngp.NavigableElement;
+    const page = visibleItems(el, itemSlot(el, dimension), dimension);
+    return moveSteps(el, e.key === 'PageDown' ? page : -page);
+  };
+}
+
 /**
  * Moves the selection within a {@link lngp.NavigableElement}.
  */
