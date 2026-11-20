@@ -22,14 +22,20 @@ const platform = path.dirname(
 // The MSDF font the framework ships for its starter; the CLI copies the same
 // files into an app's `public/fonts`.
 function fonts() {
+  const source = path.join(platform, 'bench/public/fonts');
   return {
     name: 'gallery-fonts',
     generateBundle() {
-      for (const name of ['Lato-Regular.msdf.json', 'Lato-Regular.msdf.png'])
+      for (const name of [
+        'Roboto-Regular.msdf.json',
+        'Roboto-Regular.msdf.png',
+        'Roboto-Bold.msdf.json',
+        'Roboto-Bold.msdf.png',
+      ])
         this.emitFile({
           type: 'asset',
           fileName: 'fonts/' + name,
-          source: readFileSync(path.join(platform, 'tests/webgl/fonts', name)),
+          source: readFileSync(path.join(source, name)),
         });
     },
   };

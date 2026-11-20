@@ -12,7 +12,7 @@ import { App } from './App';
 declare const __GALLERY_TARGET__: 'web' | 'tizen' | 'webos';
 
 const target = __GALLERY_TARGET__;
-Config.fontSettings = { fontFamily: 'Lato', fontSize: 24 };
+Config.fontSettings = { fontFamily: 'Roboto', fontSize: 24 };
 
 startApp(
   target === 'web'
@@ -22,14 +22,21 @@ startApp(
   {
     fonts: [
       {
+        // The family, and the weight names the scene builds from it: bold is
+        // a real face ("Roboto700"), not a synthesised one. A weight with no
+        // face registered parks its text, so only real faces are listed.
         type: 'msdf',
-        fontFamily: 'Lato',
-        // One face, aliased for the weight names the scene builds
-        // ("Lato700"): without an alias, a bold span parks forever and its
-        // text is invisible.
-        aliases: ['Lato500', 'Lato700', 'Lato900'],
-        atlasUrl: './fonts/Lato-Regular.msdf.png',
-        atlasDataUrl: './fonts/Lato-Regular.msdf.json',
+        fontFamily: 'Roboto',
+        aliases: ['Roboto500'],
+        atlasUrl: './fonts/Roboto-Regular.msdf.png',
+        atlasDataUrl: './fonts/Roboto-Regular.msdf.json',
+      },
+      {
+        type: 'msdf',
+        fontFamily: 'Roboto700',
+        aliases: ['Roboto900'],
+        atlasUrl: './fonts/Roboto-Bold.msdf.png',
+        atlasDataUrl: './fonts/Roboto-Bold.msdf.json',
       },
     ],
   },

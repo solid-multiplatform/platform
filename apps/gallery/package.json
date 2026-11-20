@@ -9,7 +9,7 @@
     "build": "vite build",
     "build:tizen": "vite build --mode tizen",
     "build:webos": "vite build --mode webos",
-    "build:desktop": "node ../../packages/host-desktop/cli/index.mjs build src/main.desktop.tsx --out dist/desktop --assets ../../packages/platform/tests/webgl/fonts",
+    "build:desktop": "node ../../packages/host-desktop/cli/index.mjs build src/main.desktop.tsx --out dist/desktop --assets ../../packages/platform/bench/public/fonts",
     "desktop": "echo \"run: ../../packages/host-desktop/native/target/release/solid-desktop --title-bar=custom --script dist/desktop/app.js\""
   },
   "dependencies": {

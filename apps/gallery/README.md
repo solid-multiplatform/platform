@@ -54,6 +54,23 @@ Covers are generated from each album's two palette colours, and icons are
 drawn as scene bars (`Glyph`), so the app ships no images and every platform
 draws the same thing.
 
+## Fonts
+
+The family is **Roboto**, regular and bold. On the WebGL targets the two MSDF
+atlases are registered as `Roboto` and `Roboto700` — the name the scene builds
+from `fontWeight: 700` — so bold is a real face, not a synthesised one. A
+weight with no face registered parks its text (invisible), which is why the
+entry lists exactly the faces it ships.
+
+Roku cannot install fonts; it loads a font file bundled in the channel
+(`pkg:/fonts/...`) through a `Font` node. The Roku renderer registers each
+bundled file under a family, weight and style with a layout table made at
+build time (`packages/renderer/roku/fonts.ts`), and text in an unregistered
+family falls back to the system font. A Roku build of the gallery therefore
+bundles `Roboto-Regular.ttf` and `Roboto-Bold.ttf` (Apache 2.0; the copies in
+`packages/platform/tests/roku-device/fonts/` ship with their licence) and
+registers them as family `Roboto`, weights 400 and 700.
+
 ## Status
 
 Library, Create, Album, Settings and Performance are built and screenshot-checked in the

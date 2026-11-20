@@ -10,7 +10,7 @@ import { startApp } from '@solid-multiplatform/platform/host';
 import { desktopHost } from '@solid-multiplatform/host-desktop';
 import { App } from './App';
 
-Config.fontSettings = { fontFamily: 'Lato', fontSize: 24 };
+Config.fontSettings = { fontFamily: 'Roboto', fontSize: 24 };
 
 startApp(desktopHost({ id: 'gallery', title: 'Sona' }), () => <App />, {
   fonts: [
