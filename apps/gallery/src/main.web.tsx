@@ -24,6 +24,10 @@ startApp(
       {
         type: 'msdf',
         fontFamily: 'Lato',
+        // One face, aliased for the weight names the scene builds
+        // ("Lato700"): without an alias, a bold span parks forever and its
+        // text is invisible.
+        aliases: ['Lato500', 'Lato700', 'Lato900'],
         atlasUrl: './fonts/Lato-Regular.msdf.png',
         atlasDataUrl: './fonts/Lato-Regular.msdf.json',
       },

@@ -26,6 +26,7 @@ import { AlbumScreen } from './screens/Album';
 import type { Album } from './data';
 import { Create } from './screens/Create';
 import { Performance } from './screens/Performance';
+import { Settings as SettingsScreen } from './screens/Settings';
 
 export const galleryTheme = defineTheme({
   colors: {
@@ -52,12 +53,13 @@ export const galleryTheme = defineTheme({
   radius: { small: R.small, medium: R.medium, large: R.large },
 });
 
-export type Route = 'library' | 'create' | 'performance' | 'album';
+export type Route = 'library' | 'create' | 'performance' | 'settings' | 'album';
 
 const NAV: { route: Route; label: string; glyph: GlyphName }[] = [
   { route: 'library', label: 'Library', glyph: 'library' },
   { route: 'create', label: 'Create', glyph: 'plus' },
   { route: 'performance', label: 'Performance', glyph: 'activity' },
+  { route: 'settings', label: 'Settings', glyph: 'filter' },
 ];
 
 export function App(props: { back?: BackDispatcher }): JSX.Element {
@@ -220,6 +222,16 @@ export function App(props: { back?: BackDispatcher }): JSX.Element {
                 setRoute('library');
                 setAlbum(undefined);
               }}
+            />
+          </Show>
+          <Show when={route() === 'settings'}>
+            <SettingsScreen
+              family={family()}
+              x={contentX()}
+              width={viewport().width - contentX()}
+              height={
+                viewport().height - (family() === 'mobile' ? tabHeight() : 0)
+              }
             />
           </Show>
           <Show when={route() === 'performance'}>
