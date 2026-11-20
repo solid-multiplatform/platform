@@ -11,6 +11,12 @@ Both modes stay mounted offscreen when the other is active, so switching loses n
 
 Prerequisites: Node 24, pnpm 10.33.4 (Corepack), JDK 21, an Android SDK with build-tools 36 and NDK as installed by the CLI, and the framework's `dist/` (the CLI needs it; `build.mjs` builds it if missing).
 
+After changing `packages/renderer`, refresh the archive `init` vendors before building — otherwise the app silently carries the previous renderer:
+
+```sh
+node packages/platform/cli/renderer-archive.mjs
+```
+
 ```sh
 # from the repository root
 corepack pnpm install

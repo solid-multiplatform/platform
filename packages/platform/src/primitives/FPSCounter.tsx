@@ -19,6 +19,7 @@ import {
   RendererMain,
 } from '@solid-multiplatform/platform';
 import { createSignal, onCleanup, onMount } from 'solid-js';
+import { displayRefreshRate } from '../sdk/display.js';
 import { viewport } from '../sdk/viewport.js';
 
 // ---- The meter
@@ -46,6 +47,8 @@ interface RenderCounters {
 interface FrameTickPayload {
   time?: number;
   delta?: number;
+  /** The previous frame's own work, in milliseconds. */
+  cost?: number;
 }
 
 export interface FPSReadout {
@@ -55,6 +58,8 @@ export interface FPSReadout {
   average: number;
   /** The last frame's time in milliseconds. */
   last: number;
+  /** The previous frame's own work (scene walk and draw), in milliseconds. */
+  cost: number;
   /** Median and 99th-percentile frame time over the window, in ms. */
   p50: number;
   p99: number;
@@ -70,6 +75,7 @@ const EMPTY: FPSReadout = {
   instant: 0,
   average: 0,
   last: 0,
+  cost: 0,
   p50: 0,
   p99: 0,
   draws: undefined,
@@ -101,8 +107,13 @@ export const FPSCounter = (props: NodeProps) => {
     let published = 0;
 
     const listener = (_target: unknown, payload?: unknown) => {
-      const delta = (payload as FrameTickPayload | undefined)?.delta;
+      const frame = payload as FrameTickPayload | undefined;
+      const delta = frame?.delta;
       if (typeof delta !== 'number' || !(delta > 0) || !isFinite(delta)) return;
+      const cost =
+        typeof frame?.cost === 'number' && isFinite(frame.cost)
+          ? frame.cost
+          : 0;
       frames++;
       clock += delta;
       window.push({ delta, at: clock });
@@ -121,6 +132,7 @@ export const FPSCounter = (props: NodeProps) => {
         instant: 1000 / delta,
         average: total > 0 ? (recent.length * 1000) / total : 0,
         last: delta,
+        cost,
         p50: percentile(sorted, 0.5),
         p99: percentile(sorted, 0.99),
         draws:
@@ -143,12 +155,20 @@ export const FPSCounter = (props: NodeProps) => {
   const ms = (value: number) =>
     value < 10 ? value.toFixed(1) : String(Math.round(value));
   const fps = (value: number) => (value > 0 ? String(Math.round(value)) : '–');
+  // Read at each publish, not once: a mode switch reaches the meter with the
+  // next readout, which is what makes a display request verifiable on screen.
+  const hz = () => {
+    const rate = displayRefreshRate();
+    return rate > 0 ? Math.round(rate) : 0;
+  };
   const label = () => {
     const r = readout();
     if (!r.sampled) return 'Frames per second: measuring';
-    return `Frames per second: ${fps(r.instant)}, average ${fps(r.average)} over 1 s. Frame ${ms(r.last)} ms, p50 ${ms(r.p50)}, p99 ${ms(r.p99)}. ${
-      r.draws === undefined ? 'Draw count unavailable' : `${r.draws} draws`
-    }${r.quads === undefined ? '' : `, ${r.quads} quads`}.`;
+    return `Frames per second: ${fps(r.instant)}, average ${fps(r.average)} over 1 s. Frame ${ms(r.last)} ms, cpu ${ms(r.cost)} ms, p50 ${ms(r.p50)}, p99 ${ms(r.p99)}.${
+      hz() > 0 ? ` Display ${hz()} Hz.` : ''
+    } ${r.draws === undefined ? 'Draw count unavailable' : `${r.draws} draws`}${
+      r.quads === undefined ? '' : `, ${r.quads} quads`
+    }.`;
   };
 
   return (
@@ -181,7 +201,9 @@ export const FPSCounter = (props: NodeProps) => {
           : `draws ${readout().draws}${readout().quads === undefined ? '' : `  quads ${readout().quads}`}`}
       </text>
       <text x={12} y={76} fontSize={12} color={0x9fb0c3ff}>
-        F closes
+        {`${hz() > 0 ? `display ${hz()} Hz` : 'display rate unknown'}  ·  cpu ${
+          readout().sampled ? `${ms(readout().cost)} ms` : '–'
+        }`}
       </text>
     </view>
   );
