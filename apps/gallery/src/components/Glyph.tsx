@@ -8,7 +8,8 @@ export type GlyphName =
   | 'search'
   | 'filter'
   | 'calendar'
-  | 'shuffle';
+  | 'shuffle'
+  | 'play';
 
 /**
  * Icons drawn as scene views rather than SVG textures: a handful of bars and
@@ -99,6 +100,13 @@ export function Glyph(props: {
             />
             {bar(s() * 0.24, s() * 0.02, 2, s() * 0.24)}
             {bar(s() * 0.7, s() * 0.02, 2, s() * 0.24)}
+          </>
+        );
+      case 'play':
+        return (
+          <>
+            {bar(s() * 0.2, s() * 0.1, s() * 0.52, 2, 0.9)}
+            {bar(s() * 0.2, s() * 0.9, s() * 0.52, 2, -0.9)}
           </>
         );
       case 'shuffle':

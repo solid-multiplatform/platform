@@ -89,6 +89,8 @@ export function App(props: { back?: BackDispatcher }): JSX.Element {
   const hasSidebar = () => family() !== 'mobile';
   const contentX = () => (hasSidebar() ? sidebar() : 0);
   const tabHeight = () => 76 + viewport().safeArea.bottom;
+  const playerBottom = () => (family() === 'mobile' ? tabHeight() : 0);
+  const bottomReserved = () => playerBottom() + (family() === 'tv' ? 0 : 62);
 
   const navRow = (item: (typeof NAV)[number], side: boolean) => {
     const active = () => route() === item.route;
@@ -184,7 +186,7 @@ export function App(props: { back?: BackDispatcher }): JSX.Element {
           x={contentX()}
           y={0}
           width={viewport().width - contentX()}
-          height={viewport().height - (family() === 'mobile' ? tabHeight() : 0)}
+          height={viewport().height - bottomReserved()}
           display="flex"
           flexDirection="column"
         >
@@ -192,9 +194,7 @@ export function App(props: { back?: BackDispatcher }): JSX.Element {
             <Library
               family={family()}
               width={viewport().width - contentX()}
-              height={
-                viewport().height - (family() === 'mobile' ? tabHeight() : 0)
-              }
+              height={viewport().height - bottomReserved()}
               onOpenCreate={() => setRoute('create')}
               onOpenAlbum={openAlbum}
             />
@@ -203,9 +203,7 @@ export function App(props: { back?: BackDispatcher }): JSX.Element {
             <Create
               family={family()}
               width={viewport().width - contentX()}
-              height={
-                viewport().height - (family() === 'mobile' ? tabHeight() : 0)
-              }
+              height={viewport().height - bottomReserved()}
               onDone={() => setRoute('library')}
             />
           </Show>
@@ -215,9 +213,7 @@ export function App(props: { back?: BackDispatcher }): JSX.Element {
               family={family()}
               x={contentX()}
               width={viewport().width - contentX()}
-              height={
-                viewport().height - (family() === 'mobile' ? tabHeight() : 0)
-              }
+              height={viewport().height - bottomReserved()}
               onBack={() => {
                 setRoute('library');
                 setAlbum(undefined);
@@ -229,21 +225,92 @@ export function App(props: { back?: BackDispatcher }): JSX.Element {
               family={family()}
               x={contentX()}
               width={viewport().width - contentX()}
-              height={
-                viewport().height - (family() === 'mobile' ? tabHeight() : 0)
-              }
+              height={viewport().height - bottomReserved()}
             />
           </Show>
           <Show when={route() === 'performance'}>
             <Performance
               family={family()}
               width={viewport().width - contentX()}
-              height={
-                viewport().height - (family() === 'mobile' ? tabHeight() : 0)
-              }
+              height={viewport().height - bottomReserved()}
             />
           </Show>
         </view>
+
+        <Show when={family() !== 'tv'}>
+          {/* The player stays with the shell: the same track whatever screen. */}
+          <view
+            x={contentX()}
+            y={viewport().height - playerBottom() - 62}
+            width={viewport().width - contentX()}
+            height={62}
+            color={C.surface}
+          >
+            <view
+              x={0}
+              y={0}
+              width={viewport().width - contentX()}
+              height={1}
+              color={C.lineSoft}
+            />
+            <view
+              x={16}
+              y={10}
+              width={40}
+              height={40}
+              borderRadius={R.small}
+              clipping
+            >
+              <view
+                width={40}
+                height={40}
+                linearGradient={{
+                  colors: [0x2b3a67ff, 0x0d1220ff],
+                  angle: 135,
+                  stops: [0, 1],
+                }}
+              />
+            </view>
+            <text x={68} y={14} fontSize={T.caption} color={C.text}>
+              Carriage Return
+            </text>
+            <text x={68} y={32} fontSize={10} color={C.muted}>
+              Mira Vale
+            </text>
+            <view
+              x={viewport().width - contentX() - 52}
+              y={14}
+              width={34}
+              height={34}
+              borderRadius={17}
+              border={{ width: 1, color: C.line }}
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              onEnter={() => undefined}
+              onMouseClick={() => undefined}
+              cursorStyle="pointer"
+            >
+              <Glyph name="play" size={12} color={C.text} />
+            </view>
+            <view
+              x={16}
+              y={56}
+              width={viewport().width - contentX() - 32}
+              height={2}
+              borderRadius={1}
+              color={C.lineSoft}
+            />
+            <view
+              x={16}
+              y={56}
+              width={(viewport().width - contentX() - 32) * 0.32}
+              height={2}
+              borderRadius={1}
+              color={C.accent}
+            />
+          </view>
+        </Show>
 
         <Show when={family() === 'mobile'}>
           <view
