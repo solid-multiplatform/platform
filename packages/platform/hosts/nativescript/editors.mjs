@@ -30,7 +30,33 @@ export function nativeEditorHost(root, target) {
         email: 'emailAddress',
         'one-time-code': 'smsOTPCode',
       };
+      const cssColor = (value) => {
+        const rgb = (value >>> 8) & 0xffffff;
+        return '#' + rgb.toString(16).padStart(6, '0');
+      };
       const loaded = () => {
+        // The editor stands in for a field the scene drew: no Android
+        // underline, no default padding, the scene's type.
+        try {
+          if (options.fontSize) field.fontSize = options.fontSize;
+          if (options.color !== undefined)
+            field.color = cssColor(options.color);
+          if (!apple && field.android) {
+            field.android.setBackground(null);
+            field.android.setPadding(0, 0, 0, 0);
+            field.android.setIncludeFontPadding(false);
+            field.android.setGravity(
+              (options.multiline
+                ? android.view.Gravity.TOP
+                : android.view.Gravity.CENTER_VERTICAL) |
+                android.view.Gravity.START,
+            );
+          } else if (apple && field.ios) {
+            field.backgroundColor = 'transparent';
+          }
+        } catch {
+          // Styling is cosmetic: a host that refuses it still edits.
+        }
         // A clear button is a standard iOS single-line affordance.
         if (apple && field.ios && !options.multiline) {
           field.ios.clearButtonMode = 1; // whileEditing

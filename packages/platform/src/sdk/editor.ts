@@ -15,6 +15,9 @@ export interface EditorOptions {
   multiline?: boolean;
   /** End editing when Return submits (single-line fields). */
   blurOnSubmit?: boolean;
+  /** The scene type the editor replaces: size in logical units, 0xRRGGBBAA. */
+  fontSize?: number;
+  color?: number;
   onChange(value: string): void;
   onSubmit?(value: string): void;
   onBlur?(): void;

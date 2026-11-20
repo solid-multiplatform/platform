@@ -124,6 +124,23 @@ if (!tv && !roku) {
       'android:name="com.tns.NativeScriptActivity"\n        android:screenOrientation="portrait"',
     ),
   );
+  // The app's own palette for the parts Android draws (the editor caret and
+  // any native chrome), instead of the framework example's teal.
+  const stylesFile = path.join(
+    scratch,
+    `targets/${targetName}/App_Resources/Android/src/main/res/values/styles.xml`,
+  );
+  if (existsSync(stylesFile)) {
+    writeFileSync(
+      stylesFile,
+      readFileSync(stylesFile, 'utf8')
+        .replace(/android:colorAccent">[^<]*</, 'android:colorAccent">#E2603F<')
+        .replace(
+          /android:windowBackground">[^<]*</,
+          'android:windowBackground">#08080A<',
+        ),
+    );
+  }
 }
 
 step('Installing the gallery fonts (Roboto regular and bold)');

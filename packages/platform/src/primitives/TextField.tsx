@@ -78,6 +78,9 @@ export function TextField(props: TextFieldProps): JSX.Element {
   const theme = useTheme();
   const host: EditorHost | undefined = useContext(AppScope)?.text;
   const [inner, setInner] = createSignal(props.value ?? '');
+  // The host editor draws over this field. While it is open the scene's own
+  // label and value are hidden, or the control reads twice.
+  const [editing, setEditing] = createSignal(false);
   let node: ElementNode | undefined;
   let editor: Editor | undefined;
 
@@ -111,14 +114,18 @@ export function TextField(props: TextFieldProps): JSX.Element {
         purpose: purposeOf(props),
         multiline: props.multiline,
         blurOnSubmit: props.blurOnSubmit,
+        fontSize: theme.typography.body,
+        color: theme.colors.text,
         onChange(next) {
           setInner(next);
           props.onChange?.(next);
         },
         onSubmit: props.onSubmit,
+        onBlur: () => setEditing(false),
       });
     }
     editor.setBounds(bounds());
+    setEditing(true);
     editor.focus();
   };
 
@@ -163,13 +170,23 @@ export function TextField(props: TextFieldProps): JSX.Element {
       onFocus={open}
       onEnter={open}
       onMouseClick={open}
+      // The keyboard scrolls the form; the host editor has to follow the
+      // field it covers, so its box is re-read after every layout pass.
+      onLayout={() => {
+        if (editing() && editor !== undefined) editor.setBounds(bounds());
+      }}
     >
-      <text fontSize={theme.typography.label} color={theme.colors.textMuted}>
+      <text
+        fontSize={theme.typography.label}
+        color={theme.colors.textMuted}
+        hidden={editing()}
+      >
         {props.label}
       </text>
       <text
         fontSize={theme.typography.body}
         color={value() === '' ? theme.colors.textMuted : theme.colors.text}
+        hidden={editing()}
       >
         {shown()}
       </text>

@@ -116,6 +116,26 @@ export default rokuConfig({ title: ${JSON.stringify(project(root).name)}, entry:
       "args[0].patterns.push({\n        from: path.resolve(__dirname, 'work/icons'),\n        to: 'icons',\n      });\n      args[0].patterns.push({",
     );
   write(path.join(dest, 'webpack.config.js'), webpack);
+  if (target === 'android') {
+    // A phone app keeps its status bar; only a television goes fullscreen.
+    const styles = path.join(
+      dest,
+      'App_Resources/Android/src/main/res/values/styles.xml',
+    );
+    if (existsSync(styles))
+      write(
+        styles,
+        readFileSync(styles, 'utf8')
+          .replace(
+            /\s*<item name="android:windowFullscreen">[^<]*<\/item>/g,
+            '',
+          )
+          .replace(
+            '<style name="AppThemeBase" parent="Theme.AppCompat.NoActionBar">',
+            '<style name="AppThemeBase" parent="Theme.AppCompat.NoActionBar">\n    <item name="android:windowLightStatusBar">false</item>\n    <item name="android:windowLightNavigationBar">false</item>',
+          ),
+      );
+  }
   const fn =
     target === 'android-tv'
       ? 'runAndroidTV'
