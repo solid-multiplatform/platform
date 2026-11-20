@@ -7,6 +7,7 @@ import {
   type JSX,
 } from 'solid-js';
 import type { ElementNode } from '@solid-multiplatform/platform';
+import { pushFocusTrap } from '@solid-multiplatform/platform/focusManager';
 import {
   ContextMenu,
   Column,
@@ -49,12 +50,20 @@ export function AlbumScreen(props: {
   // The cover's box after layout, for the matched-geometry flight. One frame
   // after mount the layout queue has run, so the offsets are final.
   let coverNode: ElementNode | undefined;
+  let rootNode: ElementNode | undefined;
   onMount(() => {
     const frame = requestAnimationFrame(() => {
       const rect = rectOf(coverNode);
       if (rect !== undefined) props.onCoverRect?.(rect);
     });
-    onCleanup(() => cancelAnimationFrame(frame));
+    // The library is still mounted behind this screen; keep the remote out of
+    // it until this one is popped.
+    const release =
+      rootNode === undefined ? undefined : pushFocusTrap(rootNode);
+    onCleanup(() => {
+      cancelAnimationFrame(frame);
+      release?.();
+    });
   });
 
   const [menu, setMenu] = createSignal(false);
@@ -90,7 +99,13 @@ export function AlbumScreen(props: {
   );
 
   return (
-    <view width={width()} height={props.height} clipping>
+    <view
+      ref={(node) => (rootNode = node)}
+      width={width()}
+      height={props.height}
+      color={C.background}
+      clipping
+    >
       <Column
         x={page().x}
         y={S(6)}
@@ -109,7 +124,7 @@ export function AlbumScreen(props: {
           alignItems="center"
           justifyContent="spaceBetween"
         >
-          <GhostButton label="Back" onPress={props.onBack} />
+          <GhostButton label="Back" autofocus={tv()} onPress={props.onBack} />
           <text fontSize={T.caption} color={C.dim}>
             {props.album.genre}
           </text>

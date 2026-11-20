@@ -57,6 +57,7 @@ export function GhostButton(props: {
   y?: number;
   width?: number;
   height?: number;
+  autofocus?: boolean;
   onPress?(): void;
 }): JSX.Element {
   return (
@@ -70,6 +71,7 @@ export function GhostButton(props: {
       display="flex"
       alignItems="center"
       justifyContent="center"
+      autofocus={props.autofocus}
       onEnter={() => props.onPress?.()}
       onMouseClick={() => props.onPress?.()}
       cursorStyle="pointer"

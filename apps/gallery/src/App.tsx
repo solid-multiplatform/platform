@@ -284,7 +284,10 @@ export function App(): JSX.Element {
           display="flex"
           flexDirection="column"
         >
-          <Show when={route() === 'library'}>
+          {/* The library stays mounted under an album: its scroll position is
+              where the return flight lands, and a push should not throw away
+              the page you came from. */}
+          <Show when={route() === 'library' || route() === 'album'}>
             <Library
               family={family()}
               width={viewport().width - contentX()}
