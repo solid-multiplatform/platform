@@ -639,8 +639,8 @@ async function interactive(browser) {
 
   await expectIdle(page, 'services screen');
 
-  // Back key: home again, on the tile it left.
-  await page.keyboard.press('Backspace');
+  // Back (Escape on a keyboard; Backspace is a text key): home again, on the tile it left.
+  await page.keyboard.press('Escape');
   await expectFocus(page, 'button:Services', 'Back key');
   await expectIdle(page, 'home screen');
 
@@ -757,7 +757,7 @@ async function interactive(browser) {
     new RegExp(`^Last result: date: ${result}$`),
     'date result',
   );
-  await page.keyboard.press('Backspace');
+  await page.keyboard.press('Escape');
   await expectFocus(page, 'button:Dialogs', 'Back from the dialogs screen');
 
   // (d) Screen history: the keyed card keeps focus across a reordering
@@ -777,14 +777,14 @@ async function interactive(browser) {
   await shot(page, '5-history-cards');
   await page.keyboard.press('Enter');
   await expectFocus(page, 'button:Detail', 'Enter opens the detail route');
-  await page.keyboard.press('Backspace');
+  await page.keyboard.press('Escape');
   await expectFocus(
     page,
     'button:Card B',
     'Back restores the same card by key',
   );
   await shot(page, '5-history-restored');
-  await page.keyboard.press('Backspace');
+  await page.keyboard.press('Escape');
   await expectFocus(
     page,
     'button:Screen history',
@@ -818,7 +818,7 @@ async function interactive(browser) {
   );
   await shot(page, '5a-wheel');
   await expectIdle(page, 'virtual list after the wheel');
-  await page.keyboard.press('Backspace');
+  await page.keyboard.press('Escape');
   await expectFocus(page, 'button:Virtual list', 'Back from the virtual list');
 
   // A paragraph: a drag selects it, the cursor is an I-beam, and Control+C
@@ -840,7 +840,7 @@ async function interactive(browser) {
   }
   await shot(page, '5b-selection');
   await expectIdle(page, 'text screen after copying');
-  await page.keyboard.press('Backspace');
+  await page.keyboard.press('Escape');
   await expectFocus(page, 'button:Text', 'Back from the text screen');
 
   // (c) on every screen: opened by mouse, left alone, closed by the Back key.
@@ -848,7 +848,7 @@ async function interactive(browser) {
     await click(page, homeTile(index));
     await expectFocus(page, 'button:Back', `mouse click on ${name}`);
     await expectIdle(page, `${name} screen`);
-    await page.keyboard.press('Backspace');
+    await page.keyboard.press('Escape');
     await expectFocus(page, `button:${name}`, `Back from ${name}`);
   }
 
@@ -908,7 +908,7 @@ async function responsive(browser) {
   await click(page, { x: 16 + 388 / 2, y: 70 + 84 / 2 });
   await expectFocus(page, 'button:Back', '420: a click on the first card');
   await expectIdle(page, 'phone section');
-  await page.keyboard.press('Backspace');
+  await page.keyboard.press('Escape');
   await expectFocus(page, 'button:Layout', '420: Back to the list');
 
   // The meter: off by default; F opens it; F closes it and the page idles.

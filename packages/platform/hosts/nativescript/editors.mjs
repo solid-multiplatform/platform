@@ -12,6 +12,14 @@ export function nativeEditorHost(root, target) {
       field.accessibilityLabel = options.label;
       if (secret) field.secure = true;
       if (purpose === 'email') field.keyboardType = 'email';
+      // The keyboard the content asks for: a number pad, not the OTP layout
+      // a one-time code uses.
+      else if (purpose === 'number' || purpose === 'one-time-code')
+        field.keyboardType = 'number';
+      // The Return key says what it does; search submits from the keyboard.
+      if (purpose === 'search' && !options.multiline)
+        field.returnKeyType = 'search';
+      else if (!options.multiline) field.returnKeyType = 'done';
       field.text = options.value ?? '';
       field.horizontalAlignment = 'left';
       field.verticalAlignment = 'top';
@@ -23,6 +31,10 @@ export function nativeEditorHost(root, target) {
         'one-time-code': 'smsOTPCode',
       };
       const loaded = () => {
+        // A clear button is a standard iOS single-line affordance.
+        if (apple && field.ios && !options.multiline) {
+          field.ios.clearButtonMode = 1; // whileEditing
+        }
         if (apple && field.ios && hints[purpose]) {
           field.ios.textContentType =
             purpose === 'one-time-code' ? 'oneTimeCode' : hints[purpose];
@@ -38,7 +50,14 @@ export function nativeEditorHost(root, target) {
         }
       };
       const changed = () => options.onChange(field.text ?? '');
-      const submit = () => options.onSubmit?.(field.text ?? '');
+      const submit = () => {
+        options.onSubmit?.(field.text ?? '');
+        if (options.blurOnSubmit === true && !options.multiline) {
+          field.dismissSoftInput();
+          if (apple) field.ios?.resignFirstResponder();
+          else field.android?.clearFocus();
+        }
+      };
       const blurred = () => options.onBlur?.();
       field.on('loaded', loaded);
       field.on('textChange', changed);

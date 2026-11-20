@@ -61,6 +61,9 @@ const TELEVISION_TARGETS = new Set([
   'roku',
   'android-tv',
   'apple-tv',
+  // The console's pointer is a remote: its UI is the television's, d-pad
+  // first, so direct-manipulation scrolling is not bound there.
+  'ps4',
 ]);
 
 /**

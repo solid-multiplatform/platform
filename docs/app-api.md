@@ -258,7 +258,7 @@ same-orientation nesting; scroll automatically only as far as needed),
 [UIScrollView](https://developer.apple.com/documentation/uikit/uiscrollview)
 reference (`decelerationRate`, bouncing). The instruction-level constants
 come from the mobile demo's researched scroller
-(`apps/mobile-demo/src/scroller.ts`, whose README records its sources);
+(`archive/mobile-demo/src/scroller.ts`, whose README records its sources);
 `src/sdk/scroll.ts` keeps the same constants.
 
 ## Hooks

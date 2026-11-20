@@ -37,7 +37,9 @@ export function Select<T>(props: SelectProps<T>): JSX.Element {
   const width = () => props.width ?? 280;
   const height = () => props.height ?? 48;
   const selected = () =>
-    props.options.find((option) => Object.is(option.value, valueOf(props.value)));
+    props.options.find((option) =>
+      Object.is(option.value, valueOf(props.value)),
+    );
   let trigger: ElementNode | undefined;
   // Where the trigger is in the scene, whatever it is nested in: the bounds
   // a pointer is tested against, read when the menu opens. `Popover` keeps
@@ -87,9 +89,7 @@ export function Select<T>(props: SelectProps<T>): JSX.Element {
           width={width() - 48}
           contain="width"
           fontSize={theme().typography.label}
-          color={
-            selected() ? theme().colors.text : theme().colors.textMuted
-          }
+          color={selected() ? theme().colors.text : theme().colors.textMuted}
         >
           {selected()?.label ?? props.placeholder ?? 'Select'}
         </text>
@@ -118,9 +118,10 @@ export function Select<T>(props: SelectProps<T>): JSX.Element {
         anchor={anchor}
         selected={selectedIndex()}
         label={props.label ?? 'Select'}
-        items={props.options.map((option) => ({
+        items={props.options.map((option, index) => ({
           label: option.label,
           disabled: option.disabled,
+          checked: index === selectedIndex(),
           onSelect: () => {
             props.onChange?.(option.value);
             setOpen(false);

@@ -128,60 +128,66 @@ v.describe('overlay primitives', () => {
 });
 
 v.describe('Drawer', () => {
-  v.it('reaches the close button from the content and Enter closes it', async () => {
-    const [open, setOpen] = createSignal(true);
-    const { target, dispose } = await mount(() => (
-      <Drawer
-        visible={open}
-        label="Navigation"
-        onRequestClose={() => setOpen(false)}
-      >
-        <view width={200} height={40} onEnter={() => {}} />
-      </Drawer>
-    ));
-    await flush();
-    await flush();
-    // Without an initialFocus the drawer opens in the app's content.
-    const first = lng.activeElement();
-    v.expect(first).toBeDefined();
-    v.expect(first?.ariaLabel).not.toBe('Close');
+  v.it(
+    'reaches the close button from the content and Enter closes it',
+    async () => {
+      const [open, setOpen] = createSignal(true);
+      const { target, dispose } = await mount(() => (
+        <Drawer
+          visible={open}
+          label="Navigation"
+          onRequestClose={() => setOpen(false)}
+        >
+          <view width={200} height={40} onEnter={() => {}} />
+        </Drawer>
+      ));
+      await flush();
+      await flush();
+      // Without an initialFocus the drawer opens in the app's content.
+      const first = lng.activeElement();
+      v.expect(first).toBeDefined();
+      v.expect(first?.ariaLabel).not.toBe('Close');
 
-    // Down past the content reaches the close button; Enter activates it.
-    target.down('ArrowDown');
-    target.up('ArrowDown');
-    await flush();
-    v.expect(lng.activeElement()?.ariaLabel).toBe('Close');
+      // Down past the content reaches the close button; Enter activates it.
+      target.down('ArrowDown');
+      target.up('ArrowDown');
+      await flush();
+      v.expect(lng.activeElement()?.ariaLabel).toBe('Close');
 
-    target.down('Enter');
-    target.up('Enter');
-    await flush();
-    v.expect(open()).toBe(false);
-    dispose();
-  });
+      target.down('Enter');
+      target.up('Enter');
+      await flush();
+      v.expect(open()).toBe(false);
+      dispose();
+    },
+  );
 
-  v.it('reaches the close button from the content and Enter closes it after moving up', async () => {
-    const [open, setOpen] = createSignal(true);
-    const { target, dispose } = await mount(() => (
-      <Drawer
-        visible={open}
-        label="Navigation"
-        onRequestClose={() => setOpen(false)}
-      >
-        <view width={200} height={40} onEnter={() => {}} />
-      </Drawer>
-    ));
-    await flush();
-    await flush();
-    target.down('ArrowDown');
-    target.up('ArrowDown');
-    await flush();
-    v.expect(lng.activeElement()?.ariaLabel).toBe('Close');
-    target.down('ArrowUp');
-    target.up('ArrowUp');
-    await flush();
-    v.expect(lng.activeElement()?.ariaLabel).not.toBe('Close');
-    dispose();
-  });
+  v.it(
+    'reaches the close button from the content and Enter closes it after moving up',
+    async () => {
+      const [open, setOpen] = createSignal(true);
+      const { target, dispose } = await mount(() => (
+        <Drawer
+          visible={open}
+          label="Navigation"
+          onRequestClose={() => setOpen(false)}
+        >
+          <view width={200} height={40} onEnter={() => {}} />
+        </Drawer>
+      ));
+      await flush();
+      await flush();
+      target.down('ArrowDown');
+      target.up('ArrowDown');
+      await flush();
+      v.expect(lng.activeElement()?.ariaLabel).toBe('Close');
+      target.down('ArrowUp');
+      target.up('ArrowUp');
+      await flush();
+      v.expect(lng.activeElement()?.ariaLabel).not.toBe('Close');
+      dispose();
+    },
+  );
 
   v.it('traps focus in the panel and restores the trigger', async () => {
     const [open, setOpen] = createSignal(false);
@@ -264,7 +270,7 @@ v.describe('dialog surfaces', () => {
       findAll(renderer.rootNode, predicate)[0]!;
 
     const alert = find(
-      (node) => node.color === 0x1d2937ff && node.height === 360,
+      (node) => node.color === 0x1d2937ff && node.width === 360,
     );
     const sheet = find(
       (node) => node.color === 0x1d2937ff && node.width === 1920,
@@ -272,9 +278,7 @@ v.describe('dialog surfaces', () => {
     const popover = find(
       (node) => node.color === 0x1d2937ff && node.width === 280,
     );
-    const drawer = find(
-      (node) => node.width === 360 && node.height === 1080,
-    );
+    const drawer = find((node) => node.width === 360 && node.height === 1080);
 
     const modal = find((node) => node.color === 0x142235ff);
     v.expect(modal.borderRadius).toBe(theme.radius.medium);
@@ -297,31 +301,34 @@ v.describe('dialog surfaces', () => {
 });
 
 v.describe('Tooltip', () => {
-  v.it('is not a pointer or focus target, even around interactive children', async () => {
-    const pressed: string[] = [];
-    const dispose = renderer.render(() => (
-      <view width={1920} height={1080}>
-        <Tooltip
-          visible
-          placement="bottom"
-          anchor={{ x: 100, y: 100, width: 300, height: 38 }}
-          label="Hint"
-        >
-          <view
-            width={300}
-            height={38}
-            onEnter={() => pressed.push('tooltip')}
-          />
-        </Tooltip>
-      </view>
-    ));
-    await waitForUpdate();
-    const pointer = createScenePointer(lng.rootNode);
-    pointer.down(1, { x: 110, y: 160 });
-    pointer.up(1, { x: 110, y: 160 });
-    await waitForUpdate();
-    v.expect(pressed).toEqual([]);
-    pointer.dispose();
-    dispose();
-  });
+  v.it(
+    'is not a pointer or focus target, even around interactive children',
+    async () => {
+      const pressed: string[] = [];
+      const dispose = renderer.render(() => (
+        <view width={1920} height={1080}>
+          <Tooltip
+            visible
+            placement="bottom"
+            anchor={{ x: 100, y: 100, width: 300, height: 38 }}
+            label="Hint"
+          >
+            <view
+              width={300}
+              height={38}
+              onEnter={() => pressed.push('tooltip')}
+            />
+          </Tooltip>
+        </view>
+      ));
+      await waitForUpdate();
+      const pointer = createScenePointer(lng.rootNode);
+      pointer.down(1, { x: 110, y: 160 });
+      pointer.up(1, { x: 110, y: 160 });
+      await waitForUpdate();
+      v.expect(pressed).toEqual([]);
+      pointer.dispose();
+      dispose();
+    },
+  );
 });

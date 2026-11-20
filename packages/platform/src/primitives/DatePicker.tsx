@@ -104,7 +104,11 @@ const MONTHS = [
 // Narrow weekday initials, Sunday first, as formatDate({ weekday: 'narrow' }).
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-const formatOr = (date: Date, options: Intl.DateTimeFormatOptions, fallback: string): string => {
+const formatOr = (
+  date: Date,
+  options: Intl.DateTimeFormatOptions,
+  fallback: string,
+): string => {
   try {
     return formatDate(date, options);
   } catch {
