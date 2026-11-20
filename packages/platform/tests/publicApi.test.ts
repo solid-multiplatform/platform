@@ -326,7 +326,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   });
 
   v.test(
-    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 106 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 109 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
@@ -336,7 +336,10 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'AppErrorBoundary',
         'BorderBoxStyle',
         'ChatMessage',
+        'CheckIcon',
         'Checkbox',
+        'ChevronIcon',
+        'CloseIcon',
         'Column',
         'ContextMenu',
         'DatePicker',
@@ -558,7 +561,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   // The authoring surface: what an app imports. A name here is a promise to
   // every app; add one only with an example in docs/app-api.md.
   // src/app/index.ts and src/app/entry.ts.
-  v.test('@solid-multiplatform/platform/app: 60 names', () => {
+  v.test('@solid-multiplatform/platform/app: 61 names', () => {
     v.expect(names(app)).toEqual([
       'Alert',
       'AppErrorBoundary',
@@ -591,6 +594,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'VirtualGrid',
       'VirtualRow',
       'Visible',
+      'applySystemBarStyle',
       'available',
       'createEffect',
       'createMemo',

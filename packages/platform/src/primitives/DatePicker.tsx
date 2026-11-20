@@ -5,6 +5,7 @@ import type { ForwardFocusHandler } from '../core/focusKeyTypes.js';
 import { formatDate } from '../sdk/i18n.js';
 import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
+import { ChevronIcon } from './icons.jsx';
 import { Modal } from './Modal.jsx';
 import {
   handleNavigation,
@@ -27,6 +28,8 @@ function PickerButton(props: {
   label: string;
   /** Read by assistive technology when the label is a symbol. */
   ariaLabel?: string;
+  /** Drawn instead of text: an icon button, like the app's round actions. */
+  icon?: 'left' | 'right';
   primary?: boolean;
   fontSize: number;
   onPress(): void;
@@ -39,11 +42,17 @@ function PickerButton(props: {
       y={props.y}
       width={props.width}
       height={props.height}
-      color={
-        props.primary ? theme().colors.primary : theme().colors.surfaceRaised
-      }
-      borderRadius={theme().radius.small}
-      border={{ width: focused() ? 3 : 0, color: theme().colors.text }}
+      color={props.primary ? theme().colors.primary : theme().colors.surface}
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      // A single-line action is a pill; a square one is a circle.
+      borderRadius={Math.min(props.width, props.height) / 2}
+      border={{
+        width: focused() ? 2 : 0,
+        color: theme().colors.text,
+        align: 'inside',
+      }}
       role="button"
       ariaLabel={props.ariaLabel ?? props.label}
       onFocus={() => setFocused(true)}
@@ -52,17 +61,26 @@ function PickerButton(props: {
       onMouseClick={() => props.onPress()}
       cursorStyle="pointer"
     >
-      <text
-        x={0}
-        y={(props.height - props.fontSize) / 2 - 2}
-        width={props.width}
-        contain="width"
-        textAlign="center"
-        fontSize={props.fontSize}
-        color={props.primary ? theme().colors.onPrimary : theme().colors.text}
-      >
-        {props.label}
-      </text>
+      {props.icon === undefined ? (
+        <text
+          x={0}
+          y={(props.height - props.fontSize) / 2 - 2}
+          width={props.width}
+          contain="width"
+          textAlign="center"
+          fontSize={props.fontSize}
+          color={props.primary ? theme().colors.onPrimary : theme().colors.text}
+        >
+          {props.label}
+        </text>
+      ) : (
+        <ChevronIcon
+          size={16}
+          direction={props.icon}
+          color={props.primary ? theme().colors.onPrimary : theme().colors.text}
+          thickness={2}
+        />
+      )}
     </view>
   );
 }
@@ -320,7 +338,7 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
         y={panelY()}
         width={panelWidth}
         height={panelHeight()}
-        color={theme().colors.surface}
+        color={theme().colors.surfaceRaised}
         borderRadius={theme().radius.medium}
         role="none"
         selected={3}
@@ -365,8 +383,9 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
             y={0}
             width={44}
             height={44}
-            label="<"
+            label="Previous month"
             ariaLabel="Previous month"
+            icon="left"
             fontSize={24}
             onPress={() => shiftMonth(-1)}
           />
@@ -387,8 +406,9 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
             y={0}
             width={44}
             height={44}
-            label=">"
+            label="Next month"
             ariaLabel="Next month"
+            icon="right"
             fontSize={24}
             onPress={() => shiftMonth(1)}
           />
@@ -455,13 +475,14 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
                       selected()
                         ? theme().colors.primary
                         : focused()
-                          ? theme().colors.surfaceRaised
-                          : theme().colors.surface
+                          ? theme().colors.selection
+                          : 0x00000000
                     }
                     borderRadius={theme().radius.small}
                     border={{
-                      width: focused() ? 3 : 0,
+                      width: focused() ? 2 : 0,
                       color: theme().colors.text,
+                      align: 'inside',
                     }}
                     ariaSelected={selected()}
                     ariaDisabled={isDisabled()}

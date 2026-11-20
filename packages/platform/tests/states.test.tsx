@@ -4,114 +4,123 @@ import { renderer, waitForUpdate } from './setup.js';
 import States from '../src/core/states.ts';
 
 v.describe('State Specificity', () => {
-  v.test('Applies states in the order defined by Config.stateOrder', async () => {
-    // Save original mapper
-    const originalOrder = lng.Config.stateOrder;
+  v.test(
+    'Applies states in the order defined by Config.stateOrder',
+    async () => {
+      // Save original mapper
+      const originalOrder = lng.Config.stateOrder;
 
-    // Define mapper: $active has lower specificity than $focus
-    lng.Config.stateOrder = ['$active', '$focus'];
+      // Define mapper: $active has lower specificity than $focus
+      lng.Config.stateOrder = ['$active', '$focus'];
 
-    let node!: lng.ElementNode;
+      let node!: lng.ElementNode;
 
-    const dispose = renderer.render(() => (
-      <view
-        ref={node}
-        color={0xff0000ff} // default red
-        states={['$focus', '$active']} // passed in reverse order to ensure sorting works
-        $active={{
-          color: 0x00ff00ff, // green
-          scale: 1.5,
-          alpha: 0.5,
-        }}
-        $focus={{
-          color: 0x0000ffff, // blue
-          scale: 2.0,
-        }}
-      />
-    ));
+      const dispose = renderer.render(() => (
+        <view
+          ref={node}
+          color={0xff0000ff} // default red
+          states={['$focus', '$active']} // passed in reverse order to ensure sorting works
+          $active={{
+            color: 0x00ff00ff, // green
+            scale: 1.5,
+            alpha: 0.5,
+          }}
+          $focus={{
+            color: 0x0000ffff, // blue
+            scale: 2.0,
+          }}
+        />
+      ));
 
-    await waitForUpdate();
+      await waitForUpdate();
 
-    // Since $focus is after $active in stateOrder, $focus should win where properties collide
-    v.assert.equal(node.color, 0x0000ffff);
-    v.assert.equal(node.scale, 2.0);
-    // alpha is only in $active, so it should still apply
-    v.assert.equal(node.alpha, 0.5);
+      // Since $focus is after $active in stateOrder, $focus should win where properties collide
+      v.assert.equal(node.color, 0x0000ffff);
+      v.assert.equal(node.scale, 2.0);
+      // alpha is only in $active, so it should still apply
+      v.assert.equal(node.alpha, 0.5);
 
-    dispose();
+      dispose();
 
-    // Restore original mapper
-    lng.Config.stateOrder = originalOrder;
-  });
+      // Restore original mapper
+      lng.Config.stateOrder = originalOrder;
+    },
+  );
 
-  v.test('Unmapped states have lower specificity than mapped ones', async () => {
-    const originalOrder = lng.Config.stateOrder;
+  v.test(
+    'Unmapped states have lower specificity than mapped ones',
+    async () => {
+      const originalOrder = lng.Config.stateOrder;
 
-    // Only map $focus
-    lng.Config.stateOrder = ['$focus'];
+      // Only map $focus
+      lng.Config.stateOrder = ['$focus'];
 
-    let node!: lng.ElementNode;
+      let node!: lng.ElementNode;
 
-    const dispose = renderer.render(() => (
-      <view
-        ref={node}
-        color={0xff0000ff} // default red
-        states={['$focus', '$hover']} // hover is unmapped
-        $hover={{
-          color: 0x00ff00ff, // green
-          scale: 1.5,
-          alpha: 0.5,
-        }}
-        $focus={{
-          color: 0x0000ffff, // blue
-          scale: 2.0,
-        }}
-      />
-    ));
+      const dispose = renderer.render(() => (
+        <view
+          ref={node}
+          color={0xff0000ff} // default red
+          states={['$focus', '$hover']} // hover is unmapped
+          $hover={{
+            color: 0x00ff00ff, // green
+            scale: 1.5,
+            alpha: 0.5,
+          }}
+          $focus={{
+            color: 0x0000ffff, // blue
+            scale: 2.0,
+          }}
+        />
+      ));
 
-    await waitForUpdate();
+      await waitForUpdate();
 
-    // even though $hover comes after $focus in the states array, it is unmapped,
-    // so it has lower specificity than $focus
-    v.assert.equal(node.color, 0x0000ffff);
-    v.assert.equal(node.scale, 2.0);
-    v.assert.equal(node.alpha, 0.5);
+      // even though $hover comes after $focus in the states array, it is unmapped,
+      // so it has lower specificity than $focus
+      v.assert.equal(node.color, 0x0000ffff);
+      v.assert.equal(node.scale, 2.0);
+      v.assert.equal(node.alpha, 0.5);
 
-    dispose();
-    lng.Config.stateOrder = originalOrder;
-  });
+      dispose();
+      lng.Config.stateOrder = originalOrder;
+    },
+  );
 
-  v.test('Element-level stateOrder overrides global Config.stateOrder', async () => {
-    const originalOrder = lng.Config.stateOrder;
+  v.test(
+    'Element-level stateOrder overrides global Config.stateOrder',
+    async () => {
+      const originalOrder = lng.Config.stateOrder;
 
-    // Global order: $focus > $active
-    lng.Config.stateOrder = ['$active', '$focus'];
+      // Global order: $focus > $active
+      lng.Config.stateOrder = ['$active', '$focus'];
 
-    let node!: lng.ElementNode;
+      let node!: lng.ElementNode;
 
-    const dispose = renderer.render(() => (
-      <view
-        ref={node}
-        color={0xff0000ff}
-        states={['$focus', '$active']}
-        stateOrder={['$focus', '$active']} // Override: $active > $focus
-        $active={{
-          color: 0x00ff00ff, // green
-        }}
-        $focus={{
-          color: 0x0000ffff, // blue
-        }}
-      />
-    ));
+      const dispose = renderer.render(() => (
+        <view
+          ref={node}
+          color={0xff0000ff}
+          states={['$focus', '$active']}
+          stateOrder={['$focus', '$active']} // Override: $active > $focus
+          $active={{
+            color: 0x00ff00ff, // green
+          }}
+          $focus={{
+            color: 0x0000ffff, // blue
+          }}
+        />
+      ));
 
-    await waitForUpdate();
+      await waitForUpdate();
 
-    // Local override says $active is higher specificity, so color should be green
-    v.assert.equal(node.color, 0x00ff00ff);
+      // Local override says $active is higher specificity, so color should be green
+      v.assert.equal(node.color, 0x00ff00ff);
 
-    dispose();
-    lng.Config.stateOrder = originalOrder;
-  });
+      dispose();
+      lng.Config.stateOrder = originalOrder;
+    },
+  );
 });
 
 v.describe('States copies a list by index', () => {

@@ -1,4 +1,8 @@
-import { rootNode, type ElementNode, insert } from '@solid-multiplatform/platform';
+import {
+  rootNode,
+  type ElementNode,
+  insert,
+} from '@solid-multiplatform/platform';
 import {
   createEffect,
   createMemo,

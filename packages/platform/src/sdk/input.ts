@@ -157,6 +157,8 @@ interface Press {
   dragged: ElementNode | undefined;
   /** The press left the slop and nothing around it can be dragged. */
   fixed: boolean;
+  /** Another finger already owns a drag: this press is ignored. */
+  multi: boolean;
   held: boolean;
   origin: Point;
   point: Point;
@@ -499,6 +501,7 @@ export function createScenePointer(
       shown: stateOwner(node),
       dragged: undefined,
       fixed: false,
+      multi: false,
       held: false,
       origin: { x, y },
       point: { x, y },
@@ -566,6 +569,16 @@ export function createScenePointer(
       const dx = argX - press.origin.x;
       const dy = argY - press.origin.y;
       if (dx * dx + dy * dy > slop * slop) {
+        // One finger owns a drag. A second one landing mid-scroll would
+        // otherwise restart the gesture from its own position and throw the
+        // content across the screen; a scroll view ignores extra touches
+        // until the first lifts, and so does this.
+        if (dragging.size > 0) {
+          // This finger is not part of the gesture: it may not scroll, and it
+          // may not turn into a click when it lifts.
+          press.multi = true;
+          return;
+        }
         dragged = draggable(press.node);
         if (dragged === undefined) {
           press.fixed = true;
@@ -599,6 +612,9 @@ export function createScenePointer(
       unbindEscape();
     } else if (
       !press.held &&
+      !press.multi &&
+      // A tap that lands while another finger scrolls is not a tap.
+      dragging.size === 0 &&
       node.ariaDisabled !== true &&
       hit(argX, argY) === node
     ) {

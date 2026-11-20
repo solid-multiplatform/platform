@@ -80,43 +80,49 @@ v.afterAll(() => {
 });
 
 v.describe('tvOS scroll-into-view', () => {
-  v.it('scrollToIndex brings the focused row item fully on screen', async () => {
-    let row!: lng.ElementNode;
-    dispose = await mount(() => (
-      <view width={W} height={H}>
-        <Row ref={row} autofocus>
-          {items(10)}
-        </Row>
-      </view>
-    ));
-    (
-      row as lng.ElementNode & { scrollToIndex: (i: number) => void }
-    ).scrollToIndex(5);
-    await flush();
-    v.expect(focusedId()).toBe('c5');
-    v.expect(isFullyVisible(row.children[5]!)).toBe(true);
-    // It moved the least distance: c5 ends at the right edge.
-    v.expect(row.x).toBe(-630);
-  });
+  v.it(
+    'scrollToIndex brings the focused row item fully on screen',
+    async () => {
+      let row!: lng.ElementNode;
+      dispose = await mount(() => (
+        <view width={W} height={H}>
+          <Row ref={row} autofocus>
+            {items(10)}
+          </Row>
+        </view>
+      ));
+      (
+        row as lng.ElementNode & { scrollToIndex: (i: number) => void }
+      ).scrollToIndex(5);
+      await flush();
+      v.expect(focusedId()).toBe('c5');
+      v.expect(isFullyVisible(row.children[5]!)).toBe(true);
+      // It moved the least distance: c5 ends at the right edge.
+      v.expect(row.x).toBe(-630);
+    },
+  );
 
-  v.it('scrollToIndex brings the focused column item fully on screen', async () => {
-    let col!: lng.ElementNode;
-    dispose = await mount(() => (
-      <view width={W} height={H}>
-        <Column ref={col} autofocus>
-          {Array.from({ length: 10 }, (_, i) => (
-            <view id={`r${i}`} width={400} height={200} />
-          ))}
-        </Column>
-      </view>
-    ));
-    (
-      col as lng.ElementNode & { scrollToIndex: (i: number) => void }
-    ).scrollToIndex(6);
-    await flush();
-    v.expect(focusedId()).toBe('r6');
-    v.expect(isFullyVisible(col.children[6]!)).toBe(true);
-  });
+  v.it(
+    'scrollToIndex brings the focused column item fully on screen',
+    async () => {
+      let col!: lng.ElementNode;
+      dispose = await mount(() => (
+        <view width={W} height={H}>
+          <Column ref={col} autofocus>
+            {Array.from({ length: 10 }, (_, i) => (
+              <view id={`r${i}`} width={400} height={200} />
+            ))}
+          </Column>
+        </view>
+      ));
+      (
+        col as lng.ElementNode & { scrollToIndex: (i: number) => void }
+      ).scrollToIndex(6);
+      await flush();
+      v.expect(focusedId()).toBe('r6');
+      v.expect(isFullyVisible(col.children[6]!)).toBe(true);
+    },
+  );
 
   v.it(
     'a key that focuses an already selected item scrolls it back into view',
@@ -143,135 +149,147 @@ v.describe('tvOS scroll-into-view', () => {
     },
   );
 
-  v.it('default scrolling keeps a focused item visible when sizes differ', async () => {
-    let col!: lng.ElementNode;
-    dispose = await mount(() => (
-      <view width={W} height={H}>
-        <Column ref={col} autofocus>
-          <view id="tall" width={400} height={1200} />
-          <view id="short1" width={400} height={100} />
-          <view id="short2" width={400} height={100} />
-        </Column>
-      </view>
-    ));
-    await press('ArrowDown');
-    v.expect(focusedId()).toBe('short1');
-    v.expect(isFullyVisible(col.children[1]!)).toBe(true);
-    await press('ArrowDown');
-    v.expect(focusedId()).toBe('short2');
-    v.expect(isFullyVisible(col.children[2]!)).toBe(true);
-  });
+  v.it(
+    'default scrolling keeps a focused item visible when sizes differ',
+    async () => {
+      let col!: lng.ElementNode;
+      dispose = await mount(() => (
+        <view width={W} height={H}>
+          <Column ref={col} autofocus>
+            <view id="tall" width={400} height={1200} />
+            <view id="short1" width={400} height={100} />
+            <view id="short2" width={400} height={100} />
+          </Column>
+        </view>
+      ));
+      await press('ArrowDown');
+      v.expect(focusedId()).toBe('short1');
+      v.expect(isFullyVisible(col.children[1]!)).toBe(true);
+      await press('ArrowDown');
+      v.expect(focusedId()).toBe('short2');
+      v.expect(isFullyVisible(col.children[2]!)).toBe(true);
+    },
+  );
 });
 
 v.describe('tvOS focus when the focused item disappears', () => {
-  v.it('a Row keeps focus on a remaining item and keeps navigating', async () => {
-    const [count, setCount] = s.createSignal(4);
-    dispose = await mount(() => (
-      <view width={W} height={H}>
-        <Row autofocus scroll="none">
-          <s.For each={Array.from({ length: count() }, (_, i) => i)}>
-            {(i) => <view id={`c${i}`} width={400} height={200} />}
-          </s.For>
-        </Row>
-      </view>
-    ));
-    await press('ArrowRight', 'ArrowRight');
-    v.expect(focusedId()).toBe('c2');
+  v.it(
+    'a Row keeps focus on a remaining item and keeps navigating',
+    async () => {
+      const [count, setCount] = s.createSignal(4);
+      dispose = await mount(() => (
+        <view width={W} height={H}>
+          <Row autofocus scroll="none">
+            <s.For each={Array.from({ length: count() }, (_, i) => i)}>
+              {(i) => <view id={`c${i}`} width={400} height={200} />}
+            </s.For>
+          </Row>
+        </view>
+      ));
+      await press('ArrowRight', 'ArrowRight');
+      v.expect(focusedId()).toBe('c2');
 
-    setCount(1);
-    await flush();
-    await flush();
-    // The old c2 is gone; focus moved to the only remaining item.
-    v.expect(focusedId()).toBe('c0');
-    v.expect(lng.activeElement()?.destroyed).toBe(false);
-    // The remote still works: there is nothing to the right, so it bubbles
-    // without moving, and focus stays on the live item.
-    await press('ArrowRight');
-    v.expect(focusedId()).toBe('c0');
-  });
+      setCount(1);
+      await flush();
+      await flush();
+      // The old c2 is gone; focus moved to the only remaining item.
+      v.expect(focusedId()).toBe('c0');
+      v.expect(lng.activeElement()?.destroyed).toBe(false);
+      // The remote still works: there is nothing to the right, so it bubbles
+      // without moving, and focus stays on the live item.
+      await press('ArrowRight');
+      v.expect(focusedId()).toBe('c0');
+    },
+  );
 
-  v.it('a Grid clamps the cursor and focuses the last remaining item', async () => {
-    const [count, setCount] = s.createSignal(10);
-    let grid!: lng.ElementNode;
-    dispose = await mount(() => (
-      <view width={W} height={H}>
-        <Grid
-          ref={grid}
-          autofocus
-          items={Array.from({ length: count() }, (_, i) => i)}
-          columns={3}
-          itemWidth={100}
-          itemHeight={50}
-        >
-          {(p) => (
+  v.it(
+    'a Grid clamps the cursor and focuses the last remaining item',
+    async () => {
+      const [count, setCount] = s.createSignal(10);
+      let grid!: lng.ElementNode;
+      dispose = await mount(() => (
+        <view width={W} height={H}>
+          <Grid
+            ref={grid}
+            autofocus
+            items={Array.from({ length: count() }, (_, i) => i)}
+            columns={3}
+            itemWidth={100}
+            itemHeight={50}
+          >
+            {(p) => (
+              <view
+                id={`g${p.index}`}
+                x={p.x}
+                y={p.y}
+                width={p.width}
+                height={p.height}
+              />
+            )}
+          </Grid>
+        </view>
+      ));
+      await press('ArrowRight', 'ArrowDown');
+      v.expect(focusedId()).toBe('g4');
+
+      setCount(2);
+      await flush();
+      await flush();
+      v.expect(focusedId()).toBe('g1');
+      v.expect(lng.activeElement()?.destroyed).toBe(false);
+      // Right at the end of the last row stays put instead of stranding focus.
+      await press('ArrowRight');
+      v.expect(focusedId()).toBe('g1');
+    },
+  );
+
+  v.it(
+    'a Modal restores to a surviving item when its trigger was removed',
+    async () => {
+      const [cards, setCards] = s.createSignal([0, 1, 2]);
+      const [open, setOpen] = s.createSignal(false);
+      let panel!: lng.ElementNode;
+      dispose = await mount(() => (
+        <view width={W} height={H}>
+          <Row autofocus scroll="none">
+            <s.For each={cards()}>
+              {(i) => <view id={`b${i}`} width={400} height={200} />}
+            </s.For>
+          </Row>
+          <Modal
+            visible={open}
+            label="Details"
+            initialFocus={() => panel}
+            onRequestClose={() => setOpen(false)}
+          >
             <view
-              id={`g${p.index}`}
-              x={p.x}
-              y={p.y}
-              width={p.width}
-              height={p.height}
+              id="panel"
+              ref={(node) => (panel = node as lng.ElementNode)}
+              width={320}
+              height={200}
             />
-          )}
-        </Grid>
-      </view>
-    ));
-    await press('ArrowRight', 'ArrowDown');
-    v.expect(focusedId()).toBe('g4');
+          </Modal>
+        </view>
+      ));
+      await press('ArrowRight');
+      v.expect(focusedId()).toBe('b1');
 
-    setCount(2);
-    await flush();
-    await flush();
-    v.expect(focusedId()).toBe('g1');
-    v.expect(lng.activeElement()?.destroyed).toBe(false);
-    // Right at the end of the last row stays put instead of stranding focus.
-    await press('ArrowRight');
-    v.expect(focusedId()).toBe('g1');
-  });
+      setOpen(true);
+      await flush();
+      await flush();
+      v.expect(focusedId()).toBe('panel');
 
-  v.it('a Modal restores to a surviving item when its trigger was removed', async () => {
-    const [cards, setCards] = s.createSignal([0, 1, 2]);
-    const [open, setOpen] = s.createSignal(false);
-    let panel!: lng.ElementNode;
-    dispose = await mount(() => (
-      <view width={W} height={H}>
-        <Row autofocus scroll="none">
-          <s.For each={cards()}>
-            {(i) => <view id={`b${i}`} width={400} height={200} />}
-          </s.For>
-        </Row>
-        <Modal
-          visible={open}
-          label="Details"
-          initialFocus={() => panel}
-          onRequestClose={() => setOpen(false)}
-        >
-          <view
-            id="panel"
-            ref={(node) => (panel = node as lng.ElementNode)}
-            width={320}
-            height={200}
-          />
-        </Modal>
-      </view>
-    ));
-    await press('ArrowRight');
-    v.expect(focusedId()).toBe('b1');
+      // The invoking item goes away while the dialog is open.
+      setCards([0, 2]);
+      await flush();
+      await flush();
 
-    setOpen(true);
-    await flush();
-    await flush();
-    v.expect(focusedId()).toBe('panel');
-
-    // The invoking item goes away while the dialog is open.
-    setCards([0, 2]);
-    await flush();
-    await flush();
-
-    setOpen(false);
-    await flush();
-    await flush();
-    // b1's slot now holds b2; focus is not left on the destroyed b1.
-    v.expect(focusedId()).toBe('b2');
-    v.expect(lng.activeElement()?.destroyed).toBe(false);
-  });
+      setOpen(false);
+      await flush();
+      await flush();
+      // b1's slot now holds b2; focus is not left on the destroyed b1.
+      v.expect(focusedId()).toBe('b2');
+      v.expect(lng.activeElement()?.destroyed).toBe(false);
+    },
+  );
 });

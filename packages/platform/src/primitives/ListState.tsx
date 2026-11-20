@@ -17,10 +17,7 @@ export interface ListStateProps {
   children?: JSX.Element;
 }
 
-const defaults: Record<
-  ListStateStatus,
-  { title: string; message: string }
-> = {
+const defaults: Record<ListStateStatus, { title: string; message: string }> = {
   loading: {
     title: 'Loading',
     message: 'Fetching the latest items.',

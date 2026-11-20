@@ -97,13 +97,22 @@ test('each mistake is reported with the file and the key path', () => {
       { name: 'my-app', targets: ['web', 'playstation'] },
       /^app\.json: targets\[1\]: unknown target "playstation" \(available: web, /,
     ],
-    [{ name: 'my-app', targets: ['web', 7] }, /^app\.json: targets\[1\]: unknown target 7/],
-    [{ name: 'my-app', targets: ['web', 'web'] }, /targets: lists a target twice/],
+    [
+      { name: 'my-app', targets: ['web', 7] },
+      /^app\.json: targets\[1\]: unknown target 7/,
+    ],
+    [
+      { name: 'my-app', targets: ['web', 'web'] },
+      /targets: lists a target twice/,
+    ],
     [{ ...good, id: 'not an id' }, /^app\.json: id: expected a reverse-DNS/],
     [{ ...good, version: 2 }, /^app\.json: version: expected a version/],
     [{ ...good, version: 'two' }, /^app\.json: version: /],
     [{ ...good, icons: 4 }, /^app\.json: icons: expected a file path/],
-    [{ ...good, icons: { large: 1 } }, /^app\.json: icons\.large: expected a string/],
+    [
+      { ...good, icons: { large: 1 } },
+      /^app\.json: icons\.large: expected a string/,
+    ],
     [{ ...good, deepLinks: [] }, /^app\.json: deepLinks: expected/],
     [
       { ...good, deepLinks: { schemes: 'myapp' } },
@@ -113,13 +122,25 @@ test('each mistake is reported with the file and the key path', () => {
       { ...good, deepLinks: { schemes: ['myapp://'] } },
       /^app\.json: deepLinks\.schemes\[0\]: expected a URL scheme/,
     ],
-    [{ ...good, deepLinks: { hosts: [5] } }, /^app\.json: deepLinks\.hosts\[0\]: /],
-    [{ ...good, deepLinks: { paths: [] } }, /^app\.json: deepLinks\.paths: unknown key/],
+    [
+      { ...good, deepLinks: { hosts: [5] } },
+      /^app\.json: deepLinks\.hosts\[0\]: /,
+    ],
+    [
+      { ...good, deepLinks: { paths: [] } },
+      /^app\.json: deepLinks\.paths: unknown key/,
+    ],
     [{ ...good, services: {} }, /^app\.json: services: expected an array/],
     [{ ...good, services: ['ok', ''] }, /^app\.json: services\[1\]: /],
     [{ ...good, signing: [] }, /^app\.json: signing: expected an object/],
-    [{ ...good, signing: { xbox: {} } }, /^app\.json: signing\.xbox: unknown target/],
-    [{ ...good, signing: { android: 'yes' } }, /^app\.json: signing\.android: expected an object/],
+    [
+      { ...good, signing: { xbox: {} } },
+      /^app\.json: signing\.xbox: unknown target/,
+    ],
+    [
+      { ...good, signing: { android: 'yes' } },
+      /^app\.json: signing\.android: expected an object/,
+    ],
     [
       { ...good, signing: { android: { alias: 3 } } },
       /^app\.json: signing\.android\.alias: expected a string/,
@@ -129,7 +150,10 @@ test('each mistake is reported with the file and the key path', () => {
       /^app\.json: signing\.android\.storePassword: do not store credentials/,
     ],
     [{ ...good, colour: 'red' }, /^app\.json: colour: unknown key/],
-    [{ ...good, app: [] }, /^app\.json: app: expected \{ fonts, designSize, theme \}$/],
+    [
+      { ...good, app: [] },
+      /^app\.json: app: expected \{ fonts, designSize, theme \}$/,
+    ],
     [{ ...good, app: { font: [] } }, /^app\.json: app\.font: unknown key/],
     [
       { ...good, app: { fonts: [{ atlas: 'Lato.msdf' }] } },
@@ -151,7 +175,10 @@ test('each mistake is reported with the file and the key path', () => {
       { ...good, app: { designSize: { width: 0, height: 1080 } } },
       /^app\.json: app\.designSize: expected \{ width, height \}/,
     ],
-    [{ ...good, app: { theme: 'blue' } }, /^app\.json: app\.theme: expected one of system, light, dark$/],
+    [
+      { ...good, app: { theme: 'blue' } },
+      /^app\.json: app\.theme: expected one of system, light, dark$/,
+    ],
   ];
   for (const [raw, expected] of cases)
     throwsMessage(() => validateConfig(raw, 'app.json'), expected);
@@ -202,7 +229,10 @@ test('an app from before the config file still loads from solid-platform.json', 
 });
 
 test('loading reports a missing, unreadable or invalid file by name', (t) => {
-  throwsMessage(() => loadConfig(scratch(t)), /^No solid-platform\.config\.json in /);
+  throwsMessage(
+    () => loadConfig(scratch(t)),
+    /^No solid-platform\.config\.json in /,
+  );
   throwsMessage(
     () => loadConfig(scratch(t, { 'solid-platform.config.json': '{oops' })),
     /^solid-platform\.config\.json: /,

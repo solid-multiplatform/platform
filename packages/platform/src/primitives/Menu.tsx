@@ -32,8 +32,6 @@ export interface MenuProps {
   children?: JSX.Element;
 }
 
-
-
 /**
  * List of actions anchored to a control. This is the Flutter `PopupMenuButton`
  * / Radix DropdownMenu shape: Up and Down move between the rows, each row
@@ -44,11 +42,15 @@ export function Menu(props: MenuProps): JSX.Element {
   // A ten-foot menu is larger than a pointer menu; the box, rows and type
   // scale together so the same items stay readable across the room.
   const theme = useTheme();
+  // Rows are quiet until they are reached: the focused row takes the app's
+  // selection tint, the way every other list in the framework does, instead
+  // of a solid accent block under the label.
   const itemStyle = (): NodeStyles => ({
-    color: theme.colors.surfaceRaised,
-    $focus: { color: theme.colors.primary },
+    color: 0x00000000,
+    borderRadius: theme.radius.small,
+    $focus: { color: theme.colors.selection },
   });
-  const disabledStyle = (): NodeStyles => ({ color: theme.colors.surface });
+  const disabledStyle = (): NodeStyles => ({ color: 0x00000000 });
   const tv = supports('remote');
   const rowHeight = tv ? 72 : 56;
   const width = tv ? 420 : 280;
@@ -98,6 +100,7 @@ export function Menu(props: MenuProps): JSX.Element {
               <view
                 width={width}
                 height={rowHeight}
+                borderRadius={theme.radius.small}
                 style={item.disabled ? disabledStyle() : itemStyle()}
                 skipFocus={item.disabled}
                 role="menuitem"

@@ -7,8 +7,6 @@ import type { NodeStyles } from '../core/intrinsicTypes.js';
 import { Modal } from './Modal.jsx';
 import { Row } from './Row.jsx';
 
-
-
 export interface AlertProps {
   visible: boolean | (() => boolean);
   title: string;
@@ -108,7 +106,7 @@ export function Alert(props: AlertProps): JSX.Element {
         )}
         width={width()}
         height={height()}
-        color={theme().colors.surface}
+        color={theme().colors.surfaceRaised}
         borderRadius={theme().radius.medium}
         onMouseClick={() => true}
       >

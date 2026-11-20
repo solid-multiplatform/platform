@@ -9,11 +9,13 @@ import {
   createSignal,
   For,
   onCleanup,
+  onMount,
   Show,
   useContext,
   type JSX,
 } from 'solid-js';
 import {
+  applySystemBarStyle,
   defineTheme,
   ThemeProvider,
   useViewport,
@@ -70,6 +72,15 @@ export function App(): JSX.Element {
   // The host's one Back dispatcher, carried by the scope: the app needs no
   // props, so the same component is the CLI's `app.tsx` on native targets.
   const back = useContext(HostScope)?.back;
+  // A dark app needs light system glyphs: with the platform default the clock
+  // and battery are drawn dark-on-dark, which looks like an empty bar.
+  onMount(() => {
+    const restore = applySystemBarStyle({
+      lightStatusIcons: false,
+      lightNavigationIcons: false,
+    });
+    onCleanup(restore);
+  });
   const family = () => uiFamily();
   const [route, setRoute] = createSignal<Route>('library');
   const [album, setAlbum] = createSignal<Album>();
@@ -138,6 +149,7 @@ export function App(): JSX.Element {
   const hasSidebar = () => family() === 'desktop';
   const tv = () => family() === 'tv';
   const contentX = () => (hasSidebar() ? sidebar() : 0);
+  const safeTop = () => viewport().safeArea.top;
   const tabHeight = () => 76 + viewport().safeArea.bottom;
   const playerBottom = () => (family() === 'mobile' ? tabHeight() : 0);
   const bottomReserved = () => playerBottom() + (family() === 'tv' ? 0 : 62);
@@ -235,9 +247,9 @@ export function App(): JSX.Element {
         <Show when={hasSidebar()}>
           <view
             x={0}
-            y={0}
+            y={safeTop()}
             width={sidebar()}
-            height={viewport().height}
+            height={viewport().height - safeTop()}
             color={C.surface}
           >
             <text
@@ -281,9 +293,9 @@ export function App(): JSX.Element {
             column here put the second screen below the first, off-screen. */}
         <view
           x={contentX()}
-          y={0}
+          y={safeTop()}
           width={viewport().width - contentX()}
-          height={viewport().height - bottomReserved()}
+          height={viewport().height - bottomReserved() - safeTop()}
         >
           {/* The library stays mounted under an album: its scroll position is
               where the return flight lands, and a push should not throw away

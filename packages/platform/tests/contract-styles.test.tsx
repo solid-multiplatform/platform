@@ -536,9 +536,7 @@ v.describe('contract: transition', () => {
       v.expect(animate.mock.calls[1]!.slice(0, 2)).toEqual(['alpha', 0.5]);
       // Settings are the node's animationSettings, which default to
       // Config.animationSettings (passed, or resolved inside animate()).
-      v.expect(animate.mock.calls[0]![2]).toEqual(
-        lng.Config.animationSettings,
-      );
+      v.expect(animate.mock.calls[0]![2]).toEqual(lng.Config.animationSettings);
       await settle(() => {
         v.expect(node.x).toBe(100);
         v.expect(node.alpha).toBe(0.5);
@@ -560,9 +558,7 @@ v.describe('contract: transition', () => {
       v.expect(node.y).toBe(0);
       v.expect(animate).toHaveBeenCalledTimes(1);
       v.expect(animate.mock.calls[0]!.slice(0, 2)).toEqual(['y', 80]);
-      v.expect(animate.mock.calls[0]![2]).toEqual(
-        lng.Config.animationSettings,
-      );
+      v.expect(animate.mock.calls[0]![2]).toEqual(lng.Config.animationSettings);
       await settle(() => v.expect(node.y).toBe(80));
       dispose();
     },

@@ -10,7 +10,11 @@ import { adbListing, machine } from './helpers.mjs';
 const emulator = { serial: 'emulator-5554', state: 'device', kind: 'emulator' };
 const second = { serial: 'emulator-5556', state: 'device', kind: 'emulator' };
 const phone = { serial: 'R58M00EXAMPLE', state: 'device', kind: 'physical' };
-const offline = { serial: '192.0.2.10:5555', state: 'offline', kind: 'physical' };
+const offline = {
+  serial: '192.0.2.10:5555',
+  state: 'offline',
+  kind: 'physical',
+};
 
 test('adb devices -l is read into serial, state, kind and model', () => {
   assert.deepEqual(parseAdbDevices(adbListing), [
@@ -81,7 +85,11 @@ test('a physical device is never chosen when an emulator is also attached', () =
 });
 
 test('an emulator that is not ready yet still stops an implicit physical choice', () => {
-  const starting = { serial: 'emulator-5554', state: 'offline', kind: 'emulator' };
+  const starting = {
+    serial: 'emulator-5554',
+    state: 'offline',
+    kind: 'emulator',
+  };
   assert.throws(
     () => selectDevice([starting, phone]),
     /2 Android devices are attached \(1 emulator, 1 physical\)/,
@@ -92,8 +100,14 @@ test('an emulator that is not ready yet still stops an implicit physical choice'
 });
 
 test('more than one device of any kind requires --device', () => {
-  assert.throws(() => selectDevice([emulator, second]), /Choose one with --device/);
-  assert.equal(selectDevice([emulator, second, phone], 'emulator-5556'), second);
+  assert.throws(
+    () => selectDevice([emulator, second]),
+    /Choose one with --device/,
+  );
+  assert.equal(
+    selectDevice([emulator, second, phone], 'emulator-5556'),
+    second,
+  );
   assert.equal(selectDevice([emulator, phone], 'R58M00EXAMPLE'), phone);
 });
 
@@ -117,7 +131,10 @@ test('devices android lists attached devices by kind, then the AVDs', async () =
       bin.endsWith('adb') && args.join(' ') === 'devices -l'
         ? { stdout: adbListing }
         : bin.endsWith('emulator') && args[0] === '-list-avds'
-          ? { stdout: 'INFO    | Storing crashdata in: /tmp\nPixel_9_API_36\nTelevision_1080p\n' }
+          ? {
+              stdout:
+                'INFO    | Storing crashdata in: /tmp\nPixel_9_API_36\nTelevision_1080p\n',
+            }
           : undefined,
   });
   assert.equal(await m.cli('devices', 'android'), 0);
@@ -149,7 +166,10 @@ const rokuEnv = {
   ROKU_DEV_PASSWORD: 'sentinel-password',
 };
 const rokuModule = (overrides = {}) => ({
-  rokuDevice: (env) => ({ ip: env.ROKU_DEV_IP, password: env.ROKU_DEV_PASSWORD }),
+  rokuDevice: (env) => ({
+    ip: env.ROKU_DEV_IP,
+    password: env.ROKU_DEV_PASSWORD,
+  }),
   deviceInfo: async () => ({
     model: 'Roku Ultra',
     softwareVersion: '15.0.4',
@@ -181,9 +201,12 @@ test('an unreachable Roku is reported without the address in the network error',
     rokuDevice: rokuModule({
       deviceInfo: async () => {
         throw new TypeError('fetch failed', {
-          cause: Object.assign(new Error('connect ECONNREFUSED 192.0.2.44:8060'), {
-            code: 'ECONNREFUSED',
-          }),
+          cause: Object.assign(
+            new Error('connect ECONNREFUSED 192.0.2.44:8060'),
+            {
+              code: 'ECONNREFUSED',
+            },
+          ),
         });
       },
     }),

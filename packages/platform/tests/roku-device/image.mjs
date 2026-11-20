@@ -54,7 +54,9 @@ export function decodePng(buffer) {
       height = body.readUInt32BE(4);
       const colorType = body[9];
       if (body[8] !== 8 || body[12] !== 0 || ![0, 2, 4, 6].includes(colorType))
-        throw new Error('Unsupported PNG (needs 8-bit, no palette, no interlace).');
+        throw new Error(
+          'Unsupported PNG (needs 8-bit, no palette, no interlace).',
+        );
       channels = [1, 0, 3, 0, 2, 0, 4][colorType];
     } else if (type === 'IDAT') idat.push(body);
     else if (type === 'IEND') break;
@@ -91,7 +93,8 @@ export function decodePng(buffer) {
     data[o] = lines[i];
     data[o + 1] = grey ? lines[i] : lines[i + 1];
     data[o + 2] = grey ? lines[i] : lines[i + 2];
-    data[o + 3] = channels === 4 ? lines[i + 3] : channels === 2 ? lines[i + 1] : 255;
+    data[o + 3] =
+      channels === 4 ? lines[i + 3] : channels === 2 ? lines[i + 1] : 255;
   }
   return { width, height, data };
 }
@@ -108,19 +111,27 @@ const IDCT = new Float64Array(64);
 for (let u = 0; u < 8; u++) {
   for (let x = 0; x < 8; x++) {
     IDCT[u * 8 + x] =
-      Math.cos(((2 * x + 1) * u * Math.PI) / 16) * (u === 0 ? Math.SQRT1_2 : 1) * 0.5;
+      Math.cos(((2 * x + 1) * u * Math.PI) / 16) *
+      (u === 0 ? Math.SQRT1_2 : 1) *
+      0.5;
   }
 }
 
 function huffmanTable(counts, symbols) {
   // Canonical codes: for each length, the first code and the first symbol index.
-  const table = { maxCode: new Int32Array(17).fill(-1), firstIndex: new Int32Array(17), firstCode: new Int32Array(17), symbols };
+  const table = {
+    maxCode: new Int32Array(17).fill(-1),
+    firstIndex: new Int32Array(17),
+    firstCode: new Int32Array(17),
+    symbols,
+  };
   let code = 0;
   let index = 0;
   for (let length = 1; length <= 16; length++) {
     table.firstCode[length] = code;
     table.firstIndex[length] = index;
-    if (counts[length - 1] > 0) table.maxCode[length] = code + counts[length - 1] - 1;
+    if (counts[length - 1] > 0)
+      table.maxCode[length] = code + counts[length - 1] - 1;
     code = (code + counts[length - 1]) << 1;
     index += counts[length - 1];
   }
@@ -152,7 +163,11 @@ export function decodeJpeg(buffer) {
         quant[id] = table;
       }
     } else if (marker === 0xc0 || marker === 0xc1) {
-      frame = { height: body.readUInt16BE(1), width: body.readUInt16BE(3), components: [] };
+      frame = {
+        height: body.readUInt16BE(1),
+        width: body.readUInt16BE(3),
+        components: [],
+      };
       for (let i = 0; i < body[5]; i++) {
         frame.components.push({
           id: body[6 + i * 3],
@@ -170,7 +185,10 @@ export function decodeJpeg(buffer) {
         const counts = body.subarray(i + 1, i + 17);
         let total = 0;
         for (const count of counts) total += count;
-        const table = huffmanTable(counts, body.subarray(i + 17, i + 17 + total));
+        const table = huffmanTable(
+          counts,
+          body.subarray(i + 17, i + 17 + total),
+        );
         (kind === 0 ? dc : ac)[id] = table;
         i += 17 + total;
       }
@@ -179,12 +197,21 @@ export function decodeJpeg(buffer) {
     } else if (marker === 0xda) {
       const scan = [];
       for (let i = 0; i < body[0]; i++) {
-        const component = frame.components.find((c) => c.id === body[1 + i * 2]);
+        const component = frame.components.find(
+          (c) => c.id === body[1 + i * 2],
+        );
         component.dc = dc[body[2 + i * 2] >> 4];
         component.ac = ac[body[2 + i * 2] & 15];
         scan.push(component);
       }
-      return decodeScan(buffer, at + 2 + length, frame, scan, quant, restartInterval);
+      return decodeScan(
+        buffer,
+        at + 2 + length,
+        frame,
+        scan,
+        quant,
+        restartInterval,
+      );
     }
     at += 2 + length;
   }
@@ -227,13 +254,19 @@ function decodeScan(buffer, start, frame, scan, quant, restartInterval) {
     return value;
   };
   const extend = (value, length) =>
-    length === 0 ? 0 : value < 1 << (length - 1) ? value - (1 << length) + 1 : value;
+    length === 0
+      ? 0
+      : value < 1 << (length - 1)
+        ? value - (1 << length) + 1
+        : value;
   const decodeSymbol = (table) => {
     let code = 0;
     for (let length = 1; length <= 16; length++) {
       code = (code << 1) | readBit();
       if (table.maxCode[length] >= code && code >= table.firstCode[length])
-        return table.symbols[table.firstIndex[length] + code - table.firstCode[length]];
+        return table.symbols[
+          table.firstIndex[length] + code - table.firstCode[length]
+        ];
     }
     throw new Error('Corrupt JPEG Huffman code.');
   };
@@ -273,7 +306,8 @@ function decodeScan(buffer, start, frame, scan, quant, restartInterval) {
         let sum = 0;
         for (let v = 0; v < 8; v++) sum += temp[v * 8 + x] * IDCT[v * 8 + y];
         const value = Math.round(sum + 128);
-        plane[(py + y) * c.stride + px + x] = value < 0 ? 0 : value > 255 ? 255 : value;
+        plane[(py + y) * c.stride + px + x] =
+          value < 0 ? 0 : value > 255 ? 255 : value;
       }
     }
   };
@@ -283,7 +317,14 @@ function decodeScan(buffer, start, frame, scan, quant, restartInterval) {
     for (let mx = 0; mx < mcusX; mx++) {
       if (restartInterval > 0 && untilRestart === 0) {
         bitCount = 0;
-        while (!(buffer[at] === 0xff && buffer[at + 1] >= 0xd0 && buffer[at + 1] <= 0xd7)) at++;
+        while (
+          !(
+            buffer[at] === 0xff &&
+            buffer[at + 1] >= 0xd0 &&
+            buffer[at + 1] <= 0xd7
+          )
+        )
+          at++;
         at += 2;
         for (const c of scan) c.pred = 0;
         untilRestart = restartInterval;

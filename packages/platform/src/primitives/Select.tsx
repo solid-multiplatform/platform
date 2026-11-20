@@ -72,8 +72,12 @@ export function Select<T>(props: SelectProps<T>): JSX.Element {
         width={width()}
         height={height()}
         color={theme().colors.surfaceRaised}
-        borderRadius={theme().radius.small}
-        border={{ width: focused() ? 3 : 0, color: theme().colors.focus }}
+        borderRadius={theme().radius.medium}
+        border={{
+          width: focused() ? 2 : 0,
+          color: theme().colors.focus,
+          align: 'inside',
+        }}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         ariaLabel={props.label}

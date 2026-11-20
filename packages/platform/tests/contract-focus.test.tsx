@@ -13,7 +13,11 @@ import {
   setActiveElement,
   setCapabilities,
 } from '@solid-multiplatform/platform';
-import { activeElement, focusPath, Row } from '@solid-multiplatform/platform/primitives';
+import {
+  activeElement,
+  focusPath,
+  Row,
+} from '@solid-multiplatform/platform/primitives';
 import { flush, mount, recorder } from './contract-focus-helpers.js';
 import { renderer } from './setup.js';
 

@@ -278,8 +278,7 @@ v.describe('dialog surfaces', () => {
         node.color === theme.colors.surfaceRaised && node.width === 1920,
     );
     const popover = find(
-      (node) =>
-        node.color === theme.colors.surfaceRaised && node.width === 280,
+      (node) => node.color === theme.colors.surfaceRaised && node.width === 280,
     );
     const drawer = find((node) => node.width === 360 && node.height === 1080);
 

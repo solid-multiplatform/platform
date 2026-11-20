@@ -642,11 +642,7 @@ try {
     contentId: 'screen-idle',
     mediaType: 'movie',
   });
-  const idleReport = await waitFor(
-    /^HOST SH IDLE timers=/,
-    10_000,
-    idleMark,
-  );
+  const idleReport = await waitFor(/^HOST SH IDLE timers=/, 10_000, idleMark);
   check(
     'nothing is scheduled while the screen is idle',
     /timers=0$/.test(idleReport ?? ''),

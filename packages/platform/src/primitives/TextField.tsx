@@ -142,6 +142,7 @@ export function TextField(props: TextFieldProps): JSX.Element {
       width={props.width}
       height={props.height}
       padding={[6, theme.spacing(3)]}
+      borderRadius={theme.radius.medium}
       autofocus={props.autofocus}
       skipFocus={props.disabled}
       ariaDisabled={props.disabled}
@@ -151,8 +152,13 @@ export function TextField(props: TextFieldProps): JSX.Element {
       forwardStates
       style={{
         color: theme.colors.surface,
-        $focus: { color: theme.colors.focus },
-        $hover: { color: theme.colors.border },
+        border: { width: 1, color: theme.colors.border, align: 'inside' },
+        $focus: {
+          border: { width: 2, color: theme.colors.focus, align: 'inside' },
+        },
+        $hover: {
+          border: { width: 1, color: theme.colors.textMuted, align: 'inside' },
+        },
       }}
       onFocus={open}
       onEnter={open}

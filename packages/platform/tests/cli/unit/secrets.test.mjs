@@ -37,10 +37,17 @@ const everything = Object.entries(secrets)
   .map(([, value]) => value)
   .join(' ');
 const leakyRoku = (fail) => ({
-  rokuDevice: (env) => ({ ip: env.ROKU_DEV_IP, password: env.ROKU_DEV_PASSWORD }),
+  rokuDevice: (env) => ({
+    ip: env.ROKU_DEV_IP,
+    password: env.ROKU_DEV_PASSWORD,
+  }),
   deviceInfo: async () => {
     if (fail) throw new Error('GET http://' + everything + ' failed');
-    return { model: 'Roku Ultra', softwareVersion: '15.0.4', developerEnabled: true };
+    return {
+      model: 'Roku Ultra',
+      softwareVersion: '15.0.4',
+      developerEnabled: true,
+    };
   },
   sideload: async () => {
     if (fail) throw new Error('Install failed for ' + everything);
@@ -53,7 +60,9 @@ const leakyRoku = (fail) => ({
   readConsole: (_, onLine) => {
     onLine('console: ' + everything);
     return {
-      done: fail ? Promise.reject(new Error('lost ' + everything)) : Promise.resolve([]),
+      done: fail
+        ? Promise.reject(new Error('lost ' + everything))
+        : Promise.resolve([]),
       stop() {},
     };
   },
@@ -131,7 +140,9 @@ test('the redactor removes device and credential values, longest first', () => {
     HOME: '/home/someone',
   });
   assert.equal(
-    redact('at 192.0.2.44-extended and 192.0.2.44 in /opt/sdk/ndk with abcdef; /usr/bin /home/someone ab'),
+    redact(
+      'at 192.0.2.44-extended and 192.0.2.44 in /opt/sdk/ndk with abcdef; /usr/bin /home/someone ab',
+    ),
     'at [hidden] and [hidden] in [hidden]/ndk with [hidden]; /usr/bin /home/someone ab',
   );
 });

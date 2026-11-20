@@ -63,12 +63,14 @@ export function Checkbox(props: CheckboxProps): JSX.Element {
         y={(height() - box) / 2}
         width={box}
         height={box}
+        // An empty box is a well, not a raised chip: it has to read as empty
+        // on a card and on a dialog panel alike.
         color={
           checked()
             ? theme().colors.primary
             : props.disabled
-              ? theme().colors.border
-              : theme().colors.surfaceRaised
+              ? theme().colors.surface
+              : theme().colors.border
         }
         borderRadius={box / 2}
       >
@@ -157,8 +159,8 @@ export function Radio(props: RadioProps): JSX.Element {
           selected()
             ? theme().colors.primary
             : props.disabled
-              ? theme().colors.border
-              : theme().colors.surfaceRaised
+              ? theme().colors.surface
+              : theme().colors.border
         }
         borderRadius={size / 2}
       >

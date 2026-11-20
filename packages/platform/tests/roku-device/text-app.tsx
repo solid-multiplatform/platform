@@ -60,7 +60,12 @@ const FONTS = [
   { fontFamily: MISSING, fontUrl: onestRegular },
 ];
 
-type Case = { x: number; y: number; text: string; props: Record<string, unknown> };
+type Case = {
+  x: number;
+  y: number;
+  text: string;
+  props: Record<string, unknown>;
+};
 interface Backend {
   w: number;
   h: number;
@@ -88,7 +93,11 @@ function label(name: string, c: Case): JSXElement {
 function row(name: string, c: Case): JSXElement {
   return (
     <view x={c.x} y={c.y} display="flex" gap={GAP} height={MARK.h}>
-      <text ref={(node: ElementNode) => (nodes[name] = node)} color={INK} {...c.props}>
+      <text
+        ref={(node: ElementNode) => (nodes[name] = node)}
+        color={INK}
+        {...c.props}
+      >
         {c.text}
       </text>
       <view
@@ -128,7 +137,11 @@ function report() {
 /** The device's own measurements of the packaged fonts, a Font node at a time. */
 async function measureOnDevice(root: object) {
   const measure = getFontMeasure();
-  for (const [key, uri] of [['regular', robotoRegular], ['bold', robotoBold], ['raleway', ralewayExtraBold]] as const) {
+  for (const [key, uri] of [
+    ['regular', robotoRegular],
+    ['bold', robotoBold],
+    ['raleway', ralewayExtraBold],
+  ] as const) {
     for (const size of MEASURED_SIZES) {
       const font = createElement('font') as unknown as { r: never };
       // Size before uri: the firmware otherwise first publishes the font at size 1.
@@ -139,10 +152,19 @@ async function measureOnDevice(root: object) {
       let late = false;
       const stop = timeout(() => (late = true), 2000);
       try {
-        await whenFontReady(font.r, { signal: { get aborted() { return late; }, reason: 'timeout' } });
+        await whenFontReady(font.r, {
+          signal: {
+            get aborted() {
+              return late;
+            },
+            reason: 'timeout',
+          },
+        });
         log(
           `DEVICE ${key} ${size} ${measure.getAscent(font.r)} ${measure.getOneLineHeight(font.r)} ` +
-            MEASURED_STRINGS.map((text) => measure.getOneLineWidth(font.r, text, 100000)).join(','),
+            MEASURED_STRINGS.map((text) =>
+              measure.getOneLineWidth(font.r, text, 100000),
+            ).join(','),
         );
       } catch (error) {
         log(`DEVICE ${key} ${size} failed ${String(error)}`);
@@ -186,7 +208,9 @@ function mount(host: { root: object }): () => void {
     loadFonts([font]).then(
       () => log(`FONT ${font.fontFamily} loaded ${Date.now() - started}`),
       (error: unknown) =>
-        log(`FONT ${font.fontFamily} rejected ${Date.now() - started} ${error instanceof Error ? error.message : String(error)}`),
+        log(
+          `FONT ${font.fontFamily} rejected ${Date.now() - started} ${error instanceof Error ? error.message : String(error)}`,
+        ),
     ),
   );
   const { render } = createRenderer();
@@ -195,6 +219,8 @@ function mount(host: { root: object }): () => void {
     render(() => label(name, (TEXTS as Record<string, Case>)[name]!));
   for (const name of Object.keys(ROWS))
     render(() => row(name, (ROWS as Record<string, Case>)[name]!));
-  run(host.root, loads).catch((error) => log('ERROR ' + String((error as Error)?.stack ?? error)));
+  run(host.root, loads).catch((error) =>
+    log('ERROR ' + String((error as Error)?.stack ?? error)),
+  );
   return () => {};
 }

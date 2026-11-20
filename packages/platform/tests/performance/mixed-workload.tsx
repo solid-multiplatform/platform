@@ -212,7 +212,9 @@ export function mount(_plugins, fontRoot, _input, host) {
       // Keep the warmed engine and native view for the next preview. The
       // player is built once before recording starts; releasing or rebuilding
       // it inside the run would block a frame for 60-115 ms.
-      void closing.pause().catch((e) => record('error', { message: String(e) }));
+      void closing
+        .pause()
+        .catch((e) => record('error', { message: String(e) }));
       if (caption) caption.opacity = 0;
     }
     navigation.back();
