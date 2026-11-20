@@ -62,12 +62,18 @@ export function Sheet(props: SheetProps): JSX.Element {
         y={viewport().height - height() - bottom()}
         width={viewport().width}
         height={height()}
-        color={0x1d2937ff}
+        color={theme().colors.surfaceRaised}
         borderRadius={[theme().radius.medium, theme().radius.medium, 0, 0]}
         forwardFocus={1}
         onMouseClick={() => true}
       >
-        <text skipFocus x={28} y={24} fontSize={30} color={0xf2f6faff}>
+        <text
+          skipFocus
+          x={28}
+          y={24}
+          fontSize={30}
+          color={theme().colors.text}
+        >
           {props.title ?? props.label}
         </text>
         <view

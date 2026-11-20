@@ -12,6 +12,7 @@ import {
 } from '@solid-multiplatform/platform/primitives';
 import type { UiFamily } from '../family';
 import { C, R, S, T } from '../theme';
+import { pageLayout } from '../layout';
 import { GhostButton } from './Library';
 
 const ABOUT = `## Sona\n\nA gallery built on Solid Multiplatform. One scene, three shells: a phone app, a ten-foot TV app and a desktop app.\n\n- Every primitive appears in a real flow\n- Covers and icons are drawn from data\n- The performance lab measures the frame budget where it runs`;
@@ -26,9 +27,13 @@ export function Settings(props: {
   const tv = () => props.family === 'tv';
   const mobile = () => props.family === 'mobile';
   const viewport = useViewport;
-  const pad = () => (tv() ? S(10) : mobile() ? S(5) : S(6));
   const width = () => props.width;
-  const content = () => Math.min(tv() ? 900 : 640, width() - 2 * pad());
+  const page = () => pageLayout(width(), props.family);
+  // A settings column reads best narrow. It hangs off the page box's leading
+  // edge rather than centring inside it: every screen's left edge is then the
+  // same x, whichever screen you are on.
+  const content = () => Math.min(720, page().width);
+  const innerX = () => page().x;
 
   const [theme, setTheme] = createSignal<'system' | 'dark' | 'light'>('dark');
   const [quality, setQuality] = createSignal<'auto' | 'high' | 'saver'>('auto');
@@ -58,21 +63,22 @@ export function Settings(props: {
   return (
     <view width={width()} height={props.height} clipping>
       <Column
-        width={width()}
-        height={props.height}
+        x={innerX()}
+        y={S(6)}
+        width={content()}
+        height={props.height - S(6)}
         gap={S(6)}
         scroll={tv() ? 'auto' : 'touch'}
         selected={0}
-        padding={[0, pad()]}
       >
         {props.topNav}
         <view
           width={content()}
-          height={tv() ? 120 : 84}
+          height={tv() ? 120 : 58}
           display="flex"
           flexDirection="column"
           gap={S(1)}
-          justifyContent="flexEnd"
+          justifyContent="flexStart"
         >
           <text fontSize={tv() ? T.display : T.title} color={C.text}>
             Settings
@@ -124,23 +130,27 @@ export function Settings(props: {
         {section(
           'Library',
           <view display="flex" flexDirection="column" gap={S(3)}>
-            <view display="flex" flexDirection="row" gap={S(3)}>
+            <view
+              display="flex"
+              flexDirection={mobile() ? 'column' : 'row'}
+              gap={S(3)}
+            >
               <GhostButton
                 label="Advanced"
                 onPress={() => setAdvanced(true)}
-                width={tv() ? 180 : 140}
+                width={mobile() ? content() - S(10) : tv() ? 180 : 140}
                 height={tv() ? 56 : 44}
               />
               <GhostButton
                 label="About Sona"
                 onPress={() => setAbout(true)}
-                width={tv() ? 180 : 160}
+                width={mobile() ? content() - S(10) : tv() ? 180 : 160}
                 height={tv() ? 56 : 44}
               />
               <GhostButton
                 label="What is measured?"
                 onPress={() => setInfo(true)}
-                width={tv() ? 260 : 190}
+                width={mobile() ? content() - S(10) : tv() ? 260 : 190}
                 height={tv() ? 56 : 44}
               />
             </view>
@@ -150,7 +160,7 @@ export function Settings(props: {
             <GhostButton
               label="Reset library"
               onPress={() => setReset(true)}
-              width={tv() ? 200 : 160}
+              width={mobile() ? content() - S(10) : tv() ? 200 : 160}
               height={tv() ? 56 : 44}
             />
           </view>,
@@ -219,7 +229,7 @@ export function Settings(props: {
         onRequestClose={() => setInfo(false)}
         label="What is measured?"
         anchor={() => ({
-          x: (props.x ?? 0) + pad() + (tv() ? 180 : 140),
+          x: (props.x ?? 0) + innerX() + (tv() ? 180 : 140),
           y: tv() ? 500 : 430,
           width: tv() ? 180 : 160,
           height: tv() ? 56 : 44,

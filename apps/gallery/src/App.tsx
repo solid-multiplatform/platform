@@ -23,6 +23,8 @@ import { Column, Row } from '@solid-multiplatform/platform/primitives';
 import { Glyph, type GlyphName } from './components/Glyph';
 import { C, R, S, T } from './theme';
 import { uiFamily } from './family';
+import { pageLayout } from './layout';
+import { HeroFlight, type HeroRect } from './motion/hero';
 import { Library } from './screens/Library';
 import { AlbumScreen } from './screens/Album';
 import type { Album } from './data';
@@ -72,17 +74,60 @@ export function App(): JSX.Element {
   const family = () => uiFamily();
   const [route, setRoute] = createSignal<Route>('library');
   const [album, setAlbum] = createSignal<Album>();
-  const openAlbum = (next: Album) => {
+
+  // The matched-geometry flight: the pressed card's cover grows into the
+  // album's cover (and back). `from` is the card's box when it was pressed;
+  // `to` arrives one frame after the album lays out. The two covers are
+  // hidden for the duration so only the clone is visible.
+  const [flight, setFlight] = createSignal<{
+    album: Album;
+    from: HeroRect;
+    to?: HeroRect;
+    back: boolean;
+  }>();
+  // The two boxes the flight interpolates between, kept after it lands so
+  // the trip back can start from the album and end on the card.
+  const [cardRect, setCardRect] = createSignal<HeroRect>();
+  const [coverRect, setCoverRect] = createSignal<HeroRect>();
+  const openAlbum = (next: Album, from?: HeroRect) => {
     setAlbum(next);
     setRoute('album');
+    setCoverRect(undefined);
+    setCardRect(from);
+    setFlight(
+      from === undefined ? undefined : { album: next, from, back: false },
+    );
+  };
+  const landCover = (rect: HeroRect) => {
+    setCoverRect(rect);
+    setFlight((value) =>
+      value === undefined ? value : { ...value, to: rect },
+    );
+  };
+  const leaveAlbum = () => {
+    const current = album();
+    const from = coverRect();
+    const card = cardRect();
+    setRoute('library');
+    setAlbum(undefined);
+    setFlight(
+      current !== undefined && from !== undefined && card !== undefined
+        ? { album: current, from, to: card, back: true }
+        : undefined,
+    );
+  };
+  const flying = () => {
+    const value = flight();
+    return value?.to === undefined
+      ? undefined
+      : (value as typeof value & { to: HeroRect });
   };
   // Back leaves a detail screen first; on the shell's root the host owns it.
   createEffect(() => {
     if (route() === 'library' || back === undefined) return;
     onCleanup(
       back.push(() => {
-        setRoute('library');
-        setAlbum(undefined);
+        leaveAlbum();
         return true;
       }),
     );
@@ -138,8 +183,9 @@ export function App(): JSX.Element {
     );
   };
 
+  const page = () => pageLayout(viewport().width - contentX(), family());
   const topNav = () => (
-    <Row gap={S(2)} scroll="none" width={viewport().width} padding={[0, S(5)]}>
+    <Row gap={S(2)} scroll="none" width={page().width}>
       <For each={NAV}>
         {(item) => (
           <view
@@ -197,7 +243,7 @@ export function App(): JSX.Element {
           >
             <text
               x={S(6)}
-              y={S(10)}
+              y={S(6)}
               fontSize={family() === 'tv' ? T.title : T.headline}
               color={C.text}
             >
@@ -205,7 +251,7 @@ export function App(): JSX.Element {
             </text>
             <text
               x={S(6)}
-              y={S(10) + (family() === 'tv' ? 34 : 24)}
+              y={S(6) + (family() === 'tv' ? 34 : 24)}
               fontSize={family() === 'tv' ? T.body : T.caption}
               color={C.dim}
             >
@@ -213,7 +259,7 @@ export function App(): JSX.Element {
             </text>
             <Column
               x={S(2)}
-              y={S(22)}
+              y={S(6) + 82}
               width={sidebar() - S(4)}
               scroll="none"
               gap={S(1)}
@@ -226,7 +272,7 @@ export function App(): JSX.Element {
               fontSize={family() === 'tv' ? T.body : T.caption}
               color={C.dim}
             >
-              One accent · three shells
+              One accent, three shells
             </text>
           </view>
         </Show>
@@ -246,6 +292,9 @@ export function App(): JSX.Element {
               height={viewport().height - bottomReserved()}
               onOpenCreate={() => setRoute('create')}
               onOpenAlbum={openAlbum}
+              hiddenAlbum={
+                flight()?.back === true ? flight()?.album.id : undefined
+              }
               topNav={tv() ? topNav() : undefined}
             />
           </Show>
@@ -264,10 +313,9 @@ export function App(): JSX.Element {
               x={contentX()}
               width={viewport().width - contentX()}
               height={viewport().height - bottomReserved()}
-              onBack={() => {
-                setRoute('library');
-                setAlbum(undefined);
-              }}
+              hideCover={flight() !== undefined && flight()?.back === false}
+              onCoverRect={landCover}
+              onBack={leaveAlbum}
             />
           </Show>
           <Show when={route() === 'settings'}>
@@ -306,8 +354,8 @@ export function App(): JSX.Element {
               color={C.lineSoft}
             />
             <view
-              x={16}
-              y={10}
+              x={page().x}
+              y={11}
               width={40}
               height={40}
               borderRadius={R.small}
@@ -323,14 +371,14 @@ export function App(): JSX.Element {
                 }}
               />
             </view>
-            <text x={68} y={14} fontSize={T.caption} color={C.text}>
+            <text x={page().x + 52} y={13} fontSize={T.caption} color={C.text}>
               Carriage Return
             </text>
-            <text x={68} y={32} fontSize={10} color={C.muted}>
+            <text x={page().x + 52} y={31} fontSize={10} color={C.muted}>
               Mira Vale
             </text>
             <view
-              x={viewport().width - contentX() - 52}
+              x={page().x + page().width - 52}
               y={14}
               width={34}
               height={34}
@@ -346,22 +394,33 @@ export function App(): JSX.Element {
               <Glyph name="play" size={12} color={C.text} />
             </view>
             <view
-              x={16}
+              x={page().x}
               y={56}
-              width={viewport().width - contentX() - 32}
+              width={page().width}
               height={2}
               borderRadius={1}
               color={C.lineSoft}
             />
             <view
-              x={16}
+              x={page().x}
               y={56}
-              width={(viewport().width - contentX() - 32) * 0.32}
+              width={page().width * 0.32}
               height={2}
               borderRadius={1}
               color={C.accent}
             />
           </view>
+        </Show>
+
+        <Show when={flying()}>
+          {(value) => (
+            <HeroFlight
+              album={value().album}
+              from={value().from}
+              to={value().to}
+              onDone={() => setFlight(undefined)}
+            />
+          )}
         </Show>
 
         <Show when={family() === 'mobile'}>

@@ -8,6 +8,7 @@ import {
   type JSX,
 } from 'solid-js';
 import { getRenderer } from '../index.js';
+import { Config } from '../core/config.js';
 import type { ElementNode } from '../core/elementNode.js';
 import {
   estimateTextWidth,
@@ -53,7 +54,10 @@ const rendererMeasure: MeasureRichText = (text, span) => {
     };
     const measured = renderer?.measureText?.({
       text,
-      fontFamily: span.fontFamily,
+      // The renderer's default is a plain 'sans-serif' with no face; the
+      // app's configured family is what its text nodes draw with, so the
+      // measurement has to be taken from the same face.
+      fontFamily: span.fontFamily ?? Config.fontSettings?.fontFamily,
       fontSize: span.fontSize,
       fontWeight: span.fontWeight,
       letterSpacing: span.letterSpacing,

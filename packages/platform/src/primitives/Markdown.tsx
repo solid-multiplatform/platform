@@ -13,7 +13,7 @@
  * colour and a press handler, strikethrough is muted (the scene has no strike
  * line). Code blocks are one background box and one text node.
  */
-import { For, type JSX } from 'solid-js';
+import { For, Show, type JSX } from 'solid-js';
 import { markdown } from '../markdown/index.js';
 import type { Block, Inline } from '../markdown/types.js';
 import type { RichTextSpan } from '../sdk/richText.js';
@@ -309,8 +309,6 @@ function BlockView(props: MarkdownProps & { block: Block }): JSX.Element {
         <view display="flex" flexDirection="column" gap={6} width={props.width}>
           <For each={block.items}>
             {(item, index) => {
-              const bullet = () =>
-                block.ordered ? `${block.start + index()}.` : '•';
               return (
                 <view
                   display="flex"
@@ -318,15 +316,37 @@ function BlockView(props: MarkdownProps & { block: Block }): JSX.Element {
                   gap={8}
                   width={props.width}
                 >
-                  <text
-                    width={22}
-                    height={size() * 1.35}
-                    textAlign="right"
-                    fontSize={size()}
-                    color={props.color ?? DEFAULTS.color}
+                  {/* The atlas ships ASCII only, so an unordered bullet is a
+                      drawn dot rather than a '•' glyph that would be blank. */}
+                  <Show
+                    when={block.ordered}
+                    fallback={
+                      <view
+                        width={22}
+                        height={size() * 1.35}
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="flexEnd"
+                      >
+                        <view
+                          width={5}
+                          height={5}
+                          borderRadius={3}
+                          color={props.color ?? DEFAULTS.color}
+                        />
+                      </view>
+                    }
                   >
-                    {bullet()}
-                  </text>
+                    <text
+                      width={22}
+                      height={size() * 1.35}
+                      textAlign="right"
+                      fontSize={size()}
+                      color={props.color ?? DEFAULTS.color}
+                    >
+                      {`${block.start + index()}.`}
+                    </text>
+                  </Show>
                   <view
                     width={props.width - 30}
                     display="flex"

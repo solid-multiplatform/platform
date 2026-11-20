@@ -13,6 +13,8 @@ import { Cover } from '../components/Cover';
 import { ALBUMS, type Album, type Track } from '../data';
 import type { UiFamily } from '../family';
 import { C, formatTime, R, S, T } from '../theme';
+import { pageLayout } from '../layout';
+import { AnimatedNumber } from '../motion/numeric';
 import { GhostButton, GradientButton, IconButton } from './Library';
 
 interface Pick {
@@ -59,8 +61,8 @@ export function Create(props: {
 }): JSX.Element {
   const tv = () => props.family === 'tv';
   const mobile = () => props.family === 'mobile';
-  const pad = () => (tv() ? S(10) : mobile() ? S(5) : S(6));
   const width = () => props.width;
+  const page = () => pageLayout(width(), props.family);
 
   const [name, setName] = createSignal('Late night');
   const [about, setAbout] = createSignal('');
@@ -142,8 +144,12 @@ export function Create(props: {
     </view>
   );
 
-  const formWidth = () => Math.min(tv() ? 560 : 400, width() - 2 * pad());
-  const listWidth = () => (mobile() ? width() - 2 * pad() : tv() ? 620 : 520);
+  // A two-column page: the form takes 45% (capped), the list the rest. On a
+  // phone the two columns stack, so the form takes the whole page.
+  const formWidth = () =>
+    mobile() ? page().width : Math.min(tv() ? 560 : 400, page().width * 0.45);
+  const listWidth = () =>
+    mobile() ? page().width : page().width - formWidth() - S(8);
 
   const trackRow = (pick: Pick, index: number, rowWidth: number) => {
     const selected = () => chosen().has(index);
@@ -167,37 +173,63 @@ export function Create(props: {
         <view
           width={20}
           height={20}
-          borderRadius={6}
+          borderRadius={10}
           border={{ width: 1, color: selected() ? C.accent : C.line }}
           color={selected() ? C.accent : 0x00000000}
         >
           <view
-            width={7}
-            height={2}
-            x={3}
-            y={10}
-            rotation={0.8}
+            width={6.5}
+            height={2.4}
+            x={3.3}
+            y={10.3}
+            rotation={0.785}
             color={selected() ? C.onAccent : 0x00000000}
           />
           <view
-            width={4}
-            height={2}
-            x={8}
-            y={13}
-            rotation={-0.8}
+            width={10.3}
+            height={2.4}
+            x={6.6}
+            y={8.9}
+            rotation={-0.785}
             color={selected() ? C.onAccent : 0x00000000}
           />
         </view>
-        <view display="flex" flexDirection="column" gap={1} width={220}>
-          <text fontSize={tv() ? T.body : T.label} color={C.text}>
+        <view
+          display="flex"
+          flexDirection="column"
+          gap={1}
+          width={rowWidth - 100}
+        >
+          <text
+            fontSize={tv() ? T.body : T.label}
+            color={C.text}
+            contain="width"
+            maxLines={1}
+          >
             {pick.track.title}
           </text>
-          <text fontSize={T.caption} color={C.muted}>
+          <text
+            fontSize={T.caption}
+            color={C.muted}
+            contain="width"
+            maxLines={1}
+          >
             {pick.album.title}
           </text>
         </view>
-        <view display="flex" flexDirection="row" justifyContent="flexEnd">
-          <text fontSize={T.caption} color={C.dim}>
+        <view
+          width={S(14)}
+          display="flex"
+          flexDirection="row"
+          justifyContent="flexEnd"
+        >
+          <text
+            width={S(14)}
+            textAlign="right"
+            contain="width"
+            fontSize={T.caption}
+            color={C.dim}
+          >
             {formatTime(pick.track.seconds)}
           </text>
         </view>
@@ -208,21 +240,22 @@ export function Create(props: {
   return (
     <view width={width()} height={props.height} clipping>
       <Column
-        width={width()}
-        height={props.height}
+        x={page().x}
+        y={S(6)}
+        width={page().width}
+        height={props.height - S(6)}
         gap={S(6)}
         scroll={tv() ? 'auto' : 'touch'}
         selected={0}
       >
         {props.topNav}
         <view
-          width={width()}
+          width={page().width}
           display="flex"
           flexDirection="row"
-          alignItems="flexEnd"
+          alignItems="center"
           justifyContent="spaceBetween"
-          padding={[0, pad()]}
-          height={tv() ? 120 : 84}
+          height={tv() ? 120 : 58}
         >
           <view display="flex" flexDirection="column" gap={S(1)}>
             <text fontSize={tv() ? T.display : T.title} color={C.text}>
@@ -252,11 +285,10 @@ export function Create(props: {
         </view>
 
         <view
-          width={width()}
+          width={page().width}
           display="flex"
           flexDirection={mobile() ? 'column' : 'row'}
           gap={tv() ? S(12) : S(8)}
-          padding={[0, pad()]}
         >
           {/* The form */}
           <view
@@ -265,28 +297,24 @@ export function Create(props: {
             gap={S(4)}
             width={formWidth()}
           >
-            {field(
-              'Name',
-              <TextField
-                label="Playlist name"
-                value={name()}
-                onChange={setName}
-                height={tv() ? 64 : 52}
-                width={formWidth()}
-              />,
-            )}
-            {field(
-              'Description',
-              <TextField
-                label="Description"
-                placeholder="What is this for?"
-                value={about()}
-                onChange={setAbout}
-                multiline
-                height={tv() ? 96 : 76}
-                width={formWidth()}
-              />,
-            )}
+            {/* The field carries its own label, so there is no section label
+                above it: one control, one caption. */}
+            <TextField
+              label="Playlist name"
+              value={name()}
+              onChange={setName}
+              height={tv() ? 64 : 52}
+              width={formWidth()}
+            />
+            <TextField
+              label="Description"
+              placeholder="What is this for?"
+              value={about()}
+              onChange={setAbout}
+              multiline
+              height={tv() ? 96 : 76}
+              width={formWidth()}
+            />
             {field('Cover', cover())}
             {field(
               'Visible to',
@@ -328,12 +356,16 @@ export function Create(props: {
               <Row gap={S(3)} scroll="none">
                 <GhostButton
                   label="Cancel"
+                  width={(page().width - S(3)) / 2}
+                  height={52}
                   onPress={() =>
                     dirty() ? setDiscard(true) : props.onDone?.()
                   }
                 />
                 <GradientButton
                   label="Create"
+                  width={(page().width - S(3)) / 2}
+                  height={52}
                   onPress={() => {
                     setToast(true);
                     props.onDone?.();
@@ -356,9 +388,26 @@ export function Create(props: {
               alignItems="center"
               justifyContent="spaceBetween"
             >
-              <text fontSize={tv() ? T.headline : T.label} color={C.text}>
-                {`Tracks · ${chosen().size} chosen`}
-              </text>
+              <view
+                display="flex"
+                flexDirection="row"
+                alignItems="center"
+                gap={S(2)}
+              >
+                <text fontSize={tv() ? T.headline : T.label} color={C.text}>
+                  Tracks,
+                </text>
+                <AnimatedNumber
+                  value={chosen().size}
+                  width={Math.round((tv() ? T.headline : T.label) * 0.7)}
+                  height={Math.round((tv() ? T.headline : T.label) * 1.4)}
+                  fontSize={tv() ? T.headline : T.label}
+                  color={C.text}
+                />
+                <text fontSize={tv() ? T.headline : T.label} color={C.text}>
+                  chosen
+                </text>
+              </view>
               <Select
                 value={sort()}
                 options={[

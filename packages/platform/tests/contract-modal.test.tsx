@@ -269,14 +269,17 @@ v.describe('dialog surfaces', () => {
     const find = (predicate: (node: lng.ElementNode) => boolean) =>
       findAll(renderer.rootNode, predicate)[0]!;
 
+    // The dialog surfaces take the app theme now, not a fixed palette.
     const alert = find(
-      (node) => node.color === 0x1d2937ff && node.width === 360,
+      (node) => node.color === theme.colors.surface && node.width === 360,
     );
     const sheet = find(
-      (node) => node.color === 0x1d2937ff && node.width === 1920,
+      (node) =>
+        node.color === theme.colors.surfaceRaised && node.width === 1920,
     );
     const popover = find(
-      (node) => node.color === 0x1d2937ff && node.width === 280,
+      (node) =>
+        node.color === theme.colors.surfaceRaised && node.width === 280,
     );
     const drawer = find((node) => node.width === 360 && node.height === 1080);
 

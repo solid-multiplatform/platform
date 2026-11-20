@@ -1,4 +1,5 @@
 import { supports, useCapabilities } from '@solid-multiplatform/platform';
+import { useViewport } from '@solid-multiplatform/platform/app';
 
 /**
  * The UI family the app is running as — not the target's name. The same
@@ -25,6 +26,9 @@ export function uiFamily(): UiFamily {
   // lists a mouse in its capabilities, so the pointer media query decides.
   if (supports('touch') && (!supports('mouse') || coarsePointer()))
     return 'mobile';
+  // A desktop window narrowed past the sidebar's breakpoint gets the phone
+  // shell rather than a shrunken one: one column, the tab bar, no overflow.
+  if (useViewport().width < 760) return 'mobile';
   // A web build opened with a mouse and a keyboard is a desktop app.
   return 'desktop';
 }

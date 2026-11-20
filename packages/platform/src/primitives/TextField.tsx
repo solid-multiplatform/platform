@@ -83,7 +83,8 @@ export function TextField(props: TextFieldProps): JSX.Element {
 
   const value = () => props.value ?? inner();
   const masked = (text: string) =>
-    props.password ? '•'.repeat([...text].length) : text;
+    // ASCII only: the shipped atlases have no bullet glyph to mask with.
+    props.password ? '*'.repeat([...text].length) : text;
   const shown = () => {
     const text = value();
     return text === '' ? (props.placeholder ?? '') : masked(text);
@@ -136,10 +137,11 @@ export function TextField(props: TextFieldProps): JSX.Element {
       display="flex"
       flexDirection="column"
       alignItems="flexStart"
-      gap={theme.spacing(1)}
+      justifyContent="center"
+      gap={2}
       width={props.width}
       height={props.height}
-      padding={theme.spacing(2)}
+      padding={[6, theme.spacing(3)]}
       autofocus={props.autofocus}
       skipFocus={props.disabled}
       ariaDisabled={props.disabled}

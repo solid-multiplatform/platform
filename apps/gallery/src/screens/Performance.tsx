@@ -9,6 +9,7 @@ import {
 import { displayRefreshRate, getRenderer } from '@solid-multiplatform/platform';
 import type { UiFamily } from '../family';
 import { C, R, S, T } from '../theme';
+import { pageLayout } from '../layout';
 
 interface Sample {
   delta: number;
@@ -37,8 +38,8 @@ export function Performance(props: {
 }): JSX.Element {
   const tv = () => props.family === 'tv';
   const mobile = () => props.family === 'mobile';
-  const pad = () => (tv() ? S(10) : mobile() ? S(5) : S(6));
   const width = () => props.width;
+  const page = () => pageLayout(width(), props.family);
   const [hz, setHz] = createSignal(0);
   const [samples, setSamples] = createSignal<Sample[]>([]);
   const [draws, setDraws] = createSignal<number | undefined>(undefined);
@@ -125,9 +126,11 @@ export function Performance(props: {
   });
   const pass = () => stats().p99 <= budget() * 1.1;
 
-  /** The graph's width, and therefore one bar's slot. */
-  const graphWidth = () =>
-    tv() ? 560 : mobile() ? width() - 2 * pad() - 2 * S(5) : 420;
+  /** The live card, the graph inside it, and one bar's slot. */
+  const cardWidth = () =>
+    tv() ? 640 : mobile() ? page().width : Math.min(560, page().width * 0.55);
+  const graphWidth = () => cardWidth() - 2 * S(5);
+  const graphHeight = () => (tv() ? 220 : mobile() ? 120 : 180);
   const barWidth = () => Math.max(1, Math.floor(graphWidth() / WINDOW));
   const maxDelta = () =>
     Math.max(budget() * 2, ...samples().map((sample) => sample.delta));
@@ -137,12 +140,19 @@ export function Performance(props: {
     setCaptured({ p50: value.p50, p99: value.p99, hz: hz(), at: Date.now() });
   };
 
-  const stat = (label: string, value: string, accent = false) => (
+  const columnsWidth = () =>
+    tv() ? 420 : mobile() ? page().width : Math.min(360, page().width * 0.38);
+  const stat = (
+    label: string,
+    value: string,
+    accent = false,
+    width?: number,
+  ) => (
     <view
       display="flex"
       flexDirection="column"
       gap={2}
-      width={tv() ? 220 : 140}
+      width={width ?? Math.floor((columnsWidth() - 2 * S(6)) / 3)}
     >
       <text fontSize={T.caption} color={C.muted} letterSpacing={0.8}>
         {label}
@@ -159,20 +169,21 @@ export function Performance(props: {
   return (
     <view width={width()} height={props.height} clipping>
       <view
-        width={width()}
-        height={props.height}
+        x={page().x}
+        y={S(6)}
+        width={page().width}
+        height={props.height - S(6)}
         display="flex"
         flexDirection="column"
         gap={S(6)}
-        padding={[0, pad()]}
       >
         {props.topNav}
         <view
-          width={width() - 2 * pad()}
-          height={tv() ? 130 : 90}
+          width={page().width}
+          height={tv() ? 130 : 58}
           display="flex"
           flexDirection="row"
-          alignItems="flexEnd"
+          alignItems="center"
           justifyContent="spaceBetween"
         >
           <view display="flex" flexDirection="column" gap={S(1)}>
@@ -205,7 +216,7 @@ export function Performance(props: {
         </view>
 
         <view
-          width={width() - 2 * pad()}
+          width={page().width}
           display="flex"
           flexDirection={mobile() ? 'column' : 'row'}
           gap={S(8)}
@@ -213,7 +224,7 @@ export function Performance(props: {
         >
           {/* The live graph */}
           <view
-            width={tv() ? 640 : mobile() ? width() - 2 * pad() : 520}
+            width={cardWidth()}
             display="flex"
             flexDirection="column"
             gap={S(3)}
@@ -221,14 +232,20 @@ export function Performance(props: {
             borderRadius={R.medium}
             padding={S(5)}
           >
-            <view width={graphWidth()} height={90}>
+            <view width={graphWidth()} height={graphHeight()}>
               <For each={samples()}>
                 {(sample, index) => (
                   <view
                     x={index() * barWidth()}
-                    y={90 - Math.max(1, (sample.delta / maxDelta()) * 90)}
+                    y={
+                      graphHeight() -
+                      Math.max(1, (sample.delta / maxDelta()) * graphHeight())
+                    }
                     width={Math.max(1, barWidth() - 1)}
-                    height={Math.max(1, (sample.delta / maxDelta()) * 90)}
+                    height={Math.max(
+                      1,
+                      (sample.delta / maxDelta()) * graphHeight(),
+                    )}
                     color={
                       sample.delta > budget() * 1.1 ? C.accent : 0x4a4a55ff
                     }
@@ -239,14 +256,32 @@ export function Performance(props: {
               <view
                 width={graphWidth()}
                 height={1}
-                y={Math.max(0, 90 - (budget() / maxDelta()) * 90)}
+                y={Math.max(
+                  0,
+                  graphHeight() - (budget() / maxDelta()) * graphHeight(),
+                )}
                 color={0xffffff33}
               />
             </view>
-            <view display="flex" flexDirection="row" gap={S(6)}>
-              {stat('DISPLAY', hz() > 0 ? `${hz()} Hz` : 'n/a')}
-              {stat('FPS', fps() > 0 ? String(Math.round(fps())) : '—', true)}
-              {stat('CPU', `${stats().cpu.toFixed(1)} ms`)}
+            <view display="flex" flexDirection="row" gap={S(4)}>
+              {stat(
+                'DISPLAY',
+                hz() > 0 ? `${hz()} Hz` : 'n/a',
+                false,
+                Math.floor((graphWidth() - 2 * S(4)) / 3),
+              )}
+              {stat(
+                'FPS',
+                fps() > 0 ? String(Math.round(fps())) : 'n/a',
+                true,
+                Math.floor((graphWidth() - 2 * S(4)) / 3),
+              )}
+              {stat(
+                'CPU',
+                `${stats().cpu.toFixed(1)} ms`,
+                false,
+                Math.floor((graphWidth() - 2 * S(4)) / 3),
+              )}
             </view>
           </view>
 
@@ -255,7 +290,7 @@ export function Performance(props: {
             display="flex"
             flexDirection="column"
             gap={S(4)}
-            width={tv() ? 420 : mobile() ? width() - 2 * pad() : 320}
+            width={columnsWidth()}
           >
             <view display="flex" flexDirection="row" gap={S(6)}>
               {stat('FRAME BUDGET', `${budget().toFixed(1)} ms`)}
@@ -263,15 +298,11 @@ export function Performance(props: {
               {stat('P99', `${stats().p99.toFixed(1)} ms`)}
             </view>
             <view display="flex" flexDirection="row" gap={S(6)}>
-              {stat('DRAWS', draws() === undefined ? '—' : String(draws()))}
+              {stat('DRAWS', draws() === undefined ? 'n/a' : String(draws()))}
               {stat('SAMPLES', String(samples().length))}
               {stat('MODE', paused() ? 'paused' : 'live')}
             </view>
-            <text
-              fontSize={T.body}
-              color={C.muted}
-              width={tv() ? 420 : mobile() ? width() - 2 * pad() : 320}
-            >
+            <text fontSize={T.body} color={C.muted} width={columnsWidth()}>
               p99 is the frame that matters: under the panel's period, the scene
               holds its rate. The cpu figure is the frame's own work; a frame
               that misses has either a large cpu or a rate request that did not
@@ -328,7 +359,7 @@ export function Performance(props: {
                     CAPTURED
                   </text>
                   <text fontSize={T.body} color={C.text}>
-                    {`p50 ${shot.p50.toFixed(1)} ms · p99 ${shot.p99.toFixed(1)} ms · ${shot.hz > 0 ? `${shot.hz} Hz` : 'rate unknown'}`}
+                    {`p50 ${shot.p50.toFixed(1)} ms, p99 ${shot.p99.toFixed(1)} ms, ${shot.hz > 0 ? `${shot.hz} Hz` : 'rate unknown'}`}
                   </text>
                 </view>
               ) : null;

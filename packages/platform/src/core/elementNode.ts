@@ -1139,7 +1139,22 @@ export class ElementNode {
         ? 'radialGradient'
         : undefined;
     if (gradient !== undefined) {
-      this.shader = [gradient, v[gradient] as IRendererShaderProps];
+      // A gradient replaces the node's shader, so it has to round the node's
+      // corners itself: hand it the radius the rounded shader would have used.
+      const radius = v.borderRadius ?? v.rounded;
+      const props = v[gradient] as Record<string, unknown>;
+      this.shader = [
+        gradient,
+        (radius === undefined
+          ? props
+          : {
+              ...props,
+              radius:
+                typeof radius === 'object'
+                  ? (radius as { radius?: unknown }).radius
+                  : radius,
+            }) as IRendererShaderProps,
+      ];
       return;
     }
     let target = this.lng.shader || {};

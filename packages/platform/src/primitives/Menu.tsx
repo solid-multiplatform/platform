@@ -2,6 +2,7 @@ import { For, type JSX } from 'solid-js';
 import type { ElementNode } from '../core/elementNode.js';
 import type { NodeStyles } from '../core/intrinsicTypes.js';
 import { supports } from '../sdk/capabilities.js';
+import { useTheme } from '../sdk/theme.jsx';
 import type { Rect } from '../sdk/input.js';
 import { Column } from './Column.jsx';
 import { Popover, type PopoverPlacement } from './Popover.jsx';
@@ -31,11 +32,7 @@ export interface MenuProps {
   children?: JSX.Element;
 }
 
-const ITEM_STYLE: NodeStyles = {
-  color: 0x2f3d4eff,
-  $focus: { color: 0x2563ebff },
-};
-const DISABLED_STYLE: NodeStyles = { color: 0x1d2937ff };
+
 
 /**
  * List of actions anchored to a control. This is the Flutter `PopupMenuButton`
@@ -46,6 +43,12 @@ const DISABLED_STYLE: NodeStyles = { color: 0x1d2937ff };
 export function Menu(props: MenuProps): JSX.Element {
   // A ten-foot menu is larger than a pointer menu; the box, rows and type
   // scale together so the same items stay readable across the room.
+  const theme = useTheme();
+  const itemStyle = (): NodeStyles => ({
+    color: theme.colors.surfaceRaised,
+    $focus: { color: theme.colors.primary },
+  });
+  const disabledStyle = (): NodeStyles => ({ color: theme.colors.surface });
   const tv = supports('remote');
   const rowHeight = tv ? 72 : 56;
   const width = tv ? 420 : 280;
@@ -95,7 +98,7 @@ export function Menu(props: MenuProps): JSX.Element {
               <view
                 width={width}
                 height={rowHeight}
-                style={item.disabled ? DISABLED_STYLE : ITEM_STYLE}
+                style={item.disabled ? disabledStyle() : itemStyle()}
                 skipFocus={item.disabled}
                 role="menuitem"
                 ariaLabel={item.label}
@@ -112,7 +115,7 @@ export function Menu(props: MenuProps): JSX.Element {
                   width={4}
                   height={18}
                   borderRadius={2}
-                  color={0x2563ebff}
+                  color={theme.colors.primary}
                   alpha={item.checked ? 1 : 0}
                 />
                 <text
@@ -123,10 +126,10 @@ export function Menu(props: MenuProps): JSX.Element {
                   fontSize={fontSize}
                   color={
                     item.disabled
-                      ? 0x5b6b7cff
+                      ? theme.colors.textMuted
                       : item.destructive
-                        ? 0xf87171ff
-                        : 0xf2f6faff
+                        ? theme.colors.danger
+                        : theme.colors.text
                   }
                 >
                   {item.label}

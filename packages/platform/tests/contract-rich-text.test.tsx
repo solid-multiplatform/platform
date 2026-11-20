@@ -52,14 +52,16 @@ v.describe('layoutRichText', () => {
     ]);
   });
 
-  v.it('truncates with an ellipsis at maxLines', () => {
+  v.it('truncates with an ASCII ellipsis at maxLines', () => {
+    // Three dots, not '…': the shipped MSDF atlases carry no U+2026, so the
+    // scene would draw a blank where the ellipsis should be.
     const result = layout([{ text: 'abcdef' }], {
       width: 50,
       maxLines: 1,
     });
     v.expect(result.lines).toHaveLength(1);
     v.expect(result.lines[0]!.runs.map((run) => run.text).join('')).toBe(
-      'abcd…',
+      'ab...',
     );
   });
 

@@ -191,7 +191,7 @@ export function layoutRichText(
 
   if (clipped && options.ellipsis !== false) {
     const last = lines[lines.length - 1]!;
-    const suffix = '…';
+    const suffix = '...';
     const styleSpan = spans[0] ?? { text: '' };
     const suffixWidth = measure(suffix, styleSpan);
     while (last.runs.length) {

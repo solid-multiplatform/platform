@@ -514,8 +514,8 @@ const cases: FlexCase[] = [
     },
     kids: [A(), B()],
     expected: res(false, { w: 300, h: 100 }, [
-      { x: 180, y: U, w: 50, h: 50 },
-      { x: 230, y: U, w: 60, h: 40 },
+      { x: 180, y: 10, w: 50, h: 50 },
+      { x: 230, y: 10, w: 60, h: 40 },
     ]),
   },
   {
@@ -528,8 +528,8 @@ const cases: FlexCase[] = [
     },
     kids: [A(), B()],
     expected: res(false, { w: 300, h: 100 }, [
-      { x: 95, y: U, w: 50, h: 50 },
-      { x: 145, y: U, w: 60, h: 40 },
+      { x: 95, y: 10, w: 50, h: 50 },
+      { x: 145, y: 10, w: 60, h: 40 },
     ]),
   },
   {
@@ -542,8 +542,8 @@ const cases: FlexCase[] = [
     },
     kids: [A(), B()],
     expected: res(false, { w: 300, h: 100 }, [
-      { x: 10, y: U, w: 50, h: 50 },
-      { x: 230, y: U, w: 60, h: 40 },
+      { x: 10, y: 10, w: 50, h: 50 },
+      { x: 230, y: 10, w: 60, h: 40 },
     ]),
   },
   {
@@ -556,8 +556,8 @@ const cases: FlexCase[] = [
     },
     kids: [A(), B()],
     expected: res(false, { w: 310, h: 100 }, [
-      { x: 70, y: U, w: 50, h: 50 },
-      { x: 180, y: U, w: 60, h: 40 },
+      { x: 70, y: 10, w: 50, h: 50 },
+      { x: 180, y: 10, w: 60, h: 40 },
     ]),
   },
   {
@@ -570,8 +570,8 @@ const cases: FlexCase[] = [
     },
     kids: [A(), B()],
     expected: res(false, { w: 300, h: 100 }, [
-      { x: 52.5, y: U, w: 50, h: 50 },
-      { x: 187.5, y: U, w: 60, h: 40 },
+      { x: 52.5, y: 10, w: 50, h: 50 },
+      { x: 187.5, y: 10, w: 60, h: 40 },
     ]),
   },
   {
@@ -584,8 +584,8 @@ const cases: FlexCase[] = [
     },
     kids: [A(), B()],
     expected: res(true, { w: 200, h: 110 }, [
-      { x: U, y: 10, w: 50, h: 50 },
-      { x: U, y: 60, w: 60, h: 40 },
+      { x: 10, y: 10, w: 50, h: 50 },
+      { x: 10, y: 60, w: 60, h: 40 },
     ]),
   },
 
@@ -907,47 +907,38 @@ describe('contract: flex props, table', () => {
 describe('contract: flex props, details', () => {
   const engine = flex;
 
-  it(
-    'flexGrow: a second pass on the same tree gives the same result',
-    () => {
-      const { node, children } = build({ width: 300, gap: 10 }, [
-        A({ flexGrow: 1 }),
-        B(),
-      ]);
-      const first = snapshot(node, children, engine(node));
-      const second = snapshot(node, children, engine(node));
-      expect(second).toEqual(first);
-      expect(first.children[0]).toEqual({ x: 0, y: U, w: 230, h: 50 });
-    },
-  );
+  it('flexGrow: a second pass on the same tree gives the same result', () => {
+    const { node, children } = build({ width: 300, gap: 10 }, [
+      A({ flexGrow: 1 }),
+      B(),
+    ]);
+    const first = snapshot(node, children, engine(node));
+    const second = snapshot(node, children, engine(node));
+    expect(second).toEqual(first);
+    expect(first.children[0]).toEqual({ x: 0, y: U, w: 230, h: 50 });
+  });
 
   // flexGrow starts from the item's own size on every pass: after the sibling
   // grows to 100 the grow item is 300 - 100 - 10 = 190.
-  it(
-    'flexGrow: a grown item shrinks back when a sibling grows',
-    () => {
-      const { node, children } = build({ width: 300, gap: 10 }, [
-        A({ flexGrow: 1 }),
-        B(),
-      ]);
-      engine(node);
-      const [grow, sibling] = children as ElementNode[];
-      sibling!.width = 100;
-      engine(node);
-      expect(grow!.width).toBe(190);
-      expect(sibling!.x).toBe(200);
-    },
-  );
+  it('flexGrow: a grown item shrinks back when a sibling grows', () => {
+    const { node, children } = build({ width: 300, gap: 10 }, [
+      A({ flexGrow: 1 }),
+      B(),
+    ]);
+    engine(node);
+    const [grow, sibling] = children as ElementNode[];
+    sibling!.width = 100;
+    engine(node);
+    expect(grow!.width).toBe(190);
+    expect(sibling!.x).toBe(200);
+  });
 
-  it(
-    'flexGrow: the container gets flexBoundary "fixed" written onto it',
-    () => {
-      const { node } = build({ width: 300 }, [A({ flexGrow: 1 }), B()]);
-      expect(node.flexBoundary).toBeUndefined();
-      engine(node);
-      expect(node.flexBoundary).toBe('fixed');
-    },
-  );
+  it('flexGrow: the container gets flexBoundary "fixed" written onto it', () => {
+    const { node } = build({ width: 300 }, [A({ flexGrow: 1 }), B()]);
+    expect(node.flexBoundary).toBeUndefined();
+    engine(node);
+    expect(node.flexBoundary).toBe('fixed');
+  });
 
   it('flexGrow with no free space warns in dev', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -1066,56 +1057,47 @@ describe('contract: flex props, details', () => {
 
   // With a symmetric padding the items are centered in the container:
   // (300 - 110) / 2 = 95.
-  it(
-    'padding + justifyContent center centers the items',
-    () => {
-      const r = run(engine, {
-        container: {
-          width: 300,
-          height: 100,
-          padding: 10,
-          justifyContent: 'center',
-        },
-        kids: [A(), B()],
-      });
-      expect(r.children.map((c) => c.x)).toEqual([95, 145]);
-    },
-  );
+  it('padding + justifyContent center centers the items', () => {
+    const r = run(engine, {
+      container: {
+        width: 300,
+        height: 100,
+        padding: 10,
+        justifyContent: 'center',
+      },
+      kids: [A(), B()],
+    });
+    expect(r.children.map((c) => c.x)).toEqual([95, 145]);
+  });
 
-  it(
-    'flexWrap moves wrapped items to the next line even when the container has no height',
-    () => {
-      const r = run(engine, {
-        container: { width: 250, gap: 10, flexWrap: 'wrap' },
-        kids: [view(100, 50), view(100, 50), view(100, 50)],
-      });
-      expect(r.children.map((c) => c.y)).toEqual([0, 0, 60]);
-    },
-  );
+  it('flexWrap moves wrapped items to the next line even when the container has no height', () => {
+    const r = run(engine, {
+      container: { width: 250, gap: 10, flexWrap: 'wrap' },
+      kids: [view(100, 50), view(100, 50), view(100, 50)],
+    });
+    expect(r.children.map((c) => c.y)).toEqual([0, 0, 60]);
+  });
 
   // wrap-reverse puts the first line at the bottom of the grown container:
   // lines at y 60 and 0 in a 110-high container, width kept.
-  it(
-    'flexWrap wrap-reverse stacks lines from the bottom',
-    () => {
-      const r = run(engine, {
-        container: {
-          width: 250,
-          height: 50,
-          gap: 10,
-          flexWrap: 'wrap-reverse',
-        },
-        kids: [view(100, 50), view(100, 50), view(100, 50)],
-      });
-      expect(r).toEqual(
-        res(true, { w: 250, h: 110 }, [
-          { x: 0, y: 60, w: 100, h: 50 },
-          { x: 110, y: 60, w: 100, h: 50 },
-          { x: 0, y: 0, w: 100, h: 50 },
-        ]),
-      );
-    },
-  );
+  it('flexWrap wrap-reverse stacks lines from the bottom', () => {
+    const r = run(engine, {
+      container: {
+        width: 250,
+        height: 50,
+        gap: 10,
+        flexWrap: 'wrap-reverse',
+      },
+      kids: [view(100, 50), view(100, 50), view(100, 50)],
+    });
+    expect(r).toEqual(
+      res(true, { w: 250, h: 110 }, [
+        { x: 0, y: 60, w: 100, h: 50 },
+        { x: 110, y: 60, w: 100, h: 50 },
+        { x: 0, y: 0, w: 100, h: 50 },
+      ]),
+    );
+  });
 
   // Cross-axis flexEnd with padding keeps the child inside the padded box:
   // y = 100 - 10 - 50 = 40 for a 50-high child.
@@ -1139,6 +1121,22 @@ describe('contract: flex props, details', () => {
 // ---------------------------------------------------------------------------
 
 describe('contract: flex through the renderer', () => {
+  it('padding offsets children on both axes without an alignItems', async () => {
+    let item!: lng.ElementNode;
+    let label!: lng.ElementNode;
+    const dispose = renderer.render(() => (
+      <view display="flex" flexDirection="column" padding={20} width={400}>
+        <view ref={item} width={100} height={50} />
+        <text ref={label}>hello</text>
+      </view>
+    ));
+    await waitForUpdate();
+    expect(item.x).toBe(20);
+    expect(item.y).toBe(20);
+    expect(label.x).toBe(20);
+    dispose();
+  });
+
   it('margin arrays offset the item', async () => {
     let item!: lng.ElementNode;
     const dispose = renderer.render(() => (
@@ -1586,7 +1584,7 @@ describe('contract: flex padding in fitted cross size', () => {
     dispose();
   });
 
-  it('an explicit height is kept, and without alignItems the children keep their own y', async () => {
+  it('an explicit height is kept, and children start at the padded edge', async () => {
     let row!: lng.ElementNode;
     let a!: lng.ElementNode;
     const dispose = renderer.render(() => (
@@ -1596,7 +1594,7 @@ describe('contract: flex padding in fitted cross size', () => {
     ));
     await waitForUpdate();
     expect(row.height).toBe(300);
-    expect([a.x, a.y]).toEqual([10, 0]);
+    expect([a.x, a.y]).toEqual([10, 10]);
     dispose();
   });
 
@@ -1628,7 +1626,7 @@ describe('contract: flex padding in fitted cross size', () => {
     ));
     await waitForUpdate();
     expect([col.width, col.height]).toEqual([800, 110]);
-    expect([a.x, a.y]).toEqual([0, 10]);
+    expect([a.x, a.y]).toEqual([10, 10]);
     // 800 - 10 - 60
     expect([b.x, b.y]).toEqual([730, 60]);
     dispose();
@@ -1683,8 +1681,8 @@ describe('contract: flex grow and shrink inside padding', () => {
     // free = 300 - 20 - 50 - 60 = 170; B ends at 290 = 300 - 10.
     expect(r).toEqual(
       res(false, { w: 300, h: 100 }, [
-        { x: 10, y: U, w: 220, h: 50 },
-        { x: 230, y: U, w: 60, h: 40 },
+        { x: 10, y: 10, w: 220, h: 50 },
+        { x: 230, y: 10, w: 60, h: 40 },
       ]),
     );
   });
