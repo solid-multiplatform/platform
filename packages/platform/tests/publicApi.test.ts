@@ -326,7 +326,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   });
 
   v.test(
-    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 104 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 106 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
@@ -335,6 +335,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'Announcer',
         'AppErrorBoundary',
         'BorderBoxStyle',
+        'ChatMessage',
         'Checkbox',
         'Column',
         'ContextMenu',
@@ -352,6 +353,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'LazyColumn',
         'LazyRow',
         'ListState',
+        'Markdown',
         'Marquee',
         'MarqueeText',
         'Menu',
@@ -745,6 +747,7 @@ v.describe('package.json exports', () => {
       '.',
       './primitives',
       './primitives/router',
+      './markdown',
       './devtools',
       './devtools/jsx-locator',
       './shaders',

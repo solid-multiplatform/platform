@@ -27,6 +27,13 @@
         "default": "./dist/src/primitives/routerIndex.js"
       }
     },
+    "./markdown": {
+      "@solidtv/source": "./src/markdown/index.ts",
+      "import": {
+        "types": "./dist/src/markdown/index.d.ts",
+        "default": "./dist/src/markdown/index.js"
+      }
+    },
     "./devtools": {
       "@solidtv/source": "./src/devtools/index.ts",
       "import": {

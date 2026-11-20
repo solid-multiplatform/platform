@@ -3,6 +3,8 @@ export interface RichTextSpan {
   color?: number;
   fontSize?: number;
   fontWeight?: number | string;
+  /** `normal`, `italic` or `oblique`; resolves to a registered face. */
+  fontStyle?: 'normal' | 'italic' | 'oblique';
   fontFamily?: string;
   letterSpacing?: number;
 }
@@ -17,6 +19,7 @@ export interface RichTextRun {
   color: number;
   fontSize: number;
   fontWeight?: number | string;
+  fontStyle?: 'normal' | 'italic' | 'oblique';
   fontFamily?: string;
   letterSpacing?: number;
 }
@@ -64,6 +67,7 @@ const resolveStyle = (span: RichTextSpan, options: RichTextLayoutOptions) => ({
   color: span.color ?? options.color ?? 0xffffffff,
   fontSize: span.fontSize ?? options.fontSize ?? 24,
   fontWeight: span.fontWeight,
+  fontStyle: span.fontStyle,
   fontFamily: span.fontFamily,
   letterSpacing: span.letterSpacing,
 });
@@ -113,6 +117,7 @@ export function layoutRichText(
       color: style.color,
       fontSize: style.fontSize,
       fontWeight: style.fontWeight,
+      fontStyle: style.fontStyle,
       fontFamily: style.fontFamily,
       letterSpacing: style.letterSpacing,
     });
