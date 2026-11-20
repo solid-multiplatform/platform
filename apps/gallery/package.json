@@ -1,0 +1,27 @@
+{
+  "name": "gallery",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Sona: one product on phone, TV and desktop — a design gallery for every primitive",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "build": "vite build",
+    "build:tizen": "vite build --mode tizen",
+    "build:webos": "vite build --mode webos",
+    "build:desktop": "node ../../packages/host-desktop/cli/index.mjs build src/main.desktop.tsx --out dist/desktop --assets ../../packages/platform/tests/webgl/fonts",
+    "desktop": "echo \"run: ../../packages/host-desktop/native/target/release/solid-desktop --title-bar=custom --script dist/desktop/app.js\""
+  },
+  "dependencies": {
+    "@solid-multiplatform/platform": "workspace:*",
+    "@solid-multiplatform/renderer": "workspace:*",
+    "@solid-multiplatform/host-desktop": "workspace:*",
+    "solid-js": "1.9.17"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.0.13",
+    "vite-plugin-solid": "^2.11.12"
+  }
+}

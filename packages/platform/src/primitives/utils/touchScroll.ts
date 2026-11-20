@@ -41,6 +41,10 @@ export interface TouchScrollBinding {
   reveal(child: ElementNode | undefined, duration?: number): void;
   /** Stop any fling or settle. */
   stop(): void;
+  /** Move the content by a wheel delta (scene units, already normalised). */
+  wheel(delta: number): void;
+  /** Move the content by a wheel delta (scene units, already normalised). */
+  wheel(delta: number): void;
   /** Adopt a position written by something else, before a drag claims it. */
   sync(): void;
   dispose(): void;
@@ -246,6 +250,14 @@ export function bindTouchScroll(
     layout,
     reveal,
     stop: () => engine.stop(),
+    wheel(delta) {
+      if (delta === 0) return;
+      // A wheel is direct manipulation, like a finger: the content moves at
+      // once, and the platform's own momentum is the event stream that
+      // follows. No animation of our own.
+      engine.stop();
+      engine.to(engine.offset() + delta, 0);
+    },
     sync,
     dispose() {
       if (bindings.get(node) === binding) bindings.delete(node);

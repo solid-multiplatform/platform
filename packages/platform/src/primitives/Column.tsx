@@ -13,10 +13,7 @@ import {
   defaultTransitionDown,
   defaultTransitionUp,
 } from './utils/handleNavigation.js';
-import {
-  scrollColumn,
-  scrollColumnIntoView,
-} from './utils/withScrolling.js';
+import { scrollColumn, scrollColumnIntoView } from './utils/withScrolling.js';
 import { chainFunctions, chainRefs } from './utils/chainFunctions.js';
 import { registerFocusKey, unregisterFocusKey } from './screenHistory.js';
 import type { ColumnProps, OnSelectedChanged } from './types.js';
@@ -51,6 +48,10 @@ export const Column: Component<ColumnProps> = (props) => {
   ) => touchBinding?.drag(phase, point, origin);
 
   const layoutTouch = () => touchBinding?.layout();
+  const dragWheel = (event: { deltaX: number; deltaY: number }): boolean => {
+    touchBinding?.wheel(event.deltaY);
+    return true;
+  };
   const revealInitial = () => {
     if (columnNode === undefined) return;
     const child = columnNode.children[columnNode.selected ?? 0];
@@ -108,7 +109,10 @@ export const Column: Component<ColumnProps> = (props) => {
       }
       onKeyPress={/* @once */ chainFunctions(props.onKeyPress, onPage)}
       onPointerScroll={
-        /* @once */ chainFunctions(props.onPointerScroll, onWheel)
+        /* @once */
+        touch
+          ? chainFunctions(props.onPointerScroll, dragWheel)
+          : chainFunctions(props.onPointerScroll, onWheel)
       }
       selected={props.selected || 0}
       scrollToIndex={scrollToIndex}
