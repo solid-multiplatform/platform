@@ -58,7 +58,8 @@ export interface SelectableTextProps extends NodeTextProps {
  * double click selects a word, and a double-click drag extends by words.
  * Releasing keeps the selection; a click without a drag clears it. On a host
  * with keys, Shift+Arrow extends by character, Shift+Ctrl/Cmd+Arrow by word,
- * Ctrl/Cmd+C copies, and Escape clears. An app writes none of this.
+ * Ctrl/Cmd+C copies, and Escape clears (and still acts as Back). An app
+ * writes none of this.
  *
  * The highlight is drawn in the scene behind the glyphs: one quad per line
  * segment, in the theme's `selection` colour. It works with wrapped,
@@ -249,8 +250,11 @@ export function SelectableText(props: SelectableTextProps): JSX.Element {
       return true;
     }
     if (key === 'Escape' && selection() !== null) {
+      // Clear, then let Escape continue: on a keyboard host Escape is Back,
+      // and leaving the screen drops the selection anyway. Consuming it made
+      // the first Back press do nothing.
       clear();
-      return true;
+      return false;
     }
     if (event.shiftKey !== true) return false;
     const direction = key === 'ArrowLeft' ? -1 : key === 'ArrowRight' ? 1 : 0;
