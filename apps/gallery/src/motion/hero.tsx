@@ -3,6 +3,7 @@ import type { ElementNode } from '@solid-multiplatform/platform';
 import type { Album } from '../data';
 import { Cover } from '../components/Cover';
 import { heroEase, lerp } from './ease';
+import { cancelFrame, nextFrame, now } from './frame';
 
 /** A rect in scene units: what matched geometry interpolates. */
 export interface HeroRect {
@@ -58,16 +59,16 @@ export function HeroFlight(props: {
   const [t, setT] = createSignal(0);
   onMount(() => {
     const duration = props.duration ?? 420;
-    const start = performance.now();
+    const start = now();
     let frame = 0;
-    const step = (now: number) => {
-      const p = Math.min(1, Math.max(0, (now - start) / duration));
+    const step = (at: number) => {
+      const p = Math.min(1, Math.max(0, (at - start) / duration));
       setT(heroEase(p));
-      if (p < 1) frame = requestAnimationFrame(step);
+      if (p < 1) frame = nextFrame(step);
       else props.onDone?.();
     };
-    frame = requestAnimationFrame(step);
-    onCleanup(() => cancelAnimationFrame(frame));
+    frame = nextFrame(step);
+    onCleanup(() => cancelFrame(frame));
   });
   // Fixed layout box, in source units; only the transform changes. The
   // corner radius is divided by the same scale so it stays the size it lands

@@ -5,6 +5,7 @@ import {
   Show,
   type JSX,
 } from 'solid-js';
+import { cancelFrame, nextFrame, now } from './frame';
 
 /**
  * SwiftUI's `contentTransition(.numericText)`: when the value changes the old
@@ -26,16 +27,16 @@ export function AnimatedNumber(props: {
   let frame = 0;
 
   const run = () => {
-    cancelAnimationFrame(frame);
+    cancelFrame(frame);
     const duration = props.duration ?? 220;
-    const start = performance.now();
-    const step = (now: number) => {
-      const p = Math.min(1, Math.max(0, (now - start) / duration));
+    const start = now();
+    const step = (at: number) => {
+      const p = Math.min(1, Math.max(0, (at - start) / duration));
       setT(p);
-      if (p < 1) frame = requestAnimationFrame(step);
+      if (p < 1) frame = nextFrame(step);
       else setLeaving(undefined);
     };
-    frame = requestAnimationFrame(step);
+    frame = nextFrame(step);
   };
 
   createEffect(() => {
@@ -46,7 +47,7 @@ export function AnimatedNumber(props: {
     setT(0);
     run();
   });
-  onCleanup(() => cancelAnimationFrame(frame));
+  onCleanup(() => cancelFrame(frame));
 
   const rise = () => Math.round(props.height * (1 - t()));
   return (

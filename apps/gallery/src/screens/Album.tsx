@@ -23,6 +23,7 @@ import { C, formatTime, formatTotal, R, S, T } from '../theme';
 import { pageLayout } from '../layout';
 import { GhostButton, GradientButton, IconButton } from './Library';
 import { rectOf, type HeroRect } from '../motion/hero';
+import { cancelFrame, nextFrame } from '../motion/frame';
 
 const NOTES = (album: Album): string =>
   `## About *${album.title}*\n\nRecorded over two winters in a room with one window. The ${album.genre.toLowerCase()} arrangements were cut live, mostly first takes.\n\n- Produced by ${album.artist}\n- Mixed at night\n- Mastered for headphones and for a kitchen radio`;
@@ -52,7 +53,7 @@ export function AlbumScreen(props: {
   let coverNode: ElementNode | undefined;
   let rootNode: ElementNode | undefined;
   onMount(() => {
-    const frame = requestAnimationFrame(() => {
+    const frame = nextFrame(() => {
       const rect = rectOf(coverNode);
       if (rect !== undefined) props.onCoverRect?.(rect);
     });
@@ -61,7 +62,7 @@ export function AlbumScreen(props: {
     const release =
       rootNode === undefined ? undefined : pushFocusTrap(rootNode);
     onCleanup(() => {
-      cancelAnimationFrame(frame);
+      cancelFrame(frame);
       release?.();
     });
   });

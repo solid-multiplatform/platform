@@ -1,5 +1,6 @@
 import { createSignal, onCleanup, onMount, type Accessor } from 'solid-js';
 import { useViewport } from '@solid-multiplatform/platform/app';
+import { cancelFrame, nextFrame, now } from './frame';
 
 export interface Pulse {
   /** 0..1 through the current phase. */
@@ -30,31 +31,31 @@ export function createPulse(options: {
     const phases = Math.max(1, options.phases);
     const cycles = Math.max(1, options.cycles ?? 3);
     let frame = 0;
-    let start = performance.now();
+    let start = now();
     let index = 0;
     let remaining = phases * cycles;
-    const step = (now: number) => {
+    const step = (at: number) => {
       if (options.paused?.() === true) {
-        start = now;
-        frame = requestAnimationFrame(step);
+        start = at;
+        frame = nextFrame(step);
         return;
       }
-      const p = Math.min(1, Math.max(0, (now - start) / duration));
+      const p = Math.min(1, Math.max(0, (at - start) / duration));
       setPhase(index);
       setProgress(p);
       if (p >= 1) {
         index = (index + 1) % phases;
-        start = now;
+        start = at;
         // A sequence is an entrance, not a timer: it settles and stops.
         if (--remaining <= 0) {
           frame = 0;
           return;
         }
       }
-      frame = requestAnimationFrame(step);
+      frame = nextFrame(step);
     };
-    frame = requestAnimationFrame(step);
-    onCleanup(() => cancelAnimationFrame(frame));
+    frame = nextFrame(step);
+    onCleanup(() => cancelFrame(frame));
   });
   return { progress, phase };
 }

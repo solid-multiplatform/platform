@@ -72,6 +72,18 @@ rmSync(path.join(scratch, 'src'), { recursive: true, force: true });
 cpSync(path.join(here, 'src'), path.join(scratch, 'src'), { recursive: true });
 // The CLI expects the app as `src/app.tsx`; the repo's file is `app-entry.tsx`
 // so it does not collide with `App.tsx` on a case-insensitive filesystem.
+if (roku) {
+  // Roku's bundler (esbuild) sees `App.tsx` and `app.tsx` as one name and
+  // resolves `./App` to the wrong file. Give the screen another name there.
+  const srcDir = path.join(scratch, 'src');
+  cpSync(path.join(srcDir, 'App.tsx'), path.join(srcDir, 'app-shell.tsx'));
+  const entry = path.join(srcDir, 'app-entry.tsx');
+  writeFileSync(
+    entry,
+    readFileSync(entry, 'utf8').replace("from './App'", "from './app-shell'"),
+  );
+  rmSync(path.join(srcDir, 'App.tsx'));
+}
 writeFileSync(
   path.join(scratch, 'src/app.tsx'),
   "import { App } from './app-entry';\nexport default App;\n",
@@ -84,17 +96,20 @@ writeFileSync(
   path.join(scratch, 'solid-platform.config.json'),
   JSON.stringify(projectConfig, null, 2) + '\n',
 );
-const nsConfig = path.join(
-  scratch,
-  `targets/${targetName}/nativescript.config.ts`,
-);
-writeFileSync(
-  nsConfig,
-  readFileSync(nsConfig, 'utf8').replace(
-    /id:\s*['"][^'"]+['"]/,
-    "id: 'dev.solidapp.sona'",
-  ),
-);
+// A Roku target has no NativeScript config; only the Android targets do.
+if (!roku) {
+  const nsConfig = path.join(
+    scratch,
+    `targets/${targetName}/nativescript.config.ts`,
+  );
+  writeFileSync(
+    nsConfig,
+    readFileSync(nsConfig, 'utf8').replace(
+      /id:\s*['"][^'"]+['"]/,
+      "id: 'dev.solidapp.sona'",
+    ),
+  );
+}
 
 if (!tv && !roku) {
   step('Locking the gallery to portrait');
