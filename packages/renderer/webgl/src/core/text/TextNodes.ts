@@ -84,6 +84,8 @@ export class TextNodes {
 
   private readonly nodes: NodeStore;
   private readonly fonts: FontRegistry;
+  /** Text ids using a family's face because the weighted name was missing. */
+  private readonly fallback = new Map<string, number[]>();
   /** `loaded`, delivered between walks; `failed` waits for the frame's events. */
   private readonly loadedEvents: FrameEvents;
   private readonly events: FrameEvents;
@@ -130,16 +132,30 @@ export class TextNodes {
     const s = this.nodes;
     const t = s.texts[id] as TextState;
     const name = t.fontFamily;
-    if (t.waiting !== null && t.waiting !== name) {
+    const font = this.fonts.get(name);
+    // A weight with no face waits on the face it actually draws with: the
+    // family's own. Waiting on the missing weight would leave it parked when
+    // the family arrives.
+    const waitFor =
+      font !== undefined && font.names.indexOf(name) === -1
+        ? font.names[0]!
+        : name;
+    if (t.waiting !== null && t.waiting !== waitFor) {
       this.unpark(id, t);
     }
-    const font = this.fonts.get(name);
+    if (font !== undefined && font.names.indexOf(name) === -1) {
+      // The weight name has no face: this node draws the family's own and
+      // moves to the real face if one is loaded later.
+      const list = this.fallback.get(name);
+      if (list === undefined) this.fallback.set(name, [id]);
+      else if (list.indexOf(id) === -1) list.push(id);
+    }
     if (font === undefined || font.font === null) {
       t.layout = null;
       t.font = null;
       s.u32[id * I_STRIDE + I_STATE] =
         s.u32[id * I_STRIDE + I_STATE]! & ~ST_TEXT_READY;
-      this.park(id, t, name);
+      this.park(id, t, waitFor);
       return 0;
     }
     this.syncDirection(id, t);
@@ -602,6 +618,12 @@ export class TextNodes {
       }
       if (ready === true) {
         this.waiting.delete(name);
+        const fallback = this.fallback.get(name);
+        if (fallback !== undefined) {
+          this.fallback.delete(name);
+          for (let k = 0; k < fallback.length; k++)
+            s.markDirty(fallback[k]!, DIRTY_LAYOUT);
+        }
       }
       for (let j = 0; j < list.length; j++) {
         const id = list[j]!;
