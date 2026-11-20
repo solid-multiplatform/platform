@@ -60,6 +60,10 @@ export const Row: Component<RowProps> = (props) => {
   ) => touchBinding?.drag(phase, point, origin);
 
   const layoutTouch = () => touchBinding?.layout();
+  const dragWheel = (event: { deltaX: number; deltaY: number }): boolean => {
+    touchBinding?.wheel(event.deltaX);
+    return true;
+  };
   const revealInitial = () => {
     if (rowNode === undefined) return;
     const child = rowNode.children[rowNode.selected ?? 0];
@@ -118,7 +122,10 @@ export const Row: Component<RowProps> = (props) => {
       }
       onKeyPress={/* @once */ chainFunctions(props.onKeyPress, onPage)}
       onPointerScroll={
-        /* @once */ chainFunctions(props.onPointerScroll, onWheel)
+        /* @once */
+        touch
+          ? chainFunctions(props.onPointerScroll, dragWheel)
+          : chainFunctions(props.onPointerScroll, onWheel)
       }
       forwardFocus={navigableForwardFocus}
       scrollToIndex={scrollToIndex}

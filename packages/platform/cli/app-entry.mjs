@@ -25,7 +25,8 @@ export function appModule(work) {
   return {
     component:
       /^\s*export\s+default\b/m.test(source) ||
-      /export\s*\{[^}]*\bas\s+default\b[^}]*\}/.test(source),
+      /export\s*\{[^}]*\bas\s+default\b[^}]*\}/.test(source) ||
+      /export\s*\{\s*default\s*\}/.test(source),
     options: exports('options'),
   };
 }

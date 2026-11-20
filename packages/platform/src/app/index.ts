@@ -101,4 +101,5 @@ export { ThemeProvider, useTheme, type Theme } from '../sdk/theme.jsx';
 
 // The types of the optional `options` export of `src/app.tsx`.
 export type { AppSettings } from './entry.js';
+export { HostScope } from './context.js';
 export type { DesignSize } from './context.js';

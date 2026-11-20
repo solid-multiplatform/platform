@@ -102,9 +102,20 @@ export class FontRegistry {
     this.textures = textures;
   }
 
-  /** The font registered under `name`, loaded or loading; undefined otherwise. */
+  /**
+   * The font registered under `name`, loaded or loading; undefined otherwise.
+   *
+   * A text node's family is the family plus its weight (`Roboto700`). When no
+   * face holds that name, the family's own face is used instead: text in a
+   * weight an app never registered draws regular rather than parking forever,
+   * which used to mean invisible text. A face that arrives later marks the
+   * fallback nodes dirty (see `TextNodes.fontChanged`).
+   */
   get(name: string): FontRecord | undefined {
-    return this.byName.get(name);
+    const direct = this.byName.get(name);
+    if (direct !== undefined) return direct;
+    const weighted = /^(.*?)([1-9]00)$/.exec(name);
+    return weighted === null ? undefined : this.byName.get(weighted[1]!);
   }
 
   /**

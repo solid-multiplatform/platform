@@ -72,19 +72,24 @@ export function Checkbox(props: CheckboxProps): JSX.Element {
         }
         borderRadius={theme().radius.small}
       >
-        {checked() ? (
-          <text
-            x={0}
-            y={2}
-            width={box}
-            contain="width"
-            textAlign="center"
-            fontSize={20}
-            color={theme().colors.onPrimary}
-          >
-            ✓
-          </text>
-        ) : null}
+        {/* Drawn, not a glyph: the MSDF faces an app registers often have no
+            checkmark, and a missing glyph is an empty box. */}
+        <view
+          width={9}
+          height={2}
+          x={5}
+          y={14}
+          rotation={0.8}
+          color={checked() ? theme().colors.onPrimary : 0x00000000}
+        />
+        <view
+          width={5}
+          height={2}
+          x={12}
+          y={17}
+          rotation={-0.8}
+          color={checked() ? theme().colors.onPrimary : 0x00000000}
+        />
       </view>
       <text
         x={8 + box + 12}
