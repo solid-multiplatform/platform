@@ -69,10 +69,13 @@ frame at 120 Hz, and a scroll over cached messages parses nothing.
 
 ## Rendering limits
 
-- Inline styles map onto what the scene has: strong is weight 700, emphasis is
-  `fontStyle: italic` (register an italic face, or the normal one is used),
-  inline code is a colour plus the optional `codeFontFamily`, links are a
-  colour and `onLink`, strikethrough is muted — there is no strike line.
+- Inline styles map onto what the scene has. Strong is weight 700; the WebGL
+  backend chooses a face by family and has no weight axis, so pass a
+  registered bold face through `strongFontFamily` for bold to show there (the
+  DOM backend applies the weight itself). Emphasis is `fontStyle: italic`
+  (register an italic face, or the normal one is used), inline code is a
+  colour plus the optional `codeFontFamily`, links are a colour and `onLink`,
+  and strikethrough is muted — there is no strike line.
 - Code blocks wrap at the width and clip to the box; there is no horizontal
   code scrolling yet.
 - A link press is hit-tested against the laid-out runs, so a paragraph with

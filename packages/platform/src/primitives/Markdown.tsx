@@ -31,6 +31,12 @@ export interface MarkdownProps {
   codeColor?: number;
   codeBackground?: number;
   codeFontFamily?: string;
+  /**
+   * A registered bold face's family. The WebGL backend chooses a face by
+   * family (it has no weight axis), so `**strong**` is weight 700 — which the
+   * DOM backend draws and WebGL only honours through this family.
+   */
+  strongFontFamily?: string;
   quoteBackground?: number;
   ruleColor?: number;
   /** Called when a link is pressed; without it a link is only coloured. */
@@ -81,7 +87,11 @@ function inlineSpans(
       case 'strong':
         inlineSpans(
           node.children,
-          { ...style, fontWeight: 700 },
+          {
+            ...style,
+            fontWeight: 700,
+            fontFamily: props.strongFontFamily ?? style.fontFamily,
+          },
           props,
           out,
           href,
@@ -147,7 +157,6 @@ function spansOf(
   return out;
 }
 
-
 /**
  * The props a nested block row inherits. Spreading the component's own props
  * would carry `block`/`blocks` down and make a list render itself; only the
@@ -164,6 +173,7 @@ function optionsOf(props: MarkdownProps): MarkdownProps {
     codeColor: props.codeColor,
     codeBackground: props.codeBackground,
     codeFontFamily: props.codeFontFamily,
+    strongFontFamily: props.strongFontFamily,
     quoteBackground: props.quoteBackground,
     ruleColor: props.ruleColor,
     onLink: props.onLink,

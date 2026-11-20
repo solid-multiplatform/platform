@@ -56,6 +56,8 @@ export interface ChatMessageProps {
   onToolPress?(index: number): void;
   /** Shared with Markdown: the app's code face, if it registered one. */
   codeFontFamily?: string;
+  /** Shared with Markdown: the app's bold face, if it registered one. */
+  strongFontFamily?: string;
 }
 
 /** A code block's source, as Markdown sees it. */
@@ -88,6 +90,7 @@ export function ChatMessage(props: ChatMessageProps): JSX.Element {
     color: bodyColor(),
     onLink: props.onLink,
     codeFontFamily: props.codeFontFamily,
+    strongFontFamily: props.strongFontFamily,
     codeBackground: mine() ? 0x00000026 : undefined,
     linkColor: mine() ? props.bubbleTextColor : undefined,
   });
