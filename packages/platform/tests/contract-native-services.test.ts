@@ -1,4 +1,5 @@
 import * as v from 'vitest';
+import { setCapabilities } from '../src/sdk/capabilities.js';
 import {
   getCurrentPosition,
   watchPosition,
@@ -629,7 +630,7 @@ v.describe('back dispatcher', () => {
     v.expect(back.handle()).toBe(true);
   });
 
-  v.it('binds Escape/Backspace/GoBack to the dispatcher', () => {
+  v.it('binds Escape and GoBack; Backspace only on a remote', () => {
     const target = new EventTarget();
     let backs = 0;
     const back = createBackDispatcher();
@@ -644,6 +645,13 @@ v.describe('back dispatcher', () => {
       );
     }
     target.dispatchEvent(new KeyboardEvent('keydown', { key: 'x' }));
+    // On a keyboard host Backspace is a text-editing key, not Back.
+    v.expect(backs).toBe(2);
+    // On a remote it is the Back button.
+    setCapabilities('roku');
+    target.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Backspace', cancelable: true }),
+    );
     v.expect(backs).toBe(3);
     dispose();
   });

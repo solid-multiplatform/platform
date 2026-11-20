@@ -8,6 +8,7 @@ import {
   syncSelectedAncestors,
 } from '../core/focusManager.js';
 import { isElementNode } from '../core/utils.js';
+import { supports } from '../sdk/capabilities.js';
 import { viewport } from '../sdk/viewport.js';
 import { Portal } from './portal.jsx';
 
@@ -128,7 +129,8 @@ export function Modal(props: ModalProps): JSX.Element {
       event.key === 'Escape' ||
       event.key === 'GoBack' ||
       (event.key === 'Backspace' &&
-        (event as unknown as { synthetic?: boolean }).synthetic === true)
+        (supports('remote') ||
+          (event as unknown as { synthetic?: boolean }).synthetic === true))
     ) {
       close();
       return true;

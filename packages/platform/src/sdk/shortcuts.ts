@@ -1,4 +1,5 @@
 import { pressKey, type KeyEventLike } from '../core/focusManager.js';
+import { supports } from './capabilities.js';
 import { peekService } from './registry.js';
 
 export interface Shortcut {
@@ -280,9 +281,11 @@ export function bindBackKey(
     // Native hosts deliver key events that are not browser KeyboardEvents.
     const event = input as KeyboardEvent;
     if (typeof event.key !== 'string') return;
+    // Backspace is the Back button on a remote and a text key on a keyboard.
+    const backspace = event.key === 'Backspace' && supports('remote');
     if (
       event.key !== 'Escape' &&
-      event.key !== 'Backspace' &&
+      !backspace &&
       event.key !== 'GoBack' &&
       event.key !== 'BrowserBack' &&
       event.keyCode !== 166

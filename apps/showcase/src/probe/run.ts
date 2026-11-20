@@ -133,12 +133,15 @@ async function modalTraps(showcase: Showcase, press: Press): Promise<Outcome> {
       if (!inside(activeElement(), probeHooks.modal))
         return failed(`${key} took focus out of the modal`);
     }
-    await press('Backspace');
+    // A keyboard's Back is Escape; Backspace is a text-editing key.
+    await press('Escape');
     if (!(await until(() => probeHooks.modalOpen?.() === false, 1000)))
-      return failed('Back did not close the modal');
+      return failed('Escape did not close the modal');
     if (!(await until(() => activeElement() === opener, 1000)))
       return failed('focus did not return to the button that opened it');
-    return ok('7 arrow keys stayed inside; Back closed it and restored focus');
+    return ok(
+      '7 arrow keys stayed inside; Escape closed it and restored focus',
+    );
   } finally {
     await home(showcase);
   }

@@ -1,5 +1,6 @@
 import { createSignal, getOwner, onCleanup, runWithOwner } from 'solid-js';
 import { Config, isDev } from './config.js';
+import { supports } from '../sdk/capabilities.js';
 export type * from './focusKeyTypes.js';
 import { ElementNode } from './elementNode.js';
 import type { KeyNameOrKeyCode, KeyMap } from './focusKeyTypes.js';
@@ -80,6 +81,20 @@ const keyMapEntries: KeyMapEntries = {
   ' ': 'Space',
   Backspace: 'Back',
   Escape: 'Escape',
+};
+
+/**
+ * The event name a key maps to. Backspace is Back on a remote (Roku, a browser
+ * TV, an Android TV bridge), where it is the Back button; on a keyboard it is
+ * a text-editing key and must not navigate.
+ */
+const mappedEntry = (
+  key: KeyNameOrKeyCode,
+  keyCode: number,
+): string | undefined => {
+  if ((key === 'Backspace' || keyCode === 8) && !supports('remote'))
+    return undefined;
+  return keyMapEntries[key] || keyMapEntries[keyCode];
 };
 
 const flattenKeyMap = (
@@ -787,7 +802,7 @@ const handleKeyEvents = (
 
     return propagateKeyPress(
       keydown,
-      keyMapEntries[keydown.key] || keyMapEntries[keydown.keyCode],
+      mappedEntry(keydown.key, keydown.keyCode),
     );
   }
   if (keyup) {
@@ -801,7 +816,7 @@ const handleKeyEvents = (
 
     return propagateKeyPress(
       keyup,
-      keyMapEntries[keyup.key] || keyMapEntries[keyup.keyCode],
+      mappedEntry(keyup.key, keyup.keyCode),
       true,
     );
   }
