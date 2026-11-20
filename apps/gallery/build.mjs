@@ -74,7 +74,7 @@ cpSync(path.join(here, 'src'), path.join(scratch, 'src'), { recursive: true });
 // so it does not collide with `App.tsx` on a case-insensitive filesystem.
 writeFileSync(
   path.join(scratch, 'src/app.tsx'),
-  "export { default } from './app-entry';\n",
+  "import { App } from './app-entry';\nexport default App;\n",
 );
 const projectConfig = JSON.parse(
   readFileSync(path.join(here, 'solid-platform.config.json'), 'utf8'),

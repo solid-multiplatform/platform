@@ -4,4 +4,4 @@
  * no `app.tsx` beside `App.tsx`: the two names would collide on a
  * case-insensitive filesystem).
  */
-export { App as default } from './App';
+export { App } from './App';
