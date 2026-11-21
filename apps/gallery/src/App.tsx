@@ -425,6 +425,7 @@ export function App(): JSX.Element {
           width={viewport().width}
           height={viewport().height}
           bottomInset={playerBottom() + (family() === 'tv' ? 0 : 62)}
+          topInset={safeTop()}
         />
 
         <Show when={flying()}>

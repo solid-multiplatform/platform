@@ -93,11 +93,16 @@ export function TextField(props: TextFieldProps): JSX.Element {
     return text === '' ? (props.placeholder ?? '') : masked(text);
   };
 
+  // The editor stands where the field's text would be: the field's box inset
+  // by the same horizontal padding the scene text has.
   const bounds = () => {
     const rect = node ? screenRect(node) : { x: 0, y: 0, width: 0, height: 0 };
+    const inset = theme.spacing(3);
+    const width = rect.width || props.width || 0;
     return {
-      ...rect,
-      width: rect.width || props.width || 0,
+      x: rect.x + inset,
+      y: rect.y,
+      width: Math.max(1, width - 2 * inset),
       height:
         rect.height ||
         props.height ||

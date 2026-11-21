@@ -50,6 +50,8 @@ export function PerfOverlay(props: {
   height: number;
   /** Furniture at the bottom of the window: a player, a tab bar. */
   bottomInset: number;
+  /** The status bar's height, so a top-docked panel clears it. */
+  topInset: number;
 }): JSX.Element {
   const [expanded, setExpanded] = createSignal(false);
   const [hidden, setHidden] = createSignal(false);
@@ -126,8 +128,12 @@ export function PerfOverlay(props: {
   const height = () => (expanded() ? 196 : 30);
   const right = () => props.contentX + page().x + page().width;
   const x = () => (hidden() ? right() - 22 : right() - width() - S(2));
+  // A phone has no room for a floating panel above the player: it sits in the
+  // header's empty right corner instead, where it covers nothing.
   const y = () =>
-    props.height - props.bottomInset - (hidden() ? 22 : height()) - S(3);
+    props.family === 'mobile'
+      ? props.topInset + S(2)
+      : props.height - props.bottomInset - (hidden() ? 22 : height()) - S(3);
 
   const stat = (label: string, value: string, accent = false) => (
     <view

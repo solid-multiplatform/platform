@@ -180,9 +180,9 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
     setMonth(new Date(initial.getFullYear(), initial.getMonth(), 1));
   });
 
-  const panelWidth = 420;
+  const panelWidth = () => Math.min(420, viewport().width - 32);
   const panelHeight = () => (props.withTime ? 560 : 490);
-  const panelX = () => (viewport().width - panelWidth) / 2;
+  const panelX = () => (viewport().width - panelWidth()) / 2;
   const panelY = () =>
     Math.max(
       viewport().insets.safeArea.top + 24,
@@ -336,7 +336,7 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
         }}
         x={panelX()}
         y={panelY()}
-        width={panelWidth}
+        width={panelWidth()}
         height={panelHeight()}
         color={theme().colors.surfaceRaised}
         borderRadius={theme().radius.medium}
@@ -352,7 +352,7 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
           skipFocus
           x={24}
           y={20}
-          width={panelWidth - 48}
+          width={panelWidth() - 48}
           contain="width"
           fontSize={theme().typography.title}
           color={theme().colors.text}
@@ -365,7 +365,7 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
         <view
           x={16}
           y={68}
-          width={panelWidth - 32}
+          width={panelWidth() - 32}
           height={44}
           selected={0}
           forwardFocus={navigableForwardFocus}
@@ -393,7 +393,7 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
             skipFocus
             x={48}
             y={12}
-            width={panelWidth - 128}
+            width={panelWidth() - 128}
             contain="width"
             textAlign="center"
             fontSize={theme().typography.label}
@@ -402,7 +402,7 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
             {monthLabel()}
           </text>
           <PickerButton
-            x={panelWidth - 76}
+            x={panelWidth() - 76}
             y={0}
             width={44}
             height={44}
@@ -522,7 +522,7 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
           skipFocus={!props.withTime}
           x={0}
           y={396}
-          width={panelWidth}
+          width={panelWidth()}
           height={40}
           selected={2}
           forwardFocus={navigableForwardFocus}
@@ -590,7 +590,7 @@ export function DatePicker(props: DatePickerProps): JSX.Element {
 
         {/* Focus arrives on Done, the action a chosen day leads to. */}
         <view
-          x={panelWidth - 220}
+          x={panelWidth() - 220}
           y={footerY()}
           width={196}
           height={44}

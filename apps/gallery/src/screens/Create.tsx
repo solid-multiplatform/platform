@@ -337,6 +337,11 @@ export function Create(props: {
                 flexDirection="row"
                 gap={S(3)}
                 alignItems="center"
+                width={formWidth()}
+                height={tv() ? 64 : 52}
+                // The whole row is the control: the date and its calendar
+                // button both open the picker.
+                onMouseClick={() => setDateOpen(true)}
               >
                 <GhostButton
                   label={fmtDate(date())}

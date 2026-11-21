@@ -9,11 +9,19 @@
  * `file:///app/icons` on Android, `pkg:/icons` on Roku.
  */
 const ICON_NAMES = [
+  'calendar',
   'check',
   'chevron-down',
   'chevron-left',
   'chevron-right',
   'close',
+  'library',
+  'more',
+  'pause',
+  'play',
+  'plus',
+  'search',
+  'sliders',
 ] as const;
 
 export type FrameworkIcon = (typeof ICON_NAMES)[number];

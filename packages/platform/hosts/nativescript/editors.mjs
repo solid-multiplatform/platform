@@ -84,14 +84,19 @@ export function nativeEditorHost(root, target) {
           else field.android?.clearFocus();
         }
       };
-      const blurred = () => options.onBlur?.();
+      const blurred = () => {
+        field.visibility = 'collapsed';
+        options.onBlur?.();
+      };
       field.on('loaded', loaded);
       field.on('textChange', changed);
       field.on('returnPress', submit);
       field.on('blur', blurred);
+      field.visibility = 'collapsed';
       root.addChild(field);
       return {
         focus() {
+          field.visibility = 'visible';
           field.focus();
           if (!apple && field.android) {
             field.android.post(
@@ -107,6 +112,7 @@ export function nativeEditorHost(root, target) {
           }
         },
         blur() {
+          field.visibility = 'collapsed';
           field.dismissSoftInput();
           if (apple) field.ios?.resignFirstResponder();
           else field.android?.clearFocus();

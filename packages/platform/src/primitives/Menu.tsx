@@ -3,6 +3,7 @@ import type { ElementNode } from '../core/elementNode.js';
 import type { NodeStyles } from '../core/intrinsicTypes.js';
 import { supports } from '../sdk/capabilities.js';
 import { useTheme } from '../sdk/theme.jsx';
+import { viewport } from '../sdk/viewport.js';
 import type { Rect } from '../sdk/input.js';
 import { Column } from './Column.jsx';
 import { Popover, type PopoverPlacement } from './Popover.jsx';
@@ -53,7 +54,8 @@ export function Menu(props: MenuProps): JSX.Element {
   const disabledStyle = (): NodeStyles => ({ color: 0x00000000 });
   const tv = supports('remote');
   const rowHeight = tv ? 72 : 56;
-  const width = tv ? 420 : 280;
+  // A phone cannot take a 280-unit menu on a 390-unit screen with margins.
+  const width = tv ? 420 : Math.min(280, viewport().width - 64);
   const fontSize = tv ? 30 : 22;
   const maxPanel = tv ? 640 : 480;
   // The panel never grows past its cap: the list scrolls (focus keeps the
