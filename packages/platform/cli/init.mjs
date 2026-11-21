@@ -113,7 +113,9 @@ export default rokuConfig({ title: ${JSON.stringify(project(root).name)}, entry:
     .replace('../../tests/webgl/fonts', 'work/fonts')
     .replace(
       'args[0].patterns.push({',
-      "args[0].patterns.push({\n        from: path.resolve(__dirname, 'work/icons'),\n        to: 'icons',\n      });\n      args[0].patterns.push({",
+      // `noErrorOnMissing`: an app built before the icons existed still
+      // builds; it simply draws no framework icons.
+      "args[0].patterns.push({\n        from: path.resolve(__dirname, 'work/icons'),\n        to: 'icons',\n        noErrorOnMissing: true,\n      });\n      args[0].patterns.push({",
     );
   write(path.join(dest, 'webpack.config.js'), webpack);
   if (target === 'android') {
