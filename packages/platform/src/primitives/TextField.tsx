@@ -78,22 +78,31 @@ export function TextField(props: TextFieldProps): JSX.Element {
   const theme = useTheme();
   const host: EditorHost | undefined = useContext(AppScope)?.text;
   const [inner, setInner] = createSignal(props.value ?? '');
+  // The host editor draws over this field. While it is open the scene's own
+  // label and value are hidden, or the control reads twice.
+  const [editing, setEditing] = createSignal(false);
   let node: ElementNode | undefined;
   let editor: Editor | undefined;
 
   const value = () => props.value ?? inner();
   const masked = (text: string) =>
-    props.password ? '•'.repeat([...text].length) : text;
+    // ASCII only: the shipped atlases have no bullet glyph to mask with.
+    props.password ? '*'.repeat([...text].length) : text;
   const shown = () => {
     const text = value();
     return text === '' ? (props.placeholder ?? '') : masked(text);
   };
 
+  // The editor stands where the field's text would be: the field's box inset
+  // by the same horizontal padding the scene text has.
   const bounds = () => {
     const rect = node ? screenRect(node) : { x: 0, y: 0, width: 0, height: 0 };
+    const inset = theme.spacing(3);
+    const width = rect.width || props.width || 0;
     return {
-      ...rect,
-      width: rect.width || props.width || 0,
+      x: rect.x + inset,
+      y: rect.y,
+      width: Math.max(1, width - 2 * inset),
       height:
         rect.height ||
         props.height ||
@@ -110,14 +119,18 @@ export function TextField(props: TextFieldProps): JSX.Element {
         purpose: purposeOf(props),
         multiline: props.multiline,
         blurOnSubmit: props.blurOnSubmit,
+        fontSize: theme.typography.body,
+        color: theme.colors.text,
         onChange(next) {
           setInner(next);
           props.onChange?.(next);
         },
         onSubmit: props.onSubmit,
+        onBlur: () => setEditing(false),
       });
     }
     editor.setBounds(bounds());
+    setEditing(true);
     editor.focus();
   };
 
@@ -136,10 +149,12 @@ export function TextField(props: TextFieldProps): JSX.Element {
       display="flex"
       flexDirection="column"
       alignItems="flexStart"
-      gap={theme.spacing(1)}
+      justifyContent="center"
+      gap={2}
       width={props.width}
       height={props.height}
-      padding={theme.spacing(2)}
+      padding={[6, theme.spacing(3)]}
+      borderRadius={theme.radius.medium}
       autofocus={props.autofocus}
       skipFocus={props.disabled}
       ariaDisabled={props.disabled}
@@ -149,19 +164,34 @@ export function TextField(props: TextFieldProps): JSX.Element {
       forwardStates
       style={{
         color: theme.colors.surface,
-        $focus: { color: theme.colors.focus },
-        $hover: { color: theme.colors.border },
+        border: { width: 1, color: theme.colors.border, align: 'inside' },
+        $focus: {
+          border: { width: 2, color: theme.colors.focus, align: 'inside' },
+        },
+        $hover: {
+          border: { width: 1, color: theme.colors.textMuted, align: 'inside' },
+        },
       }}
       onFocus={open}
       onEnter={open}
       onMouseClick={open}
+      // The keyboard scrolls the form; the host editor has to follow the
+      // field it covers, so its box is re-read after every layout pass.
+      onLayout={() => {
+        if (editing() && editor !== undefined) editor.setBounds(bounds());
+      }}
     >
-      <text fontSize={theme.typography.label} color={theme.colors.textMuted}>
+      <text
+        fontSize={theme.typography.label}
+        color={theme.colors.textMuted}
+        hidden={editing()}
+      >
         {props.label}
       </text>
       <text
         fontSize={theme.typography.body}
         color={value() === '' ? theme.colors.textMuted : theme.colors.text}
+        hidden={editing()}
       >
         {shown()}
       </text>

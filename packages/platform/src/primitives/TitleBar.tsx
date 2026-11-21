@@ -148,9 +148,7 @@ export function WindowNoDrag(props: WindowNoDragProps): JSX.Element {
 }
 
 /** The window state as a signal, updated only when the host reports an event. */
-function useChromeState(
-  chrome: WindowChrome,
-): () => WindowChromeState {
+function useChromeState(chrome: WindowChrome): () => WindowChromeState {
   const [state, setState] = createSignal<WindowChromeState>(chrome.state());
   onMount(() => {
     setState(chrome.state());
@@ -224,7 +222,8 @@ export function TitleBar(props: TitleBarProps): JSX.Element {
     mode === 'custom' && (props.controls ?? 'platform') === 'platform';
   const controlCount = (): number => (controls() ? 3 : 0);
   const leading = (): number => theme().spacing(2);
-  const titleX = (): number => leading() + (props.leading === undefined ? 0 : 24);
+  const titleX = (): number =>
+    leading() + (props.leading === undefined ? 0 : 24);
   const controlX = (index: number): number =>
     width() - (controlCount() - index) * CONTROL_WIDTH;
 
@@ -294,7 +293,10 @@ export function TitleBar(props: TitleBarProps): JSX.Element {
               <text
                 x={titleX()}
                 y={height() / 2 - 12}
-                width={Math.max(0, width() - titleX() - CONTROL_WIDTH * controlCount() - 8)}
+                width={Math.max(
+                  0,
+                  width() - titleX() - CONTROL_WIDTH * controlCount() - 8,
+                )}
                 height={24}
                 fontSize={theme().typography.label}
                 color={theme().colors.text}
@@ -331,7 +333,15 @@ export function TitleBar(props: TitleBarProps): JSX.Element {
             () => void chrome.toggleMaximized(),
             () => (state().maximized ? 'Restore' : 'Maximize'),
             // Two overlapping squares once maximized: the restore glyph.
-            () => (state().maximized ? <>{square(3)}{square(0)}</> : square(0)),
+            () =>
+              state().maximized ? (
+                <>
+                  {square(3)}
+                  {square(0)}
+                </>
+              ) : (
+                square(0)
+              ),
           )}
           {button(
             () => controlX(2),

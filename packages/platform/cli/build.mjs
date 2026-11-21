@@ -13,7 +13,13 @@ import {
 } from './app-entry.mjs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+} from 'node:fs';
 import {
   command,
   copy,
@@ -289,6 +295,21 @@ function buildTarget(root, target, dev, legacy) {
       : browser
         ? "'./fonts'"
         : "'file:///app/fonts'";
+  // The framework's rasterised icons (assets/icons/png): staged like the
+  // fonts, under a base each host can read. An app may ship its own set at
+  // assets/icons/png; otherwise the framework's is used.
+  const icons = existsSync(path.join(root, 'assets/icons/png'))
+    ? path.join(root, 'assets/icons/png')
+    : path.join(framework, 'assets/icons/png');
+  // Roku packs `work/assets` at the package root, so the staged `work/assets/
+  // icons` is `pkg:/icons`; the native package carries `assets/app/icons` and
+  // the browser serves `public/icons`.
+  const iconsBase =
+    target === 'roku'
+      ? 'pkg:/icons'
+      : browser || target === 'desktop'
+        ? './icons'
+        : 'file:///app/icons';
   const app = appModule(work);
   // Android, Android TV, iOS and tvOS run a component through `startApp` on
   // their `HostDefinition`; Roku installs its renderer and mounts directly.
@@ -361,6 +382,15 @@ export function mount(host = { target: '${target}' }) {
           `rokuHost({ namespace: ${JSON.stringify(project(root).name)} }).launch((context) => { setRendererFactory((settings) => context.createRenderer(settings), context.loadFonts); return mount({ target: 'roku', ...context }); });\n`
         : ''),
   );
+  // Point the icons at the staged copy before anything mounts.
+  {
+    const entryFile = path.join(work, 'main.ts');
+    write(
+      entryFile,
+      `import { setIconBase } from '@solid-multiplatform/platform';\nsetIconBase(${JSON.stringify(iconsBase)});\n` +
+        readFileSync(entryFile, 'utf8'),
+    );
+  }
   if (target !== 'roku')
     copy(
       path.join(root, 'assets/fonts'),
@@ -372,6 +402,11 @@ export function mount(host = { target: '${target}' }) {
       path.join(dir, 'fonts/Lato-OFL.txt'),
       path.join(work, 'assets/fonts/Lato-OFL.txt'),
     );
+  if (existsSync(icons)) {
+    if (browser) copy(icons, path.join(dir, 'public/icons'));
+    else if (target === 'roku') copy(icons, path.join(work, 'assets/icons'));
+    else copy(icons, path.join(work, 'icons'));
+  }
   if (target === 'android-tv' || target === 'android')
     android(root, work, plugins, target);
   command(

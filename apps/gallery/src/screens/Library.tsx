@@ -1,10 +1,14 @@
 import { For, Show, type JSX } from 'solid-js';
+import type { ElementNode } from '@solid-multiplatform/platform';
 import { Column, Row } from '@solid-multiplatform/platform/primitives';
 import { Cover } from '../components/Cover';
 import { Glyph, type GlyphName } from '../components/Glyph';
 import { ALBUMS, RAILS, albumSeconds, type Album } from '../data';
 import type { UiFamily } from '../family';
 import { C, formatTotal, R, S, T } from '../theme';
+import { pageLayout } from '../layout';
+import { rectOf, type HeroRect } from '../motion/hero';
+import { PulseDot } from '../motion/pulse-dot';
 
 /** A primary action: the accent gradient, used once per screen. */
 export function GradientButton(props: {
@@ -53,6 +57,7 @@ export function GhostButton(props: {
   y?: number;
   width?: number;
   height?: number;
+  autofocus?: boolean;
   onPress?(): void;
 }): JSX.Element {
   return (
@@ -66,6 +71,7 @@ export function GhostButton(props: {
       display="flex"
       alignItems="center"
       justifyContent="center"
+      autofocus={props.autofocus}
       onEnter={() => props.onPress?.()}
       onMouseClick={() => props.onPress?.()}
       cursorStyle="pointer"
@@ -122,20 +128,30 @@ function AlbumCard(props: {
   size: number;
   width: number;
   family: UiFamily;
-  onOpen?: (album: Album) => void;
+  /** Hidden while a hero flight draws this cover instead. */
+  hidden?: boolean;
+  onOpen?: (album: Album, rect?: HeroRect) => void;
 }): JSX.Element {
+  let cover: ElementNode | undefined;
+  const open = () => props.onOpen?.(props.album, rectOf(cover));
   return (
     <view
       width={props.width}
       display="flex"
       flexDirection="column"
       gap={S(2)}
-      onEnter={() => props.onOpen?.(props.album)}
-      onMouseClick={() => props.onOpen?.(props.album)}
+      onEnter={open}
+      onMouseClick={open}
       cursorStyle="pointer"
       style={{ $focus: { color: 0x00000000 } }}
     >
-      <Cover album={props.album} size={props.size} radius={R.medium} />
+      <Cover
+        ref={(node) => (cover = node)}
+        album={props.album}
+        size={props.size}
+        radius={R.medium}
+        hidden={props.hidden}
+      />
       <view display="flex" flexDirection="column" gap={2}>
         <text
           width={props.width}
@@ -164,9 +180,11 @@ function Rail(props: {
   title: string;
   albums: Album[];
   family: UiFamily;
+  /** The shelf's clip: from the page's left edge to the window's right. */
   width: number;
   cardSize: number;
-  onOpenAlbum?: (album: Album) => void;
+  hiddenAlbum?: string;
+  onOpenAlbum?: (album: Album, rect?: HeroRect) => void;
 }): JSX.Element {
   return (
     <view
@@ -177,7 +195,6 @@ function Rail(props: {
       height={props.cardSize + 52 + (props.family === 'tv' ? 44 : 26)}
     >
       <text
-        x={S(6)}
         fontSize={props.family === 'tv' ? T.headline : T.label}
         color={props.family === 'tv' ? C.text : C.muted}
         letterSpacing={props.family === 'tv' ? 0 : 0.6}
@@ -186,8 +203,7 @@ function Rail(props: {
       </text>
       <view width={props.width} clipping>
         <Row
-          x={S(6)}
-          width={props.width - S(6)}
+          width={props.width}
           gap={S(4)}
           scroll={props.family === 'mobile' ? 'touch' : 'auto'}
           style={{ padding: 0 }}
@@ -199,6 +215,7 @@ function Rail(props: {
                 size={props.cardSize}
                 width={props.cardSize}
                 family={props.family}
+                hidden={props.hiddenAlbum === album.id}
                 onOpen={props.onOpenAlbum}
               />
             )}
@@ -215,15 +232,21 @@ export function Library(props: {
   height: number;
   onOpenCreate?(): void;
   topNav?: JSX.Element;
-  onOpenAlbum?(album: Album): void;
+  /** A cover a hero flight is drawing instead of the card. */
+  hiddenAlbum?: string;
+  onOpenAlbum?(album: Album, rect?: HeroRect): void;
 }): JSX.Element {
   const tv = () => props.family === 'tv';
   const mobile = () => props.family === 'mobile';
   const width = () => props.width;
-  const pad = () => (tv() ? S(16) : mobile() ? S(5) : S(6));
+  const page = () => pageLayout(width(), props.family);
   const featured = () => ALBUMS[0]!;
   const cover = () => (tv() ? 320 : mobile() ? 132 : 208);
   const card = () => (tv() ? 220 : mobile() ? 138 : 168);
+  // A rail starts on the page's left edge and runs to the window's edge: the
+  // shelf's peek is then cut by the screen, as a shelf's is, not 32 units
+  // inside it by the page's margin.
+  const railWidth = () => width() - page().x;
 
   return (
     <view width={width()} height={props.height} clipping>
@@ -231,8 +254,10 @@ export function Library(props: {
           arrows move between rows and the page scrolls to the focused one;
           on a phone the same Column is the touch scroller. */}
       <Column
-        width={width()}
-        height={props.height}
+        x={page().x}
+        y={S(6)}
+        width={page().width}
+        height={props.height - S(6)}
         gap={tv() ? S(10) : S(6)}
         scroll={tv() ? 'auto' : 'touch'}
         selected={0}
@@ -240,24 +265,23 @@ export function Library(props: {
         {props.topNav}
         {/* Header */}
         <view
-          width={width()}
-          height={tv() ? 120 : 76}
+          width={page().width}
+          height={tv() ? 120 : 58}
           display="flex"
           flexDirection="row"
-          alignItems="flexEnd"
+          alignItems="center"
           justifyContent="spaceBetween"
-          padding={[0, pad()]}
         >
           <view display="flex" flexDirection="column" gap={S(1)}>
             <text fontSize={tv() ? T.display : T.title} color={C.text}>
               Library
             </text>
             <text fontSize={tv() ? T.body : T.caption} color={C.muted}>
-              {`${ALBUMS.length} albums · ${RAILS.length} rails · one accent`}
+              {`${ALBUMS.length} albums, ${RAILS.length} rails, one accent`}
             </text>
           </view>
           <Show when={!mobile()}>
-            <Row gap={S(3)} scroll="none" width={tv() ? 420 : 360}>
+            <Row gap={S(3)} scroll="none">
               <GhostButton label="New playlist" onPress={props.onOpenCreate} />
               <IconButton glyph="search" label="Search" />
               <IconButton glyph="filter" label="Filter" />
@@ -267,13 +291,12 @@ export function Library(props: {
 
         {/* Hero: the featured album, with the screen's one gradient CTA. */}
         <view
-          width={width()}
+          width={page().width}
           height={mobile() ? cover() + 210 : cover() + 48}
           display="flex"
           flexDirection={mobile() ? 'column' : 'row'}
           gap={tv() ? S(10) : S(6)}
           alignItems={mobile() ? 'flexStart' : 'center'}
-          padding={[0, pad()]}
         >
           <Cover
             album={featured()}
@@ -281,16 +304,24 @@ export function Library(props: {
             radius={tv() ? R.large : R.medium}
           />
           <view
-            width={mobile() ? width() - 2 * pad() : undefined}
+            width={mobile() ? page().width : undefined}
             display="flex"
             flexDirection="column"
             gap={S(3)}
           >
-            <text fontSize={T.caption} color={C.accent} letterSpacing={1.4}>
-              RECENTLY PLAYED
-            </text>
+            <view
+              display="flex"
+              flexDirection="row"
+              alignItems="center"
+              gap={S(2)}
+            >
+              <PulseDot color={C.accent} size={7} />
+              <text fontSize={T.caption} color={C.accent} letterSpacing={1.4}>
+                RECENTLY PLAYED
+              </text>
+            </view>
             <text
-              width={mobile() ? width() - 2 * pad() : tv() ? 820 : 480}
+              width={mobile() ? page().width : tv() ? 820 : 480}
               contain="width"
               fontSize={tv() ? T.display : T.title}
               color={C.text}
@@ -298,7 +329,7 @@ export function Library(props: {
               {featured().title}
             </text>
             <text fontSize={tv() ? T.headline : T.body} color={C.muted}>
-              {`${featured().artist} · ${featured().year} · ${formatTotal(albumSeconds(featured()))}`}
+              {`${featured().artist}, ${featured().year}, ${formatTotal(albumSeconds(featured()))}`}
             </text>
             <Row gap={S(3)} scroll="none">
               <GradientButton
@@ -323,8 +354,9 @@ export function Library(props: {
               title={rail.title}
               albums={rail.albums}
               family={props.family}
-              width={width()}
+              width={railWidth()}
               cardSize={card()}
+              hiddenAlbum={props.hiddenAlbum}
               onOpenAlbum={props.onOpenAlbum}
             />
           )}

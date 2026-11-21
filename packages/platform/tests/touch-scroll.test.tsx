@@ -154,6 +154,35 @@ v.describe('touch scrolling on Row and Column', () => {
     }
   });
 
+  v.test('a second finger cannot take over the drag', async () => {
+    const m = await mount();
+    try {
+      // Finger one owns the page: a steady vertical drag.
+      m.pointer.down(1, { x: 100, y: 260 });
+      m.pointer.move(1, { x: 100, y: 230 });
+      m.pointer.move(1, { x: 100, y: 200 });
+      const before = m.column.y;
+      v.expect(before).toBeLessThan(-20);
+
+      // Finger two lands far away and moves: it must not restart the gesture
+      // from its own origin (which threw the page across the screen), and
+      // lifting it must not read as a tap.
+      m.pointer.down(2, { x: 300, y: 320 });
+      m.pointer.move(2, { x: 300, y: 120 });
+      m.pointer.move(2, { x: 300, y: 40 });
+      v.expect(Math.abs(m.column.y - before)).toBeLessThan(20);
+      m.pointer.up(2, { x: 300, y: 40 });
+
+      // Finger one still owns it.
+      m.pointer.move(1, { x: 100, y: 190 });
+      v.expect(m.column.y).toBeLessThan(before - 5);
+      m.pointer.up(1, { x: 100, y: 190 });
+      await waitStable(() => m.column.y);
+    } finally {
+      m.dispose();
+    }
+  });
+
   v.test('focus keys scroll the same rail, only as far as needed', async () => {
     const m = await mount();
     try {

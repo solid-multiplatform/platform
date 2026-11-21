@@ -1,4 +1,13 @@
-import { createSignal, For, Show, type JSX } from 'solid-js';
+import {
+  createSignal,
+  For,
+  onCleanup,
+  onMount,
+  Show,
+  type JSX,
+} from 'solid-js';
+import type { ElementNode } from '@solid-multiplatform/platform';
+import { pushFocusTrap } from '@solid-multiplatform/platform/focusManager';
 import {
   ContextMenu,
   Column,
@@ -11,7 +20,10 @@ import { Cover } from '../components/Cover';
 import { albumSeconds, type Album } from '../data';
 import type { UiFamily } from '../family';
 import { C, formatTime, formatTotal, R, S, T } from '../theme';
+import { pageLayout } from '../layout';
 import { GhostButton, GradientButton, IconButton } from './Library';
+import { rectOf, type HeroRect } from '../motion/hero';
+import { cancelFrame, nextFrame } from '../motion/frame';
 
 const NOTES = (album: Album): string =>
   `## About *${album.title}*\n\nRecorded over two winters in a room with one window. The ${album.genre.toLowerCase()} arrangements were cut live, mostly first takes.\n\n- Produced by ${album.artist}\n- Mixed at night\n- Mastered for headphones and for a kitchen radio`;
@@ -23,14 +35,37 @@ export function AlbumScreen(props: {
   height: number;
   /** The screen's x in the scene, for overlays anchored by hand. */
   x?: number;
+  /** Hidden while a hero flight draws the cover instead. */
+  hideCover?: boolean;
+  /** The cover's box once it is laid out: the flight's landing rect. */
+  onCoverRect?(rect: HeroRect): void;
   onBack?(): void;
   topNav?: JSX.Element;
 }): JSX.Element {
   const tv = () => props.family === 'tv';
   const mobile = () => props.family === 'mobile';
-  const pad = () => (tv() ? S(10) : mobile() ? S(5) : S(6));
+  const page = () => pageLayout(width(), props.family);
   const width = () => props.width;
-  const cover = () => (tv() ? 360 : mobile() ? width() - 2 * pad() : 280);
+  const cover = () => (tv() ? 360 : mobile() ? page().width : 280);
+
+  // The cover's box after layout, for the matched-geometry flight. One frame
+  // after mount the layout queue has run, so the offsets are final.
+  let coverNode: ElementNode | undefined;
+  let rootNode: ElementNode | undefined;
+  onMount(() => {
+    const frame = nextFrame(() => {
+      const rect = rectOf(coverNode);
+      if (rect !== undefined) props.onCoverRect?.(rect);
+    });
+    // The library is still mounted behind this screen; keep the remote out of
+    // it until this one is popped.
+    const release =
+      rootNode === undefined ? undefined : pushFocusTrap(rootNode);
+    onCleanup(() => {
+      cancelFrame(frame);
+      release?.();
+    });
+  });
 
   const [menu, setMenu] = createSignal(false);
   const [contextAt, setContextAt] = createSignal<{ x: number; y: number }>();
@@ -65,61 +100,69 @@ export function AlbumScreen(props: {
   );
 
   return (
-    <view width={width()} height={props.height} clipping>
+    <view
+      ref={(node) => (rootNode = node)}
+      width={width()}
+      height={props.height}
+      color={C.background}
+      clipping
+    >
       <Column
-        width={width()}
-        height={props.height}
+        x={page().x}
+        y={S(6)}
+        width={page().width}
+        height={props.height - S(6)}
         gap={S(6)}
         scroll={tv() ? 'auto' : 'touch'}
         selected={0}
       >
         {props.topNav}
         <view
-          width={width()}
-          height={tv() ? 110 : 76}
+          width={page().width}
+          height={tv() ? 110 : 58}
           display="flex"
           flexDirection="row"
-          alignItems="flexEnd"
+          alignItems="center"
           justifyContent="spaceBetween"
-          padding={[0, pad()]}
         >
-          <GhostButton label="Back" onPress={props.onBack} />
+          <GhostButton label="Back" autofocus={tv()} onPress={props.onBack} />
           <text fontSize={T.caption} color={C.dim}>
             {props.album.genre}
           </text>
         </view>
 
         <view
-          width={width()}
+          width={page().width}
           height={mobile() ? cover() + 210 : cover() + 40}
-          padding={[0, pad()]}
         >
           <view
             onPointerContext={(point) =>
               setContextAt({ x: point.x, y: point.y })
             }
           >
-            <view x={pad()}>
+            <view>
               <Cover
+                ref={(node) => (coverNode = node)}
                 album={props.album}
                 size={cover()}
                 radius={tv() ? R.large : R.medium}
+                hidden={props.hideCover}
               />
             </view>
           </view>
           <view
-            x={pad() + (mobile() ? 0 : cover() + S(6))}
+            x={mobile() ? 0 : cover() + S(6)}
             y={mobile() ? cover() + S(5) : 0}
             display="flex"
             flexDirection="column"
             gap={S(3)}
-            width={mobile() ? width() - 2 * pad() : tv() ? 820 : 560}
+            width={mobile() ? page().width : tv() ? 820 : 560}
           >
             <text fontSize={T.caption} color={C.accent} letterSpacing={1.4}>
-              {`ALBUM · ${props.album.year}`}
+              {`ALBUM, ${props.album.year}`}
             </text>
             <text
-              width={mobile() ? width() - 2 * pad() : tv() ? 820 : 560}
+              width={mobile() ? page().width : tv() ? 820 : 560}
               contain="width"
               fontSize={tv() ? T.display : T.title}
               color={C.text}
@@ -127,26 +170,21 @@ export function AlbumScreen(props: {
               {props.album.title}
             </text>
             <text fontSize={tv() ? T.headline : T.body} color={C.muted}>
-              {`${props.album.artist} · ${props.album.tracks.length} tracks · ${formatTotal(albumSeconds(props.album))}`}
+              {`${props.album.artist}, ${props.album.tracks.length} tracks, ${formatTotal(albumSeconds(props.album))}`}
             </text>
             {actions()}
           </view>
         </view>
 
         {/* Tracks: a real list, focusable, with durations. */}
-        <view
-          width={width()}
-          display="flex"
-          flexDirection="column"
-          padding={[0, pad()]}
-        >
+        <view width={width()} display="flex" flexDirection="column">
           <text fontSize={T.label} color={C.muted} letterSpacing={0.8}>
             {'TRACKS'}
           </text>
           <For each={props.album.tracks}>
             {(track, index) => (
               <view
-                width={width() - 2 * pad()}
+                width={page().width}
                 height={tv() ? 64 : 52}
                 style={{ $focus: { color: C.raised } }}
                 onEnter={() => undefined}
@@ -158,6 +196,7 @@ export function AlbumScreen(props: {
                   y={tv() ? 22 : 18}
                   width={24}
                   textAlign="right"
+                  contain="width"
                   fontSize={T.caption}
                   color={C.dim}
                 >
@@ -166,7 +205,7 @@ export function AlbumScreen(props: {
                 <text
                   x={40}
                   y={tv() ? 20 : 16}
-                  width={width() - 2 * pad() - 120}
+                  width={page().width - 120}
                   contain="width"
                   maxLines={1}
                   fontSize={tv() ? T.body : T.label}
@@ -175,10 +214,11 @@ export function AlbumScreen(props: {
                   {track.title}
                 </text>
                 <text
-                  x={width() - 2 * pad() - 56}
+                  x={page().width - 56}
                   y={tv() ? 24 : 19}
                   width={56}
                   textAlign="right"
+                  contain="width"
                   fontSize={T.caption}
                   color={C.dim}
                 >
@@ -190,25 +230,19 @@ export function AlbumScreen(props: {
         </view>
 
         {/* Notes: Markdown, and a selectable credits line. */}
-        <view
-          width={width()}
-          display="flex"
-          flexDirection="column"
-          gap={S(3)}
-          padding={[0, pad()]}
-        >
+        <view width={width()} display="flex" flexDirection="column" gap={S(3)}>
           <Markdown
             source={NOTES(props.album)}
-            width={mobile() ? width() - 2 * pad() : tv() ? 900 : 620}
+            width={mobile() ? page().width : tv() ? 900 : 620}
             fontSize={tv() ? 20 : T.body}
             color={C.text}
           />
           <SelectableText
-            width={mobile() ? width() - 2 * pad() : tv() ? 900 : 620}
+            width={mobile() ? page().width : tv() ? 900 : 620}
             fontSize={T.caption}
             color={C.dim}
           >
-            {`© ${props.album.year} Sona Records. Recorded by ${props.album.artist}. Select this line and copy it.`}
+            {`${props.album.year} Sona Records. Recorded by ${props.album.artist}. Select this line and copy it.`}
           </SelectableText>
         </view>
 
@@ -218,7 +252,7 @@ export function AlbumScreen(props: {
       <Menu
         visible={menu}
         anchor={() => ({
-          x: (props.x ?? 0) + pad() + (tv() ? 340 : 264),
+          x: (props.x ?? 0) + page().x + (tv() ? 340 : 264),
           y: tv() ? 380 : 300,
           width: 180,
           height: 44,
@@ -257,7 +291,7 @@ export function AlbumScreen(props: {
         <Tooltip
           visible={tip()}
           anchor={() => ({
-            x: (props.x ?? 0) + pad() + (tv() ? 180 : 140),
+            x: (props.x ?? 0) + page().x + (tv() ? 180 : 140),
             y: tv() ? 380 : 300,
             width: tv() ? 148 : 112,
             height: tv() ? 60 : 44,

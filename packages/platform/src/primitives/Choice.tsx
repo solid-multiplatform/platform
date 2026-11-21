@@ -47,7 +47,7 @@ export function Checkbox(props: CheckboxProps): JSX.Element {
       width={width()}
       height={height()}
       color={focused() ? theme().colors.focus : 0x00000000}
-      borderRadius={theme().radius.small}
+      borderRadius={theme().radius.medium}
       role="checkbox"
       ariaLabel={props.label}
       ariaChecked={checked()}
@@ -63,31 +63,35 @@ export function Checkbox(props: CheckboxProps): JSX.Element {
         y={(height() - box) / 2}
         width={box}
         height={box}
+        // An empty box is a well, not a raised chip: it has to read as empty
+        // on a card and on a dialog panel alike.
         color={
           checked()
             ? theme().colors.primary
             : props.disabled
-              ? theme().colors.border
-              : theme().colors.surfaceRaised
+              ? theme().colors.surface
+              : theme().colors.border
         }
-        borderRadius={theme().radius.small}
+        borderRadius={box / 2}
       >
-        {/* Drawn, not a glyph: the MSDF faces an app registers often have no
-            checkmark, and a missing glyph is an empty box. */}
+        {/* A check drawn from two bars, not a glyph (the MSDF faces an app
+            registers often have none). Short stroke down to the corner, long
+            stroke up to the right — in scene coordinates a positive angle
+            turns clockwise, so the long stroke is negative. */}
         <view
-          width={9}
-          height={2}
-          x={5}
-          y={14}
-          rotation={0.8}
+          width={8.4}
+          height={3}
+          x={4.3}
+          y={13.5}
+          rotation={0.785}
           color={checked() ? theme().colors.onPrimary : 0x00000000}
         />
         <view
-          width={5}
-          height={2}
-          x={12}
-          y={17}
-          rotation={-0.8}
+          width={13.4}
+          height={3}
+          x={8.55}
+          y={11.75}
+          rotation={-0.785}
           color={checked() ? theme().colors.onPrimary : 0x00000000}
         />
       </view>
@@ -135,7 +139,7 @@ export function Radio(props: RadioProps): JSX.Element {
       width={width()}
       height={height()}
       color={focused() ? theme().colors.focus : 0x00000000}
-      borderRadius={size / 2}
+      borderRadius={theme().radius.medium}
       role="radio"
       ariaLabel={props.label}
       ariaChecked={selected()}
@@ -155,8 +159,8 @@ export function Radio(props: RadioProps): JSX.Element {
           selected()
             ? theme().colors.primary
             : props.disabled
-              ? theme().colors.border
-              : theme().colors.surfaceRaised
+              ? theme().colors.surface
+              : theme().colors.border
         }
         borderRadius={size / 2}
       >

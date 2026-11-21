@@ -2,7 +2,10 @@ import * as lng from '@solid-multiplatform/platform';
 import * as lngp from '@solid-multiplatform/platform/primitives';
 import * as s from 'solid-js';
 
-type LazyProps<T extends readonly any[]> = lng.NewOmit<lng.NodeProps, 'children'> & {
+type LazyProps<T extends readonly any[]> = lng.NewOmit<
+  lng.NodeProps,
+  'children'
+> & {
   each: T | undefined | null | false;
 
   /** Initial visible item count before user navigation. */
@@ -52,10 +55,17 @@ type LazyProps<T extends readonly any[]> = lng.NewOmit<lng.NodeProps, 'children'
 function createLazy<T>(
   component: s.ValidComponent,
   props: LazyProps<readonly T[]>,
-  keyHandler: (updateOffset: (event: KeyboardEvent, container: lng.ElementNode) => void) => Record<string, (event: KeyboardEvent, container: lng.ElementNode) => void>
+  keyHandler: (
+    updateOffset: (event: KeyboardEvent, container: lng.ElementNode) => void,
+  ) => Record<
+    string,
+    (event: KeyboardEvent, container: lng.ElementNode) => void
+  >,
 ) {
   // Need at least one item so it can be focused
-  const [offset, setOffset] = s.createSignal<number>(props.sync ? props.upCount : 0);
+  const [offset, setOffset] = s.createSignal<number>(
+    props.sync ? props.upCount : 0,
+  );
   let preloadTimer: ReturnType<typeof setTimeout> | null = null;
   let navDelayTimer: ReturnType<typeof setTimeout> | null = null;
   let disposed = false;
@@ -84,7 +94,9 @@ function createLazy<T>(
     return 2;
   });
 
-  s.createRenderEffect(() => setOffset(offset => Math.max(offset, (props.selected || 0) + buffer())));
+  s.createRenderEffect(() =>
+    setOffset((offset) => Math.max(offset, (props.selected || 0) + buffer())),
+  );
 
   if (!props.sync || props.eagerLoad) {
     s.createEffect(() => {
@@ -136,8 +148,12 @@ function createLazy<T>(
     Array.isArray(props.each) ? props.each.slice(0, offset()) : [],
   );
 
-  function lazyScrollToIndex(this: lngp.NavigableElement, index: number, options?: {noFocus?: boolean}) {
-    setOffset(Math.max(index, 0) + buffer())
+  function lazyScrollToIndex(
+    this: lngp.NavigableElement,
+    index: number,
+    options?: { noFocus?: boolean },
+  ) {
+    setOffset(Math.max(index, 0) + buffer());
     queueMicrotask(() => viewRef.scrollToIndex(index, options));
   }
 
@@ -193,18 +209,27 @@ function createLazy<T>(
     <lng.Dynamic
       {...props}
       component={component}
-      {/* @once */ ...handler}
+      {
+        /* @once */ ...handler
+      }
       lazyScrollToIndex={lazyScrollToIndex}
-      ref={lngp.chainRefs(el => { viewRef = el as lngp.NavigableElement; }, props.ref)} >
+      ref={lngp.chainRefs((el) => {
+        viewRef = el as lngp.NavigableElement;
+      }, props.ref)}
+    >
       <s.Index each={items()} children={props.children} />
     </lng.Dynamic>
   );
 }
 
 export function LazyRow<T extends readonly any[]>(props: LazyProps<T>) {
-  return createLazy(lngp.Row, props, (updateOffset) => ({ onRight: updateOffset }));
+  return createLazy(lngp.Row, props, (updateOffset) => ({
+    onRight: updateOffset,
+  }));
 }
 
 export function LazyColumn<T extends readonly any[]>(props: LazyProps<T>) {
-  return createLazy(lngp.Column, props, (updateOffset) => ({ onDown: updateOffset }));
+  return createLazy(lngp.Column, props, (updateOffset) => ({
+    onDown: updateOffset,
+  }));
 }

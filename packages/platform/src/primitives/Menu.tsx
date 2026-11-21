@@ -2,6 +2,8 @@ import { For, type JSX } from 'solid-js';
 import type { ElementNode } from '../core/elementNode.js';
 import type { NodeStyles } from '../core/intrinsicTypes.js';
 import { supports } from '../sdk/capabilities.js';
+import { useTheme } from '../sdk/theme.jsx';
+import { viewport } from '../sdk/viewport.js';
 import type { Rect } from '../sdk/input.js';
 import { Column } from './Column.jsx';
 import { Popover, type PopoverPlacement } from './Popover.jsx';
@@ -31,12 +33,6 @@ export interface MenuProps {
   children?: JSX.Element;
 }
 
-const ITEM_STYLE: NodeStyles = {
-  color: 0x2f3d4eff,
-  $focus: { color: 0x2563ebff },
-};
-const DISABLED_STYLE: NodeStyles = { color: 0x1d2937ff };
-
 /**
  * List of actions anchored to a control. This is the Flutter `PopupMenuButton`
  * / Radix DropdownMenu shape: Up and Down move between the rows, each row
@@ -46,9 +42,20 @@ const DISABLED_STYLE: NodeStyles = { color: 0x1d2937ff };
 export function Menu(props: MenuProps): JSX.Element {
   // A ten-foot menu is larger than a pointer menu; the box, rows and type
   // scale together so the same items stay readable across the room.
+  const theme = useTheme();
+  // Rows are quiet until they are reached: the focused row takes the app's
+  // selection tint, the way every other list in the framework does, instead
+  // of a solid accent block under the label.
+  const itemStyle = (): NodeStyles => ({
+    color: 0x00000000,
+    borderRadius: theme.radius.small,
+    $focus: { color: theme.colors.selection },
+  });
+  const disabledStyle = (): NodeStyles => ({ color: 0x00000000 });
   const tv = supports('remote');
   const rowHeight = tv ? 72 : 56;
-  const width = tv ? 420 : 280;
+  // A phone cannot take a 280-unit menu on a 390-unit screen with margins.
+  const width = tv ? 420 : Math.min(280, viewport().width - 64);
   const fontSize = tv ? 30 : 22;
   const maxPanel = tv ? 640 : 480;
   // The panel never grows past its cap: the list scrolls (focus keeps the
@@ -95,7 +102,8 @@ export function Menu(props: MenuProps): JSX.Element {
               <view
                 width={width}
                 height={rowHeight}
-                style={item.disabled ? DISABLED_STYLE : ITEM_STYLE}
+                borderRadius={theme.radius.small}
+                style={item.disabled ? disabledStyle() : itemStyle()}
                 skipFocus={item.disabled}
                 role="menuitem"
                 ariaLabel={item.label}
@@ -112,7 +120,7 @@ export function Menu(props: MenuProps): JSX.Element {
                   width={4}
                   height={18}
                   borderRadius={2}
-                  color={0x2563ebff}
+                  color={theme.colors.primary}
                   alpha={item.checked ? 1 : 0}
                 />
                 <text
@@ -123,10 +131,10 @@ export function Menu(props: MenuProps): JSX.Element {
                   fontSize={fontSize}
                   color={
                     item.disabled
-                      ? 0x5b6b7cff
+                      ? theme.colors.textMuted
                       : item.destructive
-                        ? 0xf87171ff
-                        : 0xf2f6faff
+                        ? theme.colors.danger
+                        : theme.colors.text
                   }
                 >
                   {item.label}

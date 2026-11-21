@@ -11,14 +11,17 @@ const apk = (target) =>
   `/app/targets/${target}/platforms/android/app/build/outputs/apk/debug/app-debug.apk`;
 const oneEmulator =
   'List of devices attached\nemulator-5554 device product:sdk model:sdk_tv device:emu transport_id:1\n';
-const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
+const png = Buffer.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3,
+]);
 
 function androidMachine(target, listing, extra = {}) {
   const written = [];
   const m = machine({
     tools: ['corepack', 'adb'],
     files: [apk(target), `/app/targets/${target}/nativescript.config.ts`],
-    readFile: () => `export default {\n  id: 'com.example.demo',\n  appPath: 'app',\n};\n`,
+    readFile: () =>
+      `export default {\n  id: 'com.example.demo',\n  appPath: 'app',\n};\n`,
     writeFile: (file, data) => written.push([file, data]),
     exec: (bin, args, options) => {
       const line = args.join(' ');
@@ -76,7 +79,16 @@ test('run android --device installs on exactly that device, without building whe
     ['devices -l', '-s emulator-5554 install', '-s emulator-5554 shell'],
   );
   const other = androidMachine('android', adbListing);
-  assert.equal(await other.cli('run', 'android', '--no-build', '--device', 'emulator-7777'), 1);
+  assert.equal(
+    await other.cli(
+      'run',
+      'android',
+      '--no-build',
+      '--device',
+      'emulator-7777',
+    ),
+    1,
+  );
   assert.match(other.err[0], /^Device emulator-7777 is not attached/);
   assert.equal(other.calls.length, 1);
 });
@@ -86,7 +98,11 @@ test('run android stops when the install fails or there is no APK', async () => 
     exec: (bin, args) =>
       args.join(' ') === 'devices -l'
         ? { stdout: oneEmulator }
-        : { status: 1, stderr: 'adb: failed to install\nINSTALL_FAILED_INSUFFICIENT_STORAGE\n' },
+        : {
+            status: 1,
+            stderr:
+              'adb: failed to install\nINSTALL_FAILED_INSUFFICIENT_STORAGE\n',
+          },
   });
   assert.equal(await failing.cli('run', 'android', '--no-build'), 1);
   assert.deepEqual(failing.err, [
@@ -117,7 +133,14 @@ test('logs android follows logcat for the pid of the running app', async () => {
   assert.equal(await m.cli('logs', 'android-tv'), 0);
   assert.deepEqual(m.calls, [
     ['/usr/bin/adb', 'devices', '-l'],
-    ['/usr/bin/adb', '-s', 'emulator-5554', 'shell', 'pidof', 'com.example.demo'],
+    [
+      '/usr/bin/adb',
+      '-s',
+      'emulator-5554',
+      'shell',
+      'pidof',
+      'com.example.demo',
+    ],
     ['/usr/bin/adb', '-s', 'emulator-5554', 'logcat', '--pid=4321'],
   ]);
 
@@ -126,7 +149,10 @@ test('logs android follows logcat for the pid of the running app', async () => {
       args.join(' ') === 'devices -l' ? { stdout: oneEmulator } : { status: 1 },
   });
   assert.equal(await stopped.cli('logs', 'android-tv'), 1);
-  assert.match(stopped.err[0], /^com\.example\.demo is not running on emulator-5554/);
+  assert.match(
+    stopped.err[0],
+    /^com\.example\.demo is not running on emulator-5554/,
+  );
 });
 
 test('screenshot android writes the PNG that screencap returns', async () => {
@@ -179,12 +205,23 @@ test('package android makes a signed release and never prints the passwords', as
     'android',
     '--release',
   ]);
-  assert.equal(release[release.indexOf('--key-store-path') + 1], '/app/keys/release.jks');
-  assert.equal(release[release.indexOf('--key-store-password') + 1], 'sentinel-store');
-  assert.equal(release[release.indexOf('--key-store-alias-password') + 1], 'sentinel-key');
+  assert.equal(
+    release[release.indexOf('--key-store-path') + 1],
+    '/app/keys/release.jks',
+  );
+  assert.equal(
+    release[release.indexOf('--key-store-password') + 1],
+    'sentinel-store',
+  );
+  assert.equal(
+    release[release.indexOf('--key-store-alias-password') + 1],
+    'sentinel-key',
+  );
   assert.doesNotMatch(m.text(), /sentinel/);
 
-  const unset = androidMachine('android', oneEmulator, { config: config({ signing }) });
+  const unset = androidMachine('android', oneEmulator, {
+    config: config({ signing }),
+  });
   assert.equal(await unset.cli('package', 'android'), 1);
   assert.deepEqual(unset.err, ['Set STORE_PASSWORD to package android.']);
   assert.deepEqual(unset.calls, []);
@@ -199,7 +236,9 @@ function rokuMachine(extra = {}) {
   const written = [];
   const m = machine({
     env: { ROKU_DEV_IP: '192.0.2.44', ROKU_DEV_PASSWORD: 'sentinel-password' },
-    dirs: { '/app/targets/roku/dist-roku': ['bundle', 'solid-multiplatform.zip'] },
+    dirs: {
+      '/app/targets/roku/dist-roku': ['bundle', 'solid-multiplatform.zip'],
+    },
     writeFile: (file, data) => written.push([file, data]),
     rokuDevice: {
       rokuDevice: (env) => {
@@ -213,7 +252,10 @@ function rokuMachine(extra = {}) {
       launch: async (_, id) => void device.push(['launch', id]),
       screenshot: async () => png,
       readConsole: (_, onLine) => {
-        for (const line of ['[beacon.signal] AppLaunchComplete', 'connected from 192.0.2.44'])
+        for (const line of [
+          '[beacon.signal] AppLaunchComplete',
+          'connected from 192.0.2.44',
+        ])
           onLine(line);
         return { done: Promise.resolve([]), stop() {} };
       },
@@ -276,7 +318,11 @@ test('Apple run needs macOS, and on macOS boots, installs and launches in a simu
   const mac = machine({
     platform: 'darwin',
     exec: (bin, args) => {
-      if (bin === 'find') return { stdout: '/app/targets/ios/platforms/ios/build/Debug-iphonesimulator/demo.app\n' };
+      if (bin === 'find')
+        return {
+          stdout:
+            '/app/targets/ios/platforms/ios/build/Debug-iphonesimulator/demo.app\n',
+        };
       if (bin.endsWith('PlistBuddy')) return { stdout: 'com.example.demo\n' };
       if (args.join(' ') === 'simctl list devices available -j')
         return {
@@ -293,7 +339,9 @@ test('Apple run needs macOS, and on macOS boots, installs and launches in a simu
   });
   assert.equal(await mac.cli('run', 'ios'), 0);
   assert.deepEqual(
-    mac.calls.filter(([bin]) => bin === 'xcrun' || bin === 'build').map((c) => c.slice(0, 4).join(' ')),
+    mac.calls
+      .filter(([bin]) => bin === 'xcrun' || bin === 'build')
+      .map((c) => c.slice(0, 4).join(' ')),
     [
       'build ios false false',
       'xcrun simctl list devices',
@@ -312,10 +360,15 @@ test('the web server serves the build on localhost only', async (t) => {
     'secret.txt': 'outside the build',
   });
   const m = machine({ root, exists: existsSync, readFile: readFileSync });
-  const server = await findTarget('web').run(m.ctx(), { build: false, port: 0 });
+  const server = await findTarget('web').run(m.ctx(), {
+    build: false,
+    port: 0,
+  });
   t.after(() => server.close());
   assert.match(server.url, /^http:\/\/localhost:\d+\/$/);
-  assert.deepEqual(m.out, [`Serving targets/web/dist at ${server.url} (Ctrl+C to stop)`]);
+  assert.deepEqual(m.out, [
+    `Serving targets/web/dist at ${server.url} (Ctrl+C to stop)`,
+  ]);
   const index = await fetch(server.url);
   assert.equal(await index.text(), '<!doctype html><title>demo</title>');
   assert.match(index.headers.get('content-type'), /^text\/html/);
@@ -331,7 +384,9 @@ test('the web server serves the build on localhost only', async (t) => {
 test('run web without a build says how to make one', async (t) => {
   const m = machine({ root: scratch(t), exists: existsSync });
   assert.equal(await m.cli('run', 'web', '--no-build'), 1);
-  assert.deepEqual(m.err, ['No build at targets/web/dist. Run `solid-platform build web`.']);
+  assert.deepEqual(m.err, [
+    'No build at targets/web/dist. Run `solid-platform build web`.',
+  ]);
 });
 
 test('serve closes cleanly', async (t) => {

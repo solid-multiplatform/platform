@@ -186,9 +186,7 @@ v.describe('Nodes: el.lng is the raw renderer node, with props applied', () => {
 
   v.test('atlasGroup reaches the renderer node, at render and after', () => {
     let el!: lng.ElementNode;
-    const dispose = renderer.render(() => (
-      <view ref={el} atlasGroup="row-1" />
-    ));
+    const dispose = renderer.render(() => <view ref={el} atlasGroup="row-1" />);
     const node = el.lng as unknown as { atlasGroup?: string };
     v.expect(node.atlasGroup).toBe('row-1');
 

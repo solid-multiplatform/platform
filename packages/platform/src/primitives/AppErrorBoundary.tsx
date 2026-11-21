@@ -17,9 +17,7 @@ export interface AppErrorBoundaryProps {
  * error is sent to the installed crash reporter, the fallback uses
  * `ListState` and "Try again" resets the boundary so the subtree re-renders.
  */
-export function AppErrorBoundary(
-  props: AppErrorBoundaryProps,
-): JSX.Element {
+export function AppErrorBoundary(props: AppErrorBoundaryProps): JSX.Element {
   let reported: unknown;
   return (
     <ErrorBoundary

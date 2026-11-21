@@ -50,7 +50,11 @@ export function KeyboardAvoidingView(
       x={props.x ?? 0}
       y={behavior() === 'position' ? -inset() : (props.y ?? 0)}
       width={width()}
-      height={behavior() === 'position' ? (props.height ?? viewport().height) : height()}
+      height={
+        behavior() === 'position'
+          ? (props.height ?? viewport().height)
+          : height()
+      }
       style={props.style}
     >
       {props.children}
@@ -93,15 +97,11 @@ export function SafeArea(props: SafeAreaProps): JSX.Element {
       y={(props.y ?? 0) + (margin() ? side('top') : 0)}
       width={Math.max(
         0,
-        (props.width ?? viewport().width) -
-          side('left') -
-          side('right'),
+        (props.width ?? viewport().width) - side('left') - side('right'),
       )}
       height={Math.max(
         0,
-        (props.height ?? viewport().height) -
-          side('top') -
-          side('bottom'),
+        (props.height ?? viewport().height) - side('top') - side('bottom'),
       )}
       style={props.style}
     >
@@ -109,5 +109,3 @@ export function SafeArea(props: SafeAreaProps): JSX.Element {
     </view>
   );
 }
-
-

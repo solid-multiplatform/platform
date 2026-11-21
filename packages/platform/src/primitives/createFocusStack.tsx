@@ -26,15 +26,17 @@ interface FocusStackContextType {
   clearFocusStack: () => void;
 }
 
-const FocusStackContext = s.createContext<FocusStackContextType | undefined>(undefined);
+const FocusStackContext = s.createContext<FocusStackContextType | undefined>(
+  undefined,
+);
 
-export function FocusStackProvider(props: { children: s.JSX.Element}) {
+export function FocusStackProvider(props: { children: s.JSX.Element }) {
   const [_focusStack, setFocusStack] = s.createSignal<ElementNode[]>([]);
 
   function storeFocus(element: ElementNode, prevElement?: ElementNode) {
     const elm = prevElement || element;
     if (elm) {
-      setFocusStack(stack => [...stack, elm]);
+      setFocusStack((stack) => [...stack, elm]);
     }
   }
 
@@ -60,7 +62,9 @@ export function FocusStackProvider(props: { children: s.JSX.Element}) {
   }
 
   return (
-    <FocusStackContext.Provider value={{ storeFocus, restoreFocus, clearFocusStack }}>
+    <FocusStackContext.Provider
+      value={{ storeFocus, restoreFocus, clearFocusStack }}
+    >
       {props.children}
     </FocusStackContext.Provider>
   );
@@ -69,7 +73,7 @@ export function FocusStackProvider(props: { children: s.JSX.Element}) {
 export function useFocusStack(autoClear = true) {
   const context = s.useContext(FocusStackContext);
   if (!context) {
-    throw new Error("useFocusStack must be used within a FocusStackProvider");
+    throw new Error('useFocusStack must be used within a FocusStackProvider');
   }
 
   if (autoClear) {

@@ -85,7 +85,7 @@ export function Popover(props: PopoverProps): JSX.Element {
     >
       <view
         {...rect()}
-        color={0x1d2937ff}
+        color={theme().colors.surfaceRaised}
         borderRadius={theme().radius.medium}
         role={props.role ?? 'none'}
         ariaLabel={props.role ? props.label : undefined}

@@ -43,7 +43,15 @@ import {
 } from '@solid-multiplatform/platform/services';
 import { getRegistry } from '@roku-sdk/rsg-ts/runtime';
 import robotoRegular from './fonts/Roboto-Regular.ttf';
-import { BG, BUTTONS, FOCUSED, IDLE, MODAL, RAIL, SCREEN } from './host-cases.mjs';
+import {
+  BG,
+  BUTTONS,
+  FOCUSED,
+  IDLE,
+  MODAL,
+  RAIL,
+  SCREEN,
+} from './host-cases.mjs';
 
 // Every timer armed from here on, for the idle count. `timeout` is the
 // test's own clock and is not counted.

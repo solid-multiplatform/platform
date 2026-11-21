@@ -106,11 +106,38 @@ export default rokuConfig({ title: ${JSON.stringify(project(root).name)}, entry:
         )
       : config;
   write(path.join(dest, 'nativescript.config.ts'), appleConfig);
-  const webpack = readFileSync(
-    path.join(origin, 'webpack.config.js'),
-    'utf8',
-  ).replace('../../tests/webgl/fonts', 'work/fonts');
+  // The framework's rasterised icons travel with the fonts: the build stages
+  // them in `work/icons`, the native package carries them at `assets/app/icons`
+  // and `setIconBase` in the generated entry points at them.
+  const webpack = readFileSync(path.join(origin, 'webpack.config.js'), 'utf8')
+    .replace('../../tests/webgl/fonts', 'work/fonts')
+    .replace(
+      'args[0].patterns.push({',
+      // `noErrorOnMissing`: an app built before the icons existed still
+      // builds; it simply draws no framework icons.
+      "args[0].patterns.push({\n        from: path.resolve(__dirname, 'work/icons'),\n        to: 'icons',\n        noErrorOnMissing: true,\n      });\n      args[0].patterns.push({",
+    );
   write(path.join(dest, 'webpack.config.js'), webpack);
+  if (target === 'android') {
+    // A phone app keeps its status bar; only a television goes fullscreen.
+    const styles = path.join(
+      dest,
+      'App_Resources/Android/src/main/res/values/styles.xml',
+    );
+    if (existsSync(styles))
+      write(
+        styles,
+        readFileSync(styles, 'utf8')
+          .replace(
+            /\s*<item name="android:windowFullscreen">[^<]*<\/item>/g,
+            '',
+          )
+          .replace(
+            '<style name="AppThemeBase" parent="Theme.AppCompat.NoActionBar">',
+            '<style name="AppThemeBase" parent="Theme.AppCompat.NoActionBar">\n    <item name="android:windowLightStatusBar">false</item>\n    <item name="android:windowLightNavigationBar">false</item>',
+          ),
+      );
+  }
   const fn =
     target === 'android-tv'
       ? 'runAndroidTV'

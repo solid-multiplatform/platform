@@ -541,7 +541,8 @@
     "examples/android-tv/native",
     "examples/android-tv/App_Resources",
     "examples/apple-tv/App_Resources",
-    "vendor/*.tgz"
+    "vendor/*.tgz",
+    "assets"
   ],
   "packageManager": "pnpm@10.33.4",
   "publishConfig": {

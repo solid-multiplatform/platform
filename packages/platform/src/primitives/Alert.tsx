@@ -7,16 +7,6 @@ import type { NodeStyles } from '../core/intrinsicTypes.js';
 import { Modal } from './Modal.jsx';
 import { Row } from './Row.jsx';
 
-// The focused action is the lighter one.
-const CANCEL_STYLE: NodeStyles = {
-  color: 0x2f3d4eff,
-  $focus: { color: 0x5b7088ff },
-};
-const CONFIRM_STYLE: NodeStyles = {
-  color: 0x1d4fbfff,
-  $focus: { color: 0x4f8dffff },
-};
-
 export interface AlertProps {
   visible: boolean | (() => boolean);
   title: string;
@@ -42,6 +32,17 @@ export interface AlertProps {
  */
 export function Alert(props: AlertProps): JSX.Element {
   const theme = () => useTheme();
+  // The dialog takes the app's surfaces: a fixed palette made every app's
+  // alerts look like someone else's.
+  const cancelStyle = (): NodeStyles => ({
+    color: theme().colors.surfaceRaised,
+    border: { width: 1, color: theme().colors.border },
+    $focus: { border: { width: 2, color: theme().colors.focus } },
+  });
+  const confirmStyle = (): NodeStyles => ({
+    color: props.destructive ? theme().colors.danger : theme().colors.primary,
+    $focus: { border: { width: 2, color: theme().colors.onPrimary } },
+  });
   // Apple's alert is a compact card (270 pt on a phone), not a wide dialog:
   // the text decides the height, within the safe area.
   // A ten-foot alert is not a phone card: the same content, a larger box.
@@ -105,7 +106,7 @@ export function Alert(props: AlertProps): JSX.Element {
         )}
         width={width()}
         height={height()}
-        color={0x1d2937ff}
+        color={theme().colors.surfaceRaised}
         borderRadius={theme().radius.medium}
         onMouseClick={() => true}
       >
@@ -115,7 +116,7 @@ export function Alert(props: AlertProps): JSX.Element {
           width={width() - 48}
           contain="width"
           fontSize={titleSize()}
-          color={0xf2f6faff}
+          color={theme().colors.text}
         >
           {props.title}
         </text>
@@ -127,7 +128,7 @@ export function Alert(props: AlertProps): JSX.Element {
             height={messageLines() * Math.round(bodySize() * 1.35) + 4}
             contain="width"
             fontSize={bodySize()}
-            color={0xa6b4c4ff}
+            color={theme().colors.textMuted}
           >
             {props.message}
           </text>
@@ -150,7 +151,7 @@ export function Alert(props: AlertProps): JSX.Element {
           <view
             width={(width() - 60) / 2}
             height={actionHeight()}
-            style={CANCEL_STYLE}
+            style={cancelStyle()}
             role="button"
             ariaLabel={props.cancelLabel ?? 'Cancel'}
             onEnter={cancel}
@@ -162,7 +163,7 @@ export function Alert(props: AlertProps): JSX.Element {
               width={(width() - 60) / 2 - 32}
               contain="width"
               fontSize={tv() ? 26 : 18}
-              color={0xf2f6faff}
+              color={theme().colors.text}
             >
               {props.cancelLabel ?? 'Cancel'}
             </text>
@@ -170,7 +171,7 @@ export function Alert(props: AlertProps): JSX.Element {
           <view
             width={(width() - 60) / 2}
             height={actionHeight()}
-            style={CONFIRM_STYLE}
+            style={confirmStyle()}
             role="button"
             ariaLabel={props.confirmLabel ?? 'OK'}
             onEnter={confirm}
@@ -182,7 +183,7 @@ export function Alert(props: AlertProps): JSX.Element {
               width={(width() - 60) / 2 - 32}
               contain="width"
               fontSize={tv() ? 26 : 18}
-              color={props.destructive ? theme().colors.danger : 0xffffffff}
+              color={theme().colors.onPrimary}
             >
               {props.confirmLabel ?? 'OK'}
             </text>

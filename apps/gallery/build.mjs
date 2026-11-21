@@ -72,6 +72,18 @@ rmSync(path.join(scratch, 'src'), { recursive: true, force: true });
 cpSync(path.join(here, 'src'), path.join(scratch, 'src'), { recursive: true });
 // The CLI expects the app as `src/app.tsx`; the repo's file is `app-entry.tsx`
 // so it does not collide with `App.tsx` on a case-insensitive filesystem.
+if (roku) {
+  // Roku's bundler (esbuild) sees `App.tsx` and `app.tsx` as one name and
+  // resolves `./App` to the wrong file. Give the screen another name there.
+  const srcDir = path.join(scratch, 'src');
+  cpSync(path.join(srcDir, 'App.tsx'), path.join(srcDir, 'app-shell.tsx'));
+  const entry = path.join(srcDir, 'app-entry.tsx');
+  writeFileSync(
+    entry,
+    readFileSync(entry, 'utf8').replace("from './App'", "from './app-shell'"),
+  );
+  rmSync(path.join(srcDir, 'App.tsx'));
+}
 writeFileSync(
   path.join(scratch, 'src/app.tsx'),
   "import { App } from './app-entry';\nexport default App;\n",
@@ -84,17 +96,20 @@ writeFileSync(
   path.join(scratch, 'solid-platform.config.json'),
   JSON.stringify(projectConfig, null, 2) + '\n',
 );
-const nsConfig = path.join(
-  scratch,
-  `targets/${targetName}/nativescript.config.ts`,
-);
-writeFileSync(
-  nsConfig,
-  readFileSync(nsConfig, 'utf8').replace(
-    /id:\s*['"][^'"]+['"]/,
-    "id: 'dev.solidapp.sona'",
-  ),
-);
+// A Roku target has no NativeScript config; only the Android targets do.
+if (!roku) {
+  const nsConfig = path.join(
+    scratch,
+    `targets/${targetName}/nativescript.config.ts`,
+  );
+  writeFileSync(
+    nsConfig,
+    readFileSync(nsConfig, 'utf8').replace(
+      /id:\s*['"][^'"]+['"]/,
+      "id: 'dev.solidapp.sona'",
+    ),
+  );
+}
 
 if (!tv && !roku) {
   step('Locking the gallery to portrait');
@@ -109,6 +124,23 @@ if (!tv && !roku) {
       'android:name="com.tns.NativeScriptActivity"\n        android:screenOrientation="portrait"',
     ),
   );
+  // The app's own palette for the parts Android draws (the editor caret and
+  // any native chrome), instead of the framework example's teal.
+  const stylesFile = path.join(
+    scratch,
+    `targets/${targetName}/App_Resources/Android/src/main/res/values/styles.xml`,
+  );
+  if (existsSync(stylesFile)) {
+    writeFileSync(
+      stylesFile,
+      readFileSync(stylesFile, 'utf8')
+        .replace(/android:colorAccent">[^<]*</, 'android:colorAccent">#E2603F<')
+        .replace(
+          /android:windowBackground">[^<]*</,
+          'android:windowBackground">#08080A<',
+        ),
+    );
+  }
 }
 
 step('Installing the gallery fonts (Roboto regular and bold)');
@@ -146,7 +178,18 @@ if (!roku) {
   );
   if (!gradle.includes('useLegacyPackaging'))
     gradle += '\nandroid.packaging.jniLibs.useLegacyPackaging = true\n';
+  // Every build is an upgrade: a versionCode that never changes makes the
+  // package installer treat a tap-to-install as a reinstall, and some
+  // launchers keep showing the old build's label.
+  const built = new Date();
+  const versionCode = Math.floor(built.getTime() / 60000);
+  const stamp = built.toISOString().slice(0, 16).replace(/[-:T]/g, '');
+  const versionName = `${projectConfig.version}+${stamp}`;
+  gradle = gradle
+    .replace(/versionCode\s+\d+/, `versionCode ${versionCode}`)
+    .replace(/versionName\s+'[^']*'/, `versionName '${versionName}'`);
   writeFileSync(gradleFile, gradle);
+  console.log(`Version: ${versionName} (${versionCode})`);
 }
 
 step('Installing the app and its target');

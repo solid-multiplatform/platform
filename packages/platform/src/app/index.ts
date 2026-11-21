@@ -85,6 +85,7 @@ export {
 export { useBreakpoint } from '../sdk/responsive.js';
 export { loadService } from '../sdk/registry.js';
 export {
+  applySystemBarStyle,
   deviceInfo,
   impact,
   keepAwake,

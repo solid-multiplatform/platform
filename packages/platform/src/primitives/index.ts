@@ -69,3 +69,5 @@ export * from './selectionModel.js';
 export * from './Svg.jsx';
 export * from './GestureAlternatives.jsx';
 export * from './TitleBar.jsx';
+
+export { CheckIcon, ChevronIcon, CloseIcon } from './icons.jsx';

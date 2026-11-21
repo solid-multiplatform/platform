@@ -14,7 +14,13 @@
 //
 // `--out` writes <out>.jpg (or .png) and <out>.txt.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -64,7 +70,16 @@ say(`Roku ${info.model}, OS ${info.softwareVersion}, ${info.uiResolution}`);
 rmSync(out, { recursive: true, force: true });
 execFileSync(
   path.join(project, 'node_modules/.bin/rk'),
-  ['build', '--local', '--no-drop-console', '--no-source-map', '--out-dir', out, '--config', 'text.roku-config.ts'],
+  [
+    'build',
+    '--local',
+    '--no-drop-console',
+    '--no-source-map',
+    '--out-dir',
+    out,
+    '--config',
+    'text.roku-config.ts',
+  ],
   { cwd: project, stdio: ['ignore', 'ignore', 'inherit'] },
 );
 if (!existsSync(path.join(out, 'pkg-dir/manifest')))
@@ -121,9 +136,13 @@ try {
     await launch(device, previous).catch(() => {});
 }
 
-for (const note of notes) if (!/^TEXT (NODE|MARK|DEVICE) /.test(note)) say(note);
+for (const note of notes)
+  if (!/^TEXT (NODE|MARK|DEVICE) /.test(note)) say(note);
 if (!Buffer.isBuffer(shot)) {
-  console.error('The app never reported TEXT READY, or no screenshot was returned: ' + String(shot ?? ''));
+  console.error(
+    'The app never reported TEXT READY, or no screenshot was returned: ' +
+      String(shot ?? ''),
+  );
   process.exit(2);
 }
 const target = flag('--out');
@@ -144,17 +163,33 @@ for (const note of notes) {
   found = /^TEXT MARK (\w+) (.*)$/.exec(note);
   if (found) marks[found[1]] = Number(found[2]);
   found = /^TEXT DEVICE (\w+) (\d+) (\d+) (\d+) (.*)$/.exec(note);
-  if (found) measured.push({ font: found[1], size: +found[2], ascent: +found[3], lineHeight: +found[4], widths: found[5].split(',').map(Number) });
+  if (found)
+    measured.push({
+      font: found[1],
+      size: +found[2],
+      ascent: +found[3],
+      lineHeight: +found[4],
+      widths: found[5].split(',').map(Number),
+    });
 }
 
 // ---- the fonts, read as the build reads them ----------------------------------------
 
 const installed = path.dirname(
-  createRequire(path.join(project, 'package.json')).resolve('@solid-multiplatform/renderer/roku'),
+  createRequire(path.join(project, 'package.json')).resolve(
+    '@solid-multiplatform/renderer/roku',
+  ),
 );
-const { parseFont, packFontMetrics } = await import(pathToFileURL(path.join(installed, 'font-file.js')).href);
-const { FontMetrics } = await import(pathToFileURL(path.join(installed, 'font-metrics.js')).href);
-const table = (file) => FontMetrics.decode(packFontMetrics(parseFont(new Uint8Array(readFileSync(file)))));
+const { parseFont, packFontMetrics } = await import(
+  pathToFileURL(path.join(installed, 'font-file.js')).href
+);
+const { FontMetrics } = await import(
+  pathToFileURL(path.join(installed, 'font-metrics.js')).href
+);
+const table = (file) =>
+  FontMetrics.decode(
+    packFontMetrics(parseFont(new Uint8Array(readFileSync(file)))),
+  );
 const FONTS = {
   regular: table(path.join(here, 'fonts/Roboto-Regular.ttf')),
   bold: table(path.join(here, 'fonts/Roboto-Bold.ttf')),
@@ -162,22 +197,37 @@ const FONTS = {
 };
 /** The font a case's props name, at its size. */
 function fontOf(props) {
-  const metrics = props.fontFamily === 'Raleway' ? FONTS.raleway : props.fontWeight >= 600 ? FONTS.bold : FONTS.regular;
+  const metrics =
+    props.fontFamily === 'Raleway'
+      ? FONTS.raleway
+      : props.fontWeight >= 600
+        ? FONTS.bold
+        : FONTS.regular;
   return metrics.at(props.fontSize);
 }
 /** The first baseline below a text's top and the line height, as the scene lays text out. */
 function lineBox(props) {
   const m = fontOf(props).metrics;
   const bare = m.ascender - m.descender + m.lineGap;
-  const lineHeight = props.lineHeight === undefined ? 1.2 * bare : props.lineHeight <= 3 ? props.lineHeight * bare : props.lineHeight;
-  return { lineHeight, baseline: (lineHeight + (m.capHeight + m.xHeight) / 2) / 2 };
+  const lineHeight =
+    props.lineHeight === undefined
+      ? 1.2 * bare
+      : props.lineHeight <= 3
+        ? props.lineHeight * bare
+        : props.lineHeight;
+  return {
+    lineHeight,
+    baseline: (lineHeight + (m.capHeight + m.xHeight) / 2) / 2,
+  };
 }
 
 // ---- the ink ------------------------------------------------------------------------
 
 const image = decodeImage(shot);
 if (image.width !== 1920 || image.height !== 1080)
-  throw new Error(`Expected a 1920x1080 screenshot, got ${image.width}x${image.height}.`);
+  throw new Error(
+    `Expected a 1920x1080 screenshot, got ${image.width}x${image.height}.`,
+  );
 // Text is white, marks are red, the screen is black: green tells text from both.
 const isInk = (x, y) => pixel(image, x, y)[1] > 100;
 const isMark = (x, y) => {
@@ -220,10 +270,15 @@ let failures = [];
 const fail = (text) => failures.push(text);
 const near = (what, got, want, tolerance) => {
   if (!(Math.abs(got - want) <= tolerance))
-    fail(`${what}: got ${Number(got).toFixed(1)}, want ${Number(want).toFixed(1)} +-${tolerance}`);
+    fail(
+      `${what}: got ${Number(got).toFixed(1)}, want ${Number(want).toFixed(1)} +-${tolerance}`,
+    );
 };
 const within = (what, got, low, high) => {
-  if (!(got >= low && got <= high)) fail(`${what}: got ${Number(got).toFixed(1)}, want ${low.toFixed(1)}..${high.toFixed(1)}`);
+  if (!(got >= low && got <= high))
+    fail(
+      `${what}: got ${Number(got).toFixed(1)}, want ${low.toFixed(1)}..${high.toFixed(1)}`,
+    );
 };
 /** Ink width against a measured width: 2% of it, or 2 px. The ink is narrower by the side bearings of its end glyphs. */
 const widthTolerance = (width) => Math.max(2, width * 0.02);
@@ -251,12 +306,20 @@ function aligned(name, side) {
   if (!found) return;
   const box = c.props.width;
   const lineWidth = fontOf(c.props).measure(c.text, 0);
-  fact(`${name}: ink ${found.l}..${found.r} in box ${c.x}..${c.x + box}, measured width ${lineWidth}`);
+  fact(
+    `${name}: ink ${found.l}..${found.r} in box ${c.x}..${c.x + box}, measured width ${lineWidth}`,
+  );
   // The ink sits inside the line by the side bearings of its end glyphs (a few px).
   if (side === 'left') within('ink left edge', found.l, c.x, c.x + 6);
-  else if (side === 'right') within('ink right edge', found.r, c.x + box - 7, c.x + box);
+  else if (side === 'right')
+    within('ink right edge', found.r, c.x + box - 7, c.x + box);
   else near('ink centre', (found.l + found.r + 1) / 2, c.x + box / 2, 3);
-  near('ink width against the measured line', found.r - found.l + 1, lineWidth, widthTolerance(lineWidth) + 6);
+  near(
+    'ink width against the measured line',
+    found.r - found.l + 1,
+    lineWidth,
+    widthTolerance(lineWidth) + 6,
+  );
   near('reported box width', node(name).width, box, 0.01);
   near('reported line width', node(name).w, lineWidth, 0.01);
 }
@@ -279,16 +342,31 @@ function greedy(text, font, maxWidth) {
 /** Each reported line has a row of ink of its measured width. */
 function linesMatchInk(name, c, lines) {
   const font = fontOf(c.props);
-  const found = inkOf(name, c, undefined, Math.max(1, lines.length) * lineBox(c.props).lineHeight);
+  const found = inkOf(
+    name,
+    c,
+    undefined,
+    Math.max(1, lines.length) * lineBox(c.props).lineHeight,
+  );
   if (!found) return;
   if (found.rows.length !== lines.length) {
-    fail(`${found.rows.length} lines of ink for ${lines.length} reported lines`);
+    fail(
+      `${found.rows.length} lines of ink for ${lines.length} reported lines`,
+    );
     return;
   }
   lines.forEach((text, i) => {
     const width = font.measure(text, 0);
-    if (width > c.props.width + 0.01) fail(`line ${i + 1} "${text}" measures ${width}, wider than its box ${c.props.width}`);
-    near(`ink width of line ${i + 1} "${text}"`, found.rows[i].r - found.rows[i].l + 1, width, widthTolerance(width) + 6);
+    if (width > c.props.width + 0.01)
+      fail(
+        `line ${i + 1} "${text}" measures ${width}, wider than its box ${c.props.width}`,
+      );
+    near(
+      `ink width of line ${i + 1} "${text}"`,
+      found.rows[i].r - found.rows[i].l + 1,
+      width,
+      widthTolerance(width) + 6,
+    );
   });
 }
 
@@ -301,9 +379,15 @@ const probes = {
     const c = TEXTS.wrap;
     const want = greedy(c.text, fontOf(c.props), c.props.width);
     const got = node('wrap').lines;
-    if (got.join('|') !== want.join('|')) fail(`lines are ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
+    if (got.join('|') !== want.join('|'))
+      fail(`lines are ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
     linesMatchInk('wrap', c, got);
-    near('reported height', node('wrap').height, want.length * lineBox(c.props).lineHeight, 0.01);
+    near(
+      'reported height',
+      node('wrap').height,
+      want.length * lineBox(c.props).lineHeight,
+      0.01,
+    );
     fact(`wrap: ${got.length} lines, ${JSON.stringify(got)}`);
   },
   maxLines() {
@@ -316,8 +400,10 @@ const probes = {
     // The last line allowed keeps its words and ends with the suffix, losing
     // only the characters that must go for the suffix to fit.
     let last = all[1];
-    while (last.length > 0 && font.measure(last + '...', 0) > c.props.width) last = last.slice(0, -1);
-    if (got[1] !== last + '...') fail(`last line is "${got[1]}", want "${last}..."`);
+    while (last.length > 0 && font.measure(last + '...', 0) > c.props.width)
+      last = last.slice(0, -1);
+    if (got[1] !== last + '...')
+      fail(`last line is "${got[1]}", want "${last}..."`);
     linesMatchInk('maxLines', c, got);
     fact(`maxLines: ${JSON.stringify(got)}`);
   },
@@ -325,8 +411,10 @@ const probes = {
     const c = TEXTS.suffix;
     const got = node('suffix').lines;
     if (got.length !== 1) return fail(`${got.length} lines, want 1`);
-    if (!got[0].endsWith(c.props.overflowSuffix)) fail(`"${got[0]}" does not end with "${c.props.overflowSuffix}"`);
-    if (!c.text.startsWith(got[0].slice(0, -c.props.overflowSuffix.length))) fail(`"${got[0]}" is not the start of the text`);
+    if (!got[0].endsWith(c.props.overflowSuffix))
+      fail(`"${got[0]}" does not end with "${c.props.overflowSuffix}"`);
+    if (!c.text.startsWith(got[0].slice(0, -c.props.overflowSuffix.length)))
+      fail(`"${got[0]}" is not the start of the text`);
     linesMatchInk('suffix', c, got);
     fact(`suffix: ${JSON.stringify(got)}`);
   },
@@ -340,7 +428,8 @@ const probes = {
     let head = word;
     while (font.measure(head, 0) > c.props.width) head = head.slice(0, -1);
     if (got[0] !== head) fail(`first line is "${got[0]}", want "${head}"`);
-    if (got.join('').replace(/ /g, '') !== c.text.replace(/ /g, '')) fail(`lines ${JSON.stringify(got)} do not add up to the text`);
+    if (got.join('').replace(/ /g, '') !== c.text.replace(/ /g, ''))
+      fail(`lines ${JSON.stringify(got)} do not add up to the text`);
     linesMatchInk('longWord', c, got);
     fact(`longWord: ${JSON.stringify(got)}`);
   },
@@ -350,15 +439,28 @@ const probes = {
     const spaced = inkOf('spaced', TEXTS.spaced, 520);
     const gaps = TEXTS.spaced.text.length - 1;
     const want = gaps * TEXTS.spaced.props.letterSpacing;
-    near('reported widening', node('spaced').w - node('plain').w, want - kerningOf(TEXTS.plain), 0.01);
+    near(
+      'reported widening',
+      node('spaced').w - node('plain').w,
+      want - kerningOf(TEXTS.plain),
+      0.01,
+    );
     if (plain && spaced) {
       const widening = spaced.r - spaced.l - (plain.r - plain.l);
       near('ink widening', widening, want - kerningOf(TEXTS.plain), 3);
-      fact(`letterSpacing ${TEXTS.spaced.props.letterSpacing}: ink ${plain.r - plain.l + 1} -> ${spaced.r - spaced.l + 1} px (${gaps} gaps), reported ${node('plain').w} -> ${node('spaced').w}`);
+      fact(
+        `letterSpacing ${TEXTS.spaced.props.letterSpacing}: ink ${plain.r - plain.l + 1} -> ${spaced.r - spaced.l + 1} px (${gaps} gaps), reported ${node('plain').w} -> ${node('spaced').w}`,
+      );
     }
     const c = TEXTS.spacedCenter;
     const centred = inkOf('spacedCenter', c);
-    if (centred) near('centred letter-spaced ink', (centred.l + centred.r + 1) / 2, c.x + c.props.width / 2, 3);
+    if (centred)
+      near(
+        'centred letter-spaced ink',
+        (centred.l + centred.r + 1) / 2,
+        c.x + c.props.width / 2,
+        3,
+      );
   },
 
   linePixels: () => lineHeight('linePixels'),
@@ -366,23 +468,55 @@ const probes = {
   lineDefault: () => lineHeight('lineDefault'),
   lineRight() {
     const c = TEXTS.lineRight;
-    const found = inkOf('lineRight', c, undefined, 3 * lineBox(c.props).lineHeight);
+    const found = inkOf(
+      'lineRight',
+      c,
+      undefined,
+      3 * lineBox(c.props).lineHeight,
+    );
     if (!found) return;
-    if (found.rows.length !== 3) return fail(`${found.rows.length} lines of ink, want 3`);
-    found.rows.forEach((row, i) => within(`right edge of line ${i + 1}`, row.r, c.x + c.props.width - 7, c.x + c.props.width));
+    if (found.rows.length !== 3)
+      return fail(`${found.rows.length} lines of ink, want 3`);
+    found.rows.forEach((row, i) =>
+      within(
+        `right edge of line ${i + 1}`,
+        row.r,
+        c.x + c.props.width - 7,
+        c.x + c.props.width,
+      ),
+    );
   },
 
   measuredWidths() {
-    for (const name of ['widthRegular', 'widthBold', 'widthLigatures', 'widthSmall', 'widthNearest', 'widthLarge']) {
+    for (const name of [
+      'widthRegular',
+      'widthBold',
+      'widthLigatures',
+      'widthSmall',
+      'widthNearest',
+      'widthLarge',
+    ]) {
       const c = TEXTS[name];
       const seen = node(name).w;
       const model = fontOf(c.props).measure(c.text, 0);
       const found = inkOf(name, c, seen || model);
       if (!found) continue;
       const width = found.r - found.l + 1;
-      near(`${name}: width the platform reads against the ink`, seen, width, widthTolerance(width));
-      near(`${name}: width the platform reads against the font's table`, seen, model, 0.01);
-      fact(`${name}: platform ${seen}, table ${model}, ink ${width} px (${(((seen - width) / width) * 100).toFixed(2)}%)`);
+      near(
+        `${name}: width the platform reads against the ink`,
+        seen,
+        width,
+        widthTolerance(width),
+      );
+      near(
+        `${name}: width the platform reads against the font's table`,
+        seen,
+        model,
+        0.01,
+      );
+      fact(
+        `${name}: platform ${seen}, table ${model}, ink ${width} px (${(((seen - width) / width) * 100).toFixed(2)}%)`,
+      );
     }
   },
 
@@ -400,18 +534,25 @@ const probes = {
     const width = node('flexUnregistered').w;
     if (!(width > 50)) fail(`the system-font text reads a width of ${width}`);
     flexRow('flexUnregistered', width);
-    const warnings = notes.filter((note) => note.startsWith('ROKU_FONT') && note.includes(`"${UNREGISTERED}"`));
-    if (warnings.length !== 1) fail(`${warnings.length} warnings name the unregistered family, want 1`);
+    const warnings = notes.filter(
+      (note) =>
+        note.startsWith('ROKU_FONT') && note.includes(`"${UNREGISTERED}"`),
+    );
+    if (warnings.length !== 1)
+      fail(`${warnings.length} warnings name the unregistered family, want 1`);
   },
   flexMissing() {
     const width = node('flexMissing').w;
-    if (!(width > 50)) fail(`the text of the font that cannot load reads a width of ${width}`);
+    if (!(width > 50))
+      fail(`the text of the font that cannot load reads a width of ${width}`);
     flexRow('flexMissing', width);
   },
 
   fontsLoad() {
     for (const family of ['Roboto', 'Roboto700', 'Raleway']) {
-      const line = notes.find((note) => note.startsWith(`TEXT FONT ${family} `));
+      const line = notes.find((note) =>
+        note.startsWith(`TEXT FONT ${family} `),
+      );
       const took = /loaded (\d+)/.exec(line ?? '');
       if (!took) fail(`${family} did not load: ${line ?? 'no report'}`);
       else fact(`${family} loaded after ${took[1]} ms`);
@@ -420,7 +561,10 @@ const probes = {
   missingFontSettles() {
     const line = notes.find((note) => note.startsWith(`TEXT FONT ${MISSING} `));
     const took = /rejected (\d+)/.exec(line ?? '');
-    if (!took) fail(`the load of the missing file did not reject: ${line ?? 'no report'}`);
+    if (!took)
+      fail(
+        `the load of the missing file did not reject: ${line ?? 'no report'}`,
+      );
     else {
       within('time to reject', +took[1], 500, 3500);
       fact(`missing file: ${line.slice(5)}`);
@@ -430,7 +574,8 @@ const probes = {
     const line = notes.find((note) => note.startsWith('TEXT IDLE '));
     const timers = /timers=(\d+)/.exec(line ?? '');
     if (!timers) fail('no idle report');
-    else if (+timers[1] !== 0) fail(`${timers[1]} timers were armed in 2 s with the text settled`);
+    else if (+timers[1] !== 0)
+      fail(`${timers[1]} timers were armed in 2 s with the text settled`);
   },
   deviceMeasure() {
     let worst = 0;
@@ -446,8 +591,13 @@ const probes = {
           continue;
         }
         const sized = FONTS[font].at(size);
-        if (got.ascent !== sized.labelAscent || got.lineHeight !== sized.labelLineHeight)
-          fail(`${font} ${size}: device ascent ${got.ascent} and line height ${got.lineHeight}, table ${sized.labelAscent} and ${sized.labelLineHeight}`);
+        if (
+          got.ascent !== sized.labelAscent ||
+          got.lineHeight !== sized.labelLineHeight
+        )
+          fail(
+            `${font} ${size}: device ascent ${got.ascent} and line height ${got.lineHeight}, table ${sized.labelAscent} and ${sized.labelLineHeight}`,
+          );
         MEASURED_STRINGS.forEach((text, i) => {
           const model = sized.measure(text, 0);
           const error = Math.abs(model - got.widths[i]);
@@ -459,12 +609,16 @@ const probes = {
             worstCase = `${font} ${size} "${text}": device ${got.widths[i]}, table ${model}`;
           }
           if (error > Math.max(2, got.widths[i] * 0.02))
-            fail(`${font} ${size} "${text}": device ${got.widths[i]}, table ${model}`);
+            fail(
+              `${font} ${size} "${text}": device ${got.widths[i]}, table ${model}`,
+            );
         });
       }
     }
     if (count)
-      fact(`build-time widths against getFontMeasure(): ${exact}/${count} exact, mean error ${(total / count).toFixed(3)} px, worst ${worst} px${worst ? ' (' + worstCase + ')' : ''}`);
+      fact(
+        `build-time widths against getFontMeasure(): ${exact}/${count} exact, mean error ${(total / count).toFixed(3)} px, worst ${worst} px${worst ? ' (' + worstCase + ')' : ''}`,
+      );
   },
 };
 
@@ -482,10 +636,20 @@ function lineHeight(name) {
   const found = inkOf(name, c, 300, 3 * box.lineHeight);
   near('reported height', node(name).h, 3 * box.lineHeight, 0.01);
   if (!found) return;
-  if (found.rows.length !== 3) return fail(`${found.rows.length} lines of ink, want 3`);
+  if (found.rows.length !== 3)
+    return fail(`${found.rows.length} lines of ink, want 3`);
   // No descenders in these lines: each row of ink ends on its baseline.
-  found.rows.forEach((row, i) => near(`baseline of line ${i + 1}`, row.b + 1, c.y + box.baseline + i * box.lineHeight, 2));
-  fact(`${name}: line height ${box.lineHeight}, baselines at ${found.rows.map((row) => row.b + 1).join(', ')} (want ${[0, 1, 2].map((i) => (c.y + box.baseline + i * box.lineHeight).toFixed(1)).join(', ')})`);
+  found.rows.forEach((row, i) =>
+    near(
+      `baseline of line ${i + 1}`,
+      row.b + 1,
+      c.y + box.baseline + i * box.lineHeight,
+      2,
+    ),
+  );
+  fact(
+    `${name}: line height ${box.lineHeight}, baselines at ${found.rows.map((row) => row.b + 1).join(', ')} (want ${[0, 1, 2].map((i) => (c.y + box.baseline + i * box.lineHeight).toFixed(1)).join(', ')})`,
+  );
 }
 
 function vertical(name, place) {
@@ -504,14 +668,17 @@ function flexRow(name, width) {
   const c = ROWS[name];
   const y = c.y + 20;
   let markX = -1;
-  for (let x = c.x; x < c.x + 840 && markX < 0; x++) if (isMark(x, y) && isMark(x + 3, y)) markX = x;
+  for (let x = c.x; x < c.x + 840 && markX < 0; x++)
+    if (isMark(x, y) && isMark(x + 3, y)) markX = x;
   if (markX < 0) return fail('no mark on screen');
   near('mark on screen', markX, c.x + width + GAP, 1.5);
   near('mark as the platform placed it', marks[name], c.x + width + GAP, 0.51);
   const found = ink(c.x - 10, c.y - 10, markX - c.x, 70);
   if (!found) return fail('no ink');
   within('ink right edge', found.r, markX - GAP - 9, markX - GAP);
-  fact(`${name}: text width ${width}, mark at ${markX} (want ${(c.x + width + GAP).toFixed(1)}), ink ends at ${found.r}`);
+  fact(
+    `${name}: text width ${width}, mark at ${markX} (want ${(c.x + width + GAP).toFixed(1)}), ink ends at ${found.r}`,
+  );
 }
 
 let failed = 0;
@@ -520,7 +687,10 @@ for (const [name, probe] of Object.entries(probes)) {
   try {
     probe();
   } catch (error) {
-    fail('the probe threw: ' + (error instanceof Error ? error.message : String(error)));
+    fail(
+      'the probe threw: ' +
+        (error instanceof Error ? error.message : String(error)),
+    );
   }
   if (failures.length) {
     failed++;
@@ -534,6 +704,8 @@ say(`TEXT RESULT passed=${total - failed} failed=${failed}`);
 if (target)
   writeFileSync(
     target + '.txt',
-    output.concat(notes.filter((note) => /^TEXT (NODE|MARK|DEVICE) /.test(note))).join('\n') + '\n',
+    output
+      .concat(notes.filter((note) => /^TEXT (NODE|MARK|DEVICE) /.test(note)))
+      .join('\n') + '\n',
   );
 process.exit(failed ? 1 : 0);

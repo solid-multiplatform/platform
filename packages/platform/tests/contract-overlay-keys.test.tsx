@@ -407,31 +407,34 @@ v.describe('Drawer, Sheet and Popover without initialFocus', () => {
     });
   }
 
-  v.it('an initialFocus that names nothing still moves focus inside', async () => {
-    const [open, setOpen] = createSignal(false);
-    let trigger!: lng.ElementNode;
-    const { target, dispose } = await mount(() => (
-      <view width={1280} height={720}>
-        {opener(
-          (node) => (trigger = node),
-          () => setOpen(true),
-        )}
-        <Drawer
-          visible={open}
-          label="Drawer"
-          initialFocus={() => undefined}
-          onRequestClose={() => setOpen(false)}
-        >
-          {content()}
-        </Drawer>
-      </view>
-    ));
-    await press(target, 'Enter');
-    v.expect(focused()).toBe('First');
-    await press(target, 'Escape');
-    v.expect(lng.activeElement()).toBe(trigger);
-    dispose();
-  });
+  v.it(
+    'an initialFocus that names nothing still moves focus inside',
+    async () => {
+      const [open, setOpen] = createSignal(false);
+      let trigger!: lng.ElementNode;
+      const { target, dispose } = await mount(() => (
+        <view width={1280} height={720}>
+          {opener(
+            (node) => (trigger = node),
+            () => setOpen(true),
+          )}
+          <Drawer
+            visible={open}
+            label="Drawer"
+            initialFocus={() => undefined}
+            onRequestClose={() => setOpen(false)}
+          >
+            {content()}
+          </Drawer>
+        </view>
+      ));
+      await press(target, 'Enter');
+      v.expect(focused()).toBe('First');
+      await press(target, 'Escape');
+      v.expect(lng.activeElement()).toBe(trigger);
+      dispose();
+    },
+  );
 
   v.it('an empty Popover keeps focus, so that Back closes it', async () => {
     const [open, setOpen] = createSignal(false);
@@ -460,64 +463,67 @@ v.describe('Drawer, Sheet and Popover without initialFocus', () => {
 });
 
 v.describe('RadioGroup', () => {
-  v.it('is a row of a Column: arrows pass through it, Enter selects one', async () => {
-    const [quality, setQuality] = createSignal('HD');
-    let column!: lng.ElementNode;
-    const { target, dispose } = await mount(() => (
-      <Column
-        ref={(node) => (column = node)}
-        width={400}
-        gap={10}
-        scroll="none"
-        autofocus
-      >
-        <view width={200} height={50} onEnter={() => true}>
-          <text>Above</text>
-        </view>
-        <RadioGroup
-          value={quality}
-          options={[
-            { value: 'SD', label: 'SD' },
-            { value: 'HD', label: 'HD' },
-            { value: '4K', label: '4K' },
-          ]}
-          onChange={setQuality}
-        />
-        <view width={200} height={50} onEnter={() => true}>
-          <text>Below</text>
-        </view>
-      </Column>
-    ));
-    const group = column.children[1] as lng.ElementNode;
-    const checked = () =>
-      group.children
-        .filter((radio) => (radio as lng.ElementNode).ariaChecked === true)
-        .map((radio) => (radio as lng.ElementNode).ariaLabel);
+  v.it(
+    'is a row of a Column: arrows pass through it, Enter selects one',
+    async () => {
+      const [quality, setQuality] = createSignal('HD');
+      let column!: lng.ElementNode;
+      const { target, dispose } = await mount(() => (
+        <Column
+          ref={(node) => (column = node)}
+          width={400}
+          gap={10}
+          scroll="none"
+          autofocus
+        >
+          <view width={200} height={50} onEnter={() => true}>
+            <text>Above</text>
+          </view>
+          <RadioGroup
+            value={quality}
+            options={[
+              { value: 'SD', label: 'SD' },
+              { value: 'HD', label: 'HD' },
+              { value: '4K', label: '4K' },
+            ]}
+            onChange={setQuality}
+          />
+          <view width={200} height={50} onEnter={() => true}>
+            <text>Below</text>
+          </view>
+        </Column>
+      ));
+      const group = column.children[1] as lng.ElementNode;
+      const checked = () =>
+        group.children
+          .filter((radio) => (radio as lng.ElementNode).ariaChecked === true)
+          .map((radio) => (radio as lng.ElementNode).ariaLabel);
 
-    // Sized by its three 48-high rows and two 4-wide gaps, and laid out.
-    v.expect(group.height).toBe(152);
-    v.expect(group.y).toBe(60);
-    v.expect((column.children[2] as lng.ElementNode).y).toBe(60 + 152 + 10);
+      // Sized by its three 48-high rows and two 4-wide gaps, and laid out.
+      v.expect(group.height).toBe(152);
+      v.expect(group.y).toBe(60);
+      v.expect((column.children[2] as lng.ElementNode).y).toBe(60 + 152 + 10);
 
-    v.expect(focused()).toBe('Above');
-    await press(target, 'ArrowDown');
-    v.expect(lng.activeElement()!.ariaLabel).toBe('HD');
-    await press(target, 'ArrowDown');
-    v.expect(lng.activeElement()!.ariaLabel).toBe('4K');
-    await press(target, 'Enter');
-    v.expect(quality()).toBe('4K');
-    v.expect(checked()).toEqual(['4K']);
-    await press(target, 'ArrowDown');
-    v.expect(focused()).toBe('Below');
-    await press(target, 'ArrowUp');
-    v.expect(lng.activeElement()!.ariaLabel).toBe('4K');
-    await press(target, 'ArrowUp', 'ArrowUp');
-    v.expect(lng.activeElement()!.ariaLabel).toBe('SD');
-    await press(target, 'Enter');
-    v.expect(quality()).toBe('SD');
-    v.expect(checked()).toEqual(['SD']);
-    await press(target, 'ArrowUp');
-    v.expect(focused()).toBe('Above');
-    dispose();
-  });
+      v.expect(focused()).toBe('Above');
+      await press(target, 'ArrowDown');
+      v.expect(lng.activeElement()!.ariaLabel).toBe('HD');
+      await press(target, 'ArrowDown');
+      v.expect(lng.activeElement()!.ariaLabel).toBe('4K');
+      await press(target, 'Enter');
+      v.expect(quality()).toBe('4K');
+      v.expect(checked()).toEqual(['4K']);
+      await press(target, 'ArrowDown');
+      v.expect(focused()).toBe('Below');
+      await press(target, 'ArrowUp');
+      v.expect(lng.activeElement()!.ariaLabel).toBe('4K');
+      await press(target, 'ArrowUp', 'ArrowUp');
+      v.expect(lng.activeElement()!.ariaLabel).toBe('SD');
+      await press(target, 'Enter');
+      v.expect(quality()).toBe('SD');
+      v.expect(checked()).toEqual(['SD']);
+      await press(target, 'ArrowUp');
+      v.expect(focused()).toBe('Above');
+      dispose();
+    },
+  );
 });

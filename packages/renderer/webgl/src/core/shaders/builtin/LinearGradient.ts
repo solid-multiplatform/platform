@@ -1,20 +1,26 @@
-import { PRECISION, defaultVertex } from '../glsl.js';
+import { PRECISION, defaultVertex, edgeWidthDefine } from '../glsl.js';
 import type { ShaderType } from '../ShaderType.js';
 import {
   colorsProp,
   gradientGlsl,
   gradientRows,
   packGradient,
+  packRoundedMask,
   paramsUniform,
+  radiusProp,
+  roundedMaskGlsl,
   stopsProp,
 } from './gradient.js';
 
 export interface LinearGradientProps {
   /**
-   * 0xRRGGBBAA colours, at most 9: 10 take 17 fragment uniform vectors,
-   * past the 16 of the GPU floor (the rules test holds the count).
+   * 0xRRGGBBAA colours, at most 8: the corner mask takes two rows, so 9
+   * colours would take 17 fragment uniform vectors, past the 16 of the GPU
+   * floor (the rules test holds the count).
    */
   colors: number[];
+  /** The node's corner radii, in pixels; the gradient is masked to them. */
+  radius?: number | number[];
   /** Angle in radians (0: top to bottom). */
   angle: number;
   /** One per colour, in [0, 1]; spread evenly when they do not match. */
@@ -34,6 +40,7 @@ export const LinearGradient: ShaderType<LinearGradientProps> = {
     colors: colorsProp([0x000000ff, 0xffffffff]),
     stops: stopsProp([0, 1]),
     angle: 0,
+    radius: radiusProp(),
   } as ShaderType<LinearGradientProps>['props'],
   variant: (props) => String(props.colors.length),
   // A colors write that changes the count switches the program.
@@ -41,21 +48,25 @@ export const LinearGradient: ShaderType<LinearGradientProps> = {
   vertex: (ctx, props) =>
     defaultVertex(
       ctx.viewport,
-      paramsUniform(1 + gradientRows(props.colors.length)) +
+      paramsUniform(3 + gradientRows(props.colors.length)) +
         'varying float v_dist;',
       'v_dist=dot(a_textureCoords,u_params[0].xy)+u_params[0].z;',
     ),
-  fragment: (_ctx, props) => {
+  fragment: (ctx, props) => {
     const n = props.colors.length;
+    const sizeRow = 1 + gradientRows(n);
     return (
       PRECISION +
+      edgeWidthDefine(ctx.pixelRatio, ctx.resizable) +
       'uniform float u_alpha;uniform sampler2D u_texture;' +
-      paramsUniform(1 + gradientRows(n)) +
+      paramsUniform(3 + gradientRows(n)) +
       'varying vec4 v_color;varying vec2 v_textureCoords;varying float v_dist;\n' +
       'void main(){vec4 color=texture2D(u_texture,v_textureCoords)*v_color;' +
       'float dist=clamp(v_dist,0.0,1.0);' +
       gradientGlsl(n, 1, 'dist') +
-      'gl_FragColor=mix(color,colorOut*u_alpha,clamp(colorOut.a,0.0,1.0));}'
+      'gl_FragColor=mix(color,colorOut*u_alpha,clamp(colorOut.a,0.0,1.0));' +
+      roundedMaskGlsl(sizeRow, sizeRow + 1) +
+      '}'
     );
   },
   pack(props, w, h, u) {
@@ -72,5 +83,13 @@ export const LinearGradient: ShaderType<LinearGradientProps> = {
     const fy = lineDist * 0.5 * s + h * 0.5;
     u.row(0, w * gx * invGG, h * gy * invGG, -(fx * gx + fy * gy) * invGG, 0);
     packGradient(u, 1, props.colors, props.stops);
+    packRoundedMask(
+      u,
+      1 + gradientRows(props.colors.length),
+      2 + gradientRows(props.colors.length),
+      props.radius,
+      w,
+      h,
+    );
   },
 };

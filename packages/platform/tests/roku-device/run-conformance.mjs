@@ -25,7 +25,9 @@ const device = rokuDevice();
 const info = await deviceInfo(device);
 if (!info.developerEnabled)
   throw new Error('Developer mode is off on this Roku.');
-console.log(`Roku ${info.model}, OS ${info.softwareVersion}, ${info.uiResolution}`);
+console.log(
+  `Roku ${info.model}, OS ${info.softwareVersion}, ${info.uiResolution}`,
+);
 
 rmSync(out, { recursive: true, force: true });
 // A release build as apps ship, except that console output is kept: it

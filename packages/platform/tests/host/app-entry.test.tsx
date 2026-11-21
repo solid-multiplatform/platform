@@ -43,10 +43,7 @@ test('a component app reads its host, plugins and theme without props', async ()
   let context!: HostContext<HTMLElement>;
   function App() {
     host = useHost();
-    seen = [
-      usePlugin<{ id: string }>('greeting')?.id,
-      useTheme().colorScheme,
-    ];
+    seen = [usePlugin<{ id: string }>('greeting')?.id, useTheme().colorScheme];
     return (
       <Screen>
         <Text>Hello</Text>
@@ -57,7 +54,12 @@ test('a component app reads its host, plugins and theme without props', async ()
   const entry = appEntry(
     App,
     { greeting: { id: 'g' } },
-    { fonts: [], keyMap, theme: 'light', designSize: { width: 1920, height: 1080 } },
+    {
+      fonts: [],
+      keyMap,
+      theme: 'light',
+      designSize: { width: 1920, height: 1080 },
+    },
     // The `options` export of src/app.tsx wins over the project config.
     { theme: 'dark' },
   );

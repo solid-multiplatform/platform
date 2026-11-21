@@ -168,7 +168,8 @@ export const FPSCounter = (props: NodeProps) => {
   const x = () => viewport().width - width() - 12;
   const ms = (value: number) =>
     value < 10 ? value.toFixed(1) : String(Math.round(value));
-  const fps = (value: number) => (value > 0 ? String(Math.round(value)) : '–');
+  const fps = (value: number) =>
+    value > 0 ? String(Math.round(value)) : 'n/a';
   const label = () => {
     const r = readout();
     if (!r.sampled) return 'Frames per second: measuring';
@@ -210,7 +211,7 @@ export const FPSCounter = (props: NodeProps) => {
       </text>
       <text x={12} y={76} fontSize={12} color={0x9fb0c3ff}>
         {`${hz() > 0 ? `display ${hz()} Hz` : 'display rate unknown'}  ·  cpu ${
-          readout().sampled ? `${ms(readout().cost)} ms` : '–'
+          readout().sampled ? `${ms(readout().cost)} ms` : 'n/a'
         }`}
       </text>
     </view>

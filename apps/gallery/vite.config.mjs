@@ -6,7 +6,7 @@
 //   vite build                 web:   dist/web/
 //   vite build --mode tizen    Tizen: dist/tizen/ (same bundle, TV host)
 //   vite build --mode webos    webOS: dist/webos/
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { defineConfig } from 'vite';
@@ -18,6 +18,24 @@ const platform = path.dirname(
     '@solid-multiplatform/platform/package.json',
   ),
 );
+
+// The framework's rasterised icons, which the primitives draw through the
+// image path; the CLI stages the same files into every build.
+function icons() {
+  const source = path.join(platform, 'assets/icons/png');
+  return {
+    name: 'gallery-icons',
+    generateBundle() {
+      for (const name of readdirSync(source))
+        if (name.endsWith('.png'))
+          this.emitFile({
+            type: 'asset',
+            fileName: 'icons/' + name,
+            source: readFileSync(path.join(source, name)),
+          });
+    },
+  };
+}
 
 // The MSDF font the framework ships for its starter; the CLI copies the same
 // files into an app's `public/fonts`.
@@ -56,6 +74,7 @@ export default defineConfig(({ mode }) => {
       __GALLERY_TARGET__: JSON.stringify(tv ? mode : 'web'),
     },
     plugins: [
+      icons(),
       fonts(),
       solid({
         hot: false,

@@ -17,7 +17,10 @@ const YELLOW = 0xf0c020ff;
 const TWO = [0xf03030ff, 0x2030f0ff];
 
 /** Where the label of the i-th case goes: above its grid cell. */
-export const labelAt = (i) => ({ x: col(i % 7), y: ROW[Math.floor(i / 7)] - 44 });
+export const labelAt = (i) => ({
+  x: col(i % 7),
+  y: ROW[Math.floor(i / 7)] - 44,
+});
 
 export const CASES = {
   // Row 1: corners and borders.

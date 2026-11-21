@@ -2,7 +2,9 @@ import { execFileSync } from 'node:child_process';
 
 const serial = process.env.ANDROID_SERIAL;
 if (!serial) {
-  console.log(JSON.stringify({ androidTv: false, reason: 'ANDROID_SERIAL missing' }));
+  console.log(
+    JSON.stringify({ androidTv: false, reason: 'ANDROID_SERIAL missing' }),
+  );
   process.exit(0);
 }
 const shell = (args) =>
@@ -11,7 +13,8 @@ const shell = (args) =>
     timeout: 10_000,
   }).trim();
 try {
-  const focus = shell(['dumpsys', 'window']).match(/mCurrentFocus=([^\n]+)/)?.[1] ?? null;
+  const focus =
+    shell(['dumpsys', 'window']).match(/mCurrentFocus=([^\n]+)/)?.[1] ?? null;
   console.log(
     JSON.stringify({
       androidTv: true,

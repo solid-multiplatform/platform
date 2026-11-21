@@ -42,9 +42,9 @@ export interface SheetProps {
 export function Sheet(props: SheetProps): JSX.Element {
   const theme = () => useTheme();
   const height = () => props.height ?? Math.min(640, viewport().height * 0.6);
-  const bottom = () =>
-    viewport().insets.safeArea.bottom +
-    (props.avoidKeyboard === false ? 0 : viewport().insets.ime.bottom);
+  const bar = () => viewport().insets.safeArea.bottom;
+  const keyboard = () =>
+    props.avoidKeyboard === false ? 0 : viewport().insets.ime.bottom;
   return (
     <Modal
       visible={props.visible}
@@ -57,17 +57,19 @@ export function Sheet(props: SheetProps): JSX.Element {
       useSafeArea={false}
       initialFocus={props.initialFocus}
     >
+      {/* The surface reaches the bottom edge (behind the navigation bar);
+          its content stops above it. */}
       <view
         x={0}
-        y={viewport().height - height() - bottom()}
+        y={viewport().height - height() - keyboard()}
         width={viewport().width}
-        height={height()}
-        color={0x1d2937ff}
+        height={height() + bar()}
+        color={theme().colors.surfaceRaised}
         borderRadius={[theme().radius.medium, theme().radius.medium, 0, 0]}
         forwardFocus={1}
         onMouseClick={() => true}
       >
-        <text skipFocus x={28} y={24} fontSize={30} color={0xf2f6faff}>
+        <text skipFocus x={28} y={24} fontSize={30} color={theme().colors.text}>
           {props.title ?? props.label}
         </text>
         <view

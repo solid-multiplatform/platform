@@ -24,18 +24,17 @@ export function Visible<T>(props: {
     DEV
       ? {
           equals: (a, b) => (keyed ? a === b : !a === !b),
-          name: "condition"
+          name: 'condition',
         }
-      : { equals: (a, b) => (keyed ? a === b : !a === !b) }
+      : { equals: (a, b) => (keyed ? a === b : !a === !b) },
   );
 
   onCleanup(() => disposer?.());
 
-
   return createMemo(() => {
     const c = condition();
     const isKeyed = untrack(() => !!keyed);
-    if (isKeyed){
+    if (isKeyed) {
       disposer?.();
       child = undefined;
     }
@@ -44,7 +43,7 @@ export function Visible<T>(props: {
       disposer = createRoot((dispose) => {
         child = children(() => props.children);
         return dispose;
-      })
+      });
     }
 
     const isHidden = !c;
@@ -56,4 +55,4 @@ export function Visible<T>(props: {
 
     return c || child ? child : null;
   }) as unknown as JSX.Element;
-};
+}

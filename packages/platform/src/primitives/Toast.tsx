@@ -1,4 +1,5 @@
 import { Show, createEffect, onCleanup, type JSX } from 'solid-js';
+import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
 import { Portal } from './portal.jsx';
 
@@ -21,6 +22,7 @@ export interface ToastProps {
  * It is anchored inside the safe area and above the keyboard.
  */
 export function Toast(props: ToastProps): JSX.Element {
+  const theme = () => useTheme();
   const visible = () =>
     typeof props.visible === 'function' ? props.visible() : props.visible;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -57,14 +59,20 @@ export function Toast(props: ToastProps): JSX.Element {
       <Portal>
         <view
           {...rect()}
-          color={0x1d2937f2}
+          color={theme().colors.surfaceRaised}
           role="status"
           ariaLive="polite"
           ariaLabel={props.message}
           onEnter={() => props.onAction?.()}
           onMouseClick={() => props.onAction?.()}
         >
-          <text x={20} y={20} width={rect().width - 40} fontSize={22} color={0xffffffff}>
+          <text
+            x={20}
+            y={20}
+            width={rect().width - 40}
+            fontSize={22}
+            color={theme().colors.text}
+          >
             {props.message}
           </text>
           {props.actionLabel ? (
@@ -72,7 +80,7 @@ export function Toast(props: ToastProps): JSX.Element {
               x={20}
               y={44}
               fontSize={18}
-              color={0x60a5faff}
+              color={theme().colors.primary}
               onEnter={() => props.onAction?.()}
             >
               {props.actionLabel}

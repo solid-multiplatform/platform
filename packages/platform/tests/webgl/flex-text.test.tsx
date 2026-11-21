@@ -149,11 +149,11 @@ v.test(
     ));
     await settle();
 
-    // Padding on the main axis only: x stays 0 in a column.
-    expectBox(title, 0, 12, 63.968, 46.08);
-    expectBox(subtitle, 0, 66.08, 75.394, 31.68); // 12 + 46.08 + 8
+    // Padding offsets on both axes: a column's children start at 12, 12.
+    expectBox(title, 12, 12, 63.968, 46.08);
+    expectBox(subtitle, 12, 66.08, 75.394, 31.68); // 12 + 46.08 + 8
     // contain="width": width reads maxWidth (276), two lines of 28.8.
-    expectBox(description, 0, 105.76, 276, 57.6); // 66.08 + 31.68 + 8
+    expectBox(description, 12, 105.76, 276, 57.6); // 66.08 + 31.68 + 8
     v.expect(description.lng.w).toBeCloseTo(271.7, 3); // the laid-out lines
     // Width as given; height fits: 105.76 + 57.6 + 12.
     expectBox(tile, 0, 0, 300, 175.36);
@@ -198,13 +198,13 @@ v.test('a row of column tiles takes the tallest tile', async () => {
   ));
   await settle();
 
-  expectBox(titles[0]!, 0, 12, 77.376, 46.08);
-  expectBox(titles[1]!, 0, 12, 180.928, 46.08);
-  expectBox(titles[2]!, 0, 12, 75.648, 46.08);
+  expectBox(titles[0]!, 12, 12, 77.376, 46.08);
+  expectBox(titles[1]!, 12, 12, 180.928, 46.08);
+  expectBox(titles[2]!, 12, 12, 75.648, 46.08);
   // One line; two lines; cut at maxLines 2.
-  expectBox(descriptions[0]!, 0, 105.76, 276, 28.8);
-  expectBox(descriptions[1]!, 0, 105.76, 276, 57.6);
-  expectBox(descriptions[2]!, 0, 105.76, 276, 57.6);
+  expectBox(descriptions[0]!, 12, 105.76, 276, 28.8);
+  expectBox(descriptions[1]!, 12, 105.76, 276, 57.6);
+  expectBox(descriptions[2]!, 12, 105.76, 276, 57.6);
 
   expectBox(tiles[0]!, 0, 0, 300, 146.56); // 105.76 + 28.8 + 12
   expectBox(tiles[1]!, 324, 0, 300, 175.36); // 105.76 + 57.6 + 12
@@ -555,15 +555,15 @@ v.test('nested flex containers with text', async () => {
   await settle();
   info('nested column of rows, first render: frames', frameCount() - f0);
 
-  expectBox(title, 0, 20, 130.48, 57.6);
+  expectBox(title, 20, 20, 130.48, 57.6);
   expectBox(alpha, 0, 0, 76.53, LINE_30);
   expectBox(beta, 91.53, 0, 61.53, LINE_30); // 76.53 + 15
-  expectBox(rowOne, 0, 87.6, 153.06, LINE_30); // y: 20 + 57.6 + 10
+  expectBox(rowOne, 20, 87.6, 153.06, LINE_30); // y: 20 + 57.6 + 10
   expectBox(gamma, 5, 5, 81.36, 34.56);
   expectBox(delta, 101.36, 5, 208.692, 51.84); // 5 + 81.36 + 15
   // y: 87.6 + 43.2 + 10; width: 101.36 + 208.692 + 5; height: the tallest
   // text plus the top and bottom padding.
-  expectBox(rowTwo, 0, 140.8, 315.052, 61.84);
+  expectBox(rowTwo, 20, 140.8, 315.052, 61.84);
   // A column fills its parent's width (1920 - 100); its height fits:
   // 140.8 + 61.84 + 20.
   expectBox(column, 100, 50, 1820, 222.64);

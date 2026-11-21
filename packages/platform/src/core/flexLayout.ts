@@ -141,7 +141,12 @@ export default function (node: ElementNode): boolean {
   const isWrapReverse = node.flexWrap === 'wrap-reverse';
   const gap = node.gap || 0;
   const justify = node.justifyContent || 'flexStart';
-  let align = node.alignItems || (node.flexWrap ? 'flexStart' : undefined);
+  // Padding always offsets the content box: without an `alignItems`, children
+  // start at the padded edge rather than at the node's own origin. (The
+  // engine has no stretch, so flexStart is the CSS default's equivalent.)
+  const align =
+    node.alignItems ||
+    (node.flexWrap || paddingCrossStart !== 0 ? 'flexStart' : undefined);
   let containerUpdated = false;
 
   // Resolve sizes matching old processed calculation
@@ -341,8 +346,6 @@ export default function (node: ElementNode): boolean {
         childMarginCrossEnds[idx]!;
       if (outer > maxHeight) maxHeight = outer;
     }
-    // Children start below the top padding unless they are aligned otherwise.
-    if (paddingCrossStart !== 0) align ??= 'flexStart';
     // Fit even when nothing is measured yet: an unmeasured text child leaves
     // the row zero-high instead of keeping the parent-derived height, so a
     // pointer cannot hit the wrong row while the texts load. The row is laid

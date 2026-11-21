@@ -1,3 +1,4 @@
+import { factorRadius, toVec4, type Vec4 } from '../borderGeometry.js';
 import { rampScale, rgbaRow } from '../glsl.js';
 import type { AdvancedProp, UniformWriter } from '../ShaderType.js';
 
@@ -66,6 +67,51 @@ export const packGradient = (
     }
     u.row(first + n + ((i - 1) >> 1), e0, s0, e1, s1);
   }
+};
+
+/**
+ * `radius`: the node's corner radii, in node pixels (a number or up to four).
+ * A gradient draws the node's quad itself, so the corner mask the rounded
+ * shaders apply has to be applied here too — otherwise a gradient node's
+ * `borderRadius` is silently ignored.
+ */
+export const radiusProp = (def: Vec4 = [0, 0, 0, 0]): AdvancedProp<unknown> => ({
+  default: def,
+  resolve: (value) =>
+    value === undefined ? def.slice() : toVec4(value),
+});
+
+/**
+ * The fragment source of the rounded mask: rows `sizeRow` (half the node
+ * size in xy) and `radiusRow` (the four radii, already factored). `p` is the
+ * pixel position from the centre, from a 0..1 varying. Alpha is the same
+ * half-pixel edge the rounded shaders use.
+ */
+export const roundedMaskGlsl = (
+  sizeRow: number,
+  radiusRow: number,
+  halfSize = `u_params[${sizeRow}].xy`,
+): string =>
+  `vec2 p=(v_textureCoords*2.0-1.0)*${halfSize};` +
+  `vec4 r=u_params[${radiusRow}];` +
+  'vec2 s=step(vec2(0.0),p);' +
+  'float rad=mix(mix(r.x,r.y,s.x),mix(r.w,r.z,s.x),s.y);' +
+  `vec2 q=abs(p)-${halfSize}+rad;` +
+  'float d=(min(max(q.x,q.y),0.0)+length(max(q,0.0)))-rad;' +
+  'gl_FragColor*=clamp(0.5-d*INV_EDGE_WIDTH,0.0,1.0);';
+
+/** Write `sizeRow` (half size) and `radiusRow` (factored radii) for a mask. */
+export const packRoundedMask = (
+  u: UniformWriter,
+  sizeRow: number,
+  radiusRow: number,
+  radius: unknown,
+  w: number,
+  h: number,
+): void => {
+  u.row(sizeRow, w * 0.5, h * 0.5, 0, 0);
+  const r = factorRadius(toVec4(radius), w, h);
+  u.row(radiusRow, r[0], r[1], r[2], r[3]);
 };
 
 /** `colors`: a non-empty array, else the default (1.10). */

@@ -4,7 +4,11 @@ import {
   createRenderEffect,
   createSignal,
 } from 'solid-js';
-import { ImageTexture, renderer, type NodeProps } from '@solid-multiplatform/platform';
+import {
+  ImageTexture,
+  renderer,
+  type NodeProps,
+} from '@solid-multiplatform/platform';
 import { Config } from '../core/config.js';
 
 export interface ImageProps extends NodeProps {
@@ -49,7 +53,10 @@ export const Image: Component<ImageProps> = (props) => {
       return;
     }
 
-    const srcTexture = renderer.createTexture('ImageTexture', props) as ImageTexture;
+    const srcTexture = renderer.createTexture(
+      'ImageTexture',
+      props,
+    ) as ImageTexture;
 
     if (props.fallback) {
       srcTexture.once('failed', () => {

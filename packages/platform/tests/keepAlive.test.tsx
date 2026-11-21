@@ -42,30 +42,33 @@ v.describe('KeepAliveRoute saved focus', () => {
     clearKeepAliveRouteCache();
   });
 
-  v.test('stores the focused element on the map entry, then releases it on re-entry', async () => {
-    const { keepAliveView, dispose } = renderRoute('/stores');
-    await wait();
+  v.test(
+    'stores the focused element on the map entry, then releases it on re-entry',
+    async () => {
+      const { keepAliveView, dispose } = renderRoute('/stores');
+      await wait();
 
-    const focused = keepAliveView.children[0]!.children[0] as lng.ElementNode;
-    focused.setFocus();
-    await wait();
-    v.expect(lng.activeElement()).toBe(focused);
+      const focused = keepAliveView.children[0]!.children[0] as lng.ElementNode;
+      focused.setFocus();
+      await wait();
+      v.expect(lng.activeElement()).toBe(focused);
 
-    keepAliveView.onRemove!(keepAliveView);
-    v.expect(keepAliveRouteElements.get('/stores')!.savedFocusedElement).toBe(
-      focused,
-    );
+      keepAliveView.onRemove!(keepAliveView);
+      v.expect(keepAliveRouteElements.get('/stores')!.savedFocusedElement).toBe(
+        focused,
+      );
 
-    keepAliveView.onRender!(keepAliveView);
-    await wait();
-    v.expect(lng.activeElement()).toBe(focused);
-    // Pointer dropped once it has been used — nothing left to retain.
-    v.expect(
-      keepAliveRouteElements.get('/stores')!.savedFocusedElement,
-    ).toBeUndefined();
+      keepAliveView.onRender!(keepAliveView);
+      await wait();
+      v.expect(lng.activeElement()).toBe(focused);
+      // Pointer dropped once it has been used — nothing left to retain.
+      v.expect(
+        keepAliveRouteElements.get('/stores')!.savedFocusedElement,
+      ).toBeUndefined();
 
-    dispose();
-  });
+      dispose();
+    },
+  );
 
   v.test('dropping the map entry drops the saved element with it', async () => {
     const { keepAliveView, dispose } = renderRoute('/dropped');
