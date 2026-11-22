@@ -54,6 +54,8 @@ export function HeroFlight(props: {
   duration?: number;
   /** The corner radius the cover lands with, in screen units. */
   radius?: number;
+  /** The eased progress each frame, for the screens' crossfade around the flight. */
+  onProgress?(t: number): void;
   onDone?(): void;
 }): JSX.Element {
   const [t, setT] = createSignal(0);
@@ -63,7 +65,9 @@ export function HeroFlight(props: {
     let frame = 0;
     const step = (at: number) => {
       const p = Math.min(1, Math.max(0, (at - start) / duration));
-      setT(heroEase(p));
+      const eased = heroEase(p);
+      setT(eased);
+      props.onProgress?.(eased);
       if (p < 1) frame = nextFrame(step);
       else props.onDone?.();
     };

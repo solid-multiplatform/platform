@@ -37,6 +37,12 @@ export function AlbumScreen(props: {
   x?: number;
   /** Hidden while a hero flight draws the cover instead. */
   hideCover?: boolean;
+  /**
+   * The screen's opacity while a hero flight runs: the cover clone carries
+   * the transition, and everything else crossfades around it (in on open,
+   * out on back), the way the motion notes specify.
+   */
+  fade?: number;
   /** The cover's box once it is laid out: the flight's landing rect. */
   onCoverRect?(rect: HeroRect): void;
   onBack?(): void;
@@ -105,6 +111,7 @@ export function AlbumScreen(props: {
       width={width()}
       height={props.height}
       color={C.background}
+      alpha={props.fade ?? 1}
       clipping
     >
       <Column

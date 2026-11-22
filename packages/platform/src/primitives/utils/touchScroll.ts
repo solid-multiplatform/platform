@@ -184,7 +184,12 @@ export function bindTouchScroll(
     inset = parentStart - clipStart + base;
     viewportSize = visible;
     engine.layout(content, visible, inset);
-    sync();
+    // Adopt the node's position only while the engine rests. A layout pass
+    // runs whenever children mount or unmount — mid-drag, mid-fling, on a
+    // page that grows as it loads — and an unconditional sync() there would
+    // kill the gesture under the finger's hands. Mid-flight, the engine's
+    // own `layout` already clamps what it must, at rest only.
+    if (engine.settled()) sync();
   }
 
   function reveal(child: ElementNode | undefined, duration = 180) {
@@ -302,9 +307,21 @@ export function bindTouchScroll(
     sync,
     dispose() {
       if (bindings.get(node) === binding) bindings.delete(node);
+      (node as unknown as { scrollCatch?: () => void }).scrollCatch = undefined;
       engine.stop();
       active = undefined;
     },
+  };
+  // A press anywhere on a flying scroller catches it, as UIScrollView stops a
+  // deceleration on touch-down. The scene pointer calls this from press-begin
+  // for every scroller on the press node's ancestry, so a finger that holds
+  // still stops the flight even below the drag slop, and a nested page claim
+  // leaves no rail flying under the gesture.
+  (node as unknown as { scrollCatch?: () => void }).scrollCatch = () => {
+    // One finger owns a drag: another press landing mid-drag must not stop
+    // it. A flight (fling, snap, rubber-band return) has no owner, so it is
+    // caught.
+    if (!engine.dragging()) engine.stop();
   };
   bindings.set(node, binding);
   return binding;

@@ -1,7 +1,7 @@
 /**
  * The browser's history as a {@link HistorySource}: the hash the router
- * routes on, the browser stack behind it, and a `hashchange` listener that
- * exists only while a router is subscribed.
+ * routes on, the browser stack behind it, and `hashchange`/`popstate`
+ * listeners that exist only while a router is subscribed.
  *
  * The router keeps a depth on each entry (`_depth`) so that a Back the
  * before-leave guard blocks can be undone; this module maintains that depth
@@ -56,17 +56,24 @@ export function createBrowserHistory(): HistorySource {
     subscribe(listener) {
       depth = rememberDepth();
       listeners.add(listener);
-      const onHashChange = () => {
+      const onChange = () => {
         const previous = depth;
         depth = rememberDepth();
         listener(
           previous === undefined || depth === undefined ? 0 : depth - previous,
         );
       };
-      window.addEventListener('hashchange', onHashChange);
+      // `popstate` covers every traversal the browser makes: Back and
+      // Forward between two entries with the same hash raise no
+      // `hashchange`, and without `popstate` those Backs never reach the
+      // router, so the session stack desyncs from the browser's and the
+      // next Back skips a screen.
+      window.addEventListener('hashchange', onChange);
+      window.addEventListener('popstate', onChange);
       return () => {
         listeners.delete(listener);
-        window.removeEventListener('hashchange', onHashChange);
+        window.removeEventListener('hashchange', onChange);
+        window.removeEventListener('popstate', onChange);
       };
     },
     emit() {

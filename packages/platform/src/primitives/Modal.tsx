@@ -79,6 +79,11 @@ export function Modal(props: ModalProps): JSX.Element {
   let previous: ElementNode | undefined;
   let releaseTrap: (() => void) | undefined;
   let open = false;
+  // The trap is pushed from a microtask, so a cleanup that wins the race
+  // (the open and an unmount in one reactive flush) releases nothing — the
+  // microtask must not then push a trap for a dialog that is already gone,
+  // or the dead trap wedges every press and focus move app-wide.
+  let unmounted = false;
 
   createEffect(() => {
     if (visible()) {
@@ -86,6 +91,7 @@ export function Modal(props: ModalProps): JSX.Element {
       open = true;
       previous = activeElement();
       queueMicrotask(() => {
+        if (unmounted) return;
         if (dialog && !releaseTrap) releaseTrap = pushFocusTrap(dialog);
         const focus = props.initialFocus;
         // An `initialFocus` that names nothing (a ref not set) leaves focus
@@ -113,6 +119,7 @@ export function Modal(props: ModalProps): JSX.Element {
   });
 
   onCleanup(() => {
+    unmounted = true;
     releaseTrap?.();
     releaseTrap = undefined;
     if (open && previous !== undefined) {

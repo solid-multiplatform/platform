@@ -319,6 +319,13 @@ export function pushFocusTrap(root: ElementNode): () => void {
 
 /** The innermost active focus trap, if any. */
 export function currentFocusTrap(): ElementNode | undefined {
+  // A trap whose root was destroyed can no longer release itself (its
+  // remover died with the dialog): drop it here rather than wedge every
+  // press and focus move on a dead dialog. One pass from the top.
+  for (let i = focusTraps.length - 1; i >= 0; i--) {
+    const trap = focusTraps[i]!;
+    if (trap.destroyed === true) focusTraps.splice(i, 1);
+  }
   return focusTraps[focusTraps.length - 1];
 }
 

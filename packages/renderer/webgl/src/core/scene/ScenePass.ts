@@ -403,8 +403,10 @@ export class ScenePass {
 
   /**
    * Update one node. Returns the inherit mask for its children, or -1 when
-   * the subtree is culled (out of bounds or world alpha zero) or a hook
-   * destroyed the node.
+   * the subtree is culled (out of bounds under a clipping node, or world
+   * alpha zero) or a hook destroyed the node. A node out of bounds that does
+   * not clip is not a cull: its children may paint past its box, inside the
+   * clip they inherit, so the walk continues below it.
    */
   private visit(id: number, inherit: number): number {
     const s = this.nodes;
@@ -415,8 +417,17 @@ export class ScenePass {
 
     if (d === 0 && inherit === 0) {
       const vis = (state & ST_VIS_MASK) >>> ST_VIS_SHIFT;
-      if (vis === VIS_OUT || s.f64[fo + F_WORLD_ALPHA] === 0) {
+      if (s.f64[fo + F_WORLD_ALPHA] === 0) {
         return -1;
+      }
+      if (vis === VIS_OUT) {
+        // Out of bounds. A node that clips takes its subtree with it:
+        // nothing below a closed window can show. A node that does not
+        // clip may have children inside the window its own box left —
+        // absolute children beyond the box are legal, and a scroller's
+        // translated box is the everyday case — so the walk continues
+        // below it and each clean child classifies itself.
+        return (state & (ST_CLIPS | ST_TEXT_CLIP)) === 0 ? 0 : -1;
       }
       if ((state & ST_RENDERABLE) !== 0) {
         this.emit(id, state);
@@ -545,7 +556,11 @@ export class ScenePass {
       // Stored before the hook runs, so that the hook reads the new state.
       s.u32[o + I_STATE] = withVisibility(state, next);
       this.hooks.onVisibility(id, vis, next);
-      if (next === VIS_OUT && s.i32[o + I_UID] !== 0) {
+      if (next === VIS_OUT && clips === true && s.i32[o + I_UID] !== 0) {
+        // Only a node that closes a window proves its descendants invisible:
+        // a node that does not clip may carry children painting past its own
+        // box (a scroller's translated box is the everyday case), and those
+        // classify themselves while the walk continues below it.
         this.sweepOut(id);
       }
       if (s.i32[o + I_UID] === 0) {
@@ -670,6 +685,16 @@ export class ScenePass {
       state = s.u32[o + I_STATE]!;
     }
 
+    if (vis === VIS_OUT && clips === false) {
+      // The node's own box is out of bounds, but it closes no window: its
+      // children may still paint inside the clip they inherit (absolute
+      // children beyond the box are legal; a scroller's translated box is
+      // the everyday case). Park this node's own deferred work and let the
+      // walk continue below it; each child classifies itself.
+      s.u32[o + I_STATE] = state | parked;
+      s.u32[o + I_DIRTY] = s.u32[o + I_DIRTY]! | (d & DIRTY_CHILD) | pending;
+      return childMask;
+    }
     if (vis === VIS_OUT || hidden === true) {
       s.u32[o + I_STATE] = state | parked | ST_CHILDREN_STALE;
       s.u32[o + I_DIRTY] = s.u32[o + I_DIRTY]! | (d & DIRTY_CHILD) | pending;
@@ -684,14 +709,17 @@ export class ScenePass {
   }
 
   /**
-   * Node `root` just went out of bounds, so its subtree will not be visited:
-   * mark every descendant out of bounds too (renderable cleared) and report
-   * each transition, once. A descendant that is already out is not entered:
-   * its subtree was swept when it went out. Culling by world alpha 0 does
-   * not sweep visibility: it stays as it was until the subtree is shown
-   * (1.10 went on deriving it under an alpha-0 ancestor: spec 14, item
-   * 96); sweepHidden only tells its nodes they are hidden. When the
-   * subtree returns, ST_CHILDREN_STALE on `root` re-derives it.
+   * Node `root` just went out of bounds and it clips, so its subtree cannot
+   * be visited: mark every descendant out of bounds too (renderable cleared)
+   * and report each transition, once. A descendant that is already out is not
+   * entered: its subtree was swept when it went out. (A node that does not
+   * clip is never swept: its children may still paint past its own out-of-
+   * bounds box, inside the clip they inherit, and each classifies itself.)
+   * Culling by world alpha 0 does not sweep visibility: it stays as it was
+   * until the subtree is shown (1.10 went on deriving it under an alpha-0
+   * ancestor: spec 14, item 96); sweepHidden only tells its nodes they are
+   * hidden. When the subtree returns, ST_CHILDREN_STALE on `root` re-derives
+   * it.
    */
   private sweepOut(root: number): void {
     const s = this.nodes;

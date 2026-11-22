@@ -137,6 +137,41 @@ describe('scroll engine physics', () => {
     expect(engine.settled()).toBe(true);
   });
 
+  test('a snap flight eases onto its slot without a landing teleport', () => {
+    const clock = fakeClock();
+    const engine = engineAt(clock, 200);
+    engine.layout(10_000, 1_000); // max 9000
+
+    // A weak fling, just above the release threshold, toward a slot 200
+    // away: the flight crawls at the floor velocity for its last stretch,
+    // which once landed as `distance * 0.01 / |v|` in a single frame.
+    engine.dragAxis('start', 0);
+    for (let i = 0; i < 6; i++) {
+      clock.advance(16);
+      engine.dragAxis('move', -4.2 * (i + 1));
+    }
+    expect(engine.velocity()).toBeGreaterThan(0.25);
+    engine.dragAxis('end', -25.2);
+
+    // Step to rest, watching the step sizes as the flight closes on the
+    // slot. The glide-in covers the floor-crawl tail smoothly; the old
+    // one-frame apply of the target jumped ~7.7 units here.
+    let last = engine.offset();
+    let landingStep = 0;
+    let frames = 0;
+    while (clock.pending() > 0 && frames++ < 4000) {
+      clock.advance(16);
+      const step = Math.abs(engine.offset() - last);
+      if (Math.abs(engine.offset() - 200) < 40) {
+        if (step > landingStep) landingStep = step;
+      }
+      last = engine.offset();
+    }
+    expect(engine.settled()).toBe(true);
+    expect(engine.offset()).toBeCloseTo(200, 1);
+    expect(landingStep).toBeLessThanOrEqual(2);
+  });
+
   test('a settled engine schedules nothing', () => {
     const clock = fakeClock();
     const engine = engineAt(clock);

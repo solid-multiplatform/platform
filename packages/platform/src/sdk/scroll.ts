@@ -317,6 +317,8 @@ export interface ScrollEngine {
   readonly max: Accessor<number>;
   /** True when no drag, fling, snap or return is running. */
   readonly settled: Accessor<boolean>;
+  /** True while a finger owns the scroller: another press must not stop it. */
+  readonly dragging: Accessor<boolean>;
   /**
    * Update the content and viewport lengths, plus the inset of the content
    * from the viewport's leading edge. Clamps an offset past the new maximum.
@@ -409,6 +411,7 @@ export function createScrollEngine(options: ScrollEngineOptions): ScrollEngine {
     stopFrames();
     mode = 'idle';
     velocity = 0;
+    flightTarget = null;
     setSettled(true);
     options.onSettle?.();
   }
@@ -466,10 +469,12 @@ export function createScrollEngine(options: ScrollEngineOptions): ScrollEngine {
         bounceEdge = offset() < 0 ? 0 : maxV;
         mode = 'bounce';
       } else if (flightTarget !== null) {
-        // A snap flight lands exactly on its slot.
-        apply(clamp(flightTarget));
+        // A snap flight lands exactly on its slot. The last fraction of a
+        // unit crawls at the floor velocity, so hand the remainder to a
+        // short glide rather than a one-frame teleport to the target.
+        const target = flightTarget;
         flightTarget = null;
-        settleDone();
+        glideTo(target, SLOT_SETTLE_RATE);
       } else {
         apply(clamp(Math.round(offset())));
         settleDone();
@@ -756,6 +761,7 @@ export function createScrollEngine(options: ScrollEngineOptions): ScrollEngine {
     offset,
     max,
     settled,
+    dragging: () => mode === 'dragging',
     layout(content, visibleSize, inset = 0) {
       visible = Math.max(1, visibleSize);
       const next = Math.max(0, Math.max(0, content) + inset - visible);

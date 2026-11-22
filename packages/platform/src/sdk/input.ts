@@ -353,11 +353,13 @@ export function createScenePointer(
 
   /**
    * A touch scroller is a window, not a box. The scroll engine translates the
-   * node itself (`scrollAxis` marks one), so after a drag its own box sits part
-   * way up the screen while its content paints across the window its clipping
-   * ancestor shows — the same geometry `bindTouchScroll` measures its viewport
-   * with. A point in that window is a point on the scroller's content, even
-   * when it is outside the node's own box.
+   * node itself (`scrollAxis` marks one), so after a drag its own box sits
+   * part way up the screen while its content paints across the window its
+   * clipping ancestor shows. A point claims the scroller only where that
+   * content can be: inside the window, and inside the union of the node's
+   * own box and its children's boxes — so a scroller never shadows a sibling
+   * that shares its window (a header above a page column, a second pane
+   * beside it).
    */
   function scrollerWindow(child: ElementNode, x: number, y: number): boolean {
     if ((child as { scrollAxis?: 'x' | 'y' }).scrollAxis === undefined)
@@ -367,12 +369,40 @@ export function createScenePointer(
     const box = clip ?? root;
     const bx = (box.absX || 0) as number;
     const by = (box.absY || 0) as number;
-    return (
-      x >= bx &&
-      y >= by &&
-      x < bx + (box.width || 0) &&
-      y < by + (box.height || 0)
-    );
+    if (
+      x < bx ||
+      y < by ||
+      x >= bx + (box.width || 0) ||
+      y >= by + (box.height || 0)
+    )
+      return false;
+    // Inside the window. Inside the scroller's own box, or inside the span
+    // its content paints across: the union of the children's boxes, as one
+    // region — a scroll view owns the gaps between its content too, so a
+    // finger between two sections still claims it. The children's boxes are
+    // live, so a translated scroller claims exactly where it shows.
+    const cx = (child.absX || 0) as number;
+    const cy = (child.absY || 0) as number;
+    let x0 = cx;
+    let y0 = cy;
+    let x1 = cx + (child.width || 0);
+    let y1 = cy + (child.height || 0);
+    const children = child.children;
+    if (children && typeof children[Symbol.iterator] === 'function') {
+      for (const item of children) {
+        if (typeof item !== 'object' || item === null) continue;
+        const node = item as ElementNode;
+        const nx = (node.absX || 0) as number;
+        const ny = (node.absY || 0) as number;
+        if (nx < x0) x0 = nx;
+        if (ny < y0) y0 = ny;
+        const nx1 = nx + (node.width || 0);
+        const ny1 = ny + (node.height || 0);
+        if (nx1 > x1) x1 = nx1;
+        if (ny1 > y1) y1 = ny1;
+      }
+    }
+    return x >= x0 && y >= y0 && x < x1 && y < y1;
   }
 
   function probeChild(child: ElementNode['children'][number]) {
@@ -526,6 +556,19 @@ export function createScenePointer(
 
   function begin(id: number, node: ElementNode, x: number, y: number) {
     cancel(id);
+    // A press catches every flying scroller it lands in, as UIScrollView
+    // stops a deceleration the moment a touch comes down. A finger that
+    // holds still never crosses the drag slop, so the catch has to happen
+    // here, not in the drag: without it a resting finger cannot stop a
+    // fling, and the flight runs on under it to its own settle.
+    for (
+      let scroller: ElementNode | undefined = node;
+      scroller !== undefined;
+      scroller = scroller.parent
+    ) {
+      const catchOne = (scroller as { scrollCatch?: () => void }).scrollCatch;
+      if (catchOne !== undefined) catchOne.call(scroller);
+    }
     const press: Press = {
       node,
       shown: stateOwner(node),
@@ -543,6 +586,16 @@ export function createScenePointer(
       press.timer = setTimeout(() => {
         press.timer = undefined;
         if (presses.get(id) !== press) return;
+        // The screen changed under the held finger: the node it pressed is
+        // gone, and a hold must not fire into a dead node's handler.
+        if (node.destroyed === true) {
+          cancel(id);
+          return;
+        }
+        // A touch that lands while another finger owns a drag does not
+        // long-press (UIKit holds it out of the pan); it may still lift as
+        // a tap if the drag has ended by then.
+        if (dragging.size > 0) return;
         if (node.ariaDisabled === true) {
           cancel(id);
           return;
@@ -604,8 +657,10 @@ export function createScenePointer(
         // content across the screen; a scroll view ignores extra touches
         // until the first lifts, and so does this.
         if (dragging.size > 0) {
-          // This finger is not part of the gesture: it may not scroll, and it
-          // may not turn into a click when it lifts.
+          // This finger is not part of the gesture: it may not scroll, and
+          // it may not turn into a click when it lifts — so the pressed look
+          // it arrived with goes too.
+          release(press);
           press.multi = true;
           return;
         }

@@ -112,11 +112,23 @@ export function App(): JSX.Element {
   // the trip back can start from the album and end on the card.
   const [cardRect, setCardRect] = createSignal<HeroRect>();
   const [coverRect, setCoverRect] = createSignal<HeroRect>();
+  // The eased flight progress, for the screens' crossfade around the clone.
+  // 1 is the resting value (no flight); each flight resets it to 0 so the
+  // destination starts invisible, not at whatever the last flight left.
+  const [flightT, setFlightT] = createSignal(1);
+  /** The album screen's fade: in with an opening flight, out with a back one. */
+  const albumFade = () => {
+    const value = flight();
+    if (value === undefined) return 1;
+    return value.back ? 1 - flightT() : flightT();
+  };
+
   const openAlbum = (next: Album, from?: HeroRect) => {
     setAlbum(next);
     setRoute('album');
     setCoverRect(undefined);
     setCardRect(from);
+    setFlightT(0);
     setFlight(
       from === undefined ? undefined : { album: next, from, back: false },
     );
@@ -132,7 +144,13 @@ export function App(): JSX.Element {
     const from = coverRect();
     const card = cardRect();
     setRoute('library');
-    setAlbum(undefined);
+    // The album stays mounted (and fading out) until the back flight lands;
+    // `album()` is what keeps its Show alive, so it clears in onDone. No
+    // flight to fly (no rects): it goes now.
+    setFlightT(0);
+    if (current === undefined || from === undefined || card === undefined) {
+      setAlbum(undefined);
+    }
     setFlight(
       current !== undefined && from !== undefined && card !== undefined
         ? { album: current, from, to: card, back: true }
@@ -336,7 +354,10 @@ export function App(): JSX.Element {
               onDone={() => setRoute('library')}
             />
           </Show>
-          <Show when={route() === 'album' && album() !== undefined}>
+          {/* The album stays mounted through the back flight: its screen
+              fades out under the returning clone instead of vanishing in
+              the one frame the route changes. */}
+          <Show when={(route() === 'album' || flight()?.back === true) && album() !== undefined}>
             <AlbumScreen
               album={album()!}
               family={family()}
@@ -344,6 +365,7 @@ export function App(): JSX.Element {
               width={viewport().width - contentX()}
               height={viewport().height - bottomReserved()}
               hideCover={flight() !== undefined && flight()?.back === false}
+              fade={albumFade()}
               onCoverRect={landCover}
               onBack={leaveAlbum}
             />
@@ -450,7 +472,13 @@ export function App(): JSX.Element {
               from={value().from}
               to={value().to}
               radius={tv() ? R.large : R.medium}
-              onDone={() => setFlight(undefined)}
+              onProgress={setFlightT}
+              onDone={() => {
+                setFlight(undefined);
+                // A back flight kept the album mounted; the route has left
+                // it, so now it goes. An opening flight ends on the album.
+                if (route() !== 'album') setAlbum(undefined);
+              }}
             />
           )}
         </Show>

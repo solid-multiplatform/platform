@@ -535,7 +535,16 @@ export class Renderer extends RendererCore {
         this.animationManager.active.length,
       );
     }
-    this.upload(animating, telemetry, drawEnd);
+    // A frame the scene was written to is not an idle frame either. The
+    // platform's own motion — a touch scroller's engine writing positions
+    // from its own frame chain — is animation to the eye, though the
+    // animation manager knows nothing of it; without this, its uploads run
+    // on the idle budget (25 ms of texture work per frame, three 120 Hz
+    // panels' worth), and every cover that comes into view hitches the
+    // scroll it reveals. Paced like an animation: one upload per frame.
+    const paced =
+      animating || this.flushedOps + this.ops.length > 0 ? true : false;
+    this.upload(paced, telemetry, drawEnd);
     // Over the critical threshold: free what nobody wants now (1.10 ran
     // this at the end of drawFrame), at the frame's time: still critical,
     // it runs after every drawn frame, and reads no clock.
