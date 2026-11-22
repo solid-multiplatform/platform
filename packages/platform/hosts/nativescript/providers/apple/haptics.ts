@@ -12,6 +12,16 @@ export function haptics(): HapticsPort {
         .initWithStyle(styles[style])
         .impactOccurred();
     },
+    async selection() {
+      UISelectionFeedbackGenerator.alloc().init().selectionChanged();
+    },
+    async notification(type) {
+      UINotificationFeedbackGenerator.alloc()
+        .init()
+        .notificationOccurred(
+          type === 'error' ? 2 : type === 'warning' ? 1 : 0,
+        );
+    },
     // iOS has one system vibration of fixed length: the duration is not used.
     async vibrate() {
       AudioServicesPlaySystemSound(kSystemSoundID_Vibrate);

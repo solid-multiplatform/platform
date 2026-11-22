@@ -1,5 +1,6 @@
 import { createSignal, type JSX } from 'solid-js';
 import type { ElementNode } from '../core/elementNode.js';
+import { screenRect } from '../sdk/layout.js';
 import { useTheme } from '../sdk/theme.jsx';
 import { Menu } from './Menu.jsx';
 
@@ -46,12 +47,7 @@ export function Select<T>(props: SelectProps<T>): JSX.Element {
   // the menu inside the viewport.
   const anchor = () =>
     open() && trigger !== undefined
-      ? {
-          x: trigger.absX || 0,
-          y: trigger.absY || 0,
-          width: width(),
-          height: height(),
-        }
+      ? screenRect(trigger)
       : { x: props.x ?? 0, y: props.y ?? 0, width: width(), height: height() };
   const selectedIndex = () => {
     const value = valueOf(props.value);

@@ -7,6 +7,7 @@
  */
 import * as v from 'vitest';
 import * as s from 'solid-js';
+import * as lng from '@solid-multiplatform/platform';
 import { rootNode, type ElementNode } from '@solid-multiplatform/platform';
 import { useFocusManager } from '@solid-multiplatform/platform/primitives';
 import { createScenePointer } from '../src/sdk/input.js';
@@ -39,6 +40,14 @@ function mockTextMeasure() {
         toJSON() {},
       } as DOMRect;
     });
+}
+
+/** Every element node in a subtree (the menu is portaled to the root). */
+function flatten(node: lng.ElementNode, found: lng.ElementNode[] = []) {
+  found.push(node);
+  for (const child of node.children)
+    if (lng.isElementNode(child)) flatten(child, found);
+  return found;
 }
 
 /** The highlight views: every child of the wrapper before the <text>. */
@@ -108,6 +117,37 @@ v.describe('contract: selectable text', () => {
     pointer.dispose();
     dispose();
   });
+
+  v.it(
+    'a long press on a touch host selects a word and offers Copy',
+    async () => {
+      mockTextMeasure();
+      lng.setCapabilities('android');
+      const { dispose, changes } = mountSelectable();
+      try {
+        await waitForUpdate();
+        const pointer = createScenePointer(rootNode, { holdMs: 20 });
+        // Press on "wonderful" (index 8) and hold past the timer.
+        pointer.down(1, { x: 8 * CHAR_W + CHAR_W / 2, y: LINE_H / 2 });
+        await new Promise<void>((resolve) => setTimeout(resolve, 40));
+        pointer.up(1, { x: 8 * CHAR_W + CHAR_W / 2, y: LINE_H / 2 });
+        await waitForUpdate();
+        v.expect(changes[changes.length - 1]).toBe('wonderful');
+        const copy = rootNode.children
+          .flatMap((child) =>
+            lng.isINode(child) ? flatten(child as lng.ElementNode) : [],
+          )
+          .find(
+            (node) => node.role === 'menuitem' && node.ariaLabel === 'Copy',
+          );
+        v.expect(copy).toBeDefined();
+        pointer.dispose();
+      } finally {
+        lng.resetCapabilities();
+        dispose();
+      }
+    },
+  );
 
   v.it(
     'a click without a drag clears the selection and its quads',

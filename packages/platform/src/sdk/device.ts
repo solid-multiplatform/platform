@@ -94,6 +94,7 @@ export interface ShareOptions {
 export type ShareResult = 'shared' | 'copied' | 'dismissed';
 
 export type HapticStyle = 'light' | 'medium' | 'heavy';
+export type HapticNotification = 'success' | 'warning' | 'error';
 export type OrientationLock = 'portrait' | 'landscape' | 'any';
 
 export interface ClipboardPort {
@@ -103,6 +104,10 @@ export interface ClipboardPort {
 
 export interface HapticsPort {
   impact(style: HapticStyle): Promise<void>;
+  /** A selection changed: a toggle, a picker value, a menu choice. */
+  selection(): Promise<void>;
+  /** The result of an action: success, warning or error. */
+  notification(type: HapticNotification): Promise<void>;
   vibrate(milliseconds: number): Promise<void>;
 }
 
@@ -205,6 +210,20 @@ export async function share(options: ShareOptions): Promise<ShareResult> {
 export async function impact(style: HapticStyle = 'medium'): Promise<void> {
   if (serviceAvailable('haptics') === 'unavailable') return;
   return withService('haptics', (port) => port.impact(style));
+}
+
+/** The system's selection tick: a toggle, picker or menu change. */
+export async function selectionFeedback(): Promise<void> {
+  if (serviceAvailable('haptics') === 'unavailable') return;
+  return withService('haptics', (port) => port.selection());
+}
+
+/** The system's success/warning/error notification feedback. */
+export async function notificationFeedback(
+  type: HapticNotification,
+): Promise<void> {
+  if (serviceAvailable('haptics') === 'unavailable') return;
+  return withService('haptics', (port) => port.notification(type));
 }
 
 /** Vibration pattern in milliseconds, as in the Vibration API. */

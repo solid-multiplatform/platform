@@ -259,7 +259,7 @@ export function Library(props: {
         width={page().width}
         height={props.height - S(6)}
         gap={tv() ? S(10) : S(6)}
-        scroll={tv() ? 'auto' : 'touch'}
+        scroll={tv() ? 'edge' : 'touch'}
         selected={0}
       >
         {props.topNav}

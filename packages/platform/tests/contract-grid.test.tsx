@@ -156,16 +156,18 @@ v.describe('Grid', () => {
         ],
         () => [focusedId(), grid.y, parent.mock.calls.length],
       );
+      // The whole 240-high grid fits the 1080-high root: tvOS leaves it
+      // where it is instead of pinning every row to the top.
       v.expect(seen).toEqual([
         ['g1', 20, 0],
         ['g2', 20, 0],
         ['g2', 20, 1],
         ['g1', 20, 1],
-        ['g4', -40, 1],
-        ['g7', -100, 1],
-        ['g7', -100, 2],
-        ['g8', -100, 2],
-        ['g5', -40, 2],
+        ['g4', 20, 1],
+        ['g7', 20, 1],
+        ['g7', 20, 2],
+        ['g8', 20, 2],
+        ['g5', 20, 2],
         ['g2', 20, 2],
         ['g2', 20, 3],
       ]);
@@ -225,18 +227,53 @@ v.describe('Grid', () => {
         ['g2', 20],
         ['g0', 20],
         ['g2', 20],
-        ['g5', -40],
-        ['g8', -100],
+        ['g5', 20],
+        ['g8', 20],
         ['g2', 20],
-        ['g5', -40],
-        ['g3', -40],
+        ['g5', 20],
+        ['g3', 20],
         ['g0', 20],
-        ['g9', -160],
-        ['g6', -100],
-        ['g3', -40],
-        ['g5', -40],
+        ['g9', 20],
+        ['g6', 20],
+        ['g3', 20],
+        ['g5', 20],
       ]);
       v.expect(parent).not.toHaveBeenCalled();
+    },
+  );
+
+  v.it(
+    'in a short clip the grid reveals a row only when it leaves the band',
+    async () => {
+      let grid!: lng.ElementNode;
+      dispose = await mount(() => (
+        <view width={1920} height={120} clipping>
+          <Grid
+            ref={grid}
+            autofocus
+            y={20}
+            items={tenItems}
+            columns={3}
+            itemWidth={100}
+            itemHeight={50}
+            itemOffset={10}
+          >
+            {Cell}
+          </Grid>
+        </view>
+      ));
+      // Row 0 (y 20..70) is visible. Row 1 ends at 130, past 120: move up 10.
+      await press('ArrowDown');
+      v.expect([focusedId(), grid.y]).toEqual(['g3', 10]);
+      // Row 2's item ends at 180 with the grid at 10: move up 60 more.
+      await press('ArrowDown');
+      v.expect([focusedId(), grid.y]).toEqual(['g6', -50]);
+      // Row 3 is still below the band, so it moves one more row.
+      await press('ArrowDown');
+      v.expect([focusedId(), grid.y]).toEqual(['g9', -110]);
+      // Back to row 0: only far enough to restore its top at the band.
+      await press('ArrowUp', 'ArrowUp', 'ArrowUp');
+      v.expect([focusedId(), grid.y]).toEqual(['g0', 0]);
     },
   );
 
@@ -325,7 +362,7 @@ v.describe('Grid', () => {
         </view>
       ));
       // Row 1, 50 high, no itemOffset.
-      v.expect([focusedId(), grid.y]).toEqual(['g4', -50]);
+      v.expect([focusedId(), grid.y]).toEqual(['g4', 0]);
       // Current behaviour: the selected effect and the Grid's onFocus each
       // report the same cell.
       v.expect(calls).toEqual([
@@ -336,7 +373,7 @@ v.describe('Grid', () => {
 
       setSel(8);
       await flush();
-      v.expect([focusedId(), grid.y]).toEqual(['g8', -100]);
+      v.expect([focusedId(), grid.y]).toEqual(['g8', 0]);
       v.expect(calls).toEqual([[8, 'g8']]);
 
       await press('ArrowLeft');

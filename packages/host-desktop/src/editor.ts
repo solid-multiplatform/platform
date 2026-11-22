@@ -84,6 +84,8 @@ export function desktopEditors(
       throw new Error('Password fields must be single line');
     }
     let value = options.value ?? '';
+    /** The value when the keyboard last entered this field (Escape reverts). */
+    let beforeEdit = value;
     let anchor = value.length;
     let caret = value.length;
     let preedit = '';
@@ -241,6 +243,7 @@ export function desktopEditors(
         if (closed || active === field) return;
         active?.blur();
         active = field;
+        beforeEdit = value;
         keyboard = true;
         place();
         text!.start(purpose, multiline);
@@ -292,6 +295,15 @@ export function desktopEditors(
         if (!editing) return false;
         if (event.type !== 'keydown') return true;
         if (event.key === 'Escape') {
+          // Escape cancels the edit and restores the value the field had
+          // when it took the keyboard, as AppKit does.
+          if (value !== beforeEdit) {
+            value = beforeEdit;
+            anchor = caret = value.length;
+            preedit = '';
+            notify();
+            options.onChange?.(value);
+          }
           field.blur();
           return true;
         }
@@ -316,6 +328,9 @@ export function desktopEditors(
             case 'v':
               replace(clipboard!.read());
               break;
+            default:
+              // Cmd+S/Z/F and the rest belong to the app, not the field.
+              return false;
           }
           return true;
         }

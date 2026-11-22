@@ -11,6 +11,7 @@ import {
 } from '@solid-multiplatform/renderer';
 import type { SceneRenderer } from '@solid-multiplatform/renderer/contracts';
 import { registerDefaultShaders } from '../core/shaders.js';
+import { Config, isDev } from '../core/config.js';
 import type {
   HostContext,
   HostDefinition,
@@ -52,6 +53,13 @@ export interface WebHostOptions {
    * the window instead of following the element's size.
    */
   viewport?: (surface: HTMLElement) => WebViewport;
+  /**
+   * Warn in the console when a box is cut off or spills out of its panel.
+   * Defaults to on in development and off in production. A release build can
+   * turn it on explicitly to check a device; it walks once per layout batch,
+   * never per frame.
+   */
+  layoutAudit?: boolean;
 }
 
 export interface WebViewport {
@@ -127,6 +135,7 @@ export function createWebHost(
     target,
     launch(run) {
       const surface = webSurface(options.root);
+      Config.layoutAudit = options.layoutAudit ?? isDev;
       // First: binding the viewport reads the colour scheme service.
       const removeServices = installServices({
         ...webServices,

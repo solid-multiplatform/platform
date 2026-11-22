@@ -1,10 +1,11 @@
-import { RenderState } from '@solid-multiplatform/renderer/contracts';
 import type {
   ElementNode,
   ElementText,
   INode,
   Styles,
 } from '../../core/index.js';
+import { supports } from '../../sdk/capabilities.js';
+import { contentExtent } from './contentExtent.js';
 
 export type Scroller = (
   selected: number | ElementNode,
@@ -32,8 +33,23 @@ export interface ScrollableElement extends ElementNode {
   scrollStopLast?: boolean;
 }
 
-const isNotShown = (node: ElementNode | ElementText): boolean => {
-  return (node.lng.renderState as number) !== RenderState.InViewport;
+/**
+ * Whether an item is not fully inside the clipping band. Geometry, not the
+ * backend's `renderState`: the DOM/Canvas test backends and some hosts do not
+ * cull, and a node can be `InViewport` yet partly under a bar. tvOS reveals
+ * an item when it is not fully visible, which is exactly this test.
+ */
+const isNotShown = (
+  node: ElementNode | ElementText,
+  component: ScrollableElement,
+  isRow: boolean,
+): boolean => {
+  const band = visibleBand(component, isRow);
+  const dimension = isRow ? 'width' : 'height';
+  const abs = (isRow ? node.absX : node.absY) as number;
+  const start = abs - band.start;
+  const size = (node[dimension] as number) || 0;
+  return start < 0 || start + size > band.size + 0.5;
 };
 
 // The geometry one scroll step needs, read once. `start` is the container
@@ -44,10 +60,31 @@ interface ScrollBounds {
   axis: 'x' | 'y';
   dimension: 'width' | 'height';
   screenSize: number;
+  /** The clipping ancestor's absolute start and size on the scroll axis. */
+  bandStart: number;
+  bandSize: number;
   position: number;
   initialPosition: number;
   start: number;
   maxOffset: number;
+}
+
+function visibleBand(
+  component: ScrollableElement,
+  isRow: boolean,
+): { start: number; size: number } {
+  const dimension = isRow ? 'width' : 'height';
+  let parent = component.parent;
+  while (parent !== undefined && !parent.clipping) parent = parent.parent;
+  const lng = component.lng as unknown as INode;
+  const root = lng.stage.root;
+  if (parent !== undefined) {
+    return {
+      start: ((isRow ? parent.absX : parent.absY) as number) || 0,
+      size: (parent[dimension] as number) || 0,
+    };
+  }
+  return { start: 0, size: (isRow ? root.w : root.h) || 0 };
 }
 
 function scrollBounds(
@@ -80,15 +117,18 @@ function scrollBounds(
   const start = component.offset ?? initialPosition;
   const maxOffset = Math.min(
     screenSize -
-      (component[dimension] ?? 0) -
+      contentExtent(component, axis) -
       screenOffset -
       (endOffset ?? 2 * gap),
     start,
   );
+  const band = visibleBand(component, isRow);
   return {
     axis,
     dimension,
     screenSize,
+    bandStart: band.start,
+    bandSize: band.size,
     position,
     initialPosition,
     start,
@@ -118,11 +158,14 @@ function keepVisible(
   const lng = selectedEl.lng as unknown as { absX: number; absY: number };
   const abs = bounds.axis === 'x' ? lng.absX : lng.absY;
   // The candidate position translates the selection by (candidate - position).
-  const start = abs + (candidate - bounds.position) - centreInset;
+  // Measure against the clipping ancestor, not the whole stage: a focused
+  // item below a top bar or beside a sidebar is still occluded.
+  const start =
+    abs - bounds.bandStart + (candidate - bounds.position) - centreInset;
   let next = candidate;
   if (start < 0) next -= start;
-  else if (start + scaled > bounds.screenSize)
-    next -= start + scaled - bounds.screenSize;
+  else if (start + scaled > bounds.bandSize)
+    next -= start + scaled - bounds.bandSize;
   if (next < bounds.maxOffset) next = bounds.maxOffset;
   else if (next > bounds.start) next = bounds.start;
   return next;
@@ -247,6 +290,7 @@ export function withScrolling(isRow: boolean): Scroller {
     const lng = componentRef.lng as unknown as INode;
     const root = lng.stage.root;
     const screenSize = isRow ? root.w : root.h;
+    const band = visibleBand(componentRef, isRow);
     // Determine if movement is incremental or decremental
     const isIncrementing =
       lastSelected === undefined || lastSelected - 1 !== selected;
@@ -270,13 +314,17 @@ export function withScrolling(isRow: boolean): Scroller {
     const gap = componentRef.gap || 0;
     const scrollIndex = componentRef.scrollIndex;
     // when creating we set scroll to always so we setup the right location for selected and scrollIndex
+    // tvOS reveals focus by the least distance, so an undefined scroll mode
+    // is `edge` on a remote; a pointer host keeps the stepping `auto`.
     const scroll =
       scrollProp ||
       (lastSelected === undefined
         ? scrollIndex
           ? 'center'
           : 'always'
-        : 'auto');
+        : supports('remote')
+          ? 'edge'
+          : 'auto');
 
     // Allows manual position control
     const targetPosition = componentRef._targetPosition ?? position;
@@ -297,7 +345,7 @@ export function withScrolling(isRow: boolean): Scroller {
     const selectedScale =
       selectedEl.scale ?? (selectedEl.$focus as Styles | undefined)?.scale ?? 1;
     const selectedSizeScaled = selectedSize * selectedScale;
-    const containerSize = componentRef[dimension] ?? 0;
+    const containerSize = contentExtent(componentRef, axis);
     const maxOffset = Math.min(
       screenSize - containerSize - screenOffset - (endOffset ?? 2 * gap),
       offset,
@@ -313,7 +361,12 @@ export function withScrolling(isRow: boolean): Scroller {
 
     // Update nextPosition based on scroll type and specific conditions
     if (selectedEl.centerScroll) {
-      nextPosition = -selectedPosition + (screenSize - selectedSizeScaled) / 2;
+      nextPosition =
+        band.start +
+        band.size / 2 -
+        screenOffset -
+        selectedPosition -
+        selectedSizeScaled / 2;
     } else if (scroll === 'always') {
       nextPosition = -selectedPosition + offset;
     } else if (scroll === 'bounded') {
@@ -373,7 +426,7 @@ export function withScrolling(isRow: boolean): Scroller {
         nextPosition = rootPosition + selectedSize + gap;
       }
     } // Handle Edge scrolling
-    else if (isNotShown(nextElement)) {
+    else if (isNotShown(selectedEl, componentRef, isRow)) {
       nextPosition = isIncrementing
         ? rootPosition - selectedSize - gap
         : -selectedPosition + offset;
@@ -401,6 +454,8 @@ export function withScrolling(isRow: boolean): Scroller {
           axis,
           dimension,
           screenSize,
+          bandStart: band.start,
+          bandSize: band.size,
           position,
           initialPosition,
           start: offset,

@@ -12,7 +12,9 @@
     "build:desktop": "node ../../packages/host-desktop/cli/index.mjs build src/main.desktop.tsx --out dist/desktop --assets ../../packages/platform/bench/public/fonts",
     "desktop": "echo \"run: ../../packages/host-desktop/native/target/release/solid-desktop --title-bar=custom --script dist/desktop/app.js\"",
     "build:android": "node build.mjs",
-    "build:android:arm64": "node build.mjs --arm64"
+    "build:android:arm64": "node build.mjs --arm64",
+    "audit:layout": "node ../../packages/platform/scripts/layout-audit.mjs",
+    "prebuild": "npm run audit:layout"
   },
   "dependencies": {
     "@solid-multiplatform/platform": "workspace:*",

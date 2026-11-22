@@ -270,13 +270,8 @@ v.describe('dialog surfaces', () => {
       findAll(renderer.rootNode, predicate)[0]!;
 
     // The dialog surfaces take the app theme now, not a fixed palette.
-    const alert = find(
-      (node) => node.color === theme.colors.surface && node.width === 360,
-    );
-    const sheet = find(
-      (node) =>
-        node.color === theme.colors.surfaceRaised && node.width === 1920,
-    );
+    const alert = find((node) => node.id === 'alert-panel');
+    const sheet = find((node) => node.id === 'sheet-panel');
     const popover = find(
       (node) => node.color === theme.colors.surfaceRaised && node.width === 280,
     );
@@ -286,12 +281,9 @@ v.describe('dialog surfaces', () => {
     v.expect(modal.borderRadius).toBe(theme.radius.medium);
     v.expect(alert.borderRadius).toBe(theme.radius.medium);
     v.expect(popover.borderRadius).toBe(theme.radius.medium);
-    v.expect(sheet.borderRadius).toEqual([
-      theme.radius.medium,
-      theme.radius.medium,
-      0,
-      0,
-    ]);
+    // On a pointer window the sheet is a card; bottom sheets keep square
+    // bottom corners (covered by the touch-specific tests).
+    v.expect(sheet.borderRadius).toBe(theme.radius.medium);
     v.expect(drawer.borderRadius).toEqual([
       0,
       theme.radius.medium,

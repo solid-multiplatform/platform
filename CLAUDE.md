@@ -69,3 +69,12 @@ Device credentials live in a `.env` outside this repository. Never print or comm
 - Colors are 8-digit hex (`"#ff0000ff"`) or numbers. Use `color`, not `background`.
 - No `style={{}}` objects with CSS, no classes, no DOM elements.
 - One element should have `autofocus`; `Row`/`Column` manage child focus.
+- Size UI from the viewport, not from one reference screen: `useContentBox`
+  for a page column, `fitSize`/`clampSize` for a dialog or card, the safe area
+  for TV (60 pt top/bottom, 80 pt sides). An explicit `Row`/`Column` size is
+  kept; `scroll="touch"` makes the overflow scroll instead of cut off.
+- Run `corepack pnpm audit:layout` (or build the gallery, which runs it)
+  before shipping. It renders the real primitives and gallery screens at
+  320-pt phone, Pixel 7 Pro, 540-pt TV, Roku 1080p and desktop sizes and fails
+  on a box that is cut off or spills out of its panel. In development the web
+  host also warns at runtime (`Config.layoutAudit`).

@@ -27,6 +27,22 @@ export {
   type SelectableTextProps,
 } from '../primitives/SelectableText.jsx';
 export { Button, type ButtonProps } from '../primitives/Button.jsx';
+// Solid already exports its conditional `Switch`; the control is
+// `ToggleSwitch` here and `Switch` from the primitives entry.
+export {
+  Switch as ToggleSwitch,
+  type SwitchProps as ToggleSwitchProps,
+} from '../primitives/Switch.jsx';
+export { Slider, type SliderProps } from '../primitives/Slider.jsx';
+export {
+  ActivityIndicator,
+  type ActivityIndicatorProps,
+} from '../primitives/ActivityIndicator.jsx';
+export {
+  ActionSheet,
+  type ActionSheetAction,
+  type ActionSheetProps,
+} from '../primitives/ActionSheet.jsx';
 export { List, type ListProps } from '../primitives/List.jsx';
 export {
   TextField,
@@ -35,6 +51,10 @@ export {
   type SearchFieldProps,
 } from '../primitives/TextField.jsx';
 export { Spacer } from '../primitives/Spacer.jsx';
+export {
+  PageControl,
+  type PageControlProps,
+} from '../primitives/PageControl.jsx';
 
 // Layout, lists and images.
 export { Row } from '../primitives/Row.jsx';
@@ -48,7 +68,11 @@ export { Visible } from '../primitives/Visible.jsx';
 // Overlays and feedback.
 export { Modal } from '../primitives/Modal.jsx';
 export { Toast } from '../primitives/Toast.jsx';
-export { Alert } from '../primitives/Alert.jsx';
+export {
+  Alert,
+  type AlertAction,
+  type AlertProps,
+} from '../primitives/Alert.jsx';
 export { Sheet } from '../primitives/Sheet.jsx';
 export { AppErrorBoundary } from '../primitives/AppErrorBoundary.jsx';
 
@@ -83,6 +107,17 @@ export {
   type HostInfo,
 } from './hooks.js';
 export { useBreakpoint } from '../sdk/responsive.js';
+export {
+  centerIn,
+  clampSize,
+  contentBoxFor,
+  fitSize,
+  useContentBox,
+  useUiScale,
+  type ContentBox,
+  type ContentBoxOptions,
+  type LayoutRect,
+} from '../sdk/layout.js';
 export { loadService } from '../sdk/registry.js';
 export {
   applySystemBarStyle,

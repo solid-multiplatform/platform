@@ -1,6 +1,7 @@
 import { For, splitProps, type Accessor, type JSX } from 'solid-js';
 import { createMemo, createRenderEffect, onCleanup } from 'solid-js';
-import { isElementNode } from '@solid-multiplatform/platform';
+import { combineStyles, isElementNode } from '@solid-multiplatform/platform';
+import { useTheme } from '../sdk/theme.jsx';
 import { Column } from './Column.jsx';
 import { Row } from './Row.jsx';
 import type { ColumnProps } from './types.js';
@@ -33,6 +34,7 @@ export interface ListProps<T> extends Omit<ColumnProps, 'children'> {
  * `VirtualColumn`/`VirtualRow`.
  */
 export function List<T>(props: ListProps<T>): JSX.Element {
+  const theme = useTheme();
   const [local, rest] = splitProps(props, [
     'each',
     'direction',
@@ -59,6 +61,11 @@ export function List<T>(props: ListProps<T>): JSX.Element {
         const node = local.children(item, index) as unknown;
         // The item itself is the target of Enter and of the pointer.
         if (isElementNode(node)) {
+          // A tap gives brief feedback, as an iOS table row does; the app's
+          // own `$pressed` style, if any, wins.
+          node.style = combineStyles(node.style, {
+            $pressed: { color: theme.colors.selection },
+          });
           if (local.itemKey !== undefined) {
             const itemKey = local.itemKey;
             createRenderEffect(() => setItemKey(node, itemKey(item)));

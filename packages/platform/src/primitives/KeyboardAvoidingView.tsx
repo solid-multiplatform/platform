@@ -44,6 +44,7 @@ export function KeyboardAvoidingView(
   const width = () => props.width ?? viewport().width;
   const height = () =>
     Math.max(0, (props.height ?? viewport().height) - inset());
+  const fullHeight = () => props.height ?? viewport().height;
   return (
     <view
       ref={props.ref}
@@ -51,13 +52,23 @@ export function KeyboardAvoidingView(
       y={behavior() === 'position' ? -inset() : (props.y ?? 0)}
       width={width()}
       height={
-        behavior() === 'position'
-          ? (props.height ?? viewport().height)
+        behavior() === 'position' || behavior() === 'padding'
+          ? fullHeight()
           : height()
       }
       style={props.style}
     >
-      {props.children}
+      {/* Padding reserves the keyboard's band inside the box; height shrinks
+          the box; position moves it. Before this, padding and height were
+          the same node size, so a padded form still put its last row under
+          the keyboard. */}
+      {behavior() === 'padding' ? (
+        <view width={width()} height={height()}>
+          {props.children}
+        </view>
+      ) : (
+        props.children
+      )}
     </view>
   );
 }
@@ -90,22 +101,37 @@ export function SafeArea(props: SafeAreaProps): JSX.Element {
   const side = (edge: SafeAreaEdge) =>
     edges().includes(edge) ? area()[edge] : 0;
   const margin = () => props.mode === 'margin';
+  const outerWidth = () => props.width ?? viewport().width;
+  const outerHeight = () => props.height ?? viewport().height;
+  const innerWidth = () =>
+    Math.max(0, outerWidth() - side('left') - side('right'));
+  const innerHeight = () =>
+    Math.max(0, outerHeight() - side('top') - side('bottom'));
   return (
     <view
       ref={props.ref}
       x={(props.x ?? 0) + (margin() ? side('left') : 0)}
       y={(props.y ?? 0) + (margin() ? side('top') : 0)}
-      width={Math.max(
-        0,
-        (props.width ?? viewport().width) - side('left') - side('right'),
-      )}
-      height={Math.max(
-        0,
-        (props.height ?? viewport().height) - side('top') - side('bottom'),
-      )}
+      width={margin() ? innerWidth() : outerWidth()}
+      height={margin() ? innerHeight() : outerHeight()}
       style={props.style}
     >
-      {props.children}
+      {/* Margin offsets the box itself; padding keeps the box on the screen
+          and insets its children. The old padding mode left the children at
+          the unsafe top-left while only shrinking the box, so content still
+          sat under the notch and a bar. */}
+      {margin() ? (
+        props.children
+      ) : (
+        <view
+          x={side('left')}
+          y={side('top')}
+          width={innerWidth()}
+          height={innerHeight()}
+        >
+          {props.children}
+        </view>
+      )}
     </view>
   );
 }

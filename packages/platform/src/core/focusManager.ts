@@ -79,6 +79,7 @@ const keyMapEntries: KeyMapEntries = {
   Enter: 'Enter',
   l: 'Last',
   ' ': 'Space',
+  MediaPlayPause: 'PlayPause',
   Backspace: 'Back',
   Escape: 'Escape',
 };
@@ -800,10 +801,12 @@ const handleKeyEvents = (
       liftSuppression(findSuppression(name, code));
     }
 
-    return propagateKeyPress(
-      keydown,
-      mappedEntry(keydown.key, keydown.keyCode),
-    );
+    const mapped = mappedEntry(keydown.key, keydown.keyCode);
+    if (propagateKeyPress(keydown, mapped)) return true;
+    // Space is the keyboard's activation key on Apple platforms. A control
+    // that only defines `onEnter` (buttons, rows, menu items) should still
+    // activate; a control that handles Space itself already returned true.
+    return mapped === 'Space' ? propagateKeyPress(keydown, 'Enter') : false;
   }
   if (keyup) {
     // The key is up: whatever was suppressing its repeats is done. Settle it

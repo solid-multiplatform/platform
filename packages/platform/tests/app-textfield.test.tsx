@@ -4,6 +4,7 @@ import * as v from 'vitest';
 import { createComponent, createSignal } from 'solid-js';
 import * as lng from '@solid-multiplatform/platform';
 import { SearchField, TextField } from '@solid-multiplatform/platform/app';
+import { Column } from '@solid-multiplatform/platform/primitives';
 import { appEntry } from '@solid-multiplatform/platform/app/entry';
 import { useFocusManager } from '@solid-multiplatform/platform/focusManager';
 import type { Editor, EditorHost, EditorOptions } from '../src/sdk/editor.js';
@@ -13,27 +14,35 @@ import { renderer } from './setup.js';
 
 const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 5));
 
+const texts = (node: unknown): string[] => {
+  const current = node as { text?: string; children?: readonly unknown[] };
+  if (typeof current.text === 'string') return [current.text];
+  return (current.children ?? []).flatMap((child) => texts(child));
+};
+
 function fakeEditorHost() {
   const calls: EditorOptions[] = [];
   const focus = v.vi.fn();
+  const blur = v.vi.fn();
   const dispose = v.vi.fn();
+  const setBounds = v.vi.fn();
   const host: EditorHost = {
     createEditor(options) {
       calls.push(options);
       let value = options.value ?? '';
       return {
         focus,
-        blur() {},
+        blur,
         value: () => value,
         setValue(next) {
           value = next;
         },
-        setBounds: v.vi.fn(),
+        setBounds,
         dispose,
       } satisfies Editor;
     },
   };
-  return { host, calls, focus, dispose };
+  return { host, calls, focus, blur, dispose, setBounds };
 }
 
 let stop: (() => void) | undefined;
@@ -78,7 +87,7 @@ v.afterEach(() => {
 });
 
 v.test('a TextField opens the host editor and reports changes', async () => {
-  const { host, calls, focus, dispose } = fakeEditorHost();
+  const { host, calls, focus, dispose, setBounds } = fakeEditorHost();
   const [value, setValue] = createSignal('initial');
   await mount(
     () => (
@@ -97,8 +106,16 @@ v.test('a TextField opens the host editor and reports changes', async () => {
   v.expect(calls[0]).toMatchObject({
     label: 'Name',
     value: 'initial',
+    placeholder: 'Type here',
     purpose: 'text',
   });
+  // The label sits above the box, so the editor starts below the caption and
+  // keeps a 44-pt target. This is the shape that was a blank rectangle when
+  // the label was hidden and the host had no placeholder.
+  const box = setBounds.mock.calls[0]![0] as { y: number; height: number };
+  v.expect(box.y).toBeGreaterThanOrEqual(15);
+  v.expect(box.height).toBeGreaterThanOrEqual(44);
+  v.expect(texts(lng.rootNode)).toContain('Name');
   v.expect(focus).toHaveBeenCalledTimes(1);
   // Enter focuses the same editor again; it does not create another.
   await press('Enter');
@@ -146,4 +163,56 @@ v.test('the field is inert on a host without an editor', async () => {
   // No throw while mounting or pressing keys; the field still draws.
   await press('Enter');
   v.expect(lng.rootNode.children.length).toBeGreaterThan(0);
+});
+
+v.test('a focused field scrolls its form above the keyboard', async () => {
+  const { host } = fakeEditorHost();
+  let column!: lng.ElementNode;
+  await mount(
+    () => (
+      <view width={400} height={300} clipping>
+        <Column
+          ref={(node) => (column = node as lng.ElementNode)}
+          width={400}
+          height={300}
+          scroll="touch"
+        >
+          <view width={400} height={400} />
+          <TextField label="Name" width={300} autofocus />
+        </Column>
+      </view>
+    ),
+    host,
+  );
+  await settle();
+  // The field starts at y=400 in a 300-high viewport; revealing it moves the
+  // column's content up instead of leaving the field under the fold.
+  v.expect(column.y).toBeLessThan(0);
+  v.expect(column.y).toBeLessThanOrEqual(-100);
+});
+
+v.test('leaves its host editor when scene focus moves away', async () => {
+  const { host, blur } = fakeEditorHost();
+  let other!: lng.ElementNode;
+  await mount(
+    () => (
+      <view width={400} height={300}>
+        <TextField label="Name" autofocus />
+        <view
+          ref={(node) => (other = node as lng.ElementNode)}
+          width={100}
+          height={44}
+          onEnter={() => true}
+        />
+      </view>
+    ),
+    host,
+  );
+  await settle();
+  v.expect(blur).not.toHaveBeenCalled();
+  other.setFocus();
+  await settle();
+  // The native editor lives above the scene; if it is left focused, its
+  // hint floats over the dialog that took focus next.
+  v.expect(blur).toHaveBeenCalled();
 });

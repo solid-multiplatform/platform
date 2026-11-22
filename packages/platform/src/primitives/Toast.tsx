@@ -22,7 +22,7 @@ export interface ToastProps {
  * It is anchored inside the safe area and above the keyboard.
  */
 export function Toast(props: ToastProps): JSX.Element {
-  const theme = () => useTheme();
+  const theme = useTheme();
   const visible = () =>
     typeof props.visible === 'function' ? props.visible() : props.visible;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -37,20 +37,34 @@ export function Toast(props: ToastProps): JSX.Element {
   });
   onCleanup(() => timer && clearTimeout(timer));
 
+  const textSize = () => theme.typography.body;
+  const labelSize = () => theme.typography.label;
+  const bodyLine = () => Math.round(textSize() * 1.35);
+  const actionHeight = () => 44;
+  const padding = () => 16;
+  const messageLines = () => 2;
+  const height = () =>
+    padding() * 2 +
+    bodyLine() * messageLines() +
+    (props.actionLabel === undefined ? 0 : 8 + actionHeight());
   const rect = () => {
     const v = viewport();
-    const width = Math.min(560, v.width - 48);
-    const height = 72;
-    const bottom =
-      v.height - v.insets.safeArea.bottom - v.insets.ime.bottom - height - 24;
+    const safe = v.insets.safeArea;
+    const width = Math.max(
+      160,
+      Math.min(560, v.width - safe.left - safe.right - 32),
+    );
+    const bottom = v.height - safe.bottom - v.insets.ime.bottom - height() - 24;
     return {
-      x: Math.max(24, (v.width - width) / 2),
+      x:
+        safe.left +
+        Math.max(16, (v.width - safe.left - safe.right - width) / 2),
       y:
         (props.position ?? 'bottom') === 'top'
-          ? v.insets.safeArea.top + 24
-          : Math.max(v.insets.safeArea.top + 24, bottom),
+          ? safe.top + 24
+          : Math.max(safe.top + 24, bottom),
       width,
-      height,
+      height: height(),
     };
   };
 
@@ -59,32 +73,51 @@ export function Toast(props: ToastProps): JSX.Element {
       <Portal>
         <view
           {...rect()}
-          color={theme().colors.surfaceRaised}
+          color={theme.colors.surfaceRaised}
+          borderRadius={theme.radius.medium}
           role="status"
           ariaLive="polite"
           ariaLabel={props.message}
-          onEnter={() => props.onAction?.()}
-          onMouseClick={() => props.onAction?.()}
         >
           <text
-            x={20}
-            y={20}
-            width={rect().width - 40}
-            fontSize={22}
-            color={theme().colors.text}
+            skipFocus
+            x={padding()}
+            y={padding()}
+            width={rect().width - padding() * 2}
+            contain="width"
+            maxLines={messageLines()}
+            fontSize={textSize()}
+            color={theme.colors.text}
           >
             {props.message}
           </text>
           {props.actionLabel ? (
-            <text
-              x={20}
-              y={44}
-              fontSize={18}
-              color={theme().colors.primary}
+            // Only the action is tappable: a tap on the message should not
+            // run something the person did not aim at.
+            <view
+              x={padding()}
+              y={padding() + bodyLine() * messageLines() + 8}
+              width={rect().width - padding() * 2}
+              height={actionHeight()}
+              borderRadius={theme.radius.small}
+              role="button"
+              ariaLabel={props.actionLabel}
               onEnter={() => props.onAction?.()}
+              onMouseClick={() => props.onAction?.()}
+              cursorStyle="pointer"
+              style={{ $focus: { color: theme.colors.selection } }}
             >
-              {props.actionLabel}
-            </text>
+              <text
+                skipFocus
+                x={0}
+                y={(actionHeight() - labelSize() * 1.2) / 2}
+                fontSize={labelSize()}
+                fontWeight={700}
+                color={theme.colors.primary}
+              >
+                {props.actionLabel}
+              </text>
+            </view>
           ) : null}
           {props.children}
         </view>

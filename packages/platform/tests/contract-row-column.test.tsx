@@ -1133,6 +1133,71 @@ v.describe('Row and Column: transitions and throttleInput', () => {
   );
 });
 
+v.describe('TV focus scroll defaults', () => {
+  const reset = () => lng.resetCapabilities();
+  v.afterEach(reset);
+
+  v.it(
+    'a remote reveals focus only at the edge, not on every press',
+    async () => {
+      lng.setCapabilities('android-tv');
+      let row!: lng.ElementNode;
+      dispose = await mount(() => (
+        <view width={400} height={300} clipping>
+          <Row ref={row} autofocus width={400} gap={0}>
+            {Array.from({ length: 10 }, (_, index) => (
+              <view id={`e${index}`} width={100} height={100} />
+            ))}
+          </Row>
+        </view>
+      ));
+      v.expect(focusedId()).toBe('e0');
+      await press('ArrowRight', 'ArrowRight');
+      v.expect(focusedId()).toBe('e2');
+      // e0..e3 fill the 400-wide clip, so these moves do not scroll.
+      v.expect(row.x).toBe(0);
+      // e3 is the last fully visible item, so it does not scroll; moving to
+      // e4 reveals it by one item instead of jumping e4 to the start.
+      await press('ArrowRight');
+      v.expect(focusedId()).toBe('e3');
+      v.expect(row.x).toBe(0);
+      await press('ArrowRight');
+      v.expect(focusedId()).toBe('e4');
+      v.expect(row.x).toBe(-100);
+    },
+  );
+});
+
+v.describe('fixed-height scroll containers', () => {
+  v.it(
+    'a Column given the page height still focus-scrolls its content',
+    async () => {
+      let column!: lng.ElementNode;
+      dispose = await mount(() => (
+        <view width={400} height={400} clipping>
+          <Column
+            ref={column}
+            autofocus
+            width={400}
+            height={400}
+            gap={0}
+            scroll="auto"
+          >
+            {items(10)}
+          </Column>
+        </view>
+      ));
+      v.expect(focusedId()).toBe('c0');
+      v.expect(column.y).toBe(0);
+      // The column's own height is the visible page, not its content; the
+      // content extent comes from the children, so moving focus down moves it.
+      await press('ArrowDown', 'ArrowDown', 'ArrowDown');
+      v.expect(focusedId()).toBe('c3');
+      v.expect(column.y).toBeLessThan(0);
+    },
+  );
+});
+
 v.describe('wheel and page keys', () => {
   v.it(
     'a wheel moves a Column by whole rows and PageDown by a page',

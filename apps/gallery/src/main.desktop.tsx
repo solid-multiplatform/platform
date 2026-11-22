@@ -7,18 +7,29 @@
  */
 import { Config } from '@solid-multiplatform/platform';
 import { startApp } from '@solid-multiplatform/platform/host';
+import { appEntry } from '@solid-multiplatform/platform/app/entry';
 import { desktopHost } from '@solid-multiplatform/host-desktop';
 import { App } from './App';
 
 Config.fontSettings = { fontFamily: 'Roboto', fontSize: 24 };
 
-startApp(desktopHost({ id: 'gallery', title: 'Sona' }), () => <App />, {
-  fonts: [
-    {
-      type: 'msdf',
-      fontFamily: 'Lato',
-      atlasUrl: './fonts/Lato-Regular.msdf.png',
-      atlasDataUrl: './fonts/Lato-Regular.msdf.json',
-    },
-  ],
-});
+const entry = appEntry(
+  App,
+  {},
+  {
+    fonts: [
+      {
+        type: 'msdf',
+        fontFamily: 'Lato',
+        atlasUrl: './fonts/Lato-Regular.msdf.png',
+        atlasDataUrl: './fonts/Lato-Regular.msdf.json',
+      },
+    ],
+  },
+);
+
+startApp(
+  desktopHost({ id: 'gallery', title: 'Sona' }),
+  entry.root,
+  entry.options,
+);

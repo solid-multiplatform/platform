@@ -172,6 +172,50 @@ export function SignIn() {
 
 On a host without an editor the field still draws its label, placeholder and value; pressing Enter does nothing. The host editor is the `text` of `HostContext`, so a web build shows a real input and Roku opens its native keyboard dialog.
 
+### Switch, Slider and ActivityIndicator
+
+`ToggleSwitch` is Apple's switch (`Switch` from the primitives entry, renamed here because Solid already exports its conditional `Switch`): the whole labelled row is one focus/touch target and the knob slides when toggled. `Slider` is a controlled track with a round knob; drag it or use Left/Right/Home/End. `ActivityIndicator` is the eight-spoke spinner; it animates only while `animating` and follows Reduce Motion.
+
+```tsx
+import {
+  ActivityIndicator,
+  Slider,
+  ToggleSwitch,
+} from '@solid-multiplatform/platform/app';
+
+<ToggleSwitch label="Crossfade" checked={crossfade()} onChange={setCrossfade} />
+<Slider label="Volume" value={volume()} min={0} max={100} step={5} onChange={setVolume} />
+<ActivityIndicator label="Loading tracks" />
+```
+
+### ActionSheet
+
+Apple's action sheet for a set of related choices: a dimmed parent, a card of choices (a destructive one in red), and a separate Cancel button. Tapping outside or Back cancels.
+
+### PageControl
+
+One dot per page, the current one filled. Each dot has a 44-unit hit target; the control is skipped by focus unless an app wraps it.
+
+```tsx
+import { PageControl } from '@solid-multiplatform/platform/app';
+
+<PageControl count={images().length} index={page()} onChange={setPage} />;
+```
+
+```tsx
+import { ActionSheet } from '@solid-multiplatform/platform/app';
+
+<ActionSheet
+  visible={open()}
+  title="Track actions"
+  actions={[
+    { label: 'Play next', onPress: playNext },
+    { label: 'Delete', style: 'destructive', onPress: remove },
+  ]}
+  onRequestClose={() => setOpen(false)}
+/>;
+```
+
 ### Spacer, Row and Column
 
 `Row` and `Column` are flex containers that move focus between their children; they take `gap` and `padding`. `Spacer` takes the free space of the container it is in.

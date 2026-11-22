@@ -28,6 +28,7 @@ const repo = path.resolve(here, '../..');
 const arm64 = process.argv.includes('--arm64');
 const tv = process.argv.includes('--tv');
 const roku = process.argv.includes('--roku');
+const skipAudit = process.argv.includes('--skip-audit');
 const targetName = roku ? 'roku' : tv ? 'android-tv' : 'android';
 const arch = arm64 ? 'arm64' : 'x86_64';
 const abi = arm64 ? 'arm64-v8a' : 'x86_64';
@@ -51,6 +52,19 @@ const step = (text) => process.stdout.write(`\n== ${text}\n`);
 if (!existsSync(path.join(repo, 'packages/platform/dist/src/index.js'))) {
   step('Building the framework packages (dist is missing)');
   run('corepack', ['pnpm', 'run', 'build'], repo);
+}
+
+// The audit is a build gate: it renders the real screens at the smallest
+// phone, a Pixel 7 Pro, a 540-pt TV, Roku at 1080p and a desktop window, then
+// reads the boxes back. A calendar column hanging off the right edge or a
+// sheet footer below a short screen stops the build with the node named.
+if (!skipAudit) {
+  step('Auditing layout at phone, TV, Roku and desktop sizes');
+  run(
+    process.execPath,
+    [path.join(repo, 'packages/platform/scripts/layout-audit.mjs')],
+    repo,
+  );
 }
 
 step(`Scaffolding ${scratch}`);

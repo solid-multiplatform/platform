@@ -34,7 +34,7 @@ import { Create } from './screens/Create';
 import { Settings as SettingsScreen } from './screens/Settings';
 import { PerfOverlay } from './components/PerfOverlay';
 
-export const galleryTheme = defineTheme({
+const galleryOverrides = {
   colors: {
     background: C.background,
     surface: C.surface,
@@ -57,6 +57,19 @@ export const galleryTheme = defineTheme({
     headline: T.headline,
   },
   radius: { small: R.small, medium: R.medium, large: R.large },
+};
+
+/** The phone/desktop theme: compact type for a pointer UI. */
+export const galleryTheme = defineTheme(galleryOverrides);
+
+/**
+ * The ten-foot theme. The same primitives (fields, selects, menus, alerts,
+ * sheets, choices) read these tokens, so a TV gets a readable body and label
+ * instead of a phone's 13-pt caption stretched across the room.
+ */
+export const galleryTvTheme = defineTheme({
+  ...galleryOverrides,
+  typography: { body: 24, label: 20, title: 48, headline: 34 },
 });
 
 export type Route = 'library' | 'create' | 'settings' | 'album';
@@ -238,7 +251,9 @@ export function App(): JSX.Element {
   );
 
   return (
-    <ThemeProvider theme={galleryTheme}>
+    <ThemeProvider
+      theme={() => (family() === 'tv' ? galleryTvTheme : galleryTheme)}
+    >
       <view
         width={viewport().width}
         height={viewport().height}

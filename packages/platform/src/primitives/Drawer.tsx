@@ -42,10 +42,18 @@ export interface DrawerProps {
  * the host; this primitive uses physical edges so it works with RTL layouts.
  */
 export function Drawer(props: DrawerProps): JSX.Element {
-  const theme = () => useTheme();
+  const theme = useTheme();
   const width = () => Math.min(props.width ?? 360, viewport().width);
   const x = () => (props.side === 'end' ? viewport().width - width() : 0);
   const safe = () => viewport().insets.safeArea;
+  const contentX = () => 24 + (props.side === 'end' ? 0 : safe().left);
+  const contentWidth = () =>
+    Math.max(
+      0,
+      width() - contentX() - 24 - (props.side === 'end' ? safe().right : 0),
+    );
+  const closeX = () => width() - 64 - (props.side === 'end' ? safe().right : 0);
+  const titleSize = () => Math.max(17, Math.min(24, theme.typography.body + 2));
   let content: ElementNode | undefined;
   let close: ElementNode | undefined;
 
@@ -71,6 +79,7 @@ export function Drawer(props: DrawerProps): JSX.Element {
       onRequestClose={() => props.onRequestClose?.()}
       label={props.label}
       transparent
+      barrierColor={0x00000080}
       useSafeArea={false}
       initialFocus={props.initialFocus}
     >
@@ -82,12 +91,12 @@ export function Drawer(props: DrawerProps): JSX.Element {
         y={0}
         width={width()}
         height={viewport().height}
-        color={theme().colors.surfaceRaised}
+        color={theme.colors.surfaceRaised}
         // Rounded on the side that faces the content, like the other dialogs.
         borderRadius={
           props.side === 'end'
-            ? [theme().radius.medium, 0, 0, theme().radius.medium]
-            : [0, theme().radius.medium, theme().radius.medium, 0]
+            ? [theme.radius.medium, 0, 0, theme.radius.medium]
+            : [0, theme.radius.medium, theme.radius.medium, 0]
         }
         role="none"
         // The panel is a navigable container: its rows are the app's content
@@ -100,12 +109,14 @@ export function Drawer(props: DrawerProps): JSX.Element {
       >
         <text
           skipFocus
-          x={24}
+          x={contentX()}
           y={safe().top + 24}
-          width={width() - 96}
+          width={contentWidth() - 48}
           contain="width"
-          fontSize={theme().typography.title}
-          color={theme().colors.text}
+          maxLines={2}
+          fontSize={titleSize()}
+          fontWeight={700}
+          color={theme.colors.text}
         >
           {props.title ?? props.label}
         </text>
@@ -113,10 +124,16 @@ export function Drawer(props: DrawerProps): JSX.Element {
           ref={(node) => {
             content = node as ElementNode;
           }}
-          x={24}
+          x={contentX()}
           y={safe().top + 88}
-          width={width() - 48}
-          height={viewport().height - safe().top - safe().bottom - 112}
+          width={contentWidth()}
+          height={Math.max(
+            0,
+            viewport().height -
+              safe().top -
+              Math.max(safe().bottom, viewport().insets.ime.bottom) -
+              112,
+          )}
           forwardFocus={focusContent}
         >
           {props.children}
@@ -125,7 +142,7 @@ export function Drawer(props: DrawerProps): JSX.Element {
           ref={(node) => {
             close = node as ElementNode;
           }}
-          x={width() - 64}
+          x={closeX()}
           y={safe().top + 20}
           width={44}
           height={44}
@@ -133,9 +150,9 @@ export function Drawer(props: DrawerProps): JSX.Element {
           alignItems="center"
           justifyContent="center"
           style={{
-            color: theme().colors.surface,
-            $focus: { color: theme().colors.focus },
-            $hover: { color: theme().colors.border },
+            color: theme.colors.surface,
+            $focus: { color: theme.colors.focus },
+            $hover: { color: theme.colors.border },
           }}
           // An icon button is a circle, like every other one in the app.
           borderRadius={22}
@@ -145,7 +162,7 @@ export function Drawer(props: DrawerProps): JSX.Element {
           onMouseClick={() => props.onRequestClose?.()}
           cursorStyle="pointer"
         >
-          <CloseIcon size={18} color={theme().colors.text} thickness={2} />
+          <CloseIcon size={18} color={theme.colors.text} thickness={2} />
         </view>
       </view>
     </Modal>

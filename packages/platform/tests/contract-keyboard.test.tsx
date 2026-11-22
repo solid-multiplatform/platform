@@ -168,10 +168,16 @@ v.describe('SafeArea', () => {
       <SafeArea ref={(n) => (node = n as lng.ElementNode)} />
     ));
     await waitForUpdate();
+    // Padding keeps the box at the window edge and insets its content: the
+    // children start after the status bar and the notch, not under them.
     v.expect(node.x).toBe(0);
     v.expect(node.y).toBe(0);
-    v.expect(node.width).toBe(785);
-    v.expect(node.height).toBe(550);
+    v.expect(node.width).toBe(800);
+    v.expect(node.height).toBe(600);
+    const content = node.children[0] as lng.ElementNode;
+    v.expect([content.x, content.y, content.width, content.height]).toEqual([
+      10, 30, 785, 550,
+    ]);
     dispose();
   });
 

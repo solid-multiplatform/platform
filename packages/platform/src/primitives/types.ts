@@ -1,6 +1,12 @@
 import type { ElementNode, NodeProps, NodeStyles } from '../index.js';
 import type { KeyHandler } from '../core/focusManager.js';
 
+/** Bring a descendant of a touch-scrolling Row/Column into view. */
+export type RevealElement = (
+  target: ElementNode,
+  options?: { duration?: number; bottomInset?: number },
+) => void;
+
 export type OnSelectedChanged = (
   this: NavigableElement,
   selectedIndex: number,

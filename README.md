@@ -67,6 +67,7 @@ corepack pnpm dev web
 ```sh
 corepack pnpm build       # renderer, then platform
 corepack pnpm test        # renderer + platform (vitest, jsdom) + video
+corepack pnpm audit:layout # render real screens at phone/TV/Roku/desktop sizes
 corepack pnpm lint        # prettier check + oxlint (type-aware)
 corepack pnpm docs:check  # the feature matrix is generated and its evidence exists
 ```

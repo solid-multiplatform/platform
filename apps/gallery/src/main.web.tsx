@@ -6,6 +6,7 @@
 import { Config } from '@solid-multiplatform/platform';
 import { tvHost } from '@solid-multiplatform/platform/browser-tv/input';
 import { startApp } from '@solid-multiplatform/platform/host';
+import { appEntry } from '@solid-multiplatform/platform/app/entry';
 import { webHost } from '@solid-multiplatform/platform/host/web';
 import { App } from './App';
 
@@ -14,11 +15,12 @@ declare const __GALLERY_TARGET__: 'web' | 'tizen' | 'webos';
 const target = __GALLERY_TARGET__;
 Config.fontSettings = { fontFamily: 'Roboto', fontSize: 24 };
 
-startApp(
-  target === 'web'
-    ? webHost({ target, namespace: 'gallery' })
-    : tvHost(webHost, { target, namespace: 'gallery' }),
-  () => <App />,
+// `appEntry` supplies the app scope (and with it the host's text editor),
+// the theme provider and the exit confirmation around the same component the
+// native targets mount.
+const entry = appEntry(
+  App,
+  {},
   {
     fonts: [
       {
@@ -40,4 +42,12 @@ startApp(
       },
     ],
   },
+);
+
+startApp(
+  target === 'web'
+    ? webHost({ target, namespace: 'gallery' })
+    : tvHost(webHost, { target, namespace: 'gallery' }),
+  entry.root,
+  entry.options,
 );

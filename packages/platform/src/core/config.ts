@@ -93,6 +93,27 @@ export interface Config {
    */
   preventDefaultOnHandledKeys: boolean;
   taskDelay?: number;
+  /**
+   * Warn when a laid-out box leaves the viewport, a clipping ancestor, or the
+   * panel it belongs to. Coalesced to one walk per layout batch and off by
+   * default; a development host turns it on. Production builds never walk.
+   *
+   * ```ts
+   * Config.layoutAudit = true;
+   * ```
+   */
+  layoutAudit: boolean;
+  /** Also report boxes that spill out of a visible panel. Defaults to true. */
+  layoutAuditPanels: boolean;
+  /** Ignore escapes smaller than this many logical units. Defaults to 1. */
+  layoutAuditTolerance: number;
+  /**
+   * Receive the findings instead of the console, to show them in an overlay
+   * or fail a test/build. The audit still runs only when `layoutAudit` is on.
+   */
+  onLayoutAudit?: (
+    findings: import('./layoutAudit.js').LayoutFinding[],
+  ) => void;
   convertToShader: (_node: ElementNode, v: StyleEffects) => SceneShader;
   stateOrder?: DollarString[];
 }
@@ -132,6 +153,9 @@ export const Config: Config = {
     black: 900,
   },
   focusStateKey: '$focus',
+  layoutAudit: false,
+  layoutAuditPanels: true,
+  layoutAuditTolerance: 1,
   lockStyles: true,
   preventDefaultOnHandledKeys: false,
   rendererOptions: {},

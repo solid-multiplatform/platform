@@ -113,7 +113,7 @@ export function AlbumScreen(props: {
         width={page().width}
         height={props.height - S(6)}
         gap={S(6)}
-        scroll={tv() ? 'auto' : 'touch'}
+        scroll={tv() ? 'edge' : 'touch'}
         selected={0}
       >
         {props.topNav}

@@ -1,4 +1,5 @@
 import { For, createSignal, type JSX } from 'solid-js';
+import { selectionFeedback } from '../sdk/device.js';
 import { useTheme } from '../sdk/theme.jsx';
 import {
   handleNavigation,
@@ -34,9 +35,14 @@ export function Checkbox(props: CheckboxProps): JSX.Element {
   const checked = () => valueOf(props.checked);
   const width = () => props.width ?? 240;
   const height = () => props.height ?? 48;
-  const box = 26;
+  // A 13-pt label gets a 26-pt box; a ten-foot 20-pt label gets
+  // proportionally more, so the control does not look like a speck on a TV.
+  const box = () =>
+    Math.max(20, Math.round(26 * (theme().typography.label / 13)));
+  const k = () => box() / 26;
   const activate = () => {
     if (props.disabled) return;
+    void selectionFeedback();
     props.onChange?.(!checked());
   };
 
@@ -60,9 +66,9 @@ export function Checkbox(props: CheckboxProps): JSX.Element {
     >
       <view
         x={8}
-        y={(height() - box) / 2}
-        width={box}
-        height={box}
+        y={(height() - box()) / 2}
+        width={box()}
+        height={box()}
         // An empty box is a well, not a raised chip: it has to read as empty
         // on a card and on a dialog panel alike.
         color={
@@ -72,33 +78,33 @@ export function Checkbox(props: CheckboxProps): JSX.Element {
               ? theme().colors.surface
               : theme().colors.border
         }
-        borderRadius={box / 2}
+        borderRadius={box() / 2}
       >
         {/* A check drawn from two bars, not a glyph (the MSDF faces an app
             registers often have none). Short stroke down to the corner, long
             stroke up to the right — in scene coordinates a positive angle
             turns clockwise, so the long stroke is negative. */}
         <view
-          width={8.4}
-          height={3}
-          x={4.3}
-          y={13.5}
+          width={8.4 * k()}
+          height={3 * k()}
+          x={4.3 * k()}
+          y={13.5 * k()}
           rotation={0.785}
           color={checked() ? theme().colors.onPrimary : 0x00000000}
         />
         <view
-          width={13.4}
-          height={3}
-          x={8.55}
-          y={11.75}
+          width={13.4 * k()}
+          height={3 * k()}
+          x={8.55 * k()}
+          y={11.75 * k()}
           rotation={-0.785}
           color={checked() ? theme().colors.onPrimary : 0x00000000}
         />
       </view>
       <text
-        x={8 + box + 12}
+        x={8 + box() + 12}
         y={(height() - theme().typography.label) / 2}
-        width={width() - box - 28}
+        width={width() - box() - 28}
         contain="width"
         fontSize={theme().typography.label}
         color={props.disabled ? theme().colors.textMuted : theme().colors.text}
@@ -127,9 +133,12 @@ export function Radio(props: RadioProps): JSX.Element {
   const selected = () => valueOf(props.selected);
   const width = () => props.width ?? 240;
   const height = () => props.height ?? 48;
-  const size = 26;
+  const size = () =>
+    Math.max(20, Math.round(26 * (theme().typography.label / 13)));
   const activate = () => {
-    if (!props.disabled) props.onSelect?.();
+    if (props.disabled) return;
+    void selectionFeedback();
+    props.onSelect?.();
   };
 
   return (
@@ -152,9 +161,9 @@ export function Radio(props: RadioProps): JSX.Element {
     >
       <view
         x={8}
-        y={(height() - size) / 2}
-        width={size}
-        height={size}
+        y={(height() - size()) / 2}
+        width={size()}
+        height={size()}
         color={
           selected()
             ? theme().colors.primary
@@ -162,23 +171,23 @@ export function Radio(props: RadioProps): JSX.Element {
               ? theme().colors.surface
               : theme().colors.border
         }
-        borderRadius={size / 2}
+        borderRadius={size() / 2}
       >
         {selected() ? (
           <view
             x={7}
             y={7}
-            width={size - 14}
-            height={size - 14}
+            width={size() - 14}
+            height={size() - 14}
             color={theme().colors.onPrimary}
-            borderRadius={(size - 14) / 2}
+            borderRadius={(size() - 14) / 2}
           />
         ) : null}
       </view>
       <text
-        x={8 + size + 12}
+        x={8 + size() + 12}
         y={(height() - theme().typography.label) / 2}
-        width={width() - size - 28}
+        width={width() - size() - 28}
         contain="width"
         fontSize={theme().typography.label}
         color={props.disabled ? theme().colors.textMuted : theme().colors.text}

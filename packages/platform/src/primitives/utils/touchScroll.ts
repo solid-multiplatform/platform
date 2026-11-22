@@ -16,6 +16,7 @@ import {
   type ScrollEngine,
 } from '../../sdk/scroll.js';
 import type { ElementNode } from '../../core/elementNode.js';
+import { contentExtent as contentExtentOf } from './contentExtent.js';
 
 export interface TouchScrollOptions {
   axis: 'x' | 'y';
@@ -39,6 +40,14 @@ export interface TouchScrollBinding {
   layout(): void;
   /** Bring a child on the focus path into view, only as far as needed. */
   reveal(child: ElementNode | undefined, duration?: number): void;
+  /**
+   * Bring any descendant into view: a field, the editor that covers it, a
+   * pressed row. `bottomInset` keeps it above the software keyboard.
+   */
+  revealElement(
+    target: ElementNode,
+    options?: { duration?: number; bottomInset?: number },
+  ): void;
   /** Stop any fling or settle. */
   stop(): void;
   /** Move the content by a wheel delta (scene units, already normalised). */
@@ -79,6 +88,18 @@ const TELEVISION_TARGETS = new Set([
 export function supportsTouchScroll(): boolean {
   if (TELEVISION_TARGETS.has(useCapabilities().target)) return false;
   return supports('touch') || supports('mouse');
+}
+
+/**
+ * Whether a Row/Column with no `scroll` prop should bind direct manipulation
+ * by default. A pure touch device (a phone or tablet) gets it; a host with a
+ * mouse keeps focus/wheel scrolling unless the app opts in, because a mouse
+ * drag is not the primary way a desktop page scrolls. TVs never get it.
+ */
+export function defaultTouchScroll(): boolean {
+  const target = useCapabilities().target;
+  if (TELEVISION_TARGETS.has(target)) return false;
+  return supports('touch') && !supports('mouse');
 }
 
 function clippingAncestor(node: ElementNode): ElementNode | undefined {
@@ -152,7 +173,7 @@ export function bindTouchScroll(
     const root = treeRoot(node);
     const viewport = clip ?? root;
     const visible = viewport[dimension] || 0;
-    const content = node[dimension] || 0;
+    const content = contentExtentOf(node, axis);
     const parent = node.parent;
     const parentStart = parent
       ? ((axis === 'x' ? parent.absX : parent.absY) as number) || 0
@@ -171,6 +192,25 @@ export function bindTouchScroll(
     const start = inset + ((child[axis] as number) || 0);
     const end = start + ((child[dimension] as number) || 0) * childScale(child);
     engine.reveal(start, end, viewportSize, duration);
+  }
+
+  /**
+   * The absolute offset from the scroller's own origin is the descendant's
+   * local position, including every intermediate parent, which is exactly
+   * what the engine's reveal takes. The keyboard inset shortens the visible
+   * band rather than moving the content.
+   */
+  function revealElement(
+    target: ElementNode,
+    options: { duration?: number; bottomInset?: number } = {},
+  ) {
+    if (!ready || target.destroyed === true) return;
+    const targetStart = axis === 'x' ? target.absX : target.absY;
+    const origin = axis === 'x' ? node.absX : node.absY;
+    const start = inset + ((targetStart as number) - (origin as number));
+    const size = (target[dimension] as number) || 0;
+    const visible = Math.max(0, viewportSize - (options.bottomInset ?? 0));
+    engine.reveal(start, start + size, visible, options.duration ?? 180);
   }
 
   // ---- Nested routing. The scene's pointer hands the drag to the nearest
@@ -249,6 +289,7 @@ export function bindTouchScroll(
     drag,
     layout,
     reveal,
+    revealElement,
     stop: () => engine.stop(),
     wheel(delta) {
       if (delta === 0) return;

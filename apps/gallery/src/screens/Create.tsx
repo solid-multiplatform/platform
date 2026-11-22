@@ -245,7 +245,7 @@ export function Create(props: {
         width={page().width}
         height={props.height - S(6)}
         gap={S(6)}
-        scroll={tv() ? 'auto' : 'touch'}
+        scroll={tv() ? 'edge' : 'touch'}
         selected={0}
       >
         {props.topNav}
@@ -303,7 +303,7 @@ export function Create(props: {
               label="Playlist name"
               value={name()}
               onChange={setName}
-              height={tv() ? 64 : 52}
+              height={tv() ? 56 : 48}
               width={formWidth()}
             />
             <TextField
@@ -312,7 +312,7 @@ export function Create(props: {
               value={about()}
               onChange={setAbout}
               multiline
-              height={tv() ? 96 : 76}
+              height={tv() ? 104 : 88}
               width={formWidth()}
             />
             {field('Cover', cover())}

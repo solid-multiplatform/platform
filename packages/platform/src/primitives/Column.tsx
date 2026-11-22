@@ -16,9 +16,10 @@ import {
 import { scrollColumn, scrollColumnIntoView } from './utils/withScrolling.js';
 import { chainFunctions, chainRefs } from './utils/chainFunctions.js';
 import { registerFocusKey, unregisterFocusKey } from './screenHistory.js';
-import type { ColumnProps, OnSelectedChanged } from './types.js';
+import type { ColumnProps, OnSelectedChanged, RevealElement } from './types.js';
 import {
   bindTouchScroll,
+  defaultTouchScroll,
   supportsTouchScroll,
   type TouchScrollBinding,
 } from './utils/touchScroll.js';
@@ -37,9 +38,14 @@ const onWheel = wheelNavigation('y');
 export const Column: Component<ColumnProps> = (props) => {
   let columnNode: ElementNode | undefined;
   let touchBinding: TouchScrollBinding | undefined;
-  // Opt-in and host-gated: a TV remote has no pointer, so its focus
-  // scrolling is untouched even if the prop is present.
-  const touch = props.scroll === 'touch' && supportsTouchScroll();
+  // Apple's default on a pointer host: a column that overflows is draggable
+  // and wheel-scrollable without the app opting in. A TV remote has no
+  // pointer, so its focus scrolling is untouched; an explicit focus-scroll
+  // mode (`auto`, `edge`, `center`, `bounded`) or `none` still wins.
+  const touch =
+    supportsTouchScroll() &&
+    (props.scroll === 'touch' ||
+      (props.scroll === undefined && defaultTouchScroll()));
 
   const drag = (
     phase: 'start' | 'move' | 'end' | 'cancel',
@@ -94,10 +100,18 @@ export const Column: Component<ColumnProps> = (props) => {
         /* @once */ chainRefs((node) => {
           columnNode = node;
           registerFocusKey(node, props.focusKey);
-          if (touch)
+          if (touch) {
             touchBinding = bindTouchScroll(node, {
               axis: 'y',
             });
+            const scrollable = node as unknown as {
+              revealElement?: RevealElement;
+              scrollAxis?: 'x' | 'y';
+            };
+            scrollable.revealElement = (target, options) =>
+              touchBinding?.revealElement(target, options);
+            scrollable.scrollAxis = 'y';
+          }
         }, props.ref)
       }
       onUp={/* @once */ chainFunctions(props.onUp, onUp)}
@@ -115,6 +129,14 @@ export const Column: Component<ColumnProps> = (props) => {
           : chainFunctions(props.onPointerScroll, onWheel)
       }
       selected={props.selected || 0}
+      // An explicit height is a decision, not a hint: without this a column
+      // grows to its children and a footer placed at `height - 44` is
+      // pushed off the panel. A content-sized column (no height) still
+      // follows its children, and `flexBoundary="contain"` restores the old
+      // behaviour where an app wants it.
+      flexBoundary={
+        props.flexBoundary ?? (props.height !== undefined ? 'fixed' : undefined)
+      }
       scrollToIndex={scrollToIndex}
       forwardFocus={navigableForwardFocus}
       onLayout={

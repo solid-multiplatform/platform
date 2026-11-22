@@ -461,7 +461,8 @@
     "typecheck:apple": "tsc -p hosts/nativescript/tsconfig.apple.json",
     "test:webgl:chromium": "vitest run --config=vitest.webgl.config.ts --project=chromium",
     "test:webgl:webkit": "vitest run --config=vitest.webgl.config.ts --project=webkit",
-    "test:webgl:firefox": "vitest run --config=vitest.webgl.config.ts --project=firefox"
+    "test:webgl:firefox": "vitest run --config=vitest.webgl.config.ts --project=firefox",
+    "audit:layout": "node scripts/layout-audit.mjs"
   },
   "keywords": [
     "lightning",

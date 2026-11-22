@@ -1,5 +1,6 @@
-import type { JSX } from 'solid-js';
+import { Show, type JSX } from 'solid-js';
 import { useTheme } from '../sdk/theme.jsx';
+import { ActivityIndicator } from './ActivityIndicator.jsx';
 import { viewport } from '../sdk/viewport.js';
 
 export type ListStateStatus = 'loading' | 'empty' | 'error';
@@ -10,6 +11,8 @@ export interface ListStateProps {
   message?: string;
   actionLabel?: string;
   onAction?(): void;
+  /** Draw a spinner while loading. Defaults to true. */
+  indicator?: boolean;
   x?: number;
   y?: number;
   width?: number;
@@ -49,12 +52,24 @@ export function ListState(props: ListStateProps): JSX.Element {
   const title = () => props.title ?? copy().title;
   const message = () => props.message ?? copy().message;
   const titleSize = () => theme().typography.title;
+  const spinner = () => status() === 'loading' && props.indicator !== false;
+  const spinnerSize = () =>
+    Math.max(20, Math.round(37 * (theme().typography.label / 13)));
 
   return (
     <view x={x()} y={y()} width={width()} height={height()}>
+      <Show when={spinner()}>
+        <ActivityIndicator
+          x={width() / 2 - spinnerSize() / 2}
+          y={Math.max(0, height() / 2 - 130)}
+          size={spinnerSize()}
+          color={theme().colors.primary}
+          label={title()}
+        />
+      </Show>
       <text
         x={0}
-        y={height() / 2 - 72}
+        y={Math.max(0, height() / 2 - 72)}
         width={width()}
         textAlign="center"
         contain="width"
@@ -65,7 +80,7 @@ export function ListState(props: ListStateProps): JSX.Element {
       </text>
       <text
         x={width() * 0.1}
-        y={height() / 2 - 16}
+        y={Math.max(0, Math.min(height() - 16, height() / 2 - 16))}
         width={width() * 0.8}
         textAlign="center"
         contain="width"
@@ -77,7 +92,7 @@ export function ListState(props: ListStateProps): JSX.Element {
       {props.actionLabel ? (
         <view
           x={width() / 2 - 100}
-          y={height() / 2 + 40}
+          y={Math.max(0, Math.min(height() - 52, height() / 2 + 40))}
           width={200}
           height={52}
           color={theme().colors.primary}

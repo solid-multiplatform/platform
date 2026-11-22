@@ -23,6 +23,7 @@ export {
   ErrorBoundary,
 } from 'solid-js';
 export * from './sdk/theme.jsx';
+export * from './sdk/layout.js';
 export * from './sdk/capabilities.js';
 export * from './sdk/keyboard.js';
 export * from './sdk/form.js';

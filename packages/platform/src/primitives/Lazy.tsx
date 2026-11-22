@@ -208,6 +208,10 @@ function createLazy<T>(
   return (
     <lng.Dynamic
       {...props}
+      // Lazy windowing shifts the container itself; direct-manipulation
+      // scrolling would fight that. An app can still opt in with
+      // `scroll="touch"`, but the default is the windowing scroll.
+      scroll={props.scroll ?? 'auto'}
       component={component}
       {
         /* @once */ ...handler

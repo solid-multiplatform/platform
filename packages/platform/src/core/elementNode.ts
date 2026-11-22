@@ -30,6 +30,7 @@ import {
 } from './utils.js';
 import { isDev, SHADERS_ENABLED } from './env.js';
 import { Config, isDomRendererActive } from './config.js';
+import { scheduleLayoutAudit } from './layoutAudit.js';
 import type {
   RendererMain,
   INode,
@@ -118,12 +119,41 @@ function runPostMutation() {
   }
 
   // Phase 2: layout
+  let audited: ElementNode | undefined;
   while (layoutQueue.size > 0) {
     const queue = [...layoutQueue];
     layoutQueue.clear();
     for (let i = queue.length - 1; i >= 0; i--) {
       const node = queue[i] as ElementNode;
+      if (node.destroyed !== true) audited = node;
       node.updateLayout();
+    }
+  }
+
+  // Phase 2b: one development-only audit per layout batch. It reads the
+  // finished tree, allocates nothing when the flag is off, and schedules no
+  // timer or frame of its own.
+  // The flag is off by default in production; an app or a release host can
+  // turn it on deliberately to check a device. The walk is coalesced and
+  // only runs after a layout batch, never per frame.
+  if (Config.layoutAudit && audited !== undefined) {
+    const width = Config.rendererOptions?.appWidth;
+    const height = Config.rendererOptions?.appHeight;
+    if (
+      typeof width === 'number' &&
+      typeof height === 'number' &&
+      width > 0 &&
+      height > 0
+    ) {
+      let root = audited;
+      while (root.parent !== undefined) root = root.parent;
+      scheduleLayoutAudit({
+        root,
+        bounds: { x: 0, y: 0, width, height },
+        tolerance: Config.layoutAuditTolerance,
+        panels: Config.layoutAuditPanels,
+        onFindings: Config.onLayoutAudit,
+      });
     }
   }
 
@@ -980,7 +1010,11 @@ export interface ElementNode
     node: ElementNode,
   ) => void;
   /** Called once a press has stayed on the element for the hold time. */
-  onPointerHold?: (this: ElementNode, node: ElementNode) => void;
+  onPointerHold?: (
+    this: ElementNode,
+    node: ElementNode,
+    point?: ScenePoint,
+  ) => void;
   /**
    * Called while a press that started on the element moves: `start` once it
    * has left the tap slop, then `move`, then `end` or `cancel`. A drag is not

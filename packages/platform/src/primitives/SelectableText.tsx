@@ -10,9 +10,11 @@ import type {
   ElementNode,
   TextProps as NodeTextProps,
 } from '@solid-multiplatform/platform';
-import { writeClipboard } from '../sdk/device.js';
+import { supports } from '../sdk/capabilities.js';
+import { selectionFeedback, writeClipboard } from '../sdk/device.js';
 import { serviceAvailable } from '../sdk/registry.js';
 import { useTheme, type Theme } from '../sdk/theme.jsx';
+import { Menu } from './Menu.jsx';
 import {
   charIndexAt,
   nextWordBoundary,
@@ -87,6 +89,8 @@ export function SelectableText(props: SelectableTextProps): JSX.Element {
   const [selection, setSelection] = createSignal<SelectionRange | null>(null);
   const [layout, setLayout] = createSignal<SelectionLayout | null>(null);
   const [measured, setMeasured] = createSignal({ w: 0, h: 0 });
+  /** Where the touch edit menu opened, in scene coordinates. */
+  const [menu, setMenu] = createSignal<{ x: number; y: number }>();
 
   let wrapper: ElementNode | undefined;
   let textNode: ElementNode | undefined;
@@ -138,6 +142,7 @@ export function SelectableText(props: SelectableTextProps): JSX.Element {
   const clear = () => {
     dragLayout = null;
     snapWord = false;
+    setMenu(undefined);
     setLayout(null);
     setSelection(null);
   };
@@ -170,6 +175,25 @@ export function SelectableText(props: SelectableTextProps): JSX.Element {
   ) => {
     const index = charIndexAt(current, point.x, point.y);
     apply(current, wordRangeAt(current, index));
+  };
+
+  /**
+   * A long press on a touch host selects the word under the finger and opens
+   * a compact Copy menu. A normal drag is not claimed on a pure touch host,
+   * so the page still scrolls when a drag starts over text; a mouse host
+   * keeps drag-to-select.
+   */
+  const onPointerHold = (
+    _node: ElementNode,
+    point?: { x: number; y: number },
+  ) => {
+    if (!supports('touch') || point === undefined) return;
+    const current = readLayout();
+    if (current === null) return;
+    wrapper?.setFocus();
+    selectWordAt(current, localPoint(point));
+    void selectionFeedback();
+    setMenu({ x: point.x, y: point.y });
   };
 
   const onMouseClick = (point: { x: number; y: number }) => {
@@ -304,8 +328,25 @@ export function SelectableText(props: SelectableTextProps): JSX.Element {
       height={wrapperHeight()}
       autofocus={local.autofocus}
       cursorStyle="text"
+      // A keyboard user can reach the paragraph (it is an element, so it is
+      // a focus stop) and needs to see that it is focused.
+      style={{
+        $focus: {
+          border: {
+            width: 1,
+            color: theme().colors.focus,
+            align: 'inside',
+          },
+          borderRadius: theme().radius.small,
+        },
+      }}
       onMouseClick={onMouseClick}
-      onPointerDrag={onPointerDrag}
+      onPointerHold={onPointerHold}
+      // A mouse drag selects; a finger drag scrolls the page and a long
+      // press selects the word. A pure touch host has no drag target here.
+      onPointerDrag={
+        supports('touch') && !supports('mouse') ? undefined : onPointerDrag
+      }
       onKeyPress={onKeyPress}
     >
       <For each={segments()}>
@@ -337,6 +378,29 @@ export function SelectableText(props: SelectableTextProps): JSX.Element {
       >
         {local.children}
       </text>
+      <Menu
+        visible={menu() !== undefined}
+        anchor={() => {
+          const point = menu();
+          return {
+            x: point?.x ?? 0,
+            y: point?.y ?? 0,
+            width: 0,
+            height: 0,
+          };
+        }}
+        label="Text actions"
+        items={[
+          {
+            label: 'Copy',
+            onSelect: () => {
+              copySelection();
+              clear();
+            },
+          },
+        ]}
+        onRequestClose={() => setMenu(undefined)}
+      />
     </view>
   );
 }

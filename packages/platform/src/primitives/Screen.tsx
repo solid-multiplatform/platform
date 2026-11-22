@@ -3,6 +3,7 @@ import { AppScope, type DesignSize } from '../app/context.js';
 import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
 import { Column } from './Column.jsx';
+import { supportsTouchScroll } from './utils/touchScroll.js';
 import type { ColumnProps } from './types.js';
 
 export interface ScreenProps extends Omit<ColumnProps, 'padding' | 'scale'> {
@@ -38,8 +39,27 @@ export function Screen(props: ScreenProps): JSX.Element {
     'fit',
     'padding',
     'gap',
+    'scroll',
     'children',
   ]);
+  type ScrollMode =
+    | 'always'
+    | 'none'
+    | 'edge'
+    | 'auto'
+    | 'center'
+    | 'bounded'
+    | 'touch';
+  const scrollMode = (): ScrollMode =>
+    (local.scroll as ScrollMode | undefined) ??
+    // A design space is a scaled/TV-style surface; a pointer on it moves
+    // focus, it does not drag the page. A plain screen is a page.
+    ((local.designSize ?? scope?.designSize) !== undefined
+      ? 'auto'
+      : supportsTouchScroll()
+        ? 'touch'
+        : 'auto');
+
   const frame = createMemo(() => {
     const v = viewport();
     const design = local.designSize ?? scope?.designSize;
@@ -79,7 +99,9 @@ export function Screen(props: ScreenProps): JSX.Element {
       color={theme().colors.background}
     >
       <Column
-        scroll="none"
+        // A screen is a page: drag/wheel on a pointer host, focus scrolling
+        // on a remote. An app can still pass `scroll` explicitly.
+        scroll={scrollMode()}
         alignItems="flexStart"
         autofocus
         {...rest}

@@ -6,6 +6,7 @@ import {
   type JSX,
 } from 'solid-js';
 import type { Rect } from '../sdk/input.js';
+import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
 import { Portal } from './portal.jsx';
 
@@ -95,24 +96,26 @@ export interface TooltipProps {
  * the hint cannot become the focused element or swallow a click.
  */
 export function Tooltip(props: TooltipProps): JSX.Element {
+  const theme = useTheme();
+  const fontSize = () => Math.max(14, Math.min(24, theme.typography.body));
+  const height = () => Math.round(fontSize() * 2.2);
   const visible = () =>
     typeof props.visible === 'function' ? props.visible() : props.visible;
   const rect = () => {
     const a =
       typeof props.anchor === 'function' ? props.anchor() : props.anchor;
     const width = props.width ?? Math.min(320, viewport().width - 32);
-    const height = 38;
     const v = viewport();
     const safe = v.insets.safeArea;
     let y =
       (props.placement ?? 'top') === 'top'
-        ? a.y - height - 8
+        ? a.y - height() - 8
         : a.y + a.height + 8;
     if (y < safe.top) y = a.y + a.height + 8;
-    if (y + height > v.height - safe.bottom)
-      y = Math.max(safe.top, a.y - height - 8);
+    if (y + height() > v.height - safe.bottom)
+      y = Math.max(safe.top, a.y - height() - 8);
     const x = Math.max(safe.left, Math.min(a.x, v.width - safe.right - width));
-    return { x, y, width, height };
+    return { x, y, width, height: height() };
   };
   return (
     <Show when={visible()}>
@@ -124,7 +127,12 @@ export function Tooltip(props: TooltipProps): JSX.Element {
           role="tooltip"
           ariaLabel={props.label}
         >
-          <text x={12} y={10} fontSize={18} color={0xf2f6faff}>
+          <text
+            x={12}
+            y={(height() - fontSize() * 1.2) / 2}
+            fontSize={fontSize()}
+            color={theme.colors.text}
+          >
             {props.label}
           </text>
           {props.children}

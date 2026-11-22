@@ -10,6 +10,9 @@ export function nativeEditorHost(root, target) {
         throw new Error('Password fields must be single line');
       const field = options.multiline ? new TextView() : new TextField();
       field.accessibilityLabel = options.label;
+      // The scene's label sits above the field; the hint belongs inside it,
+      // where the host draws it while the value is empty.
+      if (options.placeholder !== undefined) field.hint = options.placeholder;
       if (secret) field.secure = true;
       if (purpose === 'email') field.keyboardType = 'email';
       // The keyboard the content asks for: a number pad, not the OTP layout
@@ -45,6 +48,11 @@ export function nativeEditorHost(root, target) {
             field.android.setBackground(null);
             field.android.setPadding(0, 0, 0, 0);
             field.android.setIncludeFontPadding(false);
+            if (options.placeholderColor !== undefined) {
+              const rgba = options.placeholderColor >>> 0;
+              const argb = ((rgba & 0xff) << 24) | ((rgba >>> 8) & 0xffffff);
+              field.android.setHintTextColor(argb);
+            }
             field.android.setGravity(
               (options.multiline
                 ? android.view.Gravity.TOP

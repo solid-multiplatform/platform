@@ -13,7 +13,8 @@
     "lint": "prettier --check \"**/*.{ts,js,cjs,md}\" && oxlint",
     "lint:fix": "prettier --write \"**/*.{ts,js,cjs,md}\" && oxlint --fix",
     "docs:check": "node scripts/feature-matrix.mjs --check",
-    "prepare": "husky"
+    "prepare": "husky",
+    "audit:layout": "npm --prefix packages/platform run audit:layout"
   },
   "devDependencies": {
     "husky": "^9.1.7",

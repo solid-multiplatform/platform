@@ -51,6 +51,11 @@ export interface ModalProps {
   initialFocus?: ElementNode | (() => ElementNode | undefined);
   /** Tapping the backdrop requests close. Defaults to true. */
   dismissOnBackdrop?: boolean;
+  /**
+   * What a backdrop tap does instead of closing. A compact picker confirms
+   * its current value on an outside tap, where a modal sheet does not.
+   */
+  onBackdrop?(): void;
   ref?: (node: ElementNode) => void;
   children?: JSX.Element;
 }
@@ -161,9 +166,10 @@ export function Modal(props: ModalProps): JSX.Element {
             props.dismissOnBackdrop === false
               ? undefined
               : () => {
-                  // A barrier tap only closes when the tap is not inside the
+                  // A barrier tap only fires when the tap is not inside the
                   // panel; the panel's own handlers stop before this one.
-                  close();
+                  if (props.onBackdrop !== undefined) props.onBackdrop();
+                  else close();
                 }
           }
         >

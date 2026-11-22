@@ -22,6 +22,28 @@ export function haptics(app: AndroidApp): HapticsPort {
               : constants.VIRTUAL_KEY,
         );
     },
+    async selection() {
+      activityOf(app)
+        .getWindow()
+        .getDecorView()
+        .performHapticFeedback(constants.CLOCK_TICK);
+    },
+    async notification(type) {
+      const view = activityOf(app).getWindow().getDecorView();
+      // CONFIRM/REJECT are API 30; fall back to the touch-feedback constants
+      // on older devices.
+      const fallback =
+        type === 'error' ? constants.LONG_PRESS : constants.VIRTUAL_KEY;
+      if (sdk() >= 30) {
+        view.performHapticFeedback(
+          type === 'success'
+            ? constants.CONFIRM
+            : type === 'error'
+              ? constants.REJECT
+              : fallback,
+        );
+      } else view.performHapticFeedback(fallback);
+    },
     async vibrate(milliseconds) {
       const device = vibrator(app.context);
       if (!device) return;

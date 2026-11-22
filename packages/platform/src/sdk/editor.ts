@@ -3,6 +3,10 @@ import type { Rect } from './input.js';
 export interface EditorOptions {
   label: string;
   value?: string;
+  /** Drawn by the host while the value is empty: the field's hint. */
+  placeholder?: string;
+  /** Hint colour, 0xRRGGBBAA, where the host can apply it. */
+  placeholderColor?: number;
   purpose?:
     | 'text'
     | 'username'
@@ -57,6 +61,8 @@ export function browserEditorHost(parent: HTMLElement): EditorHost {
       if (purpose === 'number') input.setAttribute('inputmode', 'numeric');
       if (purpose === 'search') input.setAttribute('enterkeyhint', 'search');
       input.name = purpose;
+      if (options.placeholder !== undefined)
+        input.placeholder = options.placeholder;
       input.setAttribute('aria-label', options.label);
       input.setAttribute(
         'autocomplete',

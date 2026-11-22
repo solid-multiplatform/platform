@@ -5,6 +5,7 @@ import * as v from 'vitest';
 import * as lng from '@solid-multiplatform/platform';
 import {
   Column,
+  Grid,
   Row,
   useFocusManager,
   type KeyEventTarget,
@@ -115,6 +116,51 @@ v.describe('touch scrolling on Row and Column', () => {
       m.dispose();
     }
   });
+
+  v.test(
+    'a Grid with no scroll prop drags vertically on a touch host',
+    async () => {
+      let grid!: lng.ElementNode;
+      let pointer!: ScenePointer;
+      const dispose = renderer.render(() => {
+        useFocusManager(undefined, keys as unknown as KeyEventTarget);
+        const tree = (
+          <view width={400} height={300} clipping>
+            <Grid
+              ref={grid}
+              width={400}
+              itemWidth={100}
+              itemHeight={100}
+              columns={3}
+              items={Array.from({ length: 30 }, (_, index) => index)}
+            >
+              {(cell) => (
+                <view
+                  x={cell.x}
+                  y={cell.y}
+                  width={cell.width}
+                  height={cell.height}
+                />
+              )}
+            </Grid>
+          </view>
+        );
+        pointer = createScenePointer(lng.rootNode);
+        return tree;
+      }) as unknown as () => void;
+      try {
+        await settle();
+        v.expect(grid.y).toBe(0);
+        pointer.down(1, { x: 200, y: 250 });
+        pointer.move(1, { x: 200, y: 180 });
+        pointer.move(1, { x: 200, y: 120 });
+        v.expect(grid.y).toBeLessThan(0);
+      } finally {
+        pointer.dispose();
+        dispose();
+      }
+    },
+  );
 
   v.test(
     'a vertical drag that starts on a rail scrolls the page, not the rail',

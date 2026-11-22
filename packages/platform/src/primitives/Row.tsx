@@ -15,10 +15,11 @@ import {
   defaultTransitionBack,
   defaultTransitionForward,
 } from './utils/handleNavigation.js';
-import type { RowProps, OnSelectedChanged } from './types.js';
+import type { RevealElement, RowProps, OnSelectedChanged } from './types.js';
 import { scrollRow, scrollRowIntoView } from './utils/withScrolling.js';
 import {
   bindTouchScroll,
+  defaultTouchScroll,
   supportsTouchScroll,
   type TouchScrollBinding,
 } from './utils/touchScroll.js';
@@ -36,9 +37,14 @@ const onWheel = wheelNavigation('x');
 export const Row: Component<RowProps> = (props) => {
   let rowNode: ElementNode | undefined;
   let touchBinding: TouchScrollBinding | undefined;
-  // Opt-in and host-gated: a TV remote has no pointer, so its focus
-  // scrolling is untouched even if the prop is present.
-  const touch = props.scroll === 'touch' && supportsTouchScroll();
+  // Apple's default on a pointer host: a row that overflows is draggable and
+  // wheel-scrollable without the app opting in. A TV remote has no pointer,
+  // so its focus scrolling is untouched; an explicit focus-scroll mode
+  // (`auto`, `edge`, `center`, `bounded`) or `none` still wins.
+  const touch =
+    supportsTouchScroll() &&
+    (props.scroll === 'touch' ||
+      (props.scroll === undefined && defaultTouchScroll()));
 
   // A rail snaps to one item plus the gap. The second child's start is the
   // slot: it already includes the gap and follows non-uniform first items.
@@ -105,14 +111,28 @@ export const Row: Component<RowProps> = (props) => {
         /* @once */ chainRefs((node) => {
           rowNode = node;
           registerFocusKey(node, props.focusKey);
-          if (touch)
+          if (touch) {
             touchBinding = bindTouchScroll(node, {
               axis: 'x',
               snap: snapSlot,
             });
+            const scrollable = node as unknown as {
+              revealElement?: RevealElement;
+              scrollAxis?: 'x' | 'y';
+            };
+            scrollable.revealElement = (target, options) =>
+              touchBinding?.revealElement(target, options);
+            scrollable.scrollAxis = 'x';
+          }
         }, props.ref)
       }
       selected={props.selected || 0}
+      // An explicit width is a decision: a rail sized to the page must not
+      // grow past it when its cards are wider. A content-sized row (no
+      // width) still follows its children.
+      flexBoundary={
+        props.flexBoundary ?? (props.width !== undefined ? 'fixed' : undefined)
+      }
       onLeft={/* @once */ chainFunctions(props.onLeft, onLeft)}
       onRight={/* @once */ chainFunctions(props.onRight, onRight)}
       onPointerDrag={

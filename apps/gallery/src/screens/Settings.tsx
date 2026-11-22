@@ -1,4 +1,4 @@
-import { createSignal, type JSX } from 'solid-js';
+import { createSignal, Show, type JSX } from 'solid-js';
 import { useViewport } from '@solid-multiplatform/platform/app';
 import {
   Alert,
@@ -9,6 +9,8 @@ import {
   Modal,
   Popover,
   RadioGroup,
+  Slider,
+  Switch,
 } from '@solid-multiplatform/platform/primitives';
 import type { UiFamily } from '../family';
 import { C, R, S, T } from '../theme';
@@ -38,6 +40,7 @@ export function Settings(props: {
   const [theme, setTheme] = createSignal<'system' | 'dark' | 'light'>('dark');
   const [quality, setQuality] = createSignal<'auto' | 'high' | 'saver'>('auto');
   const [crossfade, setCrossfade] = createSignal(true);
+  const [crossfadeSeconds, setCrossfadeSeconds] = createSignal(6);
   const [about, setAbout] = createSignal(false);
   const [advanced, setAdvanced] = createSignal(false);
   const [info, setInfo] = createSignal(false);
@@ -68,7 +71,7 @@ export function Settings(props: {
         width={content()}
         height={props.height - S(6)}
         gap={S(6)}
-        scroll={tv() ? 'auto' : 'touch'}
+        scroll={tv() ? 'edge' : 'touch'}
         selected={0}
       >
         {props.topNav}
@@ -106,13 +109,25 @@ export function Settings(props: {
         {section(
           'Playback',
           <view display="flex" flexDirection="column" gap={S(3)}>
-            <Checkbox
+            <Switch
               label="Crossfade between tracks"
               checked={crossfade()}
               onChange={setCrossfade}
               height={tv() ? 60 : 44}
               width={content() - S(10)}
             />
+            <Show when={crossfade()}>
+              <Slider
+                label={`Crossfade ${crossfadeSeconds()} s`}
+                value={crossfadeSeconds()}
+                min={1}
+                max={12}
+                step={1}
+                onChange={setCrossfadeSeconds}
+                height={tv() ? 60 : 44}
+                width={content() - S(10)}
+              />
+            </Show>
             <RadioGroup
               value={quality()}
               options={[
@@ -173,11 +188,15 @@ export function Settings(props: {
         visible={about()}
         onRequestClose={() => setAbout(false)}
         label="About Sona"
+        useSafeArea={false}
         initialFocus={undefined}
       >
         <view
           x={Math.max(24, (viewport().width - 520) / 2)}
-          y={Math.max(60, viewport().height / 2 - 220)}
+          y={Math.max(
+            viewport().insets.safeArea.top + 24,
+            viewport().height / 2 - 220,
+          )}
           width={Math.min(520, viewport().width - 48)}
           color={C.surface}
           borderRadius={R.medium}

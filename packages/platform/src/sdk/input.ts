@@ -19,10 +19,13 @@
  * front of its parent and of the siblings painted before it (higher `zIndex`,
  * then later in the child list). A node is only looked at where its ancestors
  * are: outside an ancestor's box it cannot be hit, which is also what
- * `clipping` shows. `alpha` 0 and `skipFocus` take a node and everything
- * inside it out; nodes that are not targets let the pointer through to what
- * is behind them; a target with `ariaDisabled` stops the pointer and does
- * nothing. While a focus trap is active (a modal), only the trap is searched.
+ * `clipping` shows. A touch scroller is the exception: its own box travels
+ * with the content while the content paints across its clipping ancestor's
+ * window, so it is looked at wherever that window is. `alpha` 0 and
+ * `skipFocus` take a node and everything inside it out; nodes that are not
+ * targets let the pointer through to what is behind them; a target with
+ * `ariaDisabled` stops the pointer and does nothing. While a focus trap is
+ * active (a modal), only the trap is searched.
  * The children of a flex container that is still waiting for a text to be
  * measured have no place yet and are not hit.
  *
@@ -348,6 +351,30 @@ export function createScenePointer(
     return isTarget(node) ? node : undefined;
   }
 
+  /**
+   * A touch scroller is a window, not a box. The scroll engine translates the
+   * node itself (`scrollAxis` marks one), so after a drag its own box sits part
+   * way up the screen while its content paints across the window its clipping
+   * ancestor shows — the same geometry `bindTouchScroll` measures its viewport
+   * with. A point in that window is a point on the scroller's content, even
+   * when it is outside the node's own box.
+   */
+  function scrollerWindow(child: ElementNode, x: number, y: number): boolean {
+    if ((child as { scrollAxis?: 'x' | 'y' }).scrollAxis === undefined)
+      return false;
+    let clip: ElementNode | undefined = child.parent;
+    while (clip !== undefined && !clip.clipping) clip = clip.parent;
+    const box = clip ?? root;
+    const bx = (box.absX || 0) as number;
+    const by = (box.absY || 0) as number;
+    return (
+      x >= bx &&
+      y >= by &&
+      x < bx + (box.width || 0) &&
+      y < by + (box.height || 0)
+    );
+  }
+
   function probeChild(child: ElementNode['children'][number]) {
     if (
       !isElementNode(child) ||
@@ -359,7 +386,9 @@ export function createScenePointer(
     const sx = (child.scaleX ?? child.scale ?? 1) as number;
     const sy = (child.scaleY ?? child.scale ?? 1) as number;
     if ((sx === 1 && sy === 1) || !sx || !sy)
-      return inside(child) ? probe(child) : undefined;
+      return inside(child) || scrollerWindow(child, px, py)
+        ? probe(child)
+        : undefined;
     // `absX`/`absY` add up `x`/`y` and know no scale: they place a scaled
     // node and its subtree where they would be drawn unscaled. Undo the
     // scale on the point, about the node's pivot, while searching in it.
@@ -373,7 +402,8 @@ export function createScenePointer(
       (child.height || 0) * ((child.pivotY ?? child.pivot ?? 0.5) as number);
     px = cx + (x - cx) / sx;
     py = cy + (y - cy) / sy;
-    const found = inside(child) ? probe(child) : undefined;
+    const found =
+      inside(child) || scrollerWindow(child, x, y) ? probe(child) : undefined;
     px = x;
     py = y;
     return found;
@@ -518,7 +548,7 @@ export function createScenePointer(
           return;
         }
         press.held = true;
-        runWithOwner(owner, () => node.onPointerHold!(node));
+        runWithOwner(owner, () => node.onPointerHold!(node, press.point));
       }, holdMs);
     }
   }

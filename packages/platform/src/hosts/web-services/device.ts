@@ -24,13 +24,21 @@ import {
 } from '../../sdk/services.js';
 
 // A browser without the Vibration API has no haptics: a silent no-op.
-const vibrateWeb = (milliseconds: number): void => {
+const vibrateWeb = (milliseconds: number | number[]): void => {
   if (typeof navigator.vibrate === 'function') navigator.vibrate(milliseconds);
 };
 
 export const haptics: HapticsPort = {
   async impact(style) {
     vibrateWeb(style === 'light' ? 10 : style === 'heavy' ? 35 : 20);
+  },
+  async selection() {
+    vibrateWeb(8);
+  },
+  async notification(type) {
+    vibrateWeb(
+      type === 'error' ? [30, 60, 30] : type === 'warning' ? [20, 40, 20] : 18,
+    );
   },
   async vibrate(milliseconds) {
     vibrateWeb(milliseconds);

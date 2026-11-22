@@ -48,9 +48,18 @@ function sceneRect(node: ElementNode): ChromeRegion | undefined {
 /** Interactive is what the scene's pointer treats as interactive: a node
  * with an `onEnter` (a button, a field, a link) or an `onMouseClick`. */
 function isInteractive(node: ElementNode): boolean {
+  // The same target test the pointer uses: an interactive child may only
+  // have a context-menu, drag, hold or hover handler, or a cursor, and still
+  // must not become a window-drag area.
+  const candidate = node as unknown as Record<string, unknown>;
   return (
-    typeof (node as { onEnter?: unknown }).onEnter === 'function' ||
-    typeof node.onMouseClick === 'function'
+    typeof candidate.onEnter === 'function' ||
+    typeof candidate.onMouseClick === 'function' ||
+    typeof candidate.onPointerContext === 'function' ||
+    typeof candidate.onPointerDrag === 'function' ||
+    typeof candidate.onPointerHold === 'function' ||
+    typeof candidate.onPointerEnter === 'function' ||
+    candidate.cursorStyle !== undefined
   );
 }
 

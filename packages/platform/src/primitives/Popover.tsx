@@ -49,9 +49,34 @@ export function Popover(props: PopoverProps): JSX.Element {
   const theme = () => useTheme();
   const anchor = () =>
     typeof props.anchor === 'function' ? props.anchor() : props.anchor;
-  const width = () => props.width ?? 280;
-  const height = () => props.height ?? 240;
   const gap = 8;
+  const width = () =>
+    Math.max(
+      120,
+      Math.min(
+        props.width ?? 280,
+        viewport().width -
+          viewport().insets.safeArea.left -
+          viewport().insets.safeArea.right -
+          16,
+      ),
+    );
+  // A popover is transient: it shrinks to the room it has instead of
+  // reaching past the bottom of a short window.
+  const height = () =>
+    Math.max(
+      80,
+      Math.min(
+        props.height ?? 240,
+        viewport().height -
+          viewport().insets.safeArea.top -
+          Math.max(
+            viewport().insets.safeArea.bottom,
+            viewport().insets.ime.bottom,
+          ) -
+          16,
+      ),
+    );
   const rect = () => {
     const a = anchor();
     const v = viewport();
@@ -68,7 +93,8 @@ export function Popover(props: PopoverProps): JSX.Element {
       y = a.y;
     }
     // Flip when the preferred side leaves the safe area.
-    if (y + height() > v.height - safe.bottom) {
+    const bottom = Math.max(safe.bottom, v.insets.ime.bottom);
+    if (y + height() > v.height - bottom) {
       y = a.y - height() - gap;
     }
     if (y < safe.top) y = safe.top;
@@ -81,6 +107,7 @@ export function Popover(props: PopoverProps): JSX.Element {
       onRequestClose={props.onRequestClose}
       label={props.label}
       transparent
+      useSafeArea={false}
       initialFocus={props.initialFocus}
     >
       <view

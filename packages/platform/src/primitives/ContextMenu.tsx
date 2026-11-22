@@ -25,13 +25,27 @@ export interface ContextMenuProps {
  *
  * ```tsx
  * const [at, setAt] = createSignal<Rect>();
- * <view onPointerContext={(point) => setAt({ ...point, width: 0, height: 0 })} />
+ * const open = (point: { x: number; y: number }) =>
+ *   setAt({ ...point, width: 0, height: 0 });
+ * // A secondary click on a pointer host; a long press on a touch host.
+ * <view
+ *   onPointerContext={open}
+ *   onPointerHold={(_node, point) => point && open(point)}
+ * />
  * <ContextMenu visible={at()} point={at} items={items} onRequestClose={() => setAt()} />
  * ```
  */
 export function ContextMenu(props: ContextMenuProps): JSX.Element {
-  // Unavailable items are hidden, as Apple asks for context menus.
-  const items = () => props.items.filter((item) => item.disabled !== true);
+  // Unavailable items are hidden, as Apple asks for context menus; the
+  // destructive commands go last, in a group of their own, as macOS and
+  // iPadOS do.
+  const items = () => {
+    const available = props.items.filter((item) => item.disabled !== true);
+    return [
+      ...available.filter((item) => item.destructive !== true),
+      ...available.filter((item) => item.destructive === true),
+    ];
+  };
   return (
     <Menu
       visible={props.visible}

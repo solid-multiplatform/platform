@@ -160,6 +160,39 @@ v.describe('DatePicker', () => {
     },
   );
 
+  v.it(
+    'skips days outside min/max instead of parking focus on them',
+    async () => {
+      const { target, dispose } = await mount(() => (
+        <DatePicker
+          visible
+          value={new Date(2026, 0, 10)}
+          min={new Date(2026, 0, 12)}
+          max={new Date(2026, 0, 20)}
+        />
+      ));
+      await flush();
+      await flush();
+      const activeText = () => texts(lng.activeElement()).join('');
+      // The chosen 10th is disabled; focus lands on the first valid day.
+      v.expect(activeText()).toBe('12');
+      target.down('ArrowRight');
+      target.up('ArrowRight');
+      await flush();
+      v.expect(activeText()).toBe('13');
+      // 11 is disabled, so Left goes back to 12; further left stays put.
+      target.down('ArrowLeft');
+      target.up('ArrowLeft');
+      await flush();
+      v.expect(activeText()).toBe('12');
+      target.down('ArrowLeft');
+      target.up('ArrowLeft');
+      await flush();
+      v.expect(activeText()).toBe('12');
+      dispose();
+    },
+  );
+
   v.it('navigates and picks a date with the keyboard only', async () => {
     const selected: Date[] = [];
     const { target, dispose } = await mount(() => (

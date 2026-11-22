@@ -132,3 +132,47 @@ not on a timer. Nothing is scheduled while the scene is idle.
 
 `Row` and `Column` are flex containers that also move focus between their
 children. See [Row and Column](/primitives/row_column.md).
+
+An explicit size is respected: `<Column height={400}>` keeps 400 even when its
+children are taller, and `<Row width={800}>` keeps 800 even when its items are
+wider. The overflow is scrollable when the row/column has `scroll="touch"`;
+otherwise it is an app bug the layout audit reports. A container with no
+explicit size still follows its children. Pass `flexBoundary="contain"` to
+make a sized container grow with them anyway.
+
+## Fitting the screen
+
+Three helpers make a layout adapt instead of being drawn at one size:
+
+- `useContentBox({ maxWidth, gutter })` — the safe area minus a gutter, capped
+  and centred, reactive to rotation, the keyboard and safe-area changes.
+- `fitSize(preferred, available, margin)` — a fixed size clamped to the room.
+- `clampSize(value, min, available, margin)` — the same, with a floor.
+- `useUiScale()` — the design-space scale (`designSize` in
+  `solid-platform.config.json`), for a portaled dialog that lives outside the
+  scaled `Screen` column.
+
+`DatePicker`, `Alert`, `Sheet`, `Menu`, `Popover`, `Drawer` and `Toast` use
+these internally: a panel is measured from the viewport and the safe area,
+never from a fixed width, so it cannot hang off a 320-pt phone or push its
+footer below a landscape window.
+
+## Overflow audit
+
+The framework can tell you when a box will be cut off, because layout is
+immediate and absolute. In development the browser host turns the audit on
+(`Config.layoutAudit`); it walks the finished tree once per layout batch —
+never per frame, never on a timer — and prints the node, the edge and the
+units it escapes. Content inside a scroll container is exempt.
+
+```ts
+Config.layoutAudit = true; // or pass layoutAudit to webHost()
+Config.layoutAuditPanels = false; // only report the screen, not panel spill
+```
+
+`auditLayout(root, bounds)` is also a pure function, for tests and build
+gates. The gallery build runs `packages/platform/scripts/layout-audit.mjs`
+before packaging; it fails the build when a real screen does not fit a 320-pt
+phone, a Pixel 7 Pro, a 540-pt TV, Roku at 1080p or a desktop window. To keep
+the findings as warnings without stopping the build, run
+`node packages/platform/scripts/layout-audit.mjs --warn`.

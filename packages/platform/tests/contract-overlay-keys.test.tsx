@@ -41,7 +41,10 @@ const find = (
 };
 
 /** The text drawn in the focused element. */
-const focused = () => texts(lng.activeElement()).join(' ');
+const focused = () =>
+  texts(lng.activeElement())
+    .filter((text) => text.length > 0)
+    .join(' ');
 
 async function press(target: KeyTarget, ...keys: string[]) {
   for (const key of keys) {
