@@ -17,6 +17,8 @@ export default defineConfig(() => ({
   define: {
     __DEV__: false,
     SOLIDTV_DOM_RENDERING: true,
+    // Tests keep the touch scroller and its runtime target decision.
+    SOLIDTV_TOUCH_SCROLL: true,
   },
   plugins: [
     solidPlugin({

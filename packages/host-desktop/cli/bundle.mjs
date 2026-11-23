@@ -185,6 +185,8 @@ export async function bundle({
       __DEV__: 'false',
       __enableInspector__: 'false',
       __emitBoundsEvents__: 'false',
+      // The desktop is a pointer target: the touch scroller stays in.
+      SOLIDTV_TOUCH_SCROLL: 'true',
     },
     plugins: [
       workspacePlugin(),

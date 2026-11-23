@@ -148,6 +148,9 @@ export function rokuConfig({
         ...build.initialOptions.define,
         SOLIDTV_DOM_RENDERING: 'false',
         SOLIDTV_DISABLE_SHADERS: 'true',
+        // Roku is a television target (TELEVISION_TARGETS in the platform's
+        // src/primitives/utils/touchScroll.ts): the touch scroller folds out.
+        SOLIDTV_TOUCH_SCROLL: 'false',
         'import.meta.env': '{}',
         'import.meta.env.DEV': 'false',
         'import.meta.env.PROD': 'true',

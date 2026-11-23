@@ -3,7 +3,10 @@ import { AppScope, type DesignSize } from '../app/context.js';
 import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
 import { Column } from './Column.jsx';
-import { supportsTouchScroll } from './utils/touchScroll.js';
+import {
+  supportsTouchScroll,
+  TOUCH_SCROLL_COMPILED,
+} from './utils/touchScroll.js';
 import type { ColumnProps } from './types.js';
 
 export interface ScreenProps extends Omit<ColumnProps, 'padding' | 'scale'> {
@@ -56,7 +59,8 @@ export function Screen(props: ScreenProps): JSX.Element {
     // focus, it does not drag the page. A plain screen is a page.
     ((local.designSize ?? scope?.designSize) !== undefined
       ? 'auto'
-      : supportsTouchScroll()
+      : // Folds to `false` on TV bundles; see Row for the full note.
+        TOUCH_SCROLL_COMPILED && supportsTouchScroll()
         ? 'touch'
         : 'auto');
 

@@ -5,6 +5,13 @@ declare global {
   var SOLIDTV_DOM_RENDERING: boolean | undefined;
   /** Whether element shaders should be disabled */
   var SOLIDTV_DISABLE_SHADERS: boolean | undefined;
+  /**
+   * Whether this target's bundle carries the touch scroller: `true` on
+   * pointer/touch targets, `false` on the televisions (see
+   * `TOUCH_SCROLL_COMPILED` in `src/primitives/utils/touchScroll.ts`, the
+   * one list of television targets). Undefined keeps the runtime decision.
+   */
+  var SOLIDTV_TOUCH_SCROLL: boolean | undefined;
 }
 
 interface ImportMetaEnv {

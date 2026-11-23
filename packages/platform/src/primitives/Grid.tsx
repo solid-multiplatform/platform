@@ -22,6 +22,7 @@ import {
   bindTouchScroll,
   defaultTouchScroll,
   supportsTouchScroll,
+  TOUCH_SCROLL_COMPILED,
   type TouchScrollBinding,
 } from './utils/touchScroll.js';
 import {
@@ -67,6 +68,8 @@ export interface GridProps<T> extends NewOmit<NodeProps, 'children'> {
 export function Grid<T>(props: GridProps<T>): JSX.Element {
   const [focusedIndex, setFocusedIndex] = createSignal(0);
   const touch =
+    // Folds to `false` on TV bundles; see Row for the full note.
+    TOUCH_SCROLL_COMPILED &&
     supportsTouchScroll() &&
     (props.scroll === 'touch' ||
       (props.scroll === undefined && defaultTouchScroll()));

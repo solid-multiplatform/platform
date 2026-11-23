@@ -21,6 +21,7 @@ import {
   bindTouchScroll,
   defaultTouchScroll,
   supportsTouchScroll,
+  TOUCH_SCROLL_COMPILED,
   type TouchScrollBinding,
 } from './utils/touchScroll.js';
 
@@ -43,6 +44,8 @@ export const Column: Component<ColumnProps> = (props) => {
   // pointer, so its focus scrolling is untouched; an explicit focus-scroll
   // mode (`auto`, `edge`, `center`, `bounded`) or `none` still wins.
   const touch =
+    // Folds to `false` on TV bundles; see Row for the full note.
+    TOUCH_SCROLL_COMPILED &&
     supportsTouchScroll() &&
     (props.scroll === 'touch' ||
       (props.scroll === undefined && defaultTouchScroll()));

@@ -66,6 +66,23 @@ interface Point {
 
 const bindings = new WeakMap<ElementNode, TouchScrollBinding>();
 
+// Declared like the build flags in `src/core/env.ts`: build pipelines define
+// it (see the `SOLIDTV_TOUCH_SCROLL` wirings in the vite, webpack, Roku and
+// desktop bundler configs); a plain `tsc` or test build leaves it undefined
+// and takes the runtime decision below.
+declare const SOLIDTV_TOUCH_SCROLL: boolean | undefined;
+
+/**
+ * Whether this target's bundle carries the touch scroller at all. Build
+ * pipelines define `SOLIDTV_TOUCH_SCROLL` — `true` on pointer/touch targets
+ * (web, android, ios, desktop), `false` on the televisions — so the bundler
+ * folds this to a constant and the engine, the drag router and the press
+ * catch below drop out of TV bundles as dead code. Undefined keeps the
+ * runtime target check, the fallback for builds without the define.
+ */
+export const TOUCH_SCROLL_COMPILED =
+  typeof SOLIDTV_TOUCH_SCROLL === 'undefined' || SOLIDTV_TOUCH_SCROLL;
+
 /** Targets where focus movement, not direct manipulation, is the model. */
 const TELEVISION_TARGETS = new Set([
   'tizen',
@@ -86,6 +103,7 @@ const TELEVISION_TARGETS = new Set([
  * mouse (webOS does).
  */
 export function supportsTouchScroll(): boolean {
+  if (!TOUCH_SCROLL_COMPILED) return false;
   if (TELEVISION_TARGETS.has(useCapabilities().target)) return false;
   return supports('touch') || supports('mouse');
 }
@@ -97,6 +115,7 @@ export function supportsTouchScroll(): boolean {
  * drag is not the primary way a desktop page scrolls. TVs never get it.
  */
 export function defaultTouchScroll(): boolean {
+  if (!TOUCH_SCROLL_COMPILED) return false;
   const target = useCapabilities().target;
   if (TELEVISION_TARGETS.has(target)) return false;
   return supports('touch') && !supports('mouse');

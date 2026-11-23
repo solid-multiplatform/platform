@@ -24,6 +24,11 @@ function requireWebpack() {
   }
 }
 
+// The NativeScript targets that are televisions: focus movement, not direct
+// manipulation. The same target list as TELEVISION_TARGETS in the platform's
+// src/primitives/utils/touchScroll.ts; android and ios stay pointer/touch.
+const TELEVISION_TARGETS = new Set(['android-tv', 'apple-tv']);
+
 /**
  * Adds what a SolidTV app needs to a webpack-chain config: Solid JSX
  * compilation for @solid-multiplatform/platform's renderer, browser export conditions, the
@@ -34,6 +39,7 @@ function requireWebpack() {
  * @param {{
  *   moduleName?: string,
  *   env?: Record<string, unknown>,
+ *   target?: string,
  *   hexColors?: { include: string[] },
  *   alias?: Record<string, string>,
  * }} [options]
@@ -42,7 +48,9 @@ function requireWebpack() {
  *   overrides the ones webpack defines itself: `MODE`, `DEV` and `PROD` from
  *   the build mode, and `BASE_URL` from @nativescript/webpack's public path,
  *   `file:///app/`, the runtime's virtual app root, which the shims map to
- *   the app folder. `hexColors.include` names the directories whose sources
+ *   the app folder. `target` is the solid-platform target being built
+ *   (android, android-tv, ios or apple-tv): a television folds the touch
+ *   scroller out of the bundle, a phone or tablet keeps it. `hexColors.include` names the directories whose sources
  *   get the `"#RRGGBB"` to `0xRRGGBBAA` transform of
  *   @lightningtv/vite-hex-transform, as a loader. `alias` maps import names
  *   to paths.
@@ -66,6 +74,20 @@ function chainSolidTV(config, options) {
       );
     }
     config.plugin('SolidTVImportMetaEnv').use(DefinePlugin, [definitions]);
+  }
+
+  // The compile-time touch-scroll decision, from the target this chain is
+  // built for. Without the `typeof` key webpack would leave the guard in
+  // touchScroll.ts reading an undefined global and take the runtime
+  // fallback instead of folding the scroller out.
+  if (options !== undefined && options.target !== undefined) {
+    const touchScroll = !TELEVISION_TARGETS.has(options.target);
+    config.plugin('SolidTVTouchScroll').use(DefinePlugin, [
+      {
+        SOLIDTV_TOUCH_SCROLL: JSON.stringify(touchScroll),
+        'typeof SOLIDTV_TOUCH_SCROLL': JSON.stringify('boolean'),
+      },
+    ]);
   }
 
   if (options !== undefined && options.hexColors !== undefined) {

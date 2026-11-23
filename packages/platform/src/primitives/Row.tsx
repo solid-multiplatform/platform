@@ -21,6 +21,7 @@ import {
   bindTouchScroll,
   defaultTouchScroll,
   supportsTouchScroll,
+  TOUCH_SCROLL_COMPILED,
   type TouchScrollBinding,
 } from './utils/touchScroll.js';
 
@@ -42,6 +43,10 @@ export const Row: Component<RowProps> = (props) => {
   // so its focus scrolling is untouched; an explicit focus-scroll mode
   // (`auto`, `edge`, `center`, `bounded`) or `none` still wins.
   const touch =
+    // The compiled const folds to `false` on TV bundles, so the engine and
+    // the router below drop out as dead code; the runtime check inside the
+    // capability functions stays the fallback for builds without the define.
+    TOUCH_SCROLL_COMPILED &&
     supportsTouchScroll() &&
     (props.scroll === 'touch' ||
       (props.scroll === undefined && defaultTouchScroll()));

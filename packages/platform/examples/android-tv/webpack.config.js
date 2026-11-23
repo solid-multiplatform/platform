@@ -7,7 +7,8 @@ const {
 module.exports = (env) => {
   webpack.init(env);
   webpack.chainWebpack((config) => {
-    chainSolidTV(config);
+    // The target folds the touch scroller out of this TV bundle.
+    chainSolidTV(config, { target: 'android-tv' });
     config.plugin('CopyWebpackPlugin').tap((args) => {
       args[0].patterns.push({
         from: path.resolve(__dirname, '../../tests/webgl/fonts'),

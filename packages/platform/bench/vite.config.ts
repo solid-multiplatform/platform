@@ -151,6 +151,8 @@ export default defineConfig({
     __enableCompressedTextures__: false,
     __renderTextBatching__: true,
     SOLIDTV_DOM_RENDERING: false,
+    // The bench is a web build: the touch scroller stays compiled in.
+    SOLIDTV_TOUCH_SCROLL: true,
     __BENCH_ARM__: JSON.stringify(arm),
     __BENCH_RENDERER_MAJOR__: rendererMajor,
     __BENCH_INSTRUMENT__: instrument,

@@ -111,6 +111,13 @@ export default rokuConfig({ title: ${JSON.stringify(project(root).name)}, entry:
   // and `setIconBase` in the generated entry points at them.
   const webpack = readFileSync(path.join(origin, 'webpack.config.js'), 'utf8')
     .replace('../../tests/webgl/fonts', 'work/fonts')
+    // The example the config is copied from is one target's; the scaffold
+    // says which target it actually is, so chainSolidTV folds the touch
+    // scroller out of TV bundles and keeps it for phones and tablets.
+    .replace(
+      /chainSolidTV\(config(?:, \{ target: '[a-z-]+' \})?\);/,
+      `chainSolidTV(config, { target: '${target}' });`,
+    )
     .replace(
       'args[0].patterns.push({',
       // `noErrorOnMissing`: an app built before the icons existed still

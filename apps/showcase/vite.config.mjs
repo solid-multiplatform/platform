@@ -46,6 +46,10 @@ export default defineConfig(({ mode }) => {
     define: {
       SOLIDTV_DOM_RENDERING: false,
       __DEV__: false,
+      // The phone/web path keeps the touch scroller; the TV modes (the same
+      // television targets as TELEVISION_TARGETS in
+      // packages/platform/src/primitives/utils/touchScroll.ts) fold it out.
+      SOLIDTV_TOUCH_SCROLL: !tv,
       // Which host the one web entry starts: 'web', or a browser TV.
       __SHOWCASE_TARGET__: JSON.stringify(tv ? mode : 'web'),
     },

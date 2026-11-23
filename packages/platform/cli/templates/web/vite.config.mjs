@@ -3,7 +3,12 @@ import { variantUpdates } from '@solid-multiplatform/platform/cli/variants';
 import solid from 'vite-plugin-solid';
 export default defineConfig({
   base: './',
-  define: { SOLIDTV_DOM_RENDERING: false, __DEV__: false },
+  // Web is a pointer/touch target: the touch scroller stays compiled in.
+  define: {
+    SOLIDTV_DOM_RENDERING: false,
+    __DEV__: false,
+    SOLIDTV_TOUCH_SCROLL: true,
+  },
   plugins: [
     variantUpdates('__TARGET__'),
     solid({

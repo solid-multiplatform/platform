@@ -10,7 +10,14 @@ export default defineConfig(({ mode }) => ({
     // is the Canvas 2D variant for engines without WebGL 2.
     target: mode === 'legacy' ? undefined : 'es2017',
   },
-  define: { SOLIDTV_DOM_RENDERING: false, __DEV__: false },
+  // The PS4's pointer is a remote: a television target (see TELEVISION_TARGETS
+  // in the platform's src/primitives/utils/touchScroll.ts), so the touch
+  // scroller folds out of the bundle.
+  define: {
+    SOLIDTV_DOM_RENDERING: false,
+    __DEV__: false,
+    SOLIDTV_TOUCH_SCROLL: false,
+  },
   plugins: [
     variantUpdates('__TARGET__'),
     solid({

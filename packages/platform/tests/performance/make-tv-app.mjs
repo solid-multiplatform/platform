@@ -72,8 +72,8 @@ const config = path.join(root, 'targets/android-tv/webpack.config.js');
 writeFileSync(
   config,
   readFileSync(config, 'utf8').replace(
-    'chainSolidTV(config);',
-    `chainSolidTV(config);
+    "chainSolidTV(config, { target: 'android-tv' });",
+    `chainSolidTV(config, { target: 'android-tv' });
 config.plugin('CopyWebpackPlugin').tap(args => { args[0].patterns.push({from:path.resolve(__dirname,'gallery'),to:'gallery'}); return args; });`,
   ),
 );

@@ -8,7 +8,14 @@ export default defineConfig(({ mode }) => ({
     outDir: mode === 'legacy' ? 'dist-legacy' : 'dist',
     target: mode === 'legacy' ? undefined : 'chrome85',
   },
-  define: { SOLIDTV_DOM_RENDERING: false, __DEV__: false },
+  // Browser TVs (tizen, webos, vizio) never get direct manipulation; the
+  // define folds the touch scroller out of the bundle. Same television
+  // target list as TELEVISION_TARGETS in src/primitives/utils/touchScroll.ts.
+  define: {
+    SOLIDTV_DOM_RENDERING: false,
+    __DEV__: false,
+    SOLIDTV_TOUCH_SCROLL: false,
+  },
   plugins: [
     variantUpdates('__TARGET__'),
     solid({
