@@ -94,7 +94,12 @@ v.test(
 
     const background = rootNode.children[0] as ElementNode;
     const wrapper = background.children[0] as ElementNode;
-    const inner = wrapper.children[wrapper.children.length - 1] as ElementNode;
+    // SelectableText layers selection chrome after the text; the geometry
+    // holder is the child that has it, not the last one.
+    const inner = wrapper.children.find(
+      (child) =>
+        typeof (child as ElementNode).getTextGeometry === 'function',
+    ) as ElementNode;
     const geometry = inner.getTextGeometry();
     v.expect(geometry).not.toBeNull();
     const line = geometry!.lines[0]!;
