@@ -180,6 +180,13 @@ function AlbumCard(props: {
           maxLines={1}
           fontSize={props.family === 'tv' ? T.body : T.label}
           color={C.text}
+          // The flying clone is this line on the way back; two identical
+          // titles at the destination read as a duplicate that never leaves.
+          alpha={
+            props.hiddenCard !== undefined && props.hiddenCard === cardRoot
+              ? 0
+              : 1
+          }
         >
           {props.album.title}
         </text>

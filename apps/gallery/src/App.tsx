@@ -133,11 +133,11 @@ export function App(): JSX.Element {
   // 1 is the resting value (no flight); each flight resets it to 0 so the
   // destination starts invisible, not at whatever the last flight left.
   const [flightT, setFlightT] = createSignal(1);
-  /** The album screen's fade: in with an opening flight, out with a back one. */
+  /** The album screen's fade: in with an opening flight; pops keep none. */
   const albumFade = () => {
     const value = flight();
-    if (value === undefined) return 1;
-    return value.back ? 1 - flightT() : flightT();
+    if (value === undefined || value.back === true) return 1;
+    return flightT();
   };
 
   /** The album's title half of the flight, from the pressed card to the album. */
@@ -193,8 +193,10 @@ export function App(): JSX.Element {
     const spot = cardSpot();
     const info = albumSpot();
     setRoute('library');
-    // The album stays mounted (and fading out) until the back flight lands;
-    // `album()` is what keeps its Show alive, so it clears in onDone.
+    // A pop does not keep the doomed screen around: the clones carry the
+    // whole transition over the library, so nothing of the old page can
+    // shift under a fade and read as a ghost (or a second title).
+    setAlbum(undefined);
     setFlightT(0);
     // The destination is the pressed card as it is NOW: the page may have
     // scrolled or the focus moved while the album was open.
@@ -558,12 +560,7 @@ export function App(): JSX.Element {
               radius={tv() ? R.large : R.medium}
               title={value().title}
               onProgress={setFlightT}
-              onDone={() => {
-                setFlight(undefined);
-                // A back flight kept the album mounted; the route has left
-                // it, so now it goes. An opening flight ends on the album.
-                if (route() !== 'album') setAlbum(undefined);
-              }}
+              onDone={() => setFlight(undefined)}
             />
           )}
         </Show>

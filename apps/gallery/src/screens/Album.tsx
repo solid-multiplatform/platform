@@ -49,9 +49,9 @@ export function AlbumScreen(props: {
    */
   fade?: number;
   /** The cover's box once it is laid out: the flight's landing rect. */
-  onCoverRect?(rect: HeroRect): void;
+  onCoverRect?(rect: HeroRect, node?: ElementNode): void;
   /** The title line's place and font, for its half of the matched geometry. */
-  onTitleRect?(line: HeroTitleLine): void;
+  onTitleRect?(line: HeroTitleLine, node?: ElementNode): void;
   /** The clone is flying this title; the real one waits for the landing. */
   hideTitle?: boolean;
   onBack?(): void;
@@ -68,28 +68,31 @@ export function AlbumScreen(props: {
   let coverNode: ElementNode | undefined;
   let titleNode: ElementNode | undefined;
   let rootNode: ElementNode | undefined;
+  // The geometry the flight needs, reported ONCE, after the layout pass that
+  // actually places the flex children. Reporting a frame after mount is not
+  // enough: a text's width exists before its parent has positioned it, and a
+  // flight aimed at the pre-layout line flew to the top of the screen. The
+  // nodes go along so the back flight can re-read them live (the page may
+  // have scrolled by then).
+  let reported = false;
+  const report = () => {
+    if (reported || titleNode === undefined || coverNode === undefined) return;
+    const cover = rectOf(coverNode);
+    const line = lineOf(titleNode);
+    const fontSize = (titleNode.fontSize as number) ?? 0;
+    if (cover === undefined || line === undefined || !(fontSize > 0)) return;
+    reported = true;
+    props.onCoverRect?.(cover, coverNode);
+    props.onTitleRect?.({ ...line, fontSize }, titleNode);
+  };
   onMount(() => {
-    // One frame for the layout queue, then the boxes. The cover has an
-    // explicit size and measures at once; a text's height arrives with its
-    // glyph measurement (a frame or two later), so the title report retries
-    // briefly — the flight must land on the line's real box, not an
-    // estimate.
     let frame = 0;
     let attempts = 0;
-    const reportTitle = () => {
-      const line = lineOf(titleNode);
-      const fontSize = (titleNode?.fontSize as number) ?? 0;
-      if (line !== undefined && fontSize > 0) {
-        props.onTitleRect?.({ ...line, fontSize });
-        return;
-      }
-      if (attempts++ < 8) frame = nextFrame(reportTitle);
+    const retry = () => {
+      report();
+      if (!reported && attempts++ < 12) frame = nextFrame(retry);
     };
-    frame = nextFrame(() => {
-      const rect = rectOf(coverNode);
-      if (rect !== undefined) props.onCoverRect?.(rect);
-      reportTitle();
-    });
+    frame = nextFrame(retry);
     // The library is still mounted behind this screen; keep the remote out of
     // it until this one is popped.
     const release =
@@ -148,6 +151,7 @@ export function AlbumScreen(props: {
         height={props.height - S(6)}
         gap={S(6)}
         scroll={tv() ? 'edge' : 'touch'}
+        onLayout={report}
         selected={0}
       >
         {props.topNav}
