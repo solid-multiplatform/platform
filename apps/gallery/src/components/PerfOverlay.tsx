@@ -1,4 +1,5 @@
 import {
+  createEffect,
   createSignal,
   For,
   onCleanup,
@@ -95,7 +96,16 @@ export function PerfOverlay(props: {
           : undefined,
       );
     };
-    renderer.on('frameTick', listener);
+    // A hidden chip measures nothing: the listener costs a reactive write
+    // every sixth drawn frame, and sampling the app is the chip's whole
+    // job. The effect owns the registration — attached while shown, detached
+    // while hidden, values fresh on each reattach.
+    createEffect(() => {
+      if (hidden()) return;
+      renderer.on?.('frameTick', listener);
+      frames = 0;
+      onCleanup(() => renderer.off?.('frameTick', listener));
+    });
     onCleanup(() => renderer.off?.('frameTick', listener));
   });
 

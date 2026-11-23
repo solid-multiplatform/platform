@@ -111,8 +111,11 @@ export const FPSCounter = (props: NodeProps) => {
       return;
     }
 
-    // Frame times inside the window, with the running clock they end at.
-    const window: { delta: number; at: number }[] = [];
+    // Frame times inside the window, with the running clock they end at —
+    // as two parallel arrays: a frame meter that allocates a record per
+    // drawn frame perturbs what it measures.
+    const deltas: number[] = [];
+    const ends: number[] = [];
     let clock = 0;
     let frames = 0;
     let published = 0;
@@ -127,21 +130,24 @@ export const FPSCounter = (props: NodeProps) => {
           : 0;
       frames++;
       clock += delta;
-      window.push({ delta, at: clock });
-      while (window.length > 1 && clock - window[0]!.at > WINDOW_MS)
-        window.shift();
+      deltas.push(delta);
+      ends.push(clock);
+      while (deltas.length > 1 && clock - ends[0]! > WINDOW_MS) {
+        deltas.shift();
+        ends.shift();
+      }
       // A publish asks for one frame. Requiring several since the previous
       // one means that induced frame cannot publish in turn.
       if (frames - published < REPAINT_FRAMES) return;
       published = frames;
 
-      const recent = window.map((sample) => sample.delta);
-      const total = recent.reduce((sum, value) => sum + value, 0);
-      const sorted = [...recent].sort((a, b) => a - b);
+      let total = 0;
+      for (let i = 0; i < deltas.length; i++) total += deltas[i]!;
+      const sorted = deltas.slice().sort((a, b) => a - b);
       const draws = renderer.flushedOps;
       setReadout({
         instant: 1000 / delta,
-        average: total > 0 ? (recent.length * 1000) / total : 0,
+        average: total > 0 ? (deltas.length * 1000) / total : 0,
         last: delta,
         cost,
         p50: percentile(sorted, 0.5),
