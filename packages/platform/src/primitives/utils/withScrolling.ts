@@ -148,10 +148,11 @@ function keepVisible(
   candidate: number,
 ): number {
   const size = (selectedEl[bounds.dimension] as number | undefined) ?? 0;
-  const scale =
-    (selectedEl.scale as number | undefined) ??
-    (selectedEl.$focus as Styles | undefined)?.scale ??
-    1;
+  // The focus style's scale is the size the item will BE when its
+  // transition lands; the live scale mid-animation is smaller, and reserving
+  // for it would let the scaled edges poke past the band a moment later.
+  const focusScale = (selectedEl.$focus as Styles | undefined)?.scale;
+  const scale = focusScale ?? (selectedEl.scale as number | undefined) ?? 1;
   const scaled = size * scale;
   // A focused item scales about its centre.
   const centreInset = (scaled - size) / 2;

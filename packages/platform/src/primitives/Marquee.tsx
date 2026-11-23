@@ -96,6 +96,13 @@ export function MarqueeText(props: MarqueeTextProps) {
       s.onCleanup(() => {
         a1.stop();
         a2.stop();
+        // Back to the start crop, not frozen wherever the loop happened to
+        // be. The pair is hidden the moment scrolling stops, so the restore
+        // draws nothing — but the swap to the static text is then 0-to-0
+        // (no content jump), and the next focus does not snap from a stale
+        // mid-flight offset.
+        a1.restore();
+        a2.restore();
       });
     }
   });
