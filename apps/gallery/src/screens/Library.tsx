@@ -7,7 +7,7 @@ import { ALBUMS, RAILS, albumSeconds, type Album } from '../data';
 import type { UiFamily } from '../family';
 import { C, formatTotal, R, S, T } from '../theme';
 import { pageLayout } from '../layout';
-import { rectOf, type HeroRect } from '../motion/hero';
+import { lineOf, rectOf, type HeroCardSpot } from '../motion/hero';
 import { PulseDot } from '../motion/pulse-dot';
 
 /** A primary action: the accent gradient, used once per screen. */
@@ -128,14 +128,34 @@ function AlbumCard(props: {
   size: number;
   width: number;
   family: UiFamily;
-  /** Hidden while a hero flight draws this cover instead. */
-  hidden?: boolean;
-  onOpen?: (album: Album, rect?: HeroRect) => void;
+  /**
+   * The card a hero flight is about, by identity: only the pressed instance
+   * hides its cover. The same album appears in several rails, and hiding by
+   * album id left blank holes everywhere else the album is shown.
+   */
+  hiddenCard?: ElementNode;
+  onOpen?: (album: Album, spot?: HeroCardSpot) => void;
 }): JSX.Element {
   let cover: ElementNode | undefined;
-  const open = () => props.onOpen?.(props.album, rectOf(cover));
+  let cardRoot: ElementNode | undefined;
+  let titleNode: ElementNode | undefined;
+  const open = () =>
+    props.onOpen?.(props.album, {
+      node: cardRoot,
+      cover: rectOf(cover),
+      coverNode: cover,
+      title:
+        lineOf(titleNode) === undefined
+          ? undefined
+          : {
+              ...lineOf(titleNode)!,
+              fontSize: props.family === 'tv' ? T.body : T.label,
+            },
+      titleNode: titleNode,
+    });
   return (
     <view
+      ref={(node) => (cardRoot = node)}
       width={props.width}
       display="flex"
       flexDirection="column"
@@ -150,10 +170,11 @@ function AlbumCard(props: {
         album={props.album}
         size={props.size}
         radius={R.medium}
-        hidden={props.hidden}
+        hidden={props.hiddenCard !== undefined && props.hiddenCard === cardRoot}
       />
       <view display="flex" flexDirection="column" gap={2}>
         <text
+          ref={(node) => (titleNode = node)}
           width={props.width}
           contain="width"
           maxLines={1}
@@ -183,8 +204,8 @@ function Rail(props: {
   /** The shelf's clip: from the page's left edge to the window's right. */
   width: number;
   cardSize: number;
-  hiddenAlbum?: string;
-  onOpenAlbum?: (album: Album, rect?: HeroRect) => void;
+  hiddenCard?: ElementNode;
+  onOpenAlbum?: (album: Album, spot?: HeroCardSpot) => void;
 }): JSX.Element {
   return (
     <view
@@ -215,7 +236,7 @@ function Rail(props: {
                 size={props.cardSize}
                 width={props.cardSize}
                 family={props.family}
-                hidden={props.hiddenAlbum === album.id}
+                hiddenCard={props.hiddenCard}
                 onOpen={props.onOpenAlbum}
               />
             )}
@@ -232,9 +253,9 @@ export function Library(props: {
   height: number;
   onOpenCreate?(): void;
   topNav?: JSX.Element;
-  /** A cover a hero flight is drawing instead of the card. */
-  hiddenAlbum?: string;
-  onOpenAlbum?(album: Album, rect?: HeroRect): void;
+  /** The card a hero flight is drawing instead of (by identity, not id). */
+  hiddenCard?: ElementNode;
+  onOpenAlbum?(album: Album, spot?: HeroCardSpot): void;
 }): JSX.Element {
   const tv = () => props.family === 'tv';
   const mobile = () => props.family === 'mobile';
@@ -356,7 +377,7 @@ export function Library(props: {
               family={props.family}
               width={railWidth()}
               cardSize={card()}
-              hiddenAlbum={props.hiddenAlbum}
+              hiddenCard={props.hiddenCard}
               onOpenAlbum={props.onOpenAlbum}
             />
           )}

@@ -22,7 +22,12 @@ import type { UiFamily } from '../family';
 import { C, formatTime, formatTotal, R, S, T } from '../theme';
 import { pageLayout } from '../layout';
 import { GhostButton, GradientButton, IconButton } from './Library';
-import { rectOf, type HeroRect } from '../motion/hero';
+import {
+  lineOf,
+  rectOf,
+  type HeroRect,
+  type HeroTitleLine,
+} from '../motion/hero';
 import { cancelFrame, nextFrame } from '../motion/frame';
 
 const NOTES = (album: Album): string =>
@@ -45,6 +50,10 @@ export function AlbumScreen(props: {
   fade?: number;
   /** The cover's box once it is laid out: the flight's landing rect. */
   onCoverRect?(rect: HeroRect): void;
+  /** The title line's place and font, for its half of the matched geometry. */
+  onTitleRect?(line: HeroTitleLine): void;
+  /** The clone is flying this title; the real one waits for the landing. */
+  hideTitle?: boolean;
   onBack?(): void;
   topNav?: JSX.Element;
 }): JSX.Element {
@@ -57,11 +66,29 @@ export function AlbumScreen(props: {
   // The cover's box after layout, for the matched-geometry flight. One frame
   // after mount the layout queue has run, so the offsets are final.
   let coverNode: ElementNode | undefined;
+  let titleNode: ElementNode | undefined;
   let rootNode: ElementNode | undefined;
   onMount(() => {
-    const frame = nextFrame(() => {
+    // One frame for the layout queue, then the boxes. The cover has an
+    // explicit size and measures at once; a text's height arrives with its
+    // glyph measurement (a frame or two later), so the title report retries
+    // briefly — the flight must land on the line's real box, not an
+    // estimate.
+    let frame = 0;
+    let attempts = 0;
+    const reportTitle = () => {
+      const line = lineOf(titleNode);
+      const fontSize = (titleNode?.fontSize as number) ?? 0;
+      if (line !== undefined && fontSize > 0) {
+        props.onTitleRect?.({ ...line, fontSize });
+        return;
+      }
+      if (attempts++ < 8) frame = nextFrame(reportTitle);
+    };
+    frame = nextFrame(() => {
       const rect = rectOf(coverNode);
       if (rect !== undefined) props.onCoverRect?.(rect);
+      reportTitle();
     });
     // The library is still mounted behind this screen; keep the remote out of
     // it until this one is popped.
@@ -169,10 +196,14 @@ export function AlbumScreen(props: {
               {`ALBUM, ${props.album.year}`}
             </text>
             <text
+              ref={(node) => (titleNode = node)}
               width={mobile() ? page().width : tv() ? 820 : 560}
               contain="width"
               fontSize={tv() ? T.display : T.title}
               color={C.text}
+              // The flying clone is this line while a flight runs; the real
+              // one waits, exactly where the clone will land it.
+              alpha={props.hideTitle === true ? 0 : 1}
             >
               {props.album.title}
             </text>

@@ -14,6 +14,7 @@ import {
   useContext,
   type JSX,
 } from 'solid-js';
+import type { ElementNode } from '@solid-multiplatform/platform';
 import {
   applySystemBarStyle,
   defineTheme,
@@ -26,7 +27,15 @@ import { Glyph, type GlyphName } from './components/Glyph';
 import { C, R, S, T } from './theme';
 import { uiFamily } from './family';
 import { pageLayout } from './layout';
-import { HeroFlight, type HeroRect } from './motion/hero';
+import {
+  HeroFlight,
+  lineOf,
+  rectOf,
+  type HeroTitleLine,
+  type HeroCardSpot,
+  type HeroRect,
+  type HeroTitle,
+} from './motion/hero';
 import { Library } from './screens/Library';
 import { AlbumScreen } from './screens/Album';
 import type { Album } from './data';
@@ -98,20 +107,28 @@ export function App(): JSX.Element {
   const [route, setRoute] = createSignal<Route>('library');
   const [album, setAlbum] = createSignal<Album>();
 
-  // The matched-geometry flight: the pressed card's cover grows into the
-  // album's cover (and back). `from` is the card's box when it was pressed;
-  // `to` arrives one frame after the album lays out. The two covers are
-  // hidden for the duration so only the clone is visible.
+  // The matched-geometry flight: the pressed card's cover and title grow
+  // into the album's (and back). `from` is the pressed instance, captured by
+  // identity so the same album showing in several rails never confuses the
+  // destination; `to` arrives one frame after the album lays out. The real
+  // elements at both ends are hidden for the duration, so only the clones
+  // are visible — and each clone lands exactly on the real thing.
   const [flight, setFlight] = createSignal<{
     album: Album;
     from: HeroRect;
     to?: HeroRect;
     back: boolean;
+    /** The pressed card, by identity: only it hides on a back flight. */
+    cardNode?: ElementNode;
+    title?: HeroTitle;
   }>();
-  // The two boxes the flight interpolates between, kept after it lands so
-  // the trip back can start from the album and end on the card.
-  const [cardRect, setCardRect] = createSignal<HeroRect>();
-  const [coverRect, setCoverRect] = createSignal<HeroRect>();
+  // The pressed card's boxes and nodes, and the album's: kept for the trip
+  // back. The back destination is re-read live — the page may have moved.
+  const [cardSpot, setCardSpot] = createSignal<HeroCardSpot>();
+  const [albumSpot, setAlbumSpot] = createSignal<{
+    cover: HeroRect;
+    title?: HeroTitleLine;
+  }>();
   // The eased flight progress, for the screens' crossfade around the clone.
   // 1 is the resting value (no flight); each flight resets it to 0 so the
   // destination starts invisible, not at whatever the last flight left.
@@ -123,39 +140,93 @@ export function App(): JSX.Element {
     return value.back ? 1 - flightT() : flightT();
   };
 
-  const openAlbum = (next: Album, from?: HeroRect) => {
+  /** The album's title half of the flight, from the pressed card to the album. */
+  const openingTitle = (to: HeroTitleLine): HeroTitle | undefined => {
+    const spot = cardSpot();
+    if (spot?.title === undefined) return undefined;
+    const album = flight()?.album;
+    if (album === undefined) return undefined;
+    return { text: album.title, from: spot.title, to, color: C.text };
+  };
+
+  const openAlbum = (next: Album, spot?: HeroCardSpot) => {
     setAlbum(next);
     setRoute('album');
-    setCoverRect(undefined);
-    setCardRect(from);
+    setCardSpot(spot);
+    setAlbumSpot(undefined);
     setFlightT(0);
     setFlight(
-      from === undefined ? undefined : { album: next, from, back: false },
+      spot?.cover === undefined
+        ? undefined
+        : {
+            album: next,
+            from: spot.cover,
+            back: false,
+            cardNode: spot.node,
+          },
     );
   };
+
   const landCover = (rect: HeroRect) => {
-    setCoverRect(rect);
+    setAlbumSpot((previous) => ({ cover: rect, title: previous?.title }));
     setFlight((value) =>
-      value === undefined ? value : { ...value, to: rect },
+      value === undefined || value.back === true
+        ? value
+        : { ...value, to: rect },
     );
   };
+
+  const landTitle = (line: HeroTitleLine) => {
+    setAlbumSpot((previous) => ({
+      cover: previous?.cover ?? { x: line.x, y: line.y, size: line.width },
+      title: line,
+    }));
+    setFlight((value) => {
+      if (value === undefined || value.back === true) return value;
+      const title = openingTitle(line);
+      return title === undefined ? value : { ...value, title };
+    });
+  };
+
   const leaveAlbum = () => {
     const current = album();
-    const from = coverRect();
-    const card = cardRect();
+    const spot = cardSpot();
+    const info = albumSpot();
     setRoute('library');
     // The album stays mounted (and fading out) until the back flight lands;
-    // `album()` is what keeps its Show alive, so it clears in onDone. No
-    // flight to fly (no rects): it goes now.
+    // `album()` is what keeps its Show alive, so it clears in onDone.
     setFlightT(0);
-    if (current === undefined || from === undefined || card === undefined) {
+    // The destination is the pressed card as it is NOW: the page may have
+    // scrolled or the focus moved while the album was open.
+    const coverTo = rectOf(spot?.coverNode) ?? spot?.cover;
+    const titleLine = lineOf(spot?.titleNode);
+    const titleTo: HeroTitleLine | undefined =
+      titleLine === undefined
+        ? spot?.title
+        : { ...titleLine, fontSize: spot?.title?.fontSize ?? 13 };
+    const title: HeroTitle | undefined =
+      current !== undefined &&
+      info?.title !== undefined &&
+      titleTo !== undefined
+        ? { text: current.title, from: info.title, to: titleTo, color: C.text }
+        : undefined;
+    if (
+      current === undefined ||
+      info?.cover === undefined ||
+      coverTo === undefined
+    ) {
       setAlbum(undefined);
+      setFlight(undefined);
+      return;
     }
-    setFlight(
-      current !== undefined && from !== undefined && card !== undefined
-        ? { album: current, from, to: card, back: true }
-        : undefined,
-    );
+    setFlight({
+      album: current,
+      from: info.cover,
+      to: coverTo,
+      back: true,
+      cardNode: spot?.node,
+      title,
+    });
   };
   const flying = () => {
     const value = flight();
@@ -340,8 +411,8 @@ export function App(): JSX.Element {
               height={viewport().height - bottomReserved()}
               onOpenCreate={() => setRoute('create')}
               onOpenAlbum={openAlbum}
-              hiddenAlbum={
-                flight()?.back === true ? flight()?.album.id : undefined
+              hiddenCard={
+                flight()?.back === true ? flight()?.cardNode : undefined
               }
               topNav={tv() ? topNav() : undefined}
             />
@@ -357,7 +428,12 @@ export function App(): JSX.Element {
           {/* The album stays mounted through the back flight: its screen
               fades out under the returning clone instead of vanishing in
               the one frame the route changes. */}
-          <Show when={(route() === 'album' || flight()?.back === true) && album() !== undefined}>
+          <Show
+            when={
+              (route() === 'album' || flight()?.back === true) &&
+              album() !== undefined
+            }
+          >
             <AlbumScreen
               album={album()!}
               family={family()}
@@ -365,8 +441,16 @@ export function App(): JSX.Element {
               width={viewport().width - contentX()}
               height={viewport().height - bottomReserved()}
               hideCover={flight() !== undefined && flight()?.back === false}
+              // Hidden only once its box is measured: an alpha-0 text is
+              // never laid out, and the flight needs the line's real box.
+              // The one frame before the report is invisible anyway (the
+              // album's own fade starts at 0).
+              hideTitle={
+                flight() !== undefined && albumSpot()?.title !== undefined
+              }
               fade={albumFade()}
               onCoverRect={landCover}
+              onTitleRect={landTitle}
               onBack={leaveAlbum}
             />
           </Show>
@@ -472,6 +556,7 @@ export function App(): JSX.Element {
               from={value().from}
               to={value().to}
               radius={tv() ? R.large : R.medium}
+              title={value().title}
               onProgress={setFlightT}
               onDone={() => {
                 setFlight(undefined);

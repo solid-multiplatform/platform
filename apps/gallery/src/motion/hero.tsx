@@ -1,4 +1,4 @@
-import { createSignal, onCleanup, onMount, type JSX } from 'solid-js';
+import { createSignal, onCleanup, onMount, Show, type JSX } from 'solid-js';
 import type { ElementNode } from '@solid-multiplatform/platform';
 import type { Album } from '../data';
 import { Cover } from '../components/Cover';
@@ -12,6 +12,24 @@ export interface HeroRect {
   size: number;
 }
 
+/** A full box, for elements whose aspect the flight must keep (a text line). */
+export interface HeroBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+const sceneOrigin = (node: ElementNode): { x: number; y: number } => {
+  let x = 0;
+  let y = 0;
+  for (let n: ElementNode | undefined = node; n; n = n.parent) {
+    x += n.x || 0;
+    y += n.y || 0;
+  }
+  return { x, y };
+};
+
 /**
  * A node's box in the scene's coordinates: walk the parents summing each
  * offset. The scene has one root, and a scrolled Row moves its children's
@@ -19,16 +37,83 @@ export interface HeroRect {
  */
 export function rectOf(node: ElementNode | undefined): HeroRect | undefined {
   if (node === undefined) return undefined;
-  let x = 0;
-  let y = 0;
-  for (let n: ElementNode | undefined = node; n; n = n.parent) {
-    x += n.x || 0;
-    y += n.y || 0;
-  }
+  const { x, y } = sceneOrigin(node);
   const size = Math.min(node.width || 0, node.height || 0);
   if (size <= 0) return undefined;
   return { x: Math.round(x), y: Math.round(y), size: Math.round(size) };
 }
+
+/** The same walk, keeping both dimensions: a text line is wide and short. */
+export function boxOf(node: ElementNode | undefined): HeroBox | undefined {
+  if (node === undefined) return undefined;
+  const width = (node.width as number) || 0;
+  const height = (node.height as number) || 0;
+  if (width <= 0 || height <= 0) return undefined;
+  const { x, y } = sceneOrigin(node);
+  return { x, y, width, height };
+}
+
+/**
+ * A text line's place and width. The line's height is the font's business
+ * (the renderer measures glyphs asynchronously on some hosts, and the
+ * height it reports may not have arrived — the width and origin always
+ * have).
+ */
+export function lineOf(
+  node: ElementNode | undefined,
+): { x: number; y: number; width: number } | undefined {
+  if (node === undefined) return undefined;
+  const width = (node.width as number) || 0;
+  if (width <= 0) return undefined;
+  const { x, y } = sceneOrigin(node);
+  return { x, y, width };
+}
+
+/**
+ * The title's half of the matched geometry: the clone draws the destination
+ * screen's text at the SOURCE screen's font size and scales the box up (or
+ * down) until it is exactly the destination's line — Apple interpolates the
+ * shared element's frame, so the glyphs grow with it instead of one size
+ * popping into the other.
+ */
+/** What a pressed card reports: live rects and nodes for the flight. */
+export interface HeroCardSpot {
+  /** The whole card, so only this instance hides during a back flight. */
+  node?: ElementNode;
+  cover?: HeroRect;
+  /** The cover's own node: the back flight's destination is read live. */
+  coverNode?: ElementNode;
+  title?: HeroTitleLine;
+  /** The title's own node, likewise. */
+  titleNode?: ElementNode;
+  titleFontSize?: number;
+}
+
+/** One end of the title's flight: where the line starts and how big it is. */
+export interface HeroTitleLine {
+  x: number;
+  y: number;
+  width: number;
+  fontSize: number;
+}
+
+/**
+ * The title's half of the matched geometry: the clone draws the text at the
+ * SOURCE screen's font size and scales the box until the glyphs are exactly
+ * the DESTINATION's size — Apple interpolates the shared element's frame, so
+ * the text grows (or shrinks) with it instead of one size popping into the
+ * other. Sizes come from the font sizes themselves, the only measure both
+ * screens state exactly; a line box is the font's standard 1.25 em.
+ */
+export interface HeroTitle {
+  text: string;
+  from: HeroTitleLine;
+  to: HeroTitleLine;
+  color: number;
+}
+
+/** The line box height a single line occupies, in scene units. */
+export const titleLineHeight = (fontSize: number) => fontSize * 1.25;
 
 /**
  * The floating view of a matched-geometry transition ("hero"): it starts at
@@ -54,6 +139,8 @@ export function HeroFlight(props: {
   duration?: number;
   /** The corner radius the cover lands with, in screen units. */
   radius?: number;
+  /** The title flying alongside the cover, when the screens supply it. */
+  title?: HeroTitle;
   /** The eased progress each frame, for the screens' crossfade around the flight. */
   onProgress?(t: number): void;
   onDone?(): void;
@@ -84,16 +171,70 @@ export function HeroFlight(props: {
     x: lerp(props.from.x + base() / 2, props.to.x + props.to.size / 2, t()),
     y: lerp(props.from.y + base() / 2, props.to.y + props.to.size / 2, t()),
   });
+  // The title clone: drawn at the source screen's line height, its box
+  // widening from the source's to the destination's as the scale carries the
+  // glyphs from one size to the other. It ends exactly on the destination's
+  // line, so the real title replacing it draws nothing new.
+  const title = () => props.title;
+  const titleBox = () => {
+    const value = title();
+    if (value === undefined) return undefined;
+    const time = t();
+    const fromHeight = titleLineHeight(value.from.fontSize);
+    const toHeight = titleLineHeight(value.to.fontSize);
+    const width = lerp(value.from.width, value.to.width, time);
+    const cx = lerp(
+      value.from.x + value.from.width / 2,
+      value.to.x + value.to.width / 2,
+      time,
+    );
+    const cy = lerp(
+      value.from.y + fromHeight / 2,
+      value.to.y + toHeight / 2,
+      time,
+    );
+    return {
+      x: cx - width / 2,
+      y: cy - fromHeight / 2,
+      width,
+      height: fromHeight,
+      scale: lerp(1, value.to.fontSize / value.from.fontSize, time),
+    };
+  };
   return (
-    <view
-      x={centre().x - base() / 2}
-      y={centre().y - base() / 2}
-      width={base()}
-      height={base()}
-      scale={grew()}
-      zIndex={600}
-    >
-      <Cover album={props.album} size={base()} radius={radius()} />
-    </view>
+    <>
+      <view
+        x={centre().x - base() / 2}
+        y={centre().y - base() / 2}
+        width={base()}
+        height={base()}
+        scale={grew()}
+        zIndex={600}
+      >
+        <Cover album={props.album} size={base()} radius={radius()} />
+      </view>
+      <Show when={titleBox()}>
+        {(box) => (
+          <view
+            x={box().x}
+            y={box().y}
+            width={box().width}
+            height={box().height}
+            scale={box().scale}
+            zIndex={601}
+          >
+            <text
+              width={box().width}
+              contain="width"
+              maxLines={1}
+              fontSize={title()!.from.fontSize}
+              color={title()!.color}
+            >
+              {title()!.text}
+            </text>
+          </view>
+        )}
+      </Show>
+    </>
   );
 }
