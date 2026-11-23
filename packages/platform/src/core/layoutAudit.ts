@@ -135,8 +135,18 @@ function paintsSurface(node: ElementNode): boolean {
   return false;
 }
 
-/** The text content a node carries, if the node is a text node. */
+/**
+ * The text content a node carries, if the node is a text node.
+ *
+ * `ElementNode.getText` is defined on every node and reads `children[0].text`,
+ * so calling it on a container whose first child happens to be a heading
+ * returns that heading's text — and the walk would then treat the whole
+ * panel as a text leaf and never audit inside it. A dialog whose box starts
+ * with a title is exactly the shape that must be audited most, so only a real
+ * text node is a leaf here.
+ */
 function textOf(node: ElementNode): string | undefined {
+  if ((node as { _type?: unknown })._type !== 'textNode') return undefined;
   const getText = (node as { getText?: () => string }).getText;
   if (typeof getText !== 'function') return undefined;
   return getText.call(node);
