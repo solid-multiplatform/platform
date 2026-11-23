@@ -23,7 +23,7 @@ import {
   Drawer,
   Toast,
 } from '@solid-multiplatform/platform/primitives';
-import { TextField } from '@solid-multiplatform/platform/app';
+import { CodeField, TextField } from '@solid-multiplatform/platform/app';
 import { renderer, waitForUpdate } from './setup.js';
 import { updateViewport, zeroInsets } from '../src/sdk/viewport.js';
 import { setCapabilities } from '../src/sdk/capabilities.js';
@@ -476,6 +476,39 @@ v.describe('layout audit', () => {
           >
             <view width={300} height={190} />
           </Popover>
+        ),
+        () => {
+          const findings = [...cutOff(profile), ...overflow(profile)];
+          v.expect(findings, describeFindings(findings)).toHaveLength(0);
+        },
+      );
+    });
+  }
+});
+
+// The one-time-code field shipped onto the app surface: its slot row must
+// fit every profile like any other control, so it is audited here rather
+// than only in its own contract file.
+v.describe('layout audit: CodeField', () => {
+  for (const profile of PROFILES) {
+    v.test(`CodeField fits a ${profile.name}`, async () => {
+      await withProfile(
+        profile,
+        () => (
+          <view width={profile.width} height={profile.height}>
+            <Column
+              width={profile.width}
+              padding={16}
+              gap={12}
+              scroll="touch"
+            >
+              <CodeField
+                label="Verification code"
+                width={profile.width - 32}
+                autofocus
+              />
+            </Column>
+          </view>
         ),
         () => {
           const findings = [...cutOff(profile), ...overflow(profile)];

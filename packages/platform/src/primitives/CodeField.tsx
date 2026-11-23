@@ -257,9 +257,7 @@ export function CodeField(props: CodeFieldProps): JSX.Element {
     // A whole code replaces whatever was typed.
     const deliveredFull = codeChars(after).length >= slots();
     const next =
-      !deliveredFull && inserted.length >= 2
-        ? clean(inserted)
-        : clean(after);
+      !deliveredFull && inserted.length >= 2 ? clean(inserted) : clean(after);
     raw = next;
     if (next !== after) editor?.setValue(next);
     if (next === was) return;
