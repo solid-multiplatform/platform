@@ -50,6 +50,18 @@ export {
   type TextFieldProps,
   type SearchFieldProps,
 } from '../primitives/TextField.jsx';
+export { CodeField, type CodeFieldProps } from '../primitives/CodeField.jsx';
+export {
+  SegmentedControl,
+  type SegmentedControlProps,
+  type SegmentOption,
+} from '../primitives/SegmentedControl.jsx';
+export {
+  Skeleton,
+  SkeletonText,
+  type SkeletonProps,
+  type SkeletonTextProps,
+} from '../primitives/Skeleton.jsx';
 export { Spacer } from '../primitives/Spacer.jsx';
 export {
   PageControl,

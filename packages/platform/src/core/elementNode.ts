@@ -589,6 +589,14 @@ export interface ElementNode
   _lastAnyKeyPressTime?: number;
   _type: 'element' | 'textNode';
   _undoStyles?: string[];
+  /**
+   * The value each undo key carried before any state wrote it, snapshotted
+   * at first application. A base written as a direct prop (a button's
+   * resting border) is in neither the theme nor the `style` object, so a
+   * fallback derived from those cannot restore it — the state's look would
+   * stay applied forever once the state lifts.
+   */
+  _undoValues?: Record<string, unknown>;
   _display?: 'flex' | 'block';
   _onLayout?: (this: ElementNode, target: ElementNode) => void;
   _requiresLayout: boolean;
@@ -1114,6 +1122,7 @@ export class ElementNode {
     this._fitHeight = undefined;
     this._lastAnyKeyPressTime = undefined;
     this._undoStyles = undefined;
+    this._undoValues = undefined;
     this._display = undefined;
     this._onLayout = undefined;
     this._requiresLayout = false;
@@ -1916,6 +1925,38 @@ export class ElementNode {
       if (this._undoStyles && this._undoStyles.length) {
         stylesToUndo = {};
         this._undoStyles.forEach((styleKey) => {
+          // A base declared with a getter is a live value (reactive
+          // theming): read it now, so the undo lands on what the app
+          // computes at this moment.
+          const style = this._style;
+          const theme = this._theme;
+          let liveContainer: Styles | undefined;
+          let declared: PropertyDescriptor | undefined;
+          if (style !== undefined) {
+            declared = Object.getOwnPropertyDescriptor(style, styleKey);
+            if (declared !== undefined) liveContainer = style;
+          }
+          if (
+            declared === undefined &&
+            theme !== undefined &&
+            styleKey !== 'transition'
+          ) {
+            declared = Object.getOwnPropertyDescriptor(theme, styleKey);
+            if (declared !== undefined) liveContainer = theme;
+          }
+          if (declared !== undefined && declared.get !== undefined) {
+            stylesToUndo![styleKey] = (liveContainer as Styles)[styleKey];
+            return;
+          }
+          // The value the node carried before any state wrote the key: a
+          // base written as a direct prop is in neither the theme nor the
+          // style object, and a fallback derived from those leaves the
+          // state's look applied forever.
+          const snapshotted = this._undoValues?.[styleKey];
+          if (snapshotted !== undefined) {
+            stylesToUndo![styleKey] = snapshotted;
+            return;
+          }
           let fallbackValue = this.theme[styleKey];
 
           if (fallbackValue === undefined) {
@@ -1933,8 +1974,21 @@ export class ElementNode {
 
       const numStates = states.length;
       if (numStates === 0) {
-        Object.assign(this, stylesToUndo);
+        if (stylesToUndo !== undefined) {
+          // The block declared the animation, so the undo mirrors with it:
+          // write the values back while the block's transition is still
+          // active, then restore the base's transition (order-independent,
+          // whatever order the block declared its keys in).
+          const { transition, ...withoutTransition } = stylesToUndo;
+          Object.assign(this, withoutTransition);
+          if (transition !== undefined) {
+            this.transition = transition;
+          } else if ('transition' in stylesToUndo) {
+            this.transition = undefined;
+          }
+        }
         this._undoStyles = [];
+        this._undoValues = undefined;
         return;
       }
 
@@ -1969,6 +2023,15 @@ export class ElementNode {
 
       if (newStyles) {
         this._undoStyles = Object.keys(newStyles);
+        // Snapshot every key this state is about to write, once: the first
+        // application of any state records what was there, whatever declared
+        // it, so the last undo restores the true base. Keys already
+        // snapshotted keep their first value (a lower state's write is not
+        // the base).
+        const undoValues = (this._undoValues ??= {});
+        for (const key of this._undoStyles) {
+          if (!(key in undoValues)) undoValues[key] = this[key];
+        }
         // Apply transition first
         if (newStyles.transition !== undefined) {
           this.transition = newStyles.transition;
@@ -1978,6 +2041,7 @@ export class ElementNode {
         Object.assign(this, newStyles);
       } else {
         this._undoStyles = [];
+        this._undoValues = undefined;
       }
     }
   }

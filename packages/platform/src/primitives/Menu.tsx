@@ -120,6 +120,9 @@ export function Menu(props: MenuProps): JSX.Element {
       placement={props.placement}
       label={props.label ?? 'Menu'}
       role="menu"
+      // The panel is as wide as the rows it holds: on a TV the 420-unit rows
+      // otherwise spill 140 units past the popover's 280-unit background.
+      width={width}
       height={panelHeight()}
       initialFocus={() => list}
       onRequestClose={props.onRequestClose}

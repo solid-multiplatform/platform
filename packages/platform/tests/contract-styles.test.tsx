@@ -235,10 +235,11 @@ v.describe('contract: object spread', () => {
   );
 
   v.it(
-    'spreading a style object as JSX props ({...obj}) sets its keys as props; undo then treats them as JSX props',
+    'spreading a style object as JSX props ({...obj}) sets its keys as props; undo restores the prop values',
     () => {
-      // The pattern in docs/essentials/theming.md. Pinned as is: the values are
-      // props, not style, so undo has no baseline and writes undefined.
+      // The pattern in docs/essentials/theming.md. The values are props,
+      // not style, so before the snapshot the undo had no baseline and
+      // wrote undefined (the base was lost); the snapshot restores it.
       const Dark: lng.NodeStyles = { color: RED, $focus: { color: BLUE } };
       let node!: lng.ElementNode;
       const dispose = renderer.render(() => <view ref={node} {...Dark} />);
@@ -246,7 +247,7 @@ v.describe('contract: object spread', () => {
       node.states.add('$focus');
       v.expect(node.color).toBe(BLUE);
       node.states.remove('$focus');
-      v.expect(node.color).toBeUndefined();
+      v.expect(node.color).toBe(RED);
       dispose();
     },
   );
@@ -735,10 +736,12 @@ v.describe('contract: transition', () => {
   );
 
   v.it(
-    'undo of a $focus block with its own transition: transition key FIRST, the undo lands at once',
+    'undo of a $focus block with its own transition: transition key FIRST, the undo still animates with the block',
     async () => {
-      // Pinned as is, the other half of the order dependence above: here
-      // `transition` is restored (to none) before `scale` is written back.
+      // Order-independent now: the block declared the animation, so the
+      // undo mirrors with it whatever order its keys were declared in.
+      // (Before, this order popped: `transition` was restored — to none —
+      // before `scale` was written back, and the undo landed at once.)
       const settings = { duration: 10 };
       let node!: lng.ElementNode;
       const dispose = renderer.render(() => (
@@ -755,9 +758,10 @@ v.describe('contract: transition', () => {
       await settle(() => v.expect(node.scale).toBe(1.2));
 
       node.states.remove('$focus');
-      v.expect(node.scale).toBe(1);
-      v.expect(animate).toHaveBeenCalledTimes(1);
+      v.expect(animate).toHaveBeenCalledTimes(2);
+      v.expect(animate.mock.calls[1]).toEqual(['scale', 1, settings]);
       v.expect(node.transition).toBeUndefined();
+      await settle(() => v.expect(node.scale).toBe(1));
       dispose();
     },
   );

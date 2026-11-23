@@ -342,7 +342,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   });
 
   v.test(
-    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 114 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 117 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
@@ -387,9 +387,12 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'RichText',
         'Row',
         'SafeArea',
+        'SegmentedControl',
         'Select',
         'SelectableText',
         'Sheet',
+        'Skeleton',
+        'SkeletonText',
         'Slider',
         'Suspense',
         'Svg',
@@ -582,13 +585,14 @@ v.describe('Exports: runtime export names of every entry point', () => {
   // The authoring surface: what an app imports. A name here is a promise to
   // every app; add one only with an example in docs/app-api.md.
   // src/app/index.ts and src/app/entry.ts.
-  v.test('@solid-multiplatform/platform/app: 72 names', () => {
+  v.test('@solid-multiplatform/platform/app: 76 names', () => {
     v.expect(names(app)).toEqual([
       'ActionSheet',
       'ActivityIndicator',
       'Alert',
       'AppErrorBoundary',
       'Button',
+      'CodeField',
       'Column',
       'ErrorBoundary',
       'For',
@@ -605,9 +609,12 @@ v.describe('Exports: runtime export names of every entry point', () => {
       'Row',
       'Screen',
       'SearchField',
+      'SegmentedControl',
       'SelectableText',
       'Sheet',
       'Show',
+      'Skeleton',
+      'SkeletonText',
       'Slider',
       'Spacer',
       'Switch',

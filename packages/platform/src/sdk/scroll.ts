@@ -476,7 +476,10 @@ export function createScrollEngine(options: ScrollEngineOptions): ScrollEngine {
         flightTarget = null;
         glideTo(target, SLOT_SETTLE_RATE);
       } else {
-        apply(clamp(Math.round(offset())));
+        // A free scroll rests where it stopped: rounding to a whole unit is
+        // a sub-pixel teleport on the last frame, and nothing needs the
+        // integer (slots are the snap scroller's job).
+        apply(clamp(offset()));
         settleDone();
       }
     }
@@ -507,7 +510,9 @@ export function createScrollEngine(options: ScrollEngineOptions): ScrollEngine {
     }
     apply(next);
     if (Math.abs(next - edge) < SETTLE_EPSILON && Math.abs(velocity) < 0.05) {
-      apply(edge);
+      // The edge, clamped: content can shrink under a bounce (a list that
+      // virtualises), and the remembered edge may no longer be in bounds.
+      apply(clamp(edge));
       settleDone();
     }
   }
@@ -675,7 +680,9 @@ export function createScrollEngine(options: ScrollEngineOptions): ScrollEngine {
       startFrames();
       return;
     }
-    apply(Math.round(offset()));
+    // In bounds at rest: stay exactly where the finger left it — rounding
+    // here is a last-frame teleport of up to half a unit.
+    apply(clamp(offset()));
     settleDone();
   }
 

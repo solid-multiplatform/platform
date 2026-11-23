@@ -8,6 +8,8 @@ import {
 } from 'solid-js';
 import type { ElementNode } from '@solid-multiplatform/platform';
 import { AppScope } from '../app/context.js';
+import { getRenderer } from '../index.js';
+import type { Rect } from '../sdk/input.js';
 import type { Editor, EditorHost, EditorOptions } from '../sdk/editor.js';
 import { screenRect } from '../sdk/layout.js';
 import { useTheme } from '../sdk/theme.jsx';
@@ -130,6 +132,9 @@ export function CodeField(props: CodeFieldProps): JSX.Element {
   let outer: ElementNode | undefined;
   let row: ElementNode | undefined;
   let editor: Editor | undefined;
+  // The last rect handed to the host editor, so an unchanged row is not sent
+  // again: layout passes, focus and frame ticks all re-read it.
+  let sent: Rect | undefined;
 
   const hasLabel = () => (props.label ?? '').trim() !== '';
   const labelSize = () => theme.typography.label;
@@ -165,6 +170,21 @@ export function CodeField(props: CodeFieldProps): JSX.Element {
     };
   };
 
+  const sendBounds = () => {
+    if (editor === undefined) return;
+    const rect = bounds();
+    if (
+      sent !== undefined &&
+      sent.x === rect.x &&
+      sent.y === rect.y &&
+      sent.width === rect.width &&
+      sent.height === rect.height
+    )
+      return;
+    sent = rect;
+    editor.setBounds(rect);
+  };
+
   /**
    * Keep the slots above the keyboard. The nearest touch-scrolling ancestor
    * (a form Column) knows how to move its content; the editor then re-reads
@@ -189,7 +209,7 @@ export function CodeField(props: CodeFieldProps): JSX.Element {
       // microtask, so read the row one microtask after that.
       queueMicrotask(() => {
         queueMicrotask(() => {
-          if (editing() && editor !== undefined) editor.setBounds(bounds());
+          if (editing()) sendBounds();
         });
       });
     };
@@ -222,18 +242,24 @@ export function CodeField(props: CodeFieldProps): JSX.Element {
    * comment). Whatever the code becomes, the editor is asked to hold exactly
    * that, so its own drawing never disagrees with the boxes.
    *
-   * One delivery stays genuinely ambiguous through this port: a whole-field
-   * replacement (select-all paste, autofill) whose code starts with what the
-   * field already held reads the same as appending the new remainder, and the
-   * fragment reading wins. Pasting again fixes it, and an autofill onto an
-   * empty or differently-starting field — the usual flow — is never
-   * ambiguous.
+   * A whole code delivered over an incomplete field — select-all paste,
+   * autofill, a password manager's fill — is the code, however the host
+   * diffed it against what was typed. The fragment reading would keep only
+   * its tail (holding "1234", autofilled "123456" would read as "56"); the
+   * code wins. The one residual ambiguity is a fragment paste that happens
+   * to be as long as a code and to start with what was already typed: it is
+   * value-identical to that code arriving, so it reads the same way.
    */
   const commit = (after: string) => {
     if (after === raw) return;
     const inserted = codeChars(insertionOf(raw, after));
     const was = code();
-    const next = inserted.length >= 2 ? clean(inserted) : clean(after);
+    // A whole code replaces whatever was typed.
+    const deliveredFull = codeChars(after).length >= slots();
+    const next =
+      !deliveredFull && inserted.length >= 2
+        ? clean(inserted)
+        : clean(after);
     raw = next;
     if (next !== after) editor?.setValue(next);
     if (next === was) return;
@@ -250,7 +276,13 @@ export function CodeField(props: CodeFieldProps): JSX.Element {
   };
 
   const open = () => {
-    if (props.disabled || host === undefined) return;
+    if (props.disabled) return;
+    // A tap lands here before focus does: take scene focus, so whatever was
+    // focused blurs and its host editor resigns. Focus application is a
+    // post-mutation microtask; this field's own onFocus re-runs `open`, which
+    // is idempotent.
+    outer?.setFocus();
+    if (host === undefined) return;
     if (editor === undefined) {
       raw = code();
       editor = host.createEditor({
@@ -265,7 +297,7 @@ export function CodeField(props: CodeFieldProps): JSX.Element {
         onBlur: () => setEditing(false),
       });
     }
-    editor.setBounds(bounds());
+    sendBounds();
     setEditing(true);
     editor.focus();
     revealInScroller();
@@ -286,9 +318,31 @@ export function CodeField(props: CodeFieldProps): JSX.Element {
     if (!editing() || ime <= 0) return;
     revealInScroller();
   });
+  // A touch drag moves a scroller under the row with raw `y` writes: no
+  // layout, no scene event, and nothing else would move the editor with it.
+  // The renderer ticks a frame for each write while the gesture runs and
+  // sleeps while the scene is still, so the row is re-read on those ticks
+  // alone — the overlay follows the scroll, and an idle scene schedules
+  // nothing.
+  createEffect(() => {
+    if (!editing()) return;
+    const sink = getRenderer() as unknown as
+      | {
+          on(event: 'frameTick', listener: () => void): void;
+          off?(event: 'frameTick', listener: () => void): void;
+        }
+      | undefined;
+    if (sink === undefined || typeof sink.on !== 'function') return;
+    const follow = () => {
+      if (editing() && editor !== undefined) sendBounds();
+    };
+    sink.on('frameTick', follow);
+    onCleanup(() => sink.off?.('frameTick', follow));
+  });
   onCleanup(() => {
     editor?.dispose();
     editor = undefined;
+    sent = undefined;
   });
 
   return (
@@ -319,7 +373,7 @@ export function CodeField(props: CodeFieldProps): JSX.Element {
       // The keyboard scrolls the form; the host editor has to follow the
       // slots it covers, so its box is re-read after every layout pass.
       onLayout={() => {
-        if (editing() && editor !== undefined) editor.setBounds(bounds());
+        if (editing() && editor !== undefined) sendBounds();
       }}
     >
       {hasLabel() ? (
@@ -344,6 +398,11 @@ export function CodeField(props: CodeFieldProps): JSX.Element {
         width={rowWidth()}
         height={rowHeight()}
         flexBoundary="fixed"
+        // The outer view forwards its states to direct children only, and
+        // the slot boxes are this row's children: without forwarding here
+        // the boxes never see `$focus` and the field shows no focus look at
+        // all — on a TV that is no affordance whatsoever.
+        forwardStates
       >
         <Index each={Array.from({ length: slots() })}>
           {(_, index) => (

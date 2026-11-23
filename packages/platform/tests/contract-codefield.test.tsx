@@ -227,16 +227,20 @@ v.test('a paste into a partially filled field replaces the code', async () => {
     h.host,
   );
   for (const char of '1234') type(h, char);
-  // The host delivered the paste at the caret, after what was already there.
+  // The host delivered the paste at the caret, after what was already
+  // there. The delivered text is now the six characters "123412", which is
+  // value-identical to autofill arriving with that code: the field reads it
+  // as the code rather than keeping only the "12" tail. (The two are
+  // indistinguishable through the editor port, and the code wins.)
   pasteAtCaret(h, '12');
-  v.expect(codes.at(-1)).toBe('12');
-  v.expect(slotTexts(root, 6)).toEqual(['1', '2', '', '', '', '']);
+  v.expect(codes.at(-1)).toBe('123412');
+  v.expect(slotTexts(root, 6)).toEqual(['1', '2', '3', '4', '1', '2']);
   // The same paste over a select-all is reported as the whole new text.
   pasteOverAll(h, '9988');
   v.expect(codes.at(-1)).toBe('9988');
   v.expect(slotTexts(root, 6)).toEqual(['9', '9', '8', '8', '', '']);
   // A full six-character paste over the partial code fills every slot.
-  pasteAtCaret(h, '123456');
+  pasteOverAll(h, '123456');
   v.expect(codes.at(-1)).toBe('123456');
   v.expect(slotTexts(root, 6)).toEqual(['1', '2', '3', '4', '5', '6']);
 });
@@ -412,5 +416,98 @@ v.test(
     const last = h.rects.at(-1)!;
     v.expect(last.y).toBeLessThan(h.rects[0]!.y);
     v.expect(last.y).toBeGreaterThanOrEqual(0);
+  },
+);
+
+v.test('autofill over a typed digit delivers the whole code', async () => {
+  const h = editorHost();
+  const codes: string[] = [];
+  const root = await mount(
+    () => (
+      <CodeField slots={6} autofocus onChange={(code) => codes.push(code)} />
+    ),
+    h.host,
+  );
+  // The person starts typing; the SMS arrives and the system fills the
+  // field in one delivery. The fragment reading kept only the tail
+  // ("23456"); the whole code wins.
+  type(h, '1');
+  pasteOverAll(h, '123456');
+  v.expect(codes.at(-1)).toBe('123456');
+  v.expect(slotTexts(root, 6)).toEqual(['1', '2', '3', '4', '5', '6']);
+});
+
+v.test(
+  'a focused field forwards its focus state to the slot boxes',
+  async () => {
+    const h = editorHost();
+    let outer: unknown;
+    const root = await mount(
+      () => (
+        <CodeField
+          slots={6}
+          autofocus
+          ref={(node) => {
+            outer = node;
+          }}
+        />
+      ),
+      h.host,
+    );
+    const outerNode = outer as unknown as {
+      states: { add(name: string): void; has(name: string): boolean };
+      children: readonly {
+        forwardStates?: boolean;
+        states: { has(name: string): boolean };
+      }[];
+    };
+    outerNode.states.add('$focus');
+    // The row wrapper forwards to its children, so every slot box draws
+    // the focus state — the field's only affordance on a TV.
+    const row = outerNode.children.find((child) => child.forwardStates === true);
+    v.expect(row).toBeDefined();
+    v.expect(
+      (row as { children: readonly { states: { has(n: string): boolean } }[] })
+        .children.every((box) => box.states.has('$focus')),
+    ).toBe(true);
+    // The characters still read through the same slots.
+    v.expect(slotTexts(root, 6).length).toBe(6);
+  },
+);
+
+v.test(
+  'the editor follows the form while a drag scrolls it under the slots',
+  async () => {
+    const h = editorHost();
+    let column!: lng.ElementNode;
+    await mount(
+      () => (
+        <view width={400} height={300} clipping>
+          <Column
+            ref={(node) => (column = node as lng.ElementNode)}
+            width={400}
+            height={300}
+            scroll="touch"
+          >
+            <view width={400} height={400} />
+            <CodeField slots={4} autofocus />
+          </Column>
+        </view>
+      ),
+      h.host,
+    );
+    await settle();
+    const before = h.rects.at(-1)! as { y: number };
+    const callsBefore = h.rects.length;
+    // The touch engine moves its scroller with raw `y` writes: no layout, no
+    // scene event. Frame ticks are what follow it — the renderer emits them
+    // while frames draw and none while the scene is still.
+    column.y -= 100;
+    (renderer.renderer as unknown as {
+      emit(event: string, data?: unknown): void;
+    }).emit('frameTick', { time: 0, delta: 16 });
+    v.expect(h.rects.length).toBeGreaterThan(callsBefore);
+    const after = h.rects.at(-1)! as { y: number };
+    v.expect(after.y).toBeCloseTo(before.y - 100, 5);
   },
 );

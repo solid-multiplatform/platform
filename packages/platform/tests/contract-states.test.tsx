@@ -437,8 +437,12 @@ v.describe('contract: $state blocks inside style apply and undo', () => {
   });
 
   v.it(
-    'undo: a prop in both style and JSX returns to the STYLE value, not the JSX value',
+    'undo: a prop in both style and JSX returns to the JSX value the node showed',
     () => {
+      // JSX keys win over style at mount, so the value the state covered is
+      // the JSX one — the snapshot restores exactly that. (Before the
+      // snapshot, undo derived a fallback from theme/style and returned the
+      // style value instead.)
       let node!: lng.ElementNode;
       const dispose = renderer.render(() => (
         <view
@@ -451,14 +455,17 @@ v.describe('contract: $state blocks inside style apply and undo', () => {
       node.states.add('$focus');
       v.expect(node.color).toBe(BLUE);
       node.states.remove('$focus');
-      v.expect(node.color).toBe(RED);
+      v.expect(node.color).toBe(GREEN);
       dispose();
     },
   );
 
   v.it(
-    'undo: a prop only in JSX, overridden by $focus, returns to undefined (the JSX value is lost)',
+    'undo: a prop only in JSX, overridden by $focus, keeps the JSX value',
     () => {
+      // The JSX base is in neither theme nor style, so the old fallback
+      // undid it to undefined (the value was lost, and some backends turned
+      // that into black). The snapshot returns what was there.
       let node!: lng.ElementNode;
       const dispose = renderer.render(() => (
         <view ref={node} color={GREEN} style={{ $focus: { color: BLUE } }} />
@@ -467,14 +474,14 @@ v.describe('contract: $state blocks inside style apply and undo', () => {
       node.states.add('$focus');
       v.expect(node.color).toBe(BLUE);
       node.states.remove('$focus');
-      v.expect(node.color).toBeUndefined();
+      v.expect(node.color).toBe(GREEN);
       dispose();
     },
   );
 
-  v.it('undo: a prop with no base value anywhere is written undefined', () => {
-    // The DOM renderer reads back an undefined alpha as undefined and an
-    // undefined scale as 1 (its getter is `props.scale ?? 1`).
+  v.it('undo: a prop with no base value anywhere rests at its default', () => {
+    // The snapshot reads the getter's effective value (alpha 1, scale 1),
+    // and restoring that is what "never set" draws: identical to undefined.
     let node!: lng.ElementNode;
     const dispose = renderer.render(() => (
       <view ref={node} style={{ $focus: { alpha: 0.5, scale: 1.2 } }} />
@@ -484,7 +491,7 @@ v.describe('contract: $state blocks inside style apply and undo', () => {
     v.expect(node.alpha).toBe(0.5);
     v.expect(node.scale).toBe(1.2);
     node.states.remove('$focus');
-    v.expect(node.alpha).toBeUndefined();
+    v.expect(node.alpha).toBe(1);
     v.expect(node.scale).toBe(1);
     dispose();
   });
@@ -525,8 +532,11 @@ v.describe('contract: $state blocks inside style apply and undo', () => {
   );
 
   v.it(
-    'undo: a reactive JSX prop that changes while the state is on wins until undo, then style wins',
+    'undo: a reactive JSX prop that changes while the state is on wins until undo, then the pre-state value returns',
     () => {
+      // The write during the state is indistinguishable from any other
+      // handler write (test above), so undo restores the value the node
+      // carried when the state applied — the mount-time JSX value.
       let node!: lng.ElementNode;
       const [color, setColor] = s.createSignal(GREEN);
       const dispose = renderer.render(() => (
@@ -540,7 +550,7 @@ v.describe('contract: $state blocks inside style apply and undo', () => {
       setColor(WHITE);
       v.expect(node.color).toBe(WHITE);
       node.states.remove('$focus');
-      v.expect(node.color).toBe(RED);
+      v.expect(node.color).toBe(GREEN);
       dispose();
     },
   );
@@ -867,6 +877,93 @@ v.describe('contract: forwardStates', () => {
       v.expect(statesOf(plainGrandchild)).toEqual([]);
       v.expect(statesOf(forwardingChild)).toEqual(['$focus']);
       v.expect(statesOf(forwardedGrandchild)).toEqual(['$focus']);
+      dispose();
+    },
+  );
+});
+
+// Contract: undoing a state restores what the node carried before it,
+// whatever declared that base. A base written as a direct prop (a button's
+// resting border or fill) is in neither the theme nor the `style` object;
+// before the snapshot, undoing left the state's value applied forever (and
+// wrote undefined through, which some backends turned into black or garbage).
+v.describe('contract: undo restores direct-prop bases', () => {
+  v.it('a direct color base survives a state round trip', () => {
+    let node!: lng.ElementNode;
+    const dispose = renderer.render(() => (
+      <view
+        ref={node}
+        color={RED}
+        style={{ $focus: { color: GREEN } }}
+      />
+    ));
+    v.expect(node.color).toBe(RED);
+    node.states.add('$focus');
+    v.expect(node.color).toBe(GREEN);
+    node.states.remove('$focus');
+    v.expect(node.color).toBe(RED);
+    dispose();
+  });
+
+  v.it('a direct scale base survives a state round trip', () => {
+    let node!: lng.ElementNode;
+    const dispose = renderer.render(() => (
+      <view ref={node} scale={1.2} style={{ $focus: { scale: 2 } }} />
+    ));
+    v.expect(node.scale).toBe(1.2);
+    node.states.add('$focus');
+    v.expect(node.scale).toBe(2);
+    node.states.remove('$focus');
+    v.expect(node.scale).toBe(1.2);
+    dispose();
+  });
+
+  v.it('stacked states peel back to each layer, then to the base', () => {
+    let node!: lng.ElementNode;
+    const dispose = renderer.render(() => (
+      <view
+        ref={node}
+        color={RED}
+        style={{
+          $hover: { color: BLUE },
+          $focus: { color: GREEN },
+        }}
+      />
+    ));
+    v.expect(node.color).toBe(RED);
+    node.states.add('$hover');
+    v.expect(node.color).toBe(BLUE);
+    node.states.add('$focus');
+    v.expect(node.color).toBe(GREEN);
+    // Focus lifts: the hover value it covered returns, not the base.
+    node.states.remove('$focus');
+    v.expect(node.color).toBe(BLUE);
+    // Hover lifts: the original base, not the hover value.
+    node.states.remove('$hover');
+    v.expect(node.color).toBe(RED);
+    dispose();
+  });
+
+  v.it(
+    'undo mirrors with the state block animation, then restores the base transition',
+    () => {
+      let node!: lng.ElementNode;
+      const dispose = renderer.render(() => (
+        <view
+          ref={node}
+          scale={1}
+          style={{
+            transition: { scale: { duration: 200 } },
+            $focus: { scale: 2, transition: { scale: { duration: 120 } } },
+          }}
+        />
+      ));
+      node.states.add('$focus');
+      node.states.remove('$focus');
+      // The undo animated under the block's own transition (it declared
+      // the animation), and the base's transition is what remains — so the
+      // next application animates at the base's pace.
+      v.expect(node.transition).toEqual({ scale: { duration: 200 } });
       dispose();
     },
   );

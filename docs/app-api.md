@@ -172,6 +172,30 @@ export function SignIn() {
 
 On a host without an editor the field still draws its label, placeholder and value; pressing Enter does nothing. The host editor is the `text` of `HostContext`, so a web build shows a real input and Roku opens its native keyboard dialog.
 
+### CodeField
+
+A one-time-code (OTP) field: `slots` boxes drawn in the scene (six by default), one host editor over them. Typing fills the slots in order, backspace clears the last and retreats, and a paste — or autofill, or a password manager's fill — delivers the whole code at once and fills every slot: a delivered code the length of the field is the code, whatever it was pasted over. The field is one focus stop, so a remote operates it whole, and the default `purpose` is `one-time-code` (the web build gets `autocomplete="one-time-code"`, Roku opens its numeric keyboard). The editor overlay follows the slots when the keyboard scrolls the form.
+
+```tsx
+import { CodeField, createSignal } from '@solid-multiplatform/platform/app';
+
+export function Verify() {
+  const [code, setCode] = createSignal('');
+  return (
+    <CodeField
+      label="Verification code"
+      value={code()}
+      onChange={setCode}
+      onComplete={verify}
+      autofocus
+    />
+  );
+}
+```
+
+- `slots` (default 6), `label`, `value`/`onChange` (passing `''` clears), `onComplete` (fires once when the last slot fills), `onSubmit` (Return on a complete code), `secure` (draws asterisks), `purpose` (default `'one-time-code'`), plus `autofocus`, `disabled`, `blurOnSubmit`, `width`, `height`, `ref`.
+- Separators in a delivered code (spaces, dashes) never count toward the slots.
+
 ### Switch, Slider and ActivityIndicator
 
 `ToggleSwitch` is Apple's switch (`Switch` from the primitives entry, renamed here because Solid already exports its conditional `Switch`): the whole labelled row is one focus/touch target and the knob slides when toggled. `Slider` is a controlled track with a round knob; drag it or use Left/Right/Home/End. `ActivityIndicator` is the eight-spoke spinner; it animates only while `animating` and follows Reduce Motion.
@@ -191,6 +215,50 @@ import {
 ### ActionSheet
 
 Apple's action sheet for a set of related choices: a dimmed parent, a card of choices (a destructive one in red), and a separate Cancel button. Tapping outside or Back cancels.
+
+### SegmentedControl
+
+Apple's segmented control: a row of equal-width segments, one choice, noun labels. Enter or a click selects on a pointer host; on a remote host a segment becomes selected when focus moves to it (tvOS), without pressing OK. A disabled segment is skipped by focus. Nothing is scheduled while the scene is idle.
+
+```tsx
+import {
+  SegmentedControl,
+  createSignal,
+} from '@solid-multiplatform/platform/app';
+
+export function RangePicker() {
+  const [range, setRange] = createSignal<'day' | 'week' | 'month'>('day');
+  return (
+    <SegmentedControl
+      label="Range"
+      options={[
+        { value: 'day', label: 'Day' },
+        { value: 'week', label: 'Week' },
+        { value: 'month', label: 'Month' },
+      ]}
+      value={range()}
+      onChange={setRange}
+    />
+  );
+}
+```
+
+### Skeleton and SkeletonText
+
+Content-shaped placeholders, the `.redacted` idiom: show something as soon as possible and replace it when the content arrives. Draw them in the same layout the loaded content uses, behind an ordinary `Show`. Static by default — nothing is scheduled while the scene idles; `pulse` opts into one slow alpha loop on one node, and Reduce Motion turns it off.
+
+```tsx
+import {
+  Skeleton,
+  SkeletonText,
+  Show,
+} from '@solid-multiplatform/platform/app';
+
+<Show when={album()} fallback={<SkeletonText width={320} lines={3} />}>
+  {(a) => <AlbumHeader album={a()} />}
+</Show>;
+<Skeleton width={320} height={180} label="Album cover" />;
+```
 
 ### PageControl
 

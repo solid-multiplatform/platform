@@ -58,6 +58,8 @@ export * from './ListState.jsx';
 export * from './Drawer.jsx';
 export * from './AppErrorBoundary.jsx';
 export * from './Choice.jsx';
+export * from './SegmentedControl.jsx';
+export * from './Skeleton.jsx';
 export * from './Switch.jsx';
 export * from './Slider.jsx';
 export * from './ActivityIndicator.jsx';

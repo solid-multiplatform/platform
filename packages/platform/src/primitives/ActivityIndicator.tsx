@@ -30,12 +30,19 @@ export function ActivityIndicator(props: ActivityIndicatorProps): JSX.Element {
   const barHeight = () => Math.max(3, Math.round(size() * 0.28));
   const color = () => props.color ?? theme.colors.textMuted;
   let node: ElementNode | undefined;
-  let animation: { stop(): void } | undefined;
+  let animation: {
+    start(): void;
+    stop(): void;
+    restore?(): void;
+  } | undefined;
 
   createEffect(() => {
     const animating = props.animating !== false && Config.animationsEnabled;
     if (node === undefined || !animating) {
+      // Stop where it is and put the static ring back: a spinner frozen at
+      // an arbitrary angle is an end-state snap of its own.
       animation?.stop();
+      animation?.restore?.();
       animation = undefined;
       return;
     }
@@ -44,9 +51,13 @@ export function ActivityIndicator(props: ActivityIndicatorProps): JSX.Element {
       { rotation: Math.PI * 2 },
       { duration: 900, loop: true, easing: 'linear' },
     );
+    // The animation is inert until started: every sibling primitive calls
+    // start(), and without it the ring never spins at all.
+    animation.start();
   });
   onCleanup(() => {
     animation?.stop();
+    animation?.restore?.();
     animation = undefined;
   });
 
