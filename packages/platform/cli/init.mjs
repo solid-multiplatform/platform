@@ -172,7 +172,14 @@ export function init(destination, selected) {
     );
   freshDirectory(destination, (root) => {
     const vendor = path.join(root, 'vendor');
-    const { file: rendererFile, name: renderer } = rendererArchive();
+    // Refresh in a source checkout: the workspace renderer is right there,
+    // and a cached archive silently ships stale renderer code into every
+    // scaffold (the Nov 19 archive outlived four days of renderer fixes).
+    // In a packed platform archive there is no workspace sibling and the
+    // archive is used as is.
+    const { file: rendererFile, name: renderer } = rendererArchive({
+      refresh: true,
+    });
     copy(rendererFile, path.join(vendor, renderer));
     command(
       'npm',
