@@ -1,5 +1,6 @@
 import * as s from 'solid-js';
 import * as lng from '@solid-multiplatform/platform';
+import { isDev } from '../core/env.js';
 import * as lngp from '@solid-multiplatform/platform/primitives';
 import { List } from '@solid-primitives/list';
 import * as utils from '../utils.js';
@@ -59,10 +60,21 @@ function createVirtual<T>(
   const items = s.createMemo(() => props.each || []);
   const itemCount = s.createMemo(() => items().length);
   // Touch scrolling needs a content offset the virtualiser owns; this pass
-  // keeps the focus-driven window (`auto`) and documents the deferral.
-  const scrollType = s.createMemo(() =>
-    props.scroll === 'touch' ? 'auto' : props.scroll || 'auto',
-  );
+  // keeps the focus-driven window (`auto`) and documents the deferral — but
+  // says so, because silently swapping a requested interaction model is
+  // the kind of surprise an app author must be told about.
+  const scrollType = s.createMemo(() => {
+    if (props.scroll === 'touch') {
+      if (isDev) {
+        console.warn(
+          'VirtualRow/VirtualColumn: scroll="touch" is not implemented on virtualised lists yet; ' +
+            'the focus-driven window ("auto") is used instead.',
+        );
+      }
+      return 'auto';
+    }
+    return props.scroll || 'auto';
+  });
   const indexByKey = s.createMemo(() =>
     keyIndex(items(), props.itemKey, isRow ? 'VirtualRow' : 'VirtualColumn'),
   );

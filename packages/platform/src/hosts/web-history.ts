@@ -18,8 +18,10 @@ const depthOf = (): number | undefined => {
 
 /** Puts the current entry's depth in its state, as the router reads it. */
 const rememberDepth = (): number | undefined => {
+  // `state` is null on a fresh browser tab and undefined in some embedders;
+  // either way there is no depth to read.
   const state = window.history.state as Record<string, unknown> | null;
-  if (state === null || state._depth == null) {
+  if (state == null || state._depth == null) {
     window.history.replaceState(
       { ...state, _depth: window.history.length - 1 },
       '',
