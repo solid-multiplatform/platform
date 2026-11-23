@@ -558,9 +558,17 @@ export function createScrollEngine(options: ScrollEngineOptions): ScrollEngine {
     return raw;
   }
 
+  /**
+   * A sample spaced under a millisecond from the previous one is a burst
+   * delivered in one wall-clock instant (a host replaying coalesced
+   * history), not finger movement: its real delta over a near-zero dt reads
+   * as a huge velocity and throws the release. 120 Hz delivers every 8 ms,
+   * so nothing a recognizer should believe is that close.
+   */
+  const MIN_SAMPLE_MS = 1;
   function pushSample(p: number, t: number) {
     const dt = t - lastSample.t;
-    if (dt > 0) {
+    if (dt > MIN_SAMPLE_MS) {
       // The sample velocity is in offset space: a finger moving +p scrolls
       // the content the other way.
       const sample = (lastSample.p - p) / dt;

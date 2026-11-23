@@ -172,6 +172,31 @@ describe('scroll engine physics', () => {
     expect(landingStep).toBeLessThanOrEqual(2);
   });
 
+  test('samples bursting in one instant do not throw the release velocity', () => {
+    const clock = fakeClock();
+    const engine = engineAt(clock);
+    engine.layout(5_000, 500);
+
+    engine.dragAxis('start', 100);
+    clock.advance(16);
+    engine.dragAxis('move', 98);
+    clock.advance(16);
+    engine.dragAxis('move', 96);
+    // A host replaying coalesced history delivers real deltas a few
+    // hundredths of a millisecond apart: dividing movement by that dt read
+    // as tens of units per millisecond and multiplied the fling ~20x.
+    clock.advance(0.05);
+    engine.dragAxis('move', 94.5);
+    clock.advance(0.05);
+    engine.dragAxis('move', 93);
+    clock.advance(16);
+    engine.dragAxis('move', 91);
+    engine.dragAxis('end', 91);
+
+    // The honest samples say ~0.12 units/ms; the burst must not lift it.
+    expect(engine.velocity()).toBeLessThan(0.5);
+  });
+
   test('a settled engine schedules nothing', () => {
     const clock = fakeClock();
     const engine = engineAt(clock);

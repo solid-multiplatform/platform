@@ -23,16 +23,13 @@ export function bindSceneTouch(canvas, target) {
       for (let i = 0; i < event.getPointerCount(); i++) {
         if (action !== 2 && i !== index) continue;
         const id = event.getPointerId(i);
-        // A frame that overran coalesces the samples since the last event
-        // into history. Dropping them loses a segment of the finger's path:
-        // one event then applies a doubled delta and the release velocity
-        // spikes. Replay every sample in order, history first.
-        const history = event.getHistorySize();
-        for (let h = 0; h < history; h++) {
-          point.x = event.getHistoricalX(i, h) / density;
-          point.y = event.getHistoricalY(i, h) / density;
-          scope.move(id, point, false);
-        }
+        // The current sample only. Coalesced history samples carry real
+        // positions but arrive in one burst (sub-millisecond apart on the
+        // wall clock), and the recognizer divides movement by arrival time:
+        // replaying them reads as tens of units per millisecond and throws
+        // the release velocity ~20x. The recognizer keeps its own burst
+        // guard (pushSample), but the honest path is one live sample per
+        // event, as the platform has always delivered.
         point.x = event.getX(i) / density;
         point.y = event.getY(i) / density;
         if (action === 0 || action === 5) scope.down(id, point);
