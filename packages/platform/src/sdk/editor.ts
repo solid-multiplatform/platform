@@ -1,3 +1,4 @@
+import { Config } from '../core/config.js';
 import type { Rect } from './input.js';
 
 export interface EditorOptions {
@@ -38,6 +39,25 @@ export interface EditorHost {
   createEditor(options: EditorOptions): Editor;
 }
 
+/** `0xRRGGBBAA` as the CSS colour the browser takes. */
+const cssColor = (value: number): string =>
+  `rgba(${(value >>> 24) & 0xff}, ${(value >>> 16) & 0xff}, ${
+    (value >>> 8) & 0xff
+  }, ${((value & 0xff) / 0xff).toFixed(3)})`;
+
+/**
+ * The stylesheet every editor of a host shares: the browser styles a
+ * placeholder with its own grey unless a rule says otherwise, and the scene
+ * draws the hint in the theme's muted colour. The colour itself travels on
+ * each input as a custom property, so one rule serves every field.
+ */
+const PLACEHOLDER_RULE =
+  'input.solid-editor::placeholder,textarea.solid-editor::placeholder{' +
+  'color:var(--solid-placeholder,rgba(128,128,128,0.54));opacity:1;}';
+
+/** Parents whose placeholder rule has been installed, at most once each. */
+const styledParents = new WeakSet<HTMLElement>();
+
 /** Pass a positioned overlay or a form. The browser owns selection, IME and autofill. */
 export function browserEditorHost(parent: HTMLElement): EditorHost {
   return {
@@ -58,9 +78,11 @@ export function browserEditorHost(parent: HTMLElement): EditorHost {
               : purpose === 'number'
                 ? 'number'
                 : 'text';
-      if (purpose === 'number') input.setAttribute('inputmode', 'numeric');
+      if (purpose === 'number' || purpose === 'one-time-code')
+        input.setAttribute('inputmode', 'numeric');
       if (purpose === 'search') input.setAttribute('enterkeyhint', 'search');
       input.name = purpose;
+      input.className = 'solid-editor';
       if (options.placeholder !== undefined)
         input.placeholder = options.placeholder;
       input.setAttribute('aria-label', options.label);
@@ -69,8 +91,36 @@ export function browserEditorHost(parent: HTMLElement): EditorHost {
         purpose === 'search' || purpose === 'text' ? 'on' : purpose,
       );
       input.value = options.value ?? '';
+      // The editor replaces a field the scene drew: no chrome of its own, the
+      // scene's type size and colour, so focusing causes no visible reflow.
+      const family = Config.fontSettings.fontFamily;
+      const size = options.fontSize ?? 16;
       input.style.cssText =
-        'position:absolute;box-sizing:border-box;margin:0;pointer-events:auto';
+        'position:absolute;box-sizing:border-box;margin:0;padding:0;' +
+        'pointer-events:auto;background:transparent;border:none;outline:none;' +
+        (family !== undefined ? `font-family:${String(family)};` : '') +
+        `font-size:${size}px;line-height:${Math.round(size * 1.35)}px;` +
+        (options.color !== undefined
+          ? `color:${cssColor(options.color)};caret-color:${cssColor(
+              options.color,
+            )};`
+          : '');
+      if (options.placeholderColor !== undefined)
+        input.style.setProperty(
+          '--solid-placeholder',
+          cssColor(options.placeholderColor),
+        );
+      const ownerDocument = input.ownerDocument;
+      if (
+        options.placeholderColor !== undefined &&
+        !styledParents.has(parent) &&
+        ownerDocument !== null
+      ) {
+        styledParents.add(parent);
+        const style = ownerDocument.createElement('style');
+        style.textContent = PLACEHOLDER_RULE;
+        ownerDocument.head.appendChild(style);
+      }
       input.addEventListener('input', () => options.onChange(input.value));
       input.addEventListener('blur', () => options.onBlur?.());
       input.addEventListener('keydown', (e) => {
@@ -85,6 +135,13 @@ export function browserEditorHost(parent: HTMLElement): EditorHost {
           key.preventDefault();
           options.onSubmit(input.value);
           if (options.blurOnSubmit === true) input.blur();
+          return;
+        }
+        // Escape ends editing and hands the key back to the scene, so an
+        // open field never traps the dialog-close key while a page listens.
+        if (key.key === 'Escape' && !key.isComposing) {
+          key.preventDefault();
+          input.blur();
         }
       });
       input.addEventListener('keyup', (e) => e.stopPropagation());

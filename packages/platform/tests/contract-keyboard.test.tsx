@@ -96,6 +96,40 @@ v.describe('KeyboardAvoidingView', () => {
     dispose();
   });
 
+  v.it('relaxes when the host reports the keyboard hidden', async () => {
+    updateViewport({
+      width: 800,
+      height: 600,
+      scale: 1,
+      safeArea: zeroInsets,
+      keyboardInset: 250,
+      reducedMotion: false,
+    });
+    let node!: lng.ElementNode;
+    const dispose = renderer.render(() => (
+      <KeyboardAvoidingView
+        behavior="height"
+        ref={(n) => (node = n as lng.ElementNode)}
+      />
+    ));
+    await waitForUpdate();
+    v.expect(node.height).toBe(350);
+    // The field blurred, the host dismissed the IME, and the inset the host
+    // publishes went back to zero: the container must give the space back,
+    // or the form stays pushed up over an empty band.
+    updateViewport({
+      width: 800,
+      height: 600,
+      scale: 1,
+      safeArea: zeroInsets,
+      keyboardInset: 0,
+      reducedMotion: false,
+    });
+    await waitForUpdate();
+    v.expect(node.height).toBe(600);
+    dispose();
+  });
+
   v.it('moves itself up for position behaviour', async () => {
     updateViewport({
       width: 800,

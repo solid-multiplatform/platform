@@ -135,7 +135,18 @@ export function desktopEditors(
     const view = mountField({
       state: state(),
       multiline,
-      style,
+      // The hint the scene drew while the field was unfocused, in its colour:
+      // a focused empty field still says what it is.
+      placeholder: options.placeholder,
+      placeholderColor: options.placeholderColor,
+      // The rect the scene sent is where its text already sits (inset by the
+      // field's own padding), so the view draws at the rect's origin with the
+      // scene's type size and colour: focusing hands over with no reflow.
+      style: {
+        ...style,
+        fontSize: options.fontSize ?? style.fontSize,
+        color: options.color ?? style.color,
+      },
       /** An offset into what is shown as an offset into the text. */
       toText(offset: number): number {
         if (!secret) return offset;
@@ -337,7 +348,12 @@ export function desktopEditors(
         switch (event.key) {
           case 'Enter':
             if (multiline) replace('\n');
-            else options.onSubmit?.(value);
+            else {
+              options.onSubmit?.(value);
+              // Return ends editing when the field asks for it, as the phone
+              // and web editors do.
+              if (options.blurOnSubmit === true) field.blur();
+            }
             break;
           case 'Backspace':
           case 'Delete':

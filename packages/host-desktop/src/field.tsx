@@ -23,11 +23,20 @@ export interface FieldStyle {
   /** Defaults to half the field's height, between 12 and 28. */
   fontSize?: number;
   color?: number;
+  /** Behind the text. Default transparent: the scene's own box shows. */
   background?: number;
+  /**
+   * Behind the text while focused. Default transparent: a focused field
+   * looks like the scene's field with a caret, the way an inline edit does.
+   */
   focusedBackground?: number;
   selectionColor?: number;
+  /** The caret and the composition underline. Default the text colour. */
   caretColor?: number;
-  /** Space left and right of the text. Default 6. */
+  /**
+   * Space left and right of the text. Default 0: the rect the platform
+   * sends is already inset by its field's padding.
+   */
   padding?: number;
   /** Where a field sorts among the scene's top nodes. Default 10000. */
   zIndex?: number;
@@ -45,6 +54,10 @@ interface Mount {
   state: FieldState;
   multiline: boolean;
   style: FieldStyle;
+  /** Drawn while focused and empty, as the field the scene drew its hint in. */
+  placeholder?: string;
+  /** Hint colour, 0xRRGGBBAA. */
+  placeholderColor?: number;
   /** An offset into what is shown as an offset into the text. */
   toText(offset: number): number;
   /** The caret is `x` units from the field's left edge. */
@@ -67,7 +80,7 @@ interface Measurer {
 
 export function mountField(mount: Mount): FieldView {
   const style = mount.style;
-  const padding = style.padding ?? 6;
+  const padding = style.padding ?? 0;
   const [state, setState] = createSignal(mount.state);
   const [rect, setRect] = createSignal<Rect>({
     x: 0,
@@ -143,7 +156,9 @@ export function mountField(mount: Mount): FieldView {
   const scrollX = (): number =>
     Math.max(0, caretX() - (rect().width - 2 * padding - 2));
   const top = (): number =>
-    mount.multiline ? 4 : Math.max(0, (rect().height - lineHeight()) / 2);
+    // The rect is the field's text band already; the first line starts at
+    // its top on either shape.
+    mount.multiline ? 0 : Math.max(0, (rect().height - lineHeight()) / 2);
   const scrollY = (): number =>
     mount.multiline
       ? Math.max(0, (caretRow() + 1) * lineHeight() + 2 * top() - rect().height)
@@ -159,6 +174,13 @@ export function mountField(mount: Mount): FieldView {
     return [x, measure(line.slice(0, b)) - x];
   };
 
+  /** The hint stands in for the text of the first line while it is empty. */
+  const hint = (row: number): boolean =>
+    row === 0 &&
+    state().focused &&
+    state().display === '' &&
+    mount.placeholder !== undefined;
+
   let node!: ElementNode;
   const dispose = createRoot((disposeRoot) => {
     node = (
@@ -169,10 +191,15 @@ export function mountField(mount: Mount): FieldView {
         height={rect().height}
         zIndex={style.zIndex ?? 10000}
         clipping
+        // While the field has the keyboard the overlay is the field: it
+        // draws the text and takes the pointer for the caret. On blur it
+        // hides entirely — the scene's own field is back, and with alpha 0
+        // the pointer finds it again rather than this view.
+        alpha={state().focused ? 1 : 0}
         color={
           state().focused
-            ? (style.focusedBackground ?? 0x293c52ff)
-            : (style.background ?? 0x1b2736ff)
+            ? (style.focusedBackground ?? 0x00000000)
+            : (style.background ?? 0x00000000)
         }
         // What makes the field a pointer target of the scene.
         cursorStyle="text"
@@ -200,9 +227,13 @@ export function mountField(mount: Mount): FieldView {
                 fontFamily={family()}
                 fontSize={fontSize()}
                 lineHeight={lineHeight()}
-                color={style.color ?? 0xffffffff}
+                color={
+                  hint(row())
+                    ? (mount.placeholderColor ?? 0x80808099)
+                    : (style.color ?? 0xffffffff)
+                }
               >
-                {line}
+                {hint(row()) ? mount.placeholder! : line}
               </text>
               <view
                 x={
@@ -232,7 +263,7 @@ export function mountField(mount: Mount): FieldView {
           // No width without the keyboard: the caret is not drawn.
           width={state().focused ? 1 : 0}
           height={lineHeight()}
-          color={style.caretColor ?? 0xffffffff}
+          color={style.caretColor ?? style.color ?? 0xffffffff}
         />
       </view>
     ) as unknown as ElementNode;

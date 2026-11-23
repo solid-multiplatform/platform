@@ -7,6 +7,8 @@ import {
 } from 'solid-js';
 import type { ElementNode } from '@solid-multiplatform/platform';
 import { AppScope } from '../app/context.js';
+import { getRenderer } from '../index.js';
+import type { Rect } from '../sdk/input.js';
 import type { Editor, EditorHost, EditorOptions } from '../sdk/editor.js';
 import { screenRect } from '../sdk/layout.js';
 import { useTheme } from '../sdk/theme.jsx';
@@ -59,11 +61,13 @@ function purposeOf(props: TextFieldProps): EditorOptions['purpose'] {
  * `onChange`. The host draws the placeholder while the value is empty, so
  * the field is never a blank rectangle.
  *
- * The box keeps a 44-pt minimum height at the theme's text size, and the
- * label adds its own line above instead of stealing room from the target.
- * No `Controls` wrapper and no bounds are needed — the field gets the host
- * editor from the app context. Without an editor it still draws label,
- * placeholder and value.
+ * The scene's text and the host editor's box are the same geometry — same
+ * left inset, same vertical band, same type size — so focusing causes no
+ * visible reflow. The box keeps a 44-pt minimum height at the theme's text
+ * size, and the label adds its own line above instead of stealing room from
+ * the target. No `Controls` wrapper and no bounds are needed — the field
+ * gets the host editor from the app context. Without an editor it still
+ * draws label, placeholder and value.
  */
 export function TextField(props: TextFieldProps): JSX.Element {
   const theme = useTheme();
@@ -76,6 +80,9 @@ export function TextField(props: TextFieldProps): JSX.Element {
   let outer: ElementNode | undefined;
   let box: ElementNode | undefined;
   let editor: Editor | undefined;
+  // The last rect handed to the host editor, so an unchanged box is not sent
+  // again: layout passes, focus and frame ticks all re-read it.
+  let sent: Rect | undefined;
 
   const value = () => props.value ?? inner();
   const masked = (text: string) =>
@@ -118,8 +125,9 @@ export function TextField(props: TextFieldProps): JSX.Element {
       : Math.max(0, (boxHeight() - lineHeight()) / 2);
   const boxY = () => (hasLabel() ? labelLine() + labelGap() : 0);
 
-  // The editor stands where the field's text would be: the box inset by the
-  // same horizontal padding the scene text has.
+  // The editor stands exactly where the scene draws its text: the box inset
+  // by the same horizontal padding, and — single line — the same centered
+  // text band. One geometry, so focus hands over with no visible reflow.
   const bounds = () => {
     const rect = box
       ? screenRect(box)
@@ -127,14 +135,33 @@ export function TextField(props: TextFieldProps): JSX.Element {
         ? screenRect(outer)
         : { x: 0, y: 0, width: 0, height: 0 };
     const inset = boxPaddingX();
-    const vertical = props.multiline ? theme.spacing(2) : 0;
     const width = rect.width || props.width || 0;
     return {
       x: rect.x + inset,
-      y: rect.y + vertical,
+      y: rect.y + valueY(),
       width: Math.max(1, width - 2 * inset),
-      height: Math.max(1, (rect.height || boxHeight()) - 2 * vertical),
+      height: Math.max(
+        1,
+        props.multiline
+          ? (rect.height || boxHeight()) - 2 * valueY()
+          : lineHeight(),
+      ),
     };
+  };
+
+  const sendBounds = () => {
+    if (editor === undefined) return;
+    const rect = bounds();
+    if (
+      sent !== undefined &&
+      sent.x === rect.x &&
+      sent.y === rect.y &&
+      sent.width === rect.width &&
+      sent.height === rect.height
+    )
+      return;
+    sent = rect;
+    editor.setBounds(rect);
   };
 
   /**
@@ -161,7 +188,7 @@ export function TextField(props: TextFieldProps): JSX.Element {
       // microtask, so read the box one microtask after that.
       queueMicrotask(() => {
         queueMicrotask(() => {
-          if (editing() && editor !== undefined) editor.setBounds(bounds());
+          if (editing()) sendBounds();
         });
       });
     };
@@ -188,7 +215,14 @@ export function TextField(props: TextFieldProps): JSX.Element {
   };
 
   const open = () => {
-    if (props.disabled || host === undefined) return;
+    if (props.disabled) return;
+    // A tap lands here before focus does: take scene focus, so whatever was
+    // focused blurs and its host editor resigns (Apple: the system dismisses
+    // the keyboard when the person taps a control that doesn't take text).
+    // Focus application is a post-mutation microtask; this field's own
+    // onFocus re-runs `open`, which is idempotent.
+    outer?.setFocus();
+    if (host === undefined) return;
     if (editor === undefined) {
       editor = host.createEditor({
         label: props.label,
@@ -208,7 +242,7 @@ export function TextField(props: TextFieldProps): JSX.Element {
         onBlur: () => setEditing(false),
       });
     }
-    editor.setBounds(bounds());
+    sendBounds();
     setEditing(true);
     editor.focus();
     revealInScroller();
@@ -225,9 +259,31 @@ export function TextField(props: TextFieldProps): JSX.Element {
     if (!editing() || ime <= 0) return;
     revealInScroller();
   });
+  // A touch drag moves a scroller under the field with raw `y` writes: no
+  // layout, no scene event, and nothing else would move the editor with it.
+  // The renderer ticks a frame for each write while the gesture runs and
+  // sleeps while the scene is still, so the box is re-read on those ticks
+  // alone — the overlay follows the scroll, and an idle scene schedules
+  // nothing.
+  createEffect(() => {
+    if (!editing()) return;
+    const sink = getRenderer() as unknown as
+      | {
+          on(event: 'frameTick', listener: () => void): void;
+          off?(event: 'frameTick', listener: () => void): void;
+        }
+      | undefined;
+    if (sink === undefined || typeof sink.on !== 'function') return;
+    const follow = () => {
+      if (editing() && editor !== undefined) sendBounds();
+    };
+    sink.on('frameTick', follow);
+    onCleanup(() => sink.off?.('frameTick', follow));
+  });
   onCleanup(() => {
     editor?.dispose();
     editor = undefined;
+    sent = undefined;
   });
 
   return (
@@ -242,6 +298,7 @@ export function TextField(props: TextFieldProps): JSX.Element {
       role="textbox"
       ariaLabel={props.label}
       cursorStyle={props.disabled ? 'not-allowed' : 'text'}
+      alpha={props.disabled ? 0.4 : 1}
       forwardStates
       onFocus={open}
       onEnter={open}
@@ -258,7 +315,7 @@ export function TextField(props: TextFieldProps): JSX.Element {
       // The keyboard scrolls the form; the host editor has to follow the
       // field it covers, so its box is re-read after every layout pass.
       onLayout={() => {
-        if (editing() && editor !== undefined) editor.setBounds(bounds());
+        if (editing() && editor !== undefined) sendBounds();
       }}
     >
       {hasLabel() ? (
@@ -271,21 +328,24 @@ export function TextField(props: TextFieldProps): JSX.Element {
           contain={props.width === undefined ? undefined : 'width'}
           maxLines={1}
           fontSize={labelSize()}
-          color={
-            props.disabled ? theme.colors.textMuted : theme.colors.textMuted
-          }
+          color={theme.colors.textMuted}
         >
           {props.label}
         </text>
       ) : null}
+      {/* The box is the field's drawing, not a second focus stop: it never
+          takes focus itself (arrows pass over it) and its tap hands the
+          control to the field, the same way a remote's OK would. */}
       <view
         ref={(el) => (box = el)}
+        skipFocus
         x={0}
         y={boxY()}
         width={props.width}
         height={boxHeight()}
         flexBoundary="fixed"
         borderRadius={theme.radius.medium}
+        onMouseClick={open}
         style={{
           color: theme.colors.surface,
           border: { width: 1, color: theme.colors.border, align: 'inside' },
@@ -301,7 +361,11 @@ export function TextField(props: TextFieldProps): JSX.Element {
           },
         }}
       >
+        {/* The same inset and band the host editor is placed on, so focus
+            hands over without the text jumping. */}
         <text
+          x={boxPaddingX()}
+          y={valueY()}
           width={
             props.width === undefined
               ? undefined

@@ -464,11 +464,14 @@ v.test(
     outerNode.states.add('$focus');
     // The row wrapper forwards to its children, so every slot box draws
     // the focus state — the field's only affordance on a TV.
-    const row = outerNode.children.find((child) => child.forwardStates === true);
+    const row = outerNode.children.find(
+      (child) => child.forwardStates === true,
+    );
     v.expect(row).toBeDefined();
     v.expect(
-      (row as { children: readonly { states: { has(n: string): boolean } }[] })
-        .children.every((box) => box.states.has('$focus')),
+      (
+        row as { children: readonly { states: { has(n: string): boolean } }[] }
+      ).children.every((box) => box.states.has('$focus')),
     ).toBe(true);
     // The characters still read through the same slots.
     v.expect(slotTexts(root, 6).length).toBe(6);
@@ -503,9 +506,11 @@ v.test(
     // scene event. Frame ticks are what follow it — the renderer emits them
     // while frames draw and none while the scene is still.
     column.y -= 100;
-    (renderer.renderer as unknown as {
-      emit(event: string, data?: unknown): void;
-    }).emit('frameTick', { time: 0, delta: 16 });
+    (
+      renderer.renderer as unknown as {
+        emit(event: string, data?: unknown): void;
+      }
+    ).emit('frameTick', { time: 0, delta: 16 });
     v.expect(h.rects.length).toBeGreaterThan(callsBefore);
     const after = h.rects.at(-1)! as { y: number };
     v.expect(after.y).toBeCloseTo(before.y - 100, 5);

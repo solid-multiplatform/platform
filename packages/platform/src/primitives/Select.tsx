@@ -80,7 +80,13 @@ export function Select<T>(props: SelectProps<T>): JSX.Element {
         ariaValueText={props.label ? selected()?.label : undefined}
         ariaExpanded={open()}
         onEnter={() => setOpen((value) => !value)}
-        onMouseClick={() => setOpen((value) => !value)}
+        // A tap opens the menu AND takes scene focus, the way the keyboard
+        // does: whatever was focused (a text field mid-edit) blurs and its
+        // host editor resigns, and the menu's close restores focus here.
+        onMouseClick={() => {
+          trigger?.setFocus();
+          setOpen((value) => !value);
+        }}
         cursorStyle="pointer"
       >
         <text
