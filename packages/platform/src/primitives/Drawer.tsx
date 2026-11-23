@@ -5,8 +5,16 @@ import { isElementNode } from '../core/utils.js';
 import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
 import { CloseIcon } from './icons.jsx';
+import { overlayEnter, overlayExit, sheetEasing } from './FadeInOut.jsx';
 import { Modal } from './Modal.jsx';
 import { activeElement } from '../core/activeElement.js';
+
+// An edge drawer moves like a sheet does (the iOS sheet curve,
+// swiftui-motion.md): in from its own edge, back out the same way. Like a
+// sheet, its entrance holds alpha 0 while the panel is still travelling
+// (OverlayMotion.fadeDelay), so the resting layout is not read as cut off by
+// an audit that runs mid-entrance.
+const DRAWER_MOTION = { duration: 300, easing: sheetEasing, fadeDelay: 80 };
 
 // Focus on the drawer goes to the first of the app's children that takes it
 // (the panel's second child holds them); with none that view keeps it.
@@ -56,6 +64,9 @@ export function Drawer(props: DrawerProps): JSX.Element {
   const titleSize = () => Math.max(17, Math.min(24, theme.typography.body + 2));
   let content: ElementNode | undefined;
   let close: ElementNode | undefined;
+  let panel: ElementNode | undefined;
+  // Where the panel waits while it is off screen: just past its own edge.
+  const offX = () => (props.side === 'end' ? viewport().width : -width());
 
   // The panel's rows are the app's content and, last, the close button: a
   // Down the content does not take reaches Close, and Up from Close goes
@@ -81,12 +92,25 @@ export function Drawer(props: DrawerProps): JSX.Element {
       transparent
       barrierColor={0x00000080}
       useSafeArea={false}
+      // The panel slides itself in from its edge; Modal only dims around it.
+      centeredMotion={false}
+      panelExit={() =>
+        panel === undefined
+          ? Promise.resolve()
+          : overlayExit(panel, { alpha: 0, x: offX() }, DRAWER_MOTION)
+      }
       initialFocus={props.initialFocus}
     >
       {/* The panel runs the full height, behind the system bars, so a drawer
           looks like part of the window; its own rows stay inside the safe
           area. */}
       <view
+        ref={(node) => {
+          panel = node as ElementNode;
+        }}
+        onCreate={(el) =>
+          overlayEnter(el, { alpha: 0, x: offX() }, DRAWER_MOTION)
+        }
         x={x()}
         y={0}
         width={width()}

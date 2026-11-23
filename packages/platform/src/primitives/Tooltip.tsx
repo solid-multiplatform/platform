@@ -8,7 +8,14 @@ import {
 import type { Rect } from '../sdk/input.js';
 import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
+import { OVERLAY_FADE_IN, overlayEnter, overlayExit } from './FadeInOut.jsx';
 import { Portal } from './portal.jsx';
+
+// A hint appears at its anchor: a quick fade with a slight scale-up about the
+// edge that faces the anchor, and the same in reverse before unmount.
+const ENTER = { alpha: OVERLAY_FADE_IN, scale: 0.96 };
+const EXIT = { alpha: 0, scale: 0.96 };
+const MOTION = { duration: 180, easing: 'ease-out' };
 
 /** Handlers a control spreads to show a tooltip the way Apple describes. */
 export interface TooltipTrigger {
@@ -117,11 +124,22 @@ export function Tooltip(props: TooltipProps): JSX.Element {
     const x = Math.max(safe.left, Math.min(a.x, v.width - safe.right - width));
     return { x, y, width, height: height() };
   };
+  // The scale's pivot: the edge that faces the anchor, so the hint grows out
+  // of the control it describes (`rect`'s flip included).
+  const pivot = () => {
+    const a =
+      typeof props.anchor === 'function' ? props.anchor() : props.anchor;
+    const below = rect().y >= a.y + a.height;
+    return { pivotX: 0.5, pivotY: below ? 0 : 1 };
+  };
   return (
     <Show when={visible()}>
       <Portal>
         <view
           {...rect()}
+          {...pivot()}
+          onCreate={(el) => overlayEnter(el, ENTER, MOTION)}
+          onDestroy={(el) => overlayExit(el, EXIT, MOTION)}
           skipFocus
           color={0x0b1118f2}
           role="tooltip"

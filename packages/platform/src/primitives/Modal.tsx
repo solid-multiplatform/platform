@@ -10,7 +10,18 @@ import {
 import { isElementNode } from '../core/utils.js';
 import { supports } from '../sdk/capabilities.js';
 import { viewport } from '../sdk/viewport.js';
+import { OVERLAY_FADE_IN, overlayEnter, overlayExit } from './FadeInOut.jsx';
 import { Portal } from './portal.jsx';
+
+// The barrier dims in and out through its own colour, never its node alpha:
+// the panel is inside the barrier, and a fading barrier would fade the panel
+// with it. 200 ms of `ease-out` is UIKit's quick dim around a presentation.
+const BARRIER_MOTION = { duration: 200, easing: 'ease-out' } as const;
+// The centred entrance Modal gives the whole surface when the panel does not
+// run its own (see OVERLAY_FADE_IN for why the fade starts above 0).
+const CENTERED_ENTER = { alpha: OVERLAY_FADE_IN, scale: 0.96 };
+const CENTERED_EXIT = { alpha: 0, scale: 0.96 };
+const CENTERED_MOTION = { duration: 250, easing: 'ease-in-out' } as const;
 
 // Focus on the dialog goes to its content: the first child of the safe-area
 // view that takes focus. With none the dialog keeps it, so that Back closes.
@@ -56,6 +67,22 @@ export interface ModalProps {
    * its current value on an outside tap, where a modal sheet does not.
    */
   onBackdrop?(): void;
+  /**
+   * Whether Modal runs the standard centred entrance and exit on the whole
+   * surface — a fade with a slight scale-up about the centre — or leaves the
+   * motion to the panel it contains: a sheet, drawer or popover slides or
+   * scales its own panel. The barrier dims and undims either way. Defaults to
+   * true.
+   */
+  centeredMotion?: boolean;
+  /**
+   * The panel's own exit, run when the overlay begins to close: resolve once
+   * the panel has finished leaving. The overlay — its barrier included —
+   * stays on screen until then, so nothing pops out in a single frame.
+   * Reduced motion or `Config.animationsEnabled` off makes the close
+   * immediate. A surface whose panel stays put omits it.
+   */
+  panelExit?(): Promise<void>;
   ref?: (node: ElementNode) => void;
   children?: JSX.Element;
 }
@@ -76,6 +103,7 @@ export function Modal(props: ModalProps): JSX.Element {
   const visible = () =>
     typeof props.visible === 'function' ? props.visible() : props.visible;
   let dialog: ElementNode | undefined;
+  let surface: ElementNode | undefined;
   let previous: ElementNode | undefined;
   let releaseTrap: (() => void) | undefined;
   let open = false;
@@ -89,9 +117,15 @@ export function Modal(props: ModalProps): JSX.Element {
     if (visible()) {
       if (open) return;
       open = true;
-      previous = activeElement();
       queueMicrotask(() => {
         if (unmounted) return;
+        // The invoking control is read here, not where the effect ran: an
+        // opener that takes focus as it opens (a Select's trigger taps into
+        // a menu while a text field edits) applies that focus in the
+        // post-mutation phase, which runs before this microtask. Reading
+        // earlier would restore the dialog to whatever had focus before
+        // the tap, and closing it would reopen that field's editor.
+        previous = activeElement();
         if (dialog && !releaseTrap) releaseTrap = pushFocusTrap(dialog);
         const focus = props.initialFocus;
         // An `initialFocus` that names nothing (a ref not set) leaves focus
@@ -169,6 +203,22 @@ export function Modal(props: ModalProps): JSX.Element {
               : (props.barrierColor ?? 0x000000cc)
           }
           onKeyPress={key}
+          onCreate={(el) => {
+            // The dim fades in around the panel; the panel's own motion (or
+            // the surface's, below) runs beside it.
+            overlayEnter(el, { color: 0 }, BARRIER_MOTION);
+          }}
+          onDestroy={(el) => {
+            // The overlay unmounts here, and the exits below are what keep
+            // it on screen: destroy() waits for this promise before it frees
+            // the node, so the panel leaves the way it came in.
+            const exits = [overlayExit(el, { color: 0 }, BARRIER_MOTION)];
+            if (surface !== undefined && props.centeredMotion !== false)
+              exits.push(overlayExit(surface, CENTERED_EXIT, CENTERED_MOTION));
+            const panelExit = props.panelExit;
+            if (panelExit !== undefined) exits.push(panelExit());
+            return Promise.all(exits).then(() => undefined);
+          }}
           onMouseClick={
             props.dismissOnBackdrop === false
               ? undefined
@@ -181,6 +231,9 @@ export function Modal(props: ModalProps): JSX.Element {
           }
         >
           <view
+            ref={(node) => {
+              surface = node as ElementNode;
+            }}
             x={
               props.useSafeArea === false ? 0 : viewport().insets.safeArea.left
             }
@@ -198,6 +251,15 @@ export function Modal(props: ModalProps): JSX.Element {
                 ? 0
                 : viewport().insets.safeArea.top +
                   viewport().insets.safeArea.bottom)
+            }
+            onCreate={
+              props.centeredMotion === false
+                ? undefined
+                : (el) => {
+                    // The standard centred entrance, as a presenting dialog:
+                    // it lands exactly on the static layout, where it rests.
+                    overlayEnter(el, CENTERED_ENTER, CENTERED_MOTION);
+                  }
             }
           >
             {props.children}

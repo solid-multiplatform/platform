@@ -83,7 +83,7 @@ export function Skeleton(props: SkeletonProps): JSX.Element {
       width={props.width}
       height={props.height}
       skipFocus
-      role="image"
+      role="img"
       ariaLabel={props.label ?? 'Loading'}
       borderRadius={props.radius ?? theme().radius.medium}
       color={theme().colors.border}

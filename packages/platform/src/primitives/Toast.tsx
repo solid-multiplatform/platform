@@ -1,7 +1,14 @@
 import { Show, createEffect, onCleanup, type JSX } from 'solid-js';
 import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
+import { overlayEnter, overlayExit } from './FadeInOut.jsx';
 import { Portal } from './portal.jsx';
+
+// A status message appears where it will rest and fades out before it
+// unmounts: no scale, no travel — the message is anchored by its content.
+const ENTER = { alpha: 0 };
+const EXIT = { alpha: 0 };
+const MOTION = { duration: 200, easing: 'ease-out' };
 
 export interface ToastProps {
   visible: boolean | (() => boolean);
@@ -73,6 +80,8 @@ export function Toast(props: ToastProps): JSX.Element {
       <Portal>
         <view
           {...rect()}
+          onCreate={(el) => overlayEnter(el, ENTER, MOTION)}
+          onDestroy={(el) => overlayExit(el, EXIT, MOTION)}
           color={theme.colors.surfaceRaised}
           borderRadius={theme.radius.medium}
           role="status"

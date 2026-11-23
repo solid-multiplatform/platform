@@ -6,7 +6,15 @@ import type { Rect } from '../sdk/input.js';
 import type { SemanticsRole } from '../sdk/semantics.js';
 import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
+import { OVERLAY_FADE_IN, overlayEnter, overlayExit } from './FadeInOut.jsx';
 import { Modal } from './Modal.jsx';
+
+// UIPopoverPresentationController: the panel fades in with a slight scale-up
+// that grows out of the anchor, and closes the same way. The pivot is the
+// edge that faces the anchor, so that edge stays put while the panel scales.
+const ENTER = { alpha: OVERLAY_FADE_IN, scale: 0.96 };
+const EXIT = { alpha: 0, scale: 0.96 };
+const MOTION = { duration: 200, easing: 'ease-out' };
 
 // Focus on the panel goes to the first of its children that takes it; with
 // none the panel keeps it.
@@ -101,6 +109,19 @@ export function Popover(props: PopoverProps): JSX.Element {
     x = Math.max(safe.left, Math.min(x, v.width - safe.right - width()));
     return { x, y, width: width(), height: height() };
   };
+  // The scale's pivot: the edge of the panel that faces the anchor, so the
+  // entrance grows out of the anchor rather than out of the panel's centre.
+  // `top`/`bottom` follow the flip `rect` applied; the sideways placements
+  // keep the anchor's side on the x axis and centre on y.
+  const pivot = () => {
+    const placement = props.placement ?? 'bottom';
+    if (placement === 'left') return { pivotX: 1, pivotY: 0.5 };
+    if (placement === 'right') return { pivotX: 0, pivotY: 0.5 };
+    const a = anchor();
+    const below = rect().y >= a.y + a.height;
+    return { pivotX: 0.5, pivotY: below ? 0 : 1 };
+  };
+  let panel: ElementNode | undefined;
   return (
     <Modal
       visible={props.visible}
@@ -108,10 +129,22 @@ export function Popover(props: PopoverProps): JSX.Element {
       label={props.label}
       transparent
       useSafeArea={false}
+      // The panel scales itself in and out about the anchor side.
+      centeredMotion={false}
+      panelExit={() =>
+        panel === undefined
+          ? Promise.resolve()
+          : overlayExit(panel, EXIT, MOTION)
+      }
       initialFocus={props.initialFocus}
     >
       <view
+        ref={(node) => {
+          panel = node as ElementNode;
+        }}
+        onCreate={(el) => overlayEnter(el, ENTER, MOTION)}
         {...rect()}
+        {...pivot()}
         color={theme().colors.surfaceRaised}
         borderRadius={theme().radius.medium}
         role={props.role ?? 'none'}

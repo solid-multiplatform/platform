@@ -439,7 +439,7 @@ export type {
   prefetchFont,
 } from '@solid-multiplatform/platform';
 
-// @solid-multiplatform/platform/primitives (28).
+// @solid-multiplatform/platform/primitives (30).
 export type {
   AnyFunction,
   ColumnProps,
@@ -460,6 +460,8 @@ export type {
   NavigableElement,
   NavigableProps,
   NavigableStyleProperties,
+  OverlayMotion,
+  OverlayMotionValues,
   OnSelectedChanged,
   RowProps,
   ScrollableElement,

@@ -342,7 +342,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
   });
 
   v.test(
-    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 117 names',
+    '@solid-multiplatform/platform/primitives (src/primitives/index.ts): 121 names',
     () => {
       v.expect(names(primitives)).toEqual([
         'ALPHA_FULL',
@@ -379,6 +379,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'MarqueeText',
         'Menu',
         'Modal',
+        'OVERLAY_FADE_IN',
         'PageControl',
         'Popover',
         'Portal',
@@ -437,6 +438,8 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'navigableHandleNavigation',
         'nextWordBoundary',
         'onGridFocus',
+        'overlayEnter',
+        'overlayExit',
         'pageNavigation',
         'printFocusHistory',
         'rangeBounds',
@@ -452,6 +455,7 @@ v.describe('Exports: runtime export names of every entry point', () => {
         'setActiveElement',
         'setActiveElementCore',
         'setupFPS',
+        'sheetEasing',
         'spatialForwardFocus',
         'spatialHandleNavigation',
         'suppressKeyUntilRelease',

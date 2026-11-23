@@ -5,7 +5,15 @@ import { useUiScale } from '../sdk/layout.js';
 import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
 import { Column } from './Column.jsx';
+import { OVERLAY_FADE_IN, overlayEnter, overlayExit } from './FadeInOut.jsx';
 import { Modal } from './Modal.jsx';
+
+// UIAlertController's .actionSheet presentation as it reads on a centred
+// card: fade with a slight scale-up about the card's own centre — the default
+// pivot (0.5, 0.5) — and the same in reverse out.
+const ENTER = { alpha: OVERLAY_FADE_IN, scale: 0.96 };
+const EXIT = { alpha: 0, scale: 0.96 };
+const MOTION = { duration: 250, easing: 'ease-in-out' };
 
 export interface ActionSheetAction {
   label: string;
@@ -122,12 +130,20 @@ export function ActionSheet(props: ActionSheetProps): JSX.Element {
       transparent
       barrierColor={0x00000080}
       useSafeArea={false}
+      // The card runs its own entrance and exit about its centre.
+      centeredMotion={false}
+      panelExit={() =>
+        actions === undefined
+          ? Promise.resolve()
+          : overlayExit(actions, EXIT, MOTION)
+      }
       initialFocus={() => actions}
     >
       <Column
         ref={(node) => {
           actions = node;
         }}
+        onCreate={(el) => overlayEnter(el, ENTER, MOTION)}
         x={panelX()}
         y={panelY()}
         width={width()}

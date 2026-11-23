@@ -6,8 +6,16 @@ import { useUiScale } from '../sdk/layout.js';
 import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
 import { Column } from './Column.jsx';
+import { OVERLAY_FADE_IN, overlayEnter, overlayExit } from './FadeInOut.jsx';
 import { Modal } from './Modal.jsx';
 import { Row } from './Row.jsx';
+
+// UIAlertController's .alert presentation: the card fades in with a slight
+// scale-up about its own centre — the default pivot (0.5, 0.5) — and closes
+// the same way. It lands exactly on the static layout.
+const ENTER = { alpha: OVERLAY_FADE_IN, scale: 0.96 };
+const EXIT = { alpha: 0, scale: 0.96 };
+const MOTION = { duration: 250, easing: 'ease-in-out' };
 
 export interface AlertAction {
   label: string;
@@ -210,6 +218,7 @@ export function Alert(props: AlertProps): JSX.Element {
     };
   };
   let actions: ElementNode | undefined;
+  let panel: ElementNode | undefined;
   const runAction = (action: AlertAction) => {
     if (action.disabled === true) return;
     action.onPress?.();
@@ -223,6 +232,13 @@ export function Alert(props: AlertProps): JSX.Element {
       role="alertdialog"
       dismissOnBackdrop={false}
       useSafeArea={false}
+      // The panel runs its own entrance and exit about its centre.
+      centeredMotion={false}
+      panelExit={() =>
+        panel === undefined
+          ? Promise.resolve()
+          : overlayExit(panel, EXIT, MOTION)
+      }
       initialFocus={
         props.initialFocus ??
         (() => (actionItems().length === 0 ? undefined : actions))
@@ -230,6 +246,10 @@ export function Alert(props: AlertProps): JSX.Element {
     >
       <view
         id="alert-panel"
+        ref={(node) => {
+          panel = node as ElementNode;
+        }}
+        onCreate={(el) => overlayEnter(el, ENTER, MOTION)}
         x={Math.round(
           viewport().insets.safeArea.left +
             Math.max(

@@ -7,7 +7,18 @@ import { supports } from '../sdk/capabilities.js';
 import { useUiScale } from '../sdk/layout.js';
 import { useTheme } from '../sdk/theme.jsx';
 import { viewport } from '../sdk/viewport.js';
+import { overlayEnter, overlayExit, sheetEasing } from './FadeInOut.jsx';
 import { Modal } from './Modal.jsx';
+
+// UISheetPresentationController: the panel rises in from its resting edge and
+// slides back out on dismiss. The iOS sheet curve (swiftui-motion.md), as a
+// function so every backend runs the same curve. The entrance starts fully
+// transparent and stays that way for its first stretch (see
+// OverlayMotion.fadeDelay): the panel is genuinely off screen while it
+// travels, and an audit of the resting layout must not read the half-arrived
+// panel as cut off.
+const SHEET_MOTION = { duration: 320, easing: sheetEasing, fadeDelay: 80 };
+const SHEET_EXIT_MOTION = { duration: 300, easing: sheetEasing } as const;
 
 // Focus on the sheet goes to the first of the app's children that takes it
 // (the panel's second child holds them); with none that view keeps it.
@@ -62,6 +73,7 @@ export function Sheet(props: SheetProps): JSX.Element {
   const contentBottom = () => 16;
   const [dragY, setDragY] = createSignal(0);
   const [dragging, setDragging] = createSignal(false);
+  let panel: ElementNode | undefined;
   const sheetWidth = () =>
     card()
       ? Math.min(
@@ -145,16 +157,35 @@ export function Sheet(props: SheetProps): JSX.Element {
       barrierColor={0x00000080}
       dismissOnBackdrop={false}
       useSafeArea={false}
+      // The panel slides itself in and out; Modal only dims around it.
+      centeredMotion={false}
+      panelExit={() =>
+        panel === undefined
+          ? Promise.resolve()
+          : // From wherever the panel sits — dragged halfway down, or at
+            // rest — it continues off the edge rather than vanishing.
+            overlayExit(
+              panel,
+              { alpha: 0, y: viewport().height },
+              SHEET_EXIT_MOTION,
+            )
+      }
       initialFocus={props.initialFocus}
     >
       {/* The surface reaches the bottom edge (behind the navigation bar);
           its content stops above it. */}
       <view
         id="sheet-panel"
-        x={sheetX()}
-        y={baseY() + dragY()}
-        width={sheetWidth()}
-        height={sheetHeight()}
+        ref={(node) => {
+          panel = node as ElementNode;
+        }}
+        onCreate={(el) =>
+          overlayEnter(el, { alpha: 0, y: viewport().height }, SHEET_MOTION)
+        }
+        // Before `y`: within one flush, this effect runs first, so a drag's
+        // first move already writes `y` with the settle transition held off
+        // and the panel tracks the finger exactly, not through a 180 ms
+        // settle that starts from rest.
         transition={
           dragging()
             ? undefined
@@ -165,6 +196,10 @@ export function Sheet(props: SheetProps): JSX.Element {
                 },
               }
         }
+        x={sheetX()}
+        y={baseY() + dragY()}
+        width={sheetWidth()}
+        height={sheetHeight()}
         color={theme.colors.surfaceRaised}
         borderRadius={
           card()
@@ -214,16 +249,19 @@ export function Sheet(props: SheetProps): JSX.Element {
         </view>
         {/* The grabber/title strip is the drag handle: pulling it down and
             past a third of the sheet dismisses, as an iOS sheet does. It
-            never takes focus and paints nothing. */}
+            paints nothing, but it must not be `skipFocus`: the pointer's hit
+            test passes over skip-focus nodes too, and an invisible handle
+            could never be grabbed. A tap on it does nothing, like a tap on
+            the panel. */}
         <Show when={!card()}>
           <view
             id="sheet-drag"
-            skipFocus
             x={0}
             y={0}
             width={sheetWidth()}
             height={contentY()}
             onPointerDrag={drag}
+            onMouseClick={() => true}
             cursorStyle="grab"
           />
         </Show>
